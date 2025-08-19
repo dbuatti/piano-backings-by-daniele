@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, FileTextIcon, LinkIcon, MicIcon } from "lucide-react";
+import { CalendarIcon, FileTextIcon, LinkIcon, MicIcon, Menu } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import NavigationMenu from "@/components/NavigationMenu";
 
 const Index = () => {
   const [formData, setFormData] = useState({
@@ -50,7 +52,21 @@ const Index = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-indigo-900 mb-4">Piano Backings By Daniele</h1>
+          <div className="flex justify-between items-center mb-6">
+            <div></div>
+            <h1 className="text-4xl md:text-5xl font-bold text-indigo-900">Piano Backings By Daniele</h1>
+            <div className="flex items-center space-x-2">
+              <NavigationMenu />
+              <div className="hidden md:flex space-x-4">
+                <Link to="/" className="text-indigo-700 hover:text-indigo-900 font-medium">
+                  Home
+                </Link>
+                <Link to="/form-page" className="text-indigo-700 hover:text-indigo-900 font-medium">
+                  Request Form
+                </Link>
+              </div>
+            </div>
+          </div>
           <p className="text-xl text-indigo-700">Professional Piano Backing Tracks for Auditions</p>
         </header>
 
