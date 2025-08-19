@@ -23,7 +23,7 @@ serve(async (req) => {
     // @ts-ignore
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     // @ts-ignore
-    const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/piano-backings';
+    const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/PIANO BACKING TRACKS';
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
