@@ -210,7 +210,8 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               from_path: templateFilePath,
-              to_path: copyPath
+              to_path: copyPath,
+              autorename: true // This will automatically rename if file exists
             })
           });
           
@@ -220,7 +221,42 @@ serve(async (req) => {
           } else {
             const errorText = await copyResponse.text();
             console.error('Dropbox template copy error:', copyResponse.status, errorText);
-            templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
+            
+            // Try to parse the error to see if it's a conflict that we can handle
+            try {
+              const errorObj = JSON.parse(errorText);
+              if (errorObj.error_summary && errorObj.error_summary.includes('to/conflict')) {
+                // If it's a conflict, try with autorename
+                console.log('File already exists, trying with autorename...');
+                const copyWithRenameResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${dropboxAccessToken}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    from_path: templateFilePath,
+                    to_path: copyPath,
+                    autorename: true
+                  })
+                });
+                
+                if (copyWithRenameResponse.ok) {
+                  templateCopySuccess = true;
+                  const copyData = await copyWithRenameResponse.json();
+                  console.log('Template file copied successfully with auto-renamed name:', copyData.metadata.name);
+                } else {
+                  const renameErrorText = await copyWithRenameResponse.text();
+                  console.error('Dropbox template copy with autorename error:', copyWithRenameResponse.status, renameErrorText);
+                  templateCopyError = `Dropbox template copy error: ${copyWithRenameResponse.status} - ${renameErrorText}`;
+                }
+              } else {
+                templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
+              }
+            } catch (parseError) {
+              // If we can't parse the error, just use the original error text
+              templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
+            }
           }
         } else {
           const errorText = await fileInfoResponse.text();
