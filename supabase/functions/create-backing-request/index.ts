@@ -26,14 +26,17 @@ serve(async (req) => {
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     // @ts-ignore
     const templateFilePath = Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx';
+    // @ts-ignore
+    const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     
-    // Log environment variable status for debugging
+    // Log environment variable status for debugging (without exposing the actual key)
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
       DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
-      LOGIC_TEMPLATE_PATH: templateFilePath
+      LOGIC_TEMPLATE_PATH: templateFilePath,
+      RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET'
     });
     
     // Create a Supabase client with service role key (has full permissions)
@@ -268,6 +271,147 @@ serve(async (req) => {
       }
     }
     
+    // Download YouTube video as MP3 and upload to Dropbox
+    let youtubeMp3Success = false;
+    let youtubeMp3Error = null;
+    
+    if (dropboxFolderId && formData.youtubeLink && dropboxAccessToken) {
+      try {
+        // Create MP3 file name
+        const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+        const uploadPath = `${dropboxFolderPath}/${mp3FileName}`;
+        
+        // Check if RapidAPI key is available
+        if (!rapidApiKey) {
+          youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
+          console.error('RapidAPI key not configured in Supabase secrets');
+        } else {
+          // Extract video ID from YouTube URL
+          const videoId = extractYouTubeId(formData.youtubeLink);
+          if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+          }
+          
+          // First, submit the conversion request
+          console.log('Submitting YouTube to MP3 conversion request');
+          
+          const convertResponse = await fetch('https://youtube-to-mp315.p.rapidapi.com/convert', {
+            method: 'POST',
+            headers: {
+              'X-RapidAPI-Key': rapidApiKey,
+              'X-RapidAPI-Host': 'youtube-to-mp315.p.rapidapi.com',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              url: formData.youtubeLink
+            })
+          });
+          
+          if (convertResponse.ok) {
+            const convertData = await convertResponse.json();
+            console.log('Conversion request submitted:', convertData);
+            
+            // Check if we got an ID for the conversion
+            if (convertData.id) {
+              // Poll for the conversion status
+              let downloadUrl = null;
+              let pollCount = 0;
+              const maxPolls = 10; // Maximum number of polls (10 * 3 seconds = 30 seconds)
+              
+              while (pollCount < maxPolls && !downloadUrl) {
+                // Wait 3 seconds before checking status
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Check conversion status
+                const statusResponse = await fetch(`https://youtube-to-mp315.p.rapidapi.com/status/${convertData.id}`, {
+                  method: 'GET',
+                  headers: {
+                    'X-RapidAPI-Key': rapidApiKey,
+                    'X-RapidAPI-Host': 'youtube-to-mp315.p.rapidapi.com'
+                  }
+                });
+                
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.json();
+                  console.log('Conversion status:', statusData);
+                  
+                  // Check if conversion is complete
+                  if (statusData.status === 'AVAILABLE' && statusData.downloadUrl) {
+                    downloadUrl = statusData.downloadUrl;
+                    console.log('MP3 download URL obtained:', downloadUrl);
+                  } else if (statusData.status === 'FAILED') {
+                    throw new Error('YouTube to MP3 conversion failed');
+                  }
+                } else {
+                  const errorText = await statusResponse.text();
+                  console.error('Status check error:', statusResponse.status, errorText);
+                  throw new Error(`Status check failed: ${statusResponse.status}`);
+                }
+                
+                pollCount++;
+              }
+              
+              // If we have a download URL, download and upload the MP3
+              if (downloadUrl) {
+                // Download the MP3 file
+                console.log('Downloading MP3 from:', downloadUrl);
+                const mp3Response = await fetch(downloadUrl);
+                
+                if (mp3Response.ok) {
+                  const mp3Buffer = await mp3Response.arrayBuffer();
+                  
+                  // Upload to Dropbox
+                  console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                  const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${dropboxAccessToken}`,
+                      'Dropbox-API-Arg': JSON.stringify({
+                        path: uploadPath,
+                        mode: 'add',
+                        autorename: true,
+                        mute: false
+                      }),
+                      'Content-Type': 'application/octet-stream'
+                    },
+                    body: mp3Buffer
+                  });
+                  
+                  if (dropboxUploadResponse.ok) {
+                    youtubeMp3Success = true;
+                    console.log('MP3 uploaded successfully to Dropbox');
+                  } else {
+                    const errorText = await dropboxUploadResponse.text();
+                    console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                    youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                  }
+                } else {
+                  youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+                }
+              } else {
+                youtubeMp3Error = 'YouTube to MP3 conversion timed out';
+              }
+            } else {
+              youtubeMp3Error = 'Failed to start YouTube to MP3 conversion';
+            }
+          } else {
+            const errorText = await convertResponse.text();
+            console.error('Conversion request error:', convertResponse.status, errorText);
+            
+            // Check if it's a subscription error
+            if (convertResponse.status === 403) {
+              youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube to MP3 API';
+            } else {
+              youtubeMp3Error = `Conversion request error: ${convertResponse.status} - ${errorText}`;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('YouTube MP3 processing error:', error);
+        youtubeMp3Error = `YouTube MP3 processing error: ${error.message}`;
+      }
+    }
+    
     // Upload PDF to Dropbox folder if provided
     let pdfUploadSuccess = false;
     let pdfUploadError = null;
@@ -357,6 +501,7 @@ serve(async (req) => {
       trackTypeUsed: formData.trackType,
       templateCopySuccess,
       pdfUploadSuccess,
+      youtubeMp3Success,
       dropboxFolderPath,
       logicFileNameUsed: logicFileName
     };
@@ -371,6 +516,10 @@ serve(async (req) => {
     
     if (pdfUploadError) {
       responsePayload.pdfUploadError = pdfUploadError;
+    }
+    
+    if (youtubeMp3Error) {
+      responsePayload.youtubeMp3Error = youtubeMp3Error;
     }
 
     return new Response(
