@@ -33,14 +33,23 @@ const Header = () => {
       
       if (session) {
         // Check if user is admin
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile?.email === 'daniele.buatti@gmail.com') {
-          setIsAdmin(true);
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching profile:', error);
+            return;
+          }
+          
+          if (profile?.email === 'daniele.buatti@gmail.com') {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
         }
       }
     };
@@ -53,15 +62,26 @@ const Header = () => {
       if (session) {
         // Check if user is admin
         const checkAdmin = async () => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile?.email === 'daniele.buatti@gmail.com') {
-            setIsAdmin(true);
-          } else {
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Error fetching profile:', error);
+              setIsAdmin(false);
+              return;
+            }
+            
+            if (profile?.email === 'daniele.buatti@gmail.com') {
+              setIsAdmin(true);
+            } else {
+              setIsAdmin(false);
+            }
+          } catch (error) {
+            console.error('Error checking admin status:', error);
             setIsAdmin(false);
           }
         };
@@ -79,6 +99,7 @@ const Header = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setIsAdmin(false);
   };
 
   // Function to handle anchor link navigation
