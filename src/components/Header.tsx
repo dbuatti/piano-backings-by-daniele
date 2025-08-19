@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Menu, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const menuItems = [
   { name: "Home", href: "/" },
@@ -18,6 +19,28 @@ const menuItems = [
 const Header = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
+  const [session, setSession] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+    };
+    
+    checkSession();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <header className="bg-[#FF00B3] text-white shadow-md sticky top-0 z-50">
@@ -44,6 +67,25 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+            {session ? (
+              <Button 
+                onClick={handleLogout}
+                variant="ghost" 
+                className="hover:bg-white/20 text-white font-medium text-lg"
+              >
+                Logout
+              </Button>
+            ) : (
+              <Link to="/login">
+                <Button 
+                  variant="ghost" 
+                  className="hover:bg-white/20 text-white font-medium text-lg"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Login
+                </Button>
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Navigation Trigger */}
@@ -67,6 +109,26 @@ const Header = () => {
                       {item.name}
                     </Link>
                   ))}
+                  {session ? (
+                    <Button 
+                      onClick={handleLogout}
+                      variant="ghost" 
+                      className="justify-start hover:bg-white/20 text-white font-medium text-2xl"
+                    >
+                      Logout
+                    </Button>
+                  ) : (
+                    <Link to="/login">
+                      <Button 
+                        variant="ghost" 
+                        className="justify-start hover:bg-white/20 text-white font-medium text-2xl"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <LogIn className="mr-2 h-6 w-6" />
+                        Login
+                      </Button>
+                    </Link>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>

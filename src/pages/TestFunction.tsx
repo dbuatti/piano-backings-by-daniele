@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,18 +12,19 @@ import { supabase } from '@/integrations/supabase/client';
 
 const TestFunction = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check if user is authenticated
-  useState(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
     };
     checkAuth();
-  });
+  }, []);
 
   const testFunction = async () => {
     setIsTesting(true);
@@ -44,7 +46,7 @@ const TestFunction = () => {
           backingType: "full-song",
           deliveryDate: "2023-12-31",
           additionalServices: ["rush-order"],
-          specialRequests: "This is a test request"
+          specialRequests: "This is a test request for Dropbox folder creation"
         }
       };
 
@@ -73,7 +75,7 @@ const TestFunction = () => {
       if (response.ok) {
         toast({
           title: "Success!",
-          description: "Function executed successfully.",
+          description: "Function executed successfully. Check Dropbox for new folder.",
         });
       } else {
         throw new Error(data.error || `Function failed with status ${response.status}`);
@@ -96,8 +98,8 @@ const TestFunction = () => {
       
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Test Supabase Function</h1>
-          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Test the create-backing-request function</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Test Dropbox Integration</h1>
+          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Test the backing track request function with Dropbox folder creation</p>
         </div>
         
         <Card className="shadow-lg">
@@ -111,20 +113,26 @@ const TestFunction = () => {
                 <p className="mb-4">
                   You need to be logged in to test this function. Please log in first and then return to this page.
                 </p>
+                <Button 
+                  onClick={() => navigate('/login')}
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                >
+                  Go to Login Page
+                </Button>
               </div>
             ) : (
               <>
                 <div className="mb-6">
                   <p className="mb-4">
-                    This page allows you to test the Supabase function that handles form submissions.
-                    Click the button below to send a test request to the function.
+                    This page tests the Supabase function that handles backing track requests. 
+                    When you click the button below, it will create a new folder in Dropbox for the request.
                   </p>
                   <Button 
                     onClick={testFunction} 
                     disabled={isTesting}
                     className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
                   >
-                    {isTesting ? 'Testing...' : 'Test Function'}
+                    {isTesting ? 'Testing...' : 'Test Dropbox Folder Creation'}
                   </Button>
                 </div>
                 
