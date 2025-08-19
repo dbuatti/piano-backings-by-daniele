@@ -23,6 +23,14 @@ serve(async (req) => {
     // @ts-ignore
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     
+    // Log environment variable status for debugging
+    console.log('Environment variables status:', {
+      SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+      SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+      DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
+      DROPBOX_ACCESS_TOKEN_LENGTH: dropboxAccessToken ? dropboxAccessToken.length : 0
+    });
+    
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
