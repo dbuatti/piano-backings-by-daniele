@@ -34,6 +34,13 @@ const Header = () => {
       if (session) {
         // Check if user is admin
         try {
+          // First check if user is admin by email
+          if (session.user.email === 'daniele.buatti@gmail.com') {
+            setIsAdmin(true);
+            return;
+          }
+          
+          // Fallback to checking profiles table
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('email')
@@ -63,6 +70,13 @@ const Header = () => {
         // Check if user is admin
         const checkAdmin = async () => {
           try {
+            // First check if user is admin by email
+            if (session.user.email === 'daniele.buatti@gmail.com') {
+              setIsAdmin(true);
+              return;
+            }
+            
+            // Fallback to checking profiles table
             const { data: profile, error } = await supabase
               .from('profiles')
               .select('email')
@@ -268,7 +282,10 @@ const Header = () => {
                   )}
                   {session ? (
                     <Button 
-                      onClick={handleLogout}
+                      onClick={() => {
+                        handleLogout();
+                        setIsOpen(false);
+                      }}
                       variant="ghost" 
                       className="justify-start hover:bg-white/20 text-white font-medium text-2xl"
                     >
