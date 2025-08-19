@@ -23,7 +23,7 @@ const TestFunction = () => {
     checkAuth();
   }, []);
 
-  const testFunction = async () => {
+  const testFunction = async (backingType: string) => {
     setIsTesting(true);
     setResult(null);
     
@@ -40,10 +40,11 @@ const TestFunction = () => {
           youtubeLink: "https://www.youtube.com/watch?v=test",
           voiceMemo: "",
           trackPurpose: "personal-practise",
-          backingType: "full-song",
-          deliveryDate: "2023-12-31",
+          backingType: backingType,
+          deliveryDate: new Date().toISOString().split('T')[0], // Today's date
           additionalServices: ["rush-order"],
-          specialRequests: "This is a test request for Dropbox folder creation"
+          specialRequests: "This is a test request for Dropbox folder creation",
+          category: "Test Category"
         }
       };
 
@@ -74,12 +75,12 @@ const TestFunction = () => {
         if (data.dropboxFolderId) {
           toast({
             title: "Success!",
-            description: "Function executed successfully. A new folder was created in Dropbox.",
+            description: `Function executed successfully for ${backingType}. A new folder was created in Dropbox.`,
           });
         } else {
           toast({
             title: "Partial Success",
-            description: "Request submitted successfully, but Dropbox folder creation failed. Check the logs for details.",
+            description: `Request submitted successfully for ${backingType}, but Dropbox folder creation failed. Check the logs for details.`,
             variant: "destructive",
           });
         }
@@ -131,19 +132,53 @@ const TestFunction = () => {
                 <div className="mb-6">
                   <p className="mb-4">
                     This page tests the Supabase function that handles backing track requests. 
-                    When you click the button below, it will:
+                    When you click the buttons below, it will:
                   </p>
                   <ul className="list-disc pl-5 mb-4 space-y-2">
                     <li>Create a new entry in the database</li>
                     <li>Attempt to create a new folder in Dropbox</li>
                   </ul>
-                  <Button 
-                    onClick={testFunction} 
-                    disabled={isTesting}
-                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-                  >
-                    {isTesting ? 'Testing...' : 'Test Dropbox Folder Creation'}
-                  </Button>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Button 
+                      onClick={() => testFunction('full-song')}
+                      disabled={isTesting}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
+                    >
+                      <span className="font-bold">Full Song</span>
+                      <span className="text-sm">00. FULL VERSIONS</span>
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => testFunction('audition-cut')}
+                      disabled={isTesting}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
+                    >
+                      <span className="font-bold">Audition Cut</span>
+                      <span className="text-sm">00. AUDITION CUTS</span>
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => testFunction('note-bash')}
+                      disabled={isTesting}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
+                    >
+                      <span className="font-bold">Note Bash</span>
+                      <span className="text-sm">00. NOTE BASH</span>
+                    </Button>
+                  </div>
+                  
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 className="font-bold text-[#1C0357] mb-2">Folder Structure</h3>
+                    <p className="mb-2">All folders will be created within:</p>
+                    <p className="font-mono bg-white p-2 rounded border">/Move over to NAS/PIANO BACKING TRACKS</p>
+                    <p className="mt-2">With subfolders:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>00. FULL VERSIONS</li>
+                      <li>00. AUDITION CUTS</li>
+                      <li>00. NOTE BASH</li>
+                    </ul>
+                  </div>
                 </div>
                 
                 {result && (
@@ -163,6 +198,9 @@ const TestFunction = () => {
                             ? <span className="font-semibold text-green-600">SUCCESS</span> 
                             : <span className="font-semibold text-red-600">FAILED</span>
                         }</li>
+                        <li>Folder path: <span className="font-mono">{result.parentFolderUsed}</span></li>
+                        <li>Folder name: <span className="font-mono">{result.folderNameUsed}</span></li>
+                        <li>First name used: <span className="font-mono">{result.firstNameUsed}</span></li>
                       </ul>
                     </div>
                   </div>
