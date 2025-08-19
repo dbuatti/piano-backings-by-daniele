@@ -369,9 +369,35 @@ const AdminDashboard = () => {
       
       if (updateError) throw updateError;
       
-      // In a real implementation, you would integrate with an email service here
-      // For now, we'll simulate sending an email
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Send email using Supabase function
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.session?.access_token || ''}`
+          },
+          body: JSON.stringify({
+            to: request.email,
+            from: 'pianobackingsbydaniele@gmail.com',
+            subject: `Your Backing Track for "${request.song_title}" is Ready!`,
+            template: emailTemplate,
+            requestData: {
+              name: request.name || 'there',
+              songTitle: request.song_title,
+              musicalOrArtist: request.musical_or_artist,
+              downloadLink: shareLink,
+              dashboardLink: `${window.location.origin}/user-dashboard`
+            }
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send email');
+      }
       
       toast({
         title: "Email Sent",
@@ -1299,20 +1325,21 @@ const AdminDashboard = () => {
                   value={emailTemplate}
                   onChange={(e) => setEmailTemplate(e.target.value)}
                   rows={12}
-                  placeholder="Dear [Name],
+                  placeholder={`Dear {{name}},
 
-Your backing track for '[Song Title]' is now ready! 
+Your backing track for "{{songTitle}}" from "{{musicalOrArtist}}" is now ready! 
 
 You can download it directly using the link below:
-[Download Link]
+{{downloadLink}}
 
 Or access all your tracks by logging into your dashboard:
-[Dashboard Link]
+{{dashboardLink}}
 
 Thank you for choosing Piano Backings by Daniele!
 
 Best regards,
-Daniele"
+Daniele Buatti
+Piano Backings by Daniele`}
                 />
               </div>
               <div className="flex justify-end space-x-2">
