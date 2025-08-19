@@ -8,8 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
+import { useToast } from "@/hooks/use-toast";
 
 const FormPage = () => {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -24,7 +27,7 @@ const FormPage = () => {
     trackPurpose: '',
     backingType: '',
     deliveryDate: '',
-    additionalServices: [],
+    additionalServices: [] as string[],
     specialRequests: ''
   });
 
@@ -52,11 +55,94 @@ const FormPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // In a real app, you would send this data to your backend
-    alert('Form submitted! In a real application, this would be sent to our servers.');
+    setIsSubmitting(true);
+    
+    try {
+      // Create a FormData object to handle file uploads
+      const formDataToSend = new FormData();
+      
+      // Add all form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key !== 'sheetMusic') {
+          formDataToSend.append(key, value as string);
+        }
+      });
+      
+      // Add the file if it exists
+      if (formData.sheetMusic) {
+        formDataToSend.append('sheetMusic', formData.sheetMusic);
+      }
+      
+      // For now, we'll send the data to our backend function
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            formData: {
+              email: formData.email,
+              name: formData.name,
+              songTitle: formData.songTitle,
+              musicalOrArtist: formData.musicalOrArtist,
+              songKey: formData.songKey,
+              differentKey: formData.differentKey,
+              keyForTrack: formData.keyForTrack,
+              youtubeLink: formData.youtubeLink,
+              voiceMemo: formData.voiceMemo,
+              trackPurpose: formData.trackPurpose,
+              backingType: formData.backingType,
+              deliveryDate: formData.deliveryDate,
+              additionalServices: formData.additionalServices,
+              specialRequests: formData.specialRequests
+            }
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
+      
+      const result = await response.json();
+      
+      toast({
+        title: "Success!",
+        description: "Your request has been submitted successfully.",
+      });
+      
+      // Reset form
+      setFormData({
+        email: '',
+        name: '',
+        songTitle: '',
+        musicalOrArtist: '',
+        songKey: '',
+        differentKey: 'No',
+        keyForTrack: '',
+        voiceMemo: '',
+        sheetMusic: null,
+        youtubeLink: '',
+        trackPurpose: '',
+        backingType: '',
+        deliveryDate: '',
+        additionalServices: [],
+        specialRequests: ''
+      });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem submitting your request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Key options for the dropdown
@@ -398,8 +484,12 @@ const FormPage = () => {
                 </div>
 
                 <div className="text-center">
-                  <Button type="submit" className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white">
-                    Submit Request
+                  <Button 
+                    type="submit" 
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Request'}
                   </Button>
                 </div>
               </form>
