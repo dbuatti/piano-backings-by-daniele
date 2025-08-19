@@ -30,7 +30,8 @@ const FormPage = () => {
     deliveryDate: '',
     additionalServices: [] as string[],
     specialRequests: '',
-    category: '' // New category field
+    category: '', // New category field
+    trackType: '' // New track type field
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -74,7 +75,8 @@ const FormPage = () => {
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
       additionalServices: ['rush-order'],
       specialRequests: 'This is a test request',
-      category: 'Practice Tracks' // Default category for dummy data
+      category: 'Practice Tracks', // Default category for dummy data
+      trackType: 'polished' // Default track type for dummy data
     });
     
     toast({
@@ -120,7 +122,8 @@ const FormPage = () => {
               deliveryDate: formData.deliveryDate,
               additionalServices: formData.additionalServices,
               specialRequests: formData.specialRequests,
-              category: formData.category // Include category in the data sent to the function
+              category: formData.category, // Include category in the data sent to the function
+              trackType: formData.trackType // Include track type in the data sent to the function
             }
           }),
         }
@@ -155,7 +158,8 @@ const FormPage = () => {
         deliveryDate: '',
         additionalServices: [],
         specialRequests: '',
-        category: ''
+        category: '',
+        trackType: ''
       });
     } catch (error: any) {
       console.error('Error submitting form:', error);
@@ -224,39 +228,6 @@ const FormPage = () => {
                   I provide custom piano backing tracks for musical theatre and pop. Whether you need a quick reference or a polished audition track, 
                   I offer flexible options to suit your needs.
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Backing Track Types with Pricing */}
-        <section className="mb-12">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-                <DollarSign className="mr-2" />
-                Backing Track Types & Pricing
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
-                  <h3 className="font-bold text-lg">Quick Reference (Voice Memo)</h3>
-                  <p className="text-[#1C0357]">$5 - $10</p>
-                  <p className="text-sm mt-1">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</p>
-                </div>
-                
-                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
-                  <h3 className="font-bold text-lg">One-Take Recording</h3>
-                  <p className="text-[#1C0357]">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</p>
-                  <p className="text-sm mt-1">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</p>
-                </div>
-                
-                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
-                  <h3 className="font-bold text-lg">Polished & Accurate Backing</h3>
-                  <p className="text-[#1C0357]">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</p>
-                  <p className="text-sm mt-1">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</p>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -362,6 +333,64 @@ const FormPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <Label className="text-lg font-semibold text-[#1C0357] mb-3 block">
+                      Which type of backing track do you need?
+                    </Label>
+                    <div className="space-y-4 pl-2">
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="quick-reference"
+                          name="trackType"
+                          value="quick"
+                          className="mt-1 mr-3"
+                          checked={formData.trackType === 'quick'}
+                          onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
+                        />
+                        <Label htmlFor="quick-reference" className="flex flex-col">
+                          <span className="font-bold">Quick Reference (Voice Memo)</span>
+                          <span className="text-[#1C0357]">$5 - $10</span>
+                          <span className="text-sm mt-1">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</span>
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="one-take"
+                          name="trackType"
+                          value="one-take"
+                          className="mt-1 mr-3"
+                          checked={formData.trackType === 'one-take'}
+                          onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
+                        />
+                        <Label htmlFor="one-take" className="flex flex-col">
+                          <span className="font-bold">One-Take Recording</span>
+                          <span className="text-[#1C0357]">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</span>
+                          <span className="text-sm mt-1">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</span>
+                        </Label>
+                      </div>
+                      
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          id="polished"
+                          name="trackType"
+                          value="polished"
+                          className="mt-1 mr-3"
+                          checked={formData.trackType === 'polished'}
+                          onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
+                        />
+                        <Label htmlFor="polished" className="flex flex-col">
+                          <span className="font-bold">Polished & Accurate Backing</span>
+                          <span className="text-[#1C0357]">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</span>
+                          <span className="text-sm mt-1">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</span>
+                        </Label>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="mt-4">
