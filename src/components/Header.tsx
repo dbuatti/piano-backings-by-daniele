@@ -10,11 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 const menuItems = [
   { name: "Home", href: "/" },
-  { name: "Backing Tracks", href: "/form-page" },
-  { name: "About", href: "/about" },
-  { name: "Services", href: "/services" },
-  { name: "Contact", href: "/contact" },
-  { name: "Test Backings", href: "/test-backings" },
+  { name: "About", href: "/#about" },
+  { name: "Services", href: "/#services" },
+  { name: "Pricing", href: "/#pricing" },
+  { name: "Contact", href: "/#contact" },
+  { name: "Tips", href: "/#tips" },
+  { name: "Support", href: "/#support" },
+  { name: "Order Track", href: "/form-page" },
 ];
 
 const Header = () => {
@@ -55,14 +57,16 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-6">
             {menuItems.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
                 className={cn(
                   "font-medium text-lg transition-colors hover:text-gray-200",
-                  location.pathname === item.href ? "border-b-2 border-white" : ""
+                  location.pathname === item.href.split('#')[0] && (location.hash === item.href.split('#')[1] || !item.href.includes('#')) 
+                    ? "border-b-2 border-white" 
+                    : ""
                 )}
               >
                 {item.name}

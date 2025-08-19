@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Clock, Headphones } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 
@@ -11,19 +11,29 @@ const Index = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-white/50 text-center py-16 px-4 sm:px-6">
+      <section id="hero" className="bg-white/50 text-center py-16 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings By Daniele</h1>
           <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Professional Piano Backing Tracks for Auditions</p>
+          <div className="mt-8">
+            <Link to="/form-page">
+              <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3">
+                Order Your Track Now
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6">
         {/* Introduction Section */}
-        <section className="mb-12">
+        <section id="about" className="mb-16">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">Welcome to Piano Backings by Daniele</CardTitle>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <Music className="mr-2" />
+                Welcome to Piano Backings by Daniele
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4">
@@ -52,85 +62,143 @@ const Index = () => {
           </Card>
         </section>
 
-        {/* Payment & Pricing Section */}
-        <section className="mb-12">
+        {/* Services Section */}
+        <section id="services" className="mb-16">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-                <LinkIcon className="mr-2" />
-                Payment & Pricing
+                <Headphones className="mr-2" />
+                Recording Types
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-bold text-lg mb-2">📌 Payment Methods</h3>
-                  <ul className="space-y-2">
-                    <li>
-                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline flex items-center">
-                        <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
-                      </a>
-                    </li>
-                    <li>
-                      <span className="font-medium">Bank Transfer:</span> BSB: 923100 | Account: 301110875
-                    </li>
-                  </ul>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="border rounded-lg p-4">
+                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
+                    1
+                  </div>
+                  <h3 className="font-bold text-lg mb-2">Quick Reference (Voice Memo)</h3>
+                  <p>
+                    A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.
+                  </p>
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-2">🔗 Follow & Connect</h3>
-                  <ul className="space-y-1">
-                    <li>📺 YouTube: Piano Backings</li>
-                    <li>📸 Instagram: @pianobackingsbydaniele</li>
-                    <li>📧 Email: pianobackingsbydaniele@gmail.com</li>
-                    <li>📘 Facebook: Piano Backings</li>
-                  </ul>
+                
+                <div className="border rounded-lg p-4">
+                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
+                    2
+                  </div>
+                  <h3 className="font-bold text-lg mb-2">One-Take Recording</h3>
+                  <p>
+                    A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.
+                  </p>
                 </div>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <p>
-                  💡 For more information:{" "}
-                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                    www.danielebuatti.com/piano-backings
-                  </a>
-                </p>
+                
+                <div className="border rounded-lg p-4">
+                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
+                    3
+                  </div>
+                  <h3 className="font-bold text-lg mb-2">Polished & Accurate Backing</h3>
+                  <p>
+                    A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         </section>
 
-        {/* Recording Types Section */}
-        <section className="mb-12">
+        {/* Pricing Section */}
+        <section id="pricing" className="mb-16">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">RECORDING TYPES</CardTitle>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <DollarSign className="mr-2" />
+                Pricing Structure
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-4">
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
-                  <div>
-                    <span className="font-bold">Quick Reference (Voice Memo)</span> – A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
-                  <div>
-                    <span className="font-bold">One-Take Recording</span> – A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
-                  <div>
-                    <span className="font-bold">Polished & Accurate Backing</span> – A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.
-                  </div>
-                </li>
-              </ul>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="border rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-[#1C0357] mb-2">2-5 ☕</div>
+                  <h3 className="font-bold text-lg mb-2">16 Bar Cut</h3>
+                  <p className="text-sm">(roughly 30-45 seconds)</p>
+                </div>
+                
+                <div className="border rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-[#1C0357] mb-2">3-6 ☕</div>
+                  <h3 className="font-bold text-lg mb-2">32 Bar Cut</h3>
+                  <p className="text-sm">(roughly 60-90 seconds)</p>
+                </div>
+                
+                <div className="border rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-[#1C0357] mb-2">4-8 ☕</div>
+                  <h3 className="font-bold text-lg mb-2">Full Song</h3>
+                  <p className="text-sm">(entire song)</p>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-[#D1AAF2]/30 rounded-lg">
+                <h3 className="font-bold text-lg mb-2">Payment Information</h3>
+                <p className="mb-2"><strong>Payment Timing:</strong> You can choose to pay before or after the completion of the track.</p>
+                <p><strong>Delivery Timeline:</strong> You can expect to receive your track on the date specified in the form.</p>
+              </div>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Payment & Contact Section */}
+        <section id="contact" className="mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                  <LinkIcon className="mr-2" />
+                  Payment Methods
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  <li>
+                    <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline flex items-center">
+                      <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
+                    </a>
+                  </li>
+                  <li>
+                    <span className="font-medium">Bank Transfer:</span> BSB: 923100 | Account: 301110875
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                  <Users className="mr-2" />
+                  Follow & Connect
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  <li>📺 YouTube: Piano Backings</li>
+                  <li>📸 Instagram: @pianobackingsbydaniele</li>
+                  <li>📧 Email: pianobackingsbydaniele@gmail.com</li>
+                  <li>📘 Facebook: Piano Backings</li>
+                </ul>
+                <div className="mt-4 pt-4 border-t">
+                  <p>
+                    💡 For more information:{" "}
+                    <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
+                      www.danielebuatti.com/piano-backings
+                    </a>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* Scanning Tips */}
-        <section className="mb-12">
+        <section id="tips" className="mb-16">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -147,10 +215,13 @@ const Index = () => {
         </section>
 
         {/* Support Section */}
-        <section className="mb-12">
+        <section id="support" className="mb-16">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">Support My Work</CardTitle>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <Coffee className="mr-2" />
+                Support My Work
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4">
@@ -166,34 +237,6 @@ const Index = () => {
                   ☕ Buy Me a Coffee
                 </Button>
               </a>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Pricing Structure */}
-        <section className="mb-12">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">Pricing Structure</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 mb-4">
-                <li className="flex items-start">
-                  <span className="text-[#1C0357] font-bold mr-2">•</span>
-                  <span><strong>2-5 Coffees:</strong> 16 Bar Cut (roughly 30-45 seconds)</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-[#1C0357] font-bold mr-2">•</span>
-                  <span><strong>3-6 Coffees:</strong> 32 Bar Cut (roughly 60-90 seconds)</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-[#1C0357] font-bold mr-2">•</span>
-                  <span><strong>4-8 Coffees:</strong> Full Song</span>
-                </li>
-              </ul>
-              
-              <p className="mb-2"><strong>Payment Timing:</strong> You can choose to pay before or after the completion of the track.</p>
-              <p><strong>Delivery Timeline:</strong> You can expect to receive your track on the date specified in the form.</p>
             </CardContent>
           </Card>
         </section>
