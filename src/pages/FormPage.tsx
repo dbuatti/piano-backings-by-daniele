@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, DollarSign } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -224,6 +224,39 @@ const FormPage = () => {
                   I provide custom piano backing tracks for musical theatre and pop. Whether you need a quick reference or a polished audition track, 
                   I offer flexible options to suit your needs.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Backing Track Types with Pricing */}
+        <section className="mb-12">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <DollarSign className="mr-2" />
+                Backing Track Types & Pricing
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
+                  <h3 className="font-bold text-lg">Quick Reference (Voice Memo)</h3>
+                  <p className="text-[#1C0357]">$5 - $10</p>
+                  <p className="text-sm mt-1">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</p>
+                </div>
+                
+                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
+                  <h3 className="font-bold text-lg">One-Take Recording</h3>
+                  <p className="text-[#1C0357]">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</p>
+                  <p className="text-sm mt-1">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</p>
+                </div>
+                
+                <div className="border-l-4 border-[#1C0357] pl-4 py-2">
+                  <h3 className="font-bold text-lg">Polished & Accurate Backing</h3>
+                  <p className="text-[#1C0357]">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</p>
+                  <p className="text-sm mt-1">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
