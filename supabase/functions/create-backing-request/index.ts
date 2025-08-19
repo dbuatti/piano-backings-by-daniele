@@ -286,16 +286,10 @@ serve(async (req) => {
           youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
           console.error('RapidAPI key not configured in Supabase secrets');
         } else {
-          // Extract video ID from YouTube URL
-          const videoId = extractYouTubeId(formData.youtubeLink);
-          if (!videoId) {
-            throw new Error('Invalid YouTube URL');
-          }
+          // Use the correct RapidAPI YouTube to MP3 Converter endpoint
+          console.log('Converting YouTube video to MP3 using youtube-to-mp315.p.rapidapi.com');
           
-          // First, submit the conversion request
-          console.log('Submitting YouTube to MP3 conversion request');
-          
-          const convertResponse = await fetch('https://youtube-to-mp315.p.rapidapi.com/convert', {
+          const rapidApiResponse = await fetch('https://youtube-to-mp315.p.rapidapi.com/download', {
             method: 'POST',
             headers: {
               'X-RapidAPI-Key': rapidApiKey,
@@ -303,16 +297,57 @@ serve(async (req) => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              url: formData.youtubeLink
+              url: formData.youtubeLink,
+              format: 'mp3',
+              quality: 0
             })
           });
           
-          if (convertResponse.ok) {
-            const convertData = await convertResponse.json();
-            console.log('Conversion request submitted:', convertData);
+          if (rapidApiResponse.ok) {
+            const rapidApiData = await rapidApiResponse.json();
+            console.log('RapidAPI response:', rapidApiData);
             
-            // Check if we got an ID for the conversion
-            if (convertData.id) {
+            // Check if conversion is successful and has download link
+            if (rapidApiData.status === 'AVAILABLE' && rapidApiData.downloadUrl) {
+              // Download the MP3 file
+              console.log('Downloading MP3 from:', rapidApiData.downloadUrl);
+              const mp3Response = await fetch(rapidApiData.downloadUrl);
+              
+              if (mp3Response.ok) {
+                const mp3Buffer = await mp3Response.arrayBuffer();
+                
+                // Upload to Dropbox
+                console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${dropboxAccessToken}`,
+                    'Dropbox-API-Arg': JSON.stringify({
+                      path: uploadPath,
+                      mode: 'add',
+                      autorename: true,
+                      mute: false
+                    }),
+                    'Content-Type': 'application/octet-stream'
+                  },
+                  body: mp3Buffer
+                });
+                
+                if (dropboxUploadResponse.ok) {
+                  youtubeMp3Success = true;
+                  console.log('MP3 uploaded successfully to Dropbox');
+                } else {
+                  const errorText = await dropboxUploadResponse.text();
+                  console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                  youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                }
+              } else {
+                youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+              }
+            } else if (rapidApiData.id) {
+              // If we got an ID, we need to poll for the conversion status
+              console.log('Conversion started with ID:', rapidApiData.id);
+              
               // Poll for the conversion status
               let downloadUrl = null;
               let pollCount = 0;
@@ -323,7 +358,7 @@ serve(async (req) => {
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 // Check conversion status
-                const statusResponse = await fetch(`https://youtube-to-mp315.p.rapidapi.com/status/${convertData.id}`, {
+                const statusResponse = await fetch(`https://youtube-to-mp315.p.rapidapi.com/status/${rapidApiData.id}`, {
                   method: 'GET',
                   headers: {
                     'X-RapidAPI-Key': rapidApiKey,
@@ -339,7 +374,7 @@ serve(async (req) => {
                   if (statusData.status === 'AVAILABLE' && statusData.downloadUrl) {
                     downloadUrl = statusData.downloadUrl;
                     console.log('MP3 download URL obtained:', downloadUrl);
-                  } else if (statusData.status === 'FAILED') {
+                  } else if (statusData.status === 'FAILED' || statusData.status === 'CONVERSION_ERROR') {
                     throw new Error('YouTube to MP3 conversion failed');
                   }
                 } else {
@@ -392,17 +427,17 @@ serve(async (req) => {
                 youtubeMp3Error = 'YouTube to MP3 conversion timed out';
               }
             } else {
-              youtubeMp3Error = 'Failed to start YouTube to MP3 conversion';
+              youtubeMp3Error = `YouTube to MP3 conversion failed: ${rapidApiData.message || 'Unknown error'}`;
             }
           } else {
-            const errorText = await convertResponse.text();
-            console.error('Conversion request error:', convertResponse.status, errorText);
+            const errorText = await rapidApiResponse.text();
+            console.error('RapidAPI error:', rapidApiResponse.status, errorText);
             
             // Check if it's a subscription error
-            if (convertResponse.status === 403) {
+            if (rapidApiResponse.status === 403) {
               youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube to MP3 API';
             } else {
-              youtubeMp3Error = `Conversion request error: ${convertResponse.status} - ${errorText}`;
+              youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
             }
           }
         }
