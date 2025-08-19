@@ -8,6 +8,8 @@ import FormPage from "./pages/FormPage";
 import TestFunction from "./pages/TestFunction";
 import TestBackings from "./pages/TestBackings";
 import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import RequestDetails from "./pages/RequestDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/test-function" element={<TestFunction />} />
           <Route path="/test-backings" element={<TestBackings />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/request/:id" element={<RequestDetails />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
