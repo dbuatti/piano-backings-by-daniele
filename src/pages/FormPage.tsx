@@ -5,15 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle, Clock, Headphones, FileAudio } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle, Clock, Headphones, FileAudio, UserPlus } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 const FormPage = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -164,6 +167,7 @@ const FormPage = () => {
         description: "Your request has been submitted successfully.",
       });
       
+      // Clear form
       setFormData({
         email: '',
         name: '',
@@ -184,6 +188,14 @@ const FormPage = () => {
         category: '',
         trackType: ''
       });
+      
+      // Show account prompt if user is not logged in
+      if (!session) {
+        setShowAccountPrompt(true);
+      } else {
+        // Redirect to user dashboard
+        navigate('/user-dashboard');
+      }
     } catch (error: any) {
       console.error('Error submitting form:', error);
       toast({
@@ -194,6 +206,10 @@ const FormPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const createAccount = () => {
+    navigate('/login');
   };
 
   const keyOptions = [
@@ -243,6 +259,29 @@ const FormPage = () => {
             </div>
           </div>
         </div>
+
+        {showAccountPrompt && (
+          <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357]">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-center justify-between">
+                <div className="mb-4 md:mb-0">
+                  <h3 className="text-xl font-bold flex items-center">
+                    <UserPlus className="mr-2" /> Create an Account
+                  </h3>
+                  <p className="mt-1">
+                    Save your request and access all your tracks in one place!
+                  </p>
+                </div>
+                <Button 
+                  onClick={createAccount}
+                  className="bg-white text-[#1C0357] hover:bg-gray-100"
+                >
+                  Create Account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="shadow-lg mb-8">
           <CardHeader className="bg-[#D1AAF2]/20">

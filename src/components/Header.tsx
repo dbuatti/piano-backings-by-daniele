@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -100,6 +100,7 @@ const Header = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    navigate('/');
   };
 
   // Function to handle anchor link navigation
@@ -161,6 +162,17 @@ const Header = () => {
                 </a>
               )
             ))}
+            {session && (
+              <Link to="/user-dashboard">
+                <Button 
+                  variant="ghost" 
+                  className="hover:bg-white/20 text-white font-medium text-lg flex items-center"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  My Tracks
+                </Button>
+              </Link>
+            )}
             {isAdmin && (
               <Link to="/admin">
                 <Button 
@@ -234,6 +246,16 @@ const Header = () => {
                       </a>
                     )
                   ))}
+                  {session && (
+                    <Link
+                      to="/user-dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className="text-2xl font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center"
+                    >
+                      <User className="mr-2 h-6 w-6" />
+                      My Tracks
+                    </Link>
+                  )}
                   {isAdmin && (
                     <Link
                       to="/admin"

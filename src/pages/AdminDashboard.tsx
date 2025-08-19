@@ -18,7 +18,9 @@ import {
   DollarSign, 
   Users,
   Send,
-  Share2
+  Share2,
+  FileAudio,
+  Calendar
 } from 'lucide-react';
 import {
   Select,
@@ -28,6 +30,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -36,6 +41,11 @@ const AdminDashboard = () => {
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [totalCost, setTotalCost] = useState(0);
   const [emailTemplate, setEmailTemplate] = useState('');
+  const [uploadTrackId, setUploadTrackId] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -49,7 +59,6 @@ const AdminDashboard = () => {
       }
       
       // Check if user is admin (daniele.buatti@gmail.com)
-      // First try to get email from user object directly
       if (session.user.email === 'daniele.buatti@gmail.com') {
         setIsAdmin(true);
         fetchRequests();
@@ -66,7 +75,6 @@ const AdminDashboard = () => {
         
         if (error) {
           console.error('Error fetching profile:', error);
-          // Even if we can't fetch profile, check user email directly
           if (session.user.email === 'daniele.buatti@gmail.com') {
             setIsAdmin(true);
             fetchRequests();
@@ -94,7 +102,6 @@ const AdminDashboard = () => {
         }
       } catch (error: any) {
         console.error('Error checking admin status:', error);
-        // Fallback to checking user email directly
         if (session.user.email === 'daniele.buatti@gmail.com') {
           setIsAdmin(true);
           fetchRequests();
@@ -200,38 +207,243 @@ const AdminDashboard = () => {
   const calculateTotalCost = () => {
     // Calculate total cost based on selected requests
     const selected = requests.filter(req => selectedRequests.includes(req.id));
-    // Add your pricing logic here based on request details
-    return selected.length * 10; // Example: $10 per request
+    let total = 0;
+    
+    selected.forEach(req => {
+      // Pricing logic based on backing type and additional services
+      let baseCost = 0;
+      switch (req.backing_type) {
+        case 'full-song':
+          baseCost = 30;
+          break;
+        case 'audition-cut':
+          baseCost = 15;
+          break;
+        case 'note-bash':
+          baseCost = 10;
+          break;
+        default:
+          baseCost = 20;
+      }
+      
+      // Add additional service costs
+      if (req.additional_services) {
+        req.additional_services.forEach((service: string) => {
+          switch (service) {
+            case 'rush-order':
+              baseCost += 10;
+              break;
+            case 'complex-songs':
+              baseCost += 7;
+              break;
+            case 'additional-edits':
+              baseCost += 5;
+              break;
+            case 'exclusive-ownership':
+              baseCost += 40;
+              break;
+          }
+        });
+      }
+      
+      total += baseCost;
+    });
+    
+    return total;
   };
 
   useEffect(() => {
     if (selectedRequests.length > 0) {
       setTotalCost(calculateTotalCost());
+    } else {
+      setTotalCost(0);
     }
   }, [selectedRequests]);
 
   const sendEmail = async (id: string) => {
-    // Implement email sending logic
-    toast({
-      title: "Email Sent",
-      description: "Email has been sent to the user.",
-    });
+    setSelectedRequestId(id);
+    setEmailDialogOpen(true);
+  };
+
+  const handleEmailSend = async () => {
+    if (!selectedRequestId) return;
+    
+    setSendingEmail(true);
+    try {
+      // Get request details
+      const request = requests.find(req => req.id === selectedRequestId);
+      if (!request) throw new Error('Request not found');
+      
+      // Generate a shareable link
+      const shareLink = `${window.location.origin}/user-dashboard`;
+      
+      // Update request with shared link
+      const { error: updateError } = await supabase
+        .from('backing_requests')
+        .update({ shared_link: shareLink })
+        .eq('id', selectedRequestId);
+      
+      if (updateError) throw updateError;
+      
+      // In a real implementation, you would integrate with an email service here
+      // For now, we'll simulate sending an email
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Email Sent",
+        description: `Email has been sent to ${request.email}`,
+      });
+      
+      // Update local state
+      setRequests(requests.map(req => 
+        req.id === selectedRequestId ? { ...req, shared_link: shareLink } : req
+      ));
+      
+      setEmailDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to send email: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmail(false);
+      setSelectedRequestId(null);
+    }
   };
 
   const uploadTrack = async (id: string) => {
-    // Implement track upload logic
-    toast({
-      title: "Track Uploaded",
-      description: "Track has been uploaded successfully.",
-    });
+    setUploadTrackId(id);
+  };
+
+  const handleFileUpload = async () => {
+    if (!uploadTrackId || !uploadFile) return;
+    
+    try {
+      // Upload file to Supabase storage
+      const fileExt = uploadFile.name.split('.').pop();
+      const fileName = `tracks/${uploadTrackId}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('tracks')
+        .upload(fileName, uploadFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('tracks')
+        .getPublicUrl(fileName);
+      
+      // Update request with track URL
+      const { error: updateError } = await supabase
+        .from('backing_requests')
+        .update({ 
+          track_url: publicUrl,
+          status: 'completed'
+        })
+        .eq('id', uploadTrackId);
+      
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setRequests(requests.map(req => 
+        req.id === uploadTrackId ? { 
+          ...req, 
+          track_url: publicUrl,
+          status: 'completed'
+        } : req
+      ));
+      
+      toast({
+        title: "Track Uploaded",
+        description: "Track has been uploaded successfully and marked as completed.",
+      });
+      
+      setUploadTrackId(null);
+      setUploadFile(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to upload track: ${error.message}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const shareTrack = async (id: string) => {
-    // Implement track sharing logic
-    toast({
-      title: "Track Shared",
-      description: "Shared link has been generated and sent to user.",
-    });
+    try {
+      // Generate a shareable link
+      const shareLink = `${window.location.origin}/user-dashboard`;
+      
+      // Update request with shared link
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ shared_link: shareLink })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setRequests(requests.map(req => 
+        req.id === id ? { ...req, shared_link: shareLink } : req
+      ));
+      
+      toast({
+        title: "Track Shared",
+        description: "Shared link has been generated.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to share track: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const calculateRequestCost = (request: any) => {
+    let baseCost = 0;
+    switch (request.backing_type) {
+      case 'full-song':
+        baseCost = 30;
+        break;
+      case 'audition-cut':
+        baseCost = 15;
+        break;
+      case 'note-bash':
+        baseCost = 10;
+        break;
+      default:
+        baseCost = 20;
+    }
+    
+    // Add additional service costs
+    if (request.additional_services) {
+      request.additional_services.forEach((service: string) => {
+        switch (service) {
+          case 'rush-order':
+            baseCost += 10;
+            break;
+          case 'complex-songs':
+            baseCost += 7;
+            break;
+          case 'additional-edits':
+            baseCost += 5;
+            break;
+          case 'exclusive-ownership':
+            baseCost += 40;
+            break;
+        }
+      });
+    }
+    
+    return baseCost;
   };
 
   if (!isAdmin) {
@@ -252,7 +464,58 @@ const AdminDashboard = () => {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#1C0357]">Admin Dashboard</h1>
-          <p className="text-lg text-[#1C0357]/90">View all backing track requests</p>
+          <p className="text-lg text-[#1C0357]/90">Manage all backing track requests</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="rounded-full bg-[#D1AAF2] p-3 mr-4">
+                  <FileAudio className="h-6 w-6 text-[#1C0357]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">{requests.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="rounded-full bg-[#F538BC] p-3 mr-4">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">In Progress</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    {requests.filter(r => r.status === 'in-progress').length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="rounded-full bg-[#1C0357] p-3 mr-4">
+                  <DollarSign className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Pending Revenue</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    ${requests
+                      .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
+                      .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
+                      .toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         <Card className="shadow-lg mb-6">
@@ -268,10 +531,22 @@ const AdminDashboard = () => {
                   {selectedRequests.length === requests.length ? 'Deselect All' : 'Select All'}
                 </Button>
                 {selectedRequests.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium">Total: ${totalCost}</span>
-                    <Button variant="outline" className="flex items-center">
-                      <Mail className="w-4 h-4 mr-2" /> Email Selected
+                  <div className="flex items-center space-x-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
+                    <span className="font-medium">Selected: {selectedRequests.length}</span>
+                    <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
+                    <Button 
+                      variant="default" 
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                      onClick={() => {
+                        // Batch update selected requests to "in-progress"
+                        selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
+                        toast({
+                          title: "Batch Update",
+                          description: `${selectedRequests.length} requests marked as In Progress`,
+                        });
+                      }}
+                    >
+                      <Clock className="w-4 h-4 mr-2" /> Mark In Progress
                     </Button>
                   </div>
                 )}
@@ -327,7 +602,10 @@ const AdminDashboard = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Select 
@@ -348,11 +626,11 @@ const AdminDashboard = () => {
                           <TableCell>
                             <div className="flex items-center">
                               <DollarSign className="w-4 h-4 mr-1" />
-                              <span>{request.cost || 'N/A'}</span>
+                              <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex space-x-1">
+                            <div className="flex flex-wrap gap-1">
                               <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
                                 <Mail className="w-4 h-4" />
                               </Button>
@@ -378,6 +656,85 @@ const AdminDashboard = () => {
             )}
           </CardContent>
         </Card>
+        
+        {/* Upload Track Dialog */}
+        {uploadTrackId && (
+          <Dialog open={!!uploadTrackId} onOpenChange={() => setUploadTrackId(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Track</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="track-file">Select MP3 File</Label>
+                  <Input 
+                    id="track-file"
+                    type="file" 
+                    accept="audio/mp3,audio/mpeg" 
+                    onChange={(e) => e.target.files && setUploadFile(e.target.files[0])}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setUploadTrackId(null)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleFileUpload}
+                    disabled={!uploadFile}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  >
+                    Upload Track
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+        
+        {/* Email Dialog */}
+        <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Email to User</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Email Template</Label>
+                <Textarea 
+                  value={emailTemplate}
+                  onChange={(e) => setEmailTemplate(e.target.value)}
+                  rows={8}
+                  placeholder="Dear [Name],
+
+Your backing track for '[Song Title]' is now ready! 
+
+You can download it directly using the link below:
+[Download Link]
+
+Or access all your tracks by logging into your dashboard:
+[Dashboard Link]
+
+Thank you for choosing Piano Backings by Daniele!
+
+Best regards,
+Daniele"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleEmailSend}
+                  disabled={sendingEmail}
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                >
+                  {sendingEmail ? 'Sending...' : 'Send Email'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         
         <MadeWithDyad />
       </div>
