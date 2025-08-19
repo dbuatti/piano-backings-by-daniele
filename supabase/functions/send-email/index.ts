@@ -21,7 +21,7 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY') || '';
+    const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -61,37 +61,23 @@ serve(async (req) => {
       });
     }
     
-    // Send email using SendGrid API
-    if (!sendGridApiKey) {
-      throw new Error('SENDGRID_API_KEY not configured. Please add it to your Supabase project secrets.');
+    // Send email using Resend API
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY not configured. Please add it to your Supabase project secrets.');
     }
     
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${sendGridApiKey}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        personalizations: [
-          {
-            to: [{ email: to }],
-            subject: subject,
-          },
-        ],
-        from: {
-          email: from || 'pianobackingsbydaniele@gmail.com',
-        },
-        content: [
-          {
-            type: 'text/html',
-            value: emailContent.replace(/\n/g, '<br>'),
-          },
-          {
-            type: 'text/plain',
-            value: emailContent,
-          },
-        ],
+        from: from || 'pianobackingsbydaniele@gmail.com',
+        to: to,
+        subject: subject,
+        html: emailContent.replace(/\n/g, '<br>'),
+        text: emailContent,
       }),
     });
     
@@ -100,9 +86,12 @@ serve(async (req) => {
       throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
     }
     
+    const result = await response.json();
+    
     return new Response(
       JSON.stringify({ 
-        message: 'Email sent successfully'
+        message: 'Email sent successfully',
+        emailId: result.id
       }),
       { 
         headers: { 
