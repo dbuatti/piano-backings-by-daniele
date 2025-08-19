@@ -53,10 +53,13 @@ serve(async (req) => {
     // Get the request data
     const { formData } = await req.json();
     
+    // Extract first name from the full name
+    const firstName = formData.name ? formData.name.split(' ')[0] : 'anonymous';
+    
     // Create a folder name based on the request with the specified format (without quotation marks)
     const today = new Date();
     const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
-    const folderName = `${dateString} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${formData.name || 'anonymous'}`;
+    const folderName = `${dateString} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}`;
     
     // Determine the parent folder based on backing type
     let parentFolder = defaultDropboxParentFolder;
@@ -154,7 +157,8 @@ serve(async (req) => {
       data,
       dropboxFolderId,
       parentFolderUsed: parentFolder,
-      folderNameUsed: folderName
+      folderNameUsed: folderName,
+      firstNameUsed: firstName
     };
     
     if (dropboxError) {
