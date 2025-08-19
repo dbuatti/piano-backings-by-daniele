@@ -369,6 +369,9 @@ const AdminDashboard = () => {
       
       if (updateError) throw updateError;
       
+      // Get current session for auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
       // Send email using Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
@@ -376,7 +379,7 @@ const AdminDashboard = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.session?.access_token || ''}`
+            'Authorization': `Bearer ${session?.access_token || ''}`
           },
           body: JSON.stringify({
             to: request.email,

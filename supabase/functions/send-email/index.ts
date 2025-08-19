@@ -2,6 +2,8 @@
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+// @ts-ignore
+import * as nodemailer from 'https://deno.land/x/nodemailer@v6.9.1/mod.ts';
 
 // Setup CORS headers
 const corsHeaders = {
@@ -21,7 +23,9 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
+    const gmailUser = Deno.env.get('GMAIL_USER') || '';
+    // @ts-ignore
+    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -45,7 +49,7 @@ serve(async (req) => {
     }
     
     // Get the request data
-    const { to, from, subject, template, requestData } = await req.json();
+    const { to, subject, template, requestData } = await req.json();
     
     // Validate required fields
     if (!to || !subject || !template) {
@@ -61,37 +65,33 @@ serve(async (req) => {
       });
     }
     
-    // Send email using Resend API
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY not configured');
+    // Configure Gmail SMTP
+    if (!gmailUser || !gmailAppPassword) {
+      throw new Error('Gmail credentials not configured');
     }
     
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword,
       },
-      body: JSON.stringify({
-        from: from || 'pianobackingsbydaniele@gmail.com',
-        to: to,
-        subject: subject,
-        html: emailContent.replace(/\n/g, '<br>'),
-        text: emailContent,
-      }),
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Failed to send email: ${errorData.message || response.statusText}`);
-    }
+    // Send email
+    const mailOptions = {
+      from: gmailUser,
+      to: to,
+      subject: subject,
+      html: emailContent.replace(/\n/g, '<br>'),
+      text: emailContent,
+    };
     
-    const data = await response.json();
+    await transporter.sendMail(mailOptions);
     
     return new Response(
       JSON.stringify({ 
-        message: 'Email sent successfully',
-        data
+        message: 'Email sent successfully'
       }),
       { 
         headers: { 
