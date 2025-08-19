@@ -79,6 +79,30 @@ const Index = () => {
           </Card>
         </section>
 
+        {/* Support Section */}
+        <section className="mb-12">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-indigo-800">Support My Work</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">
+                If you find my piano backing tracks helpful for your auditions and practice, consider supporting my work. Your support helps me continue creating quality backing tracks for the performing arts community.
+              </p>
+              <a 
+                href="https://buymeacoffee.com/Danielebuatti" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                  ☕ Buy Me a Coffee
+                </Button>
+              </a>
+            </CardContent>
+          </Card>
+        </section>
+
         {/* Pricing Structure */}
         <section className="mb-12">
           <Card className="shadow-lg">
