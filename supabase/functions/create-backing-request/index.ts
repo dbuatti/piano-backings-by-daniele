@@ -23,14 +23,14 @@ serve(async (req) => {
     // @ts-ignore
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     // @ts-ignore
-    const dropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/piano-backings';
+    const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/piano-backings';
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
       DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
-      DROPBOX_PARENT_FOLDER: dropboxParentFolder,
+      DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       DROPBOX_ACCESS_TOKEN_LENGTH: dropboxAccessToken ? dropboxAccessToken.length : 0
     });
     
@@ -56,6 +56,22 @@ serve(async (req) => {
     // Create a folder name based on the request
     const folderName = `${formData.name || 'anonymous'}-${Date.now()}`;
     
+    // Determine the parent folder based on form data or use default
+    let parentFolder = defaultDropboxParentFolder;
+    
+    // Example: If you have a category field in your form
+    if (formData.category) {
+      parentFolder = `/PIANO BACKING TRACKS/${formData.category}`;
+    } else if (formData.trackPurpose) {
+      // Use track purpose as category if no specific category is provided
+      const categoryMap: Record<string, string> = {
+        'personal-practise': 'Practice Tracks',
+        'audition-backing': 'Audition Tracks',
+        'melody-bash': 'Melody Bash Tracks'
+      };
+      parentFolder = `/PIANO BACKING TRACKS/${categoryMap[formData.trackPurpose] || 'General'}`;
+    }
+    
     // Create Dropbox folder
     let dropboxFolderId = null;
     let dropboxError = null;
@@ -66,11 +82,13 @@ serve(async (req) => {
     } else {
       try {
         // Ensure the parent folder path starts with a slash and doesn't end with one
-        const normalizedParentFolder = dropboxParentFolder.startsWith('/') 
-          ? dropboxParentFolder.replace(/\/$/, '') 
-          : `/${dropboxParentFolder}`.replace(/\/$/, '');
+        const normalizedParentFolder = parentFolder.startsWith('/') 
+          ? parentFolder.replace(/\/$/, '') 
+          : `/${parentFolder}`.replace(/\/$/, '');
           
         const fullPath = `${normalizedParentFolder}/${folderName}`;
+        
+        console.log('Creating Dropbox folder at path:', fullPath);
         
         const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
           method: 'POST',
@@ -130,7 +148,8 @@ serve(async (req) => {
     const responsePayload: any = { 
       message: 'Request submitted successfully',
       data,
-      dropboxFolderId
+      dropboxFolderId,
+      parentFolderUsed: parentFolder
     };
     
     if (dropboxError) {

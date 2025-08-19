@@ -29,7 +29,8 @@ const FormPage = () => {
     backingType: '',
     deliveryDate: '',
     additionalServices: [] as string[],
-    specialRequests: ''
+    specialRequests: '',
+    category: '' // New category field
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -72,7 +73,8 @@ const FormPage = () => {
       backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
       additionalServices: ['rush-order'],
-      specialRequests: 'This is a test request'
+      specialRequests: 'This is a test request',
+      category: 'Practice Tracks' // Default category for dummy data
     });
     
     toast({
@@ -117,7 +119,8 @@ const FormPage = () => {
               backingType: formData.backingType,
               deliveryDate: formData.deliveryDate,
               additionalServices: formData.additionalServices,
-              specialRequests: formData.specialRequests
+              specialRequests: formData.specialRequests,
+              category: formData.category // Include category in the data sent to the function
             }
           }),
         }
@@ -151,7 +154,8 @@ const FormPage = () => {
         backingType: '',
         deliveryDate: '',
         additionalServices: [],
-        specialRequests: ''
+        specialRequests: '',
+        category: ''
       });
     } catch (error: any) {
       console.error('Error submitting form:', error);
@@ -182,6 +186,15 @@ const FormPage = () => {
     { value: 'D♭ Major (5♭)', label: 'D♭ Major (5♭)' },
     { value: 'G♭ Major (6♭)', label: 'G♭ Major (6♭)' },
     { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
+  ];
+
+  // Category options for the dropdown
+  const categoryOptions = [
+    { value: 'Practice Tracks', label: 'Practice Tracks' },
+    { value: 'Audition Tracks', label: 'Audition Tracks' },
+    { value: 'Melody Bash Tracks', label: 'Melody Bash Tracks' },
+    { value: 'Performance Tracks', label: 'Performance Tracks' },
+    { value: 'General', label: 'General' }
   ];
 
   return (
@@ -300,6 +313,22 @@ const FormPage = () => {
                         required 
                       />
                     </div>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((category) => (
+                          <SelectItem key={category.value} value={category.value}>
+                            {category.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div className="mt-4">
