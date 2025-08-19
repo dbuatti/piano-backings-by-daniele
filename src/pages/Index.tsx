@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Clock, Headphones } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Clock, Headphones, Instagram, Facebook, Youtube } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 
@@ -27,7 +27,7 @@ const Index = () => {
 
       <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6">
         {/* Introduction Section */}
-        <section id="about" className="mb-16">
+        <section id="about" className="mb-16 pt-20 -mt-20">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -63,7 +63,7 @@ const Index = () => {
         </section>
 
         {/* Services Section */}
-        <section id="services" className="mb-16">
+        <section id="services" className="mb-16 pt-20 -mt-20">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -108,7 +108,7 @@ const Index = () => {
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="mb-16">
+        <section id="pricing" className="mb-16 pt-20 -mt-20">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -147,7 +147,7 @@ const Index = () => {
         </section>
 
         {/* Payment & Contact Section */}
-        <section id="contact" className="mb-16">
+        <section id="contact" className="mb-16 pt-20 -mt-20">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="shadow-lg">
               <CardHeader>
@@ -179,10 +179,28 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  <li>📺 YouTube: Piano Backings</li>
-                  <li>📸 Instagram: @pianobackingsbydaniele</li>
-                  <li>📧 Email: pianobackingsbydaniele@gmail.com</li>
-                  <li>📘 Facebook: Piano Backings</li>
+                  <li className="flex items-center">
+                    <Youtube className="mr-2 h-5 w-5" />
+                    <a href="https://www.youtube.com/channel/UCVJkC6aGbh2gIeZvd2tmcIg" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
+                      YouTube: Piano Backings
+                    </a>
+                  </li>
+                  <li className="flex items-center">
+                    <Instagram className="mr-2 h-5 w-5" />
+                    <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
+                      Instagram: @pianobackingsbydaniele
+                    </a>
+                  </li>
+                  <li className="flex items-center">
+                    <Facebook className="mr-2 h-5 w-5" />
+                    <a href="https://www.facebook.com/PianoBackingsbyDaniele" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
+                      Facebook: Piano Backings
+                    </a>
+                  </li>
+                  <li className="flex items-center">
+                    <Mail className="mr-2 h-5 w-5" />
+                    <span>📧 Email: <a href="mailto:pianobackingsbydaniele@gmail.com" className="text-[#1C0357] hover:underline">pianobackingsbydaniele@gmail.com</a></span>
+                  </li>
                 </ul>
                 <div className="mt-4 pt-4 border-t">
                   <p>
@@ -198,7 +216,7 @@ const Index = () => {
         </section>
 
         {/* Scanning Tips */}
-        <section id="tips" className="mb-16">
+        <section id="tips" className="mb-16 pt-20 -mt-20">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -215,7 +233,7 @@ const Index = () => {
         </section>
 
         {/* Support Section */}
-        <section id="support" className="mb-16">
+        <section id="support" className="mb-16 pt-20 -mt-20">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -242,7 +260,7 @@ const Index = () => {
         </section>
 
         {/* Closing */}
-        <section className="text-center mb-12">
+        <section className="text-center mb-12 pt-20 -mt-20">
           <Card className="shadow-lg bg-[#D1AAF2]">
             <CardContent className="py-8">
               <p className="text-xl text-[#1C0357] font-medium">
