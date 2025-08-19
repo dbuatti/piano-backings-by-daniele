@@ -262,6 +262,19 @@ const TestBackings = () => {
                       <li className="font-bold">00. ROUGH CUTS (for Quick Reference and One-Take recordings)</li>
                     </ul>
                   </div>
+                  
+                  <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+                    <h3 className="font-bold text-[#1C0357] mb-2">Logic Pro X Template Copy</h3>
+                    <p className="mb-2">
+                      Every folder will now automatically include your Logic Pro X template file:
+                    </p>
+                    <p className="font-mono bg-white p-2 rounded border">
+                      X from Y prepared for Z.logicx
+                    </p>
+                    <p className="mt-2">
+                      This template contains your pre-configured settings and VSTs for immediate use.
+                    </p>
+                  </div>
                 </div>
                 
                 {error && (
@@ -290,6 +303,13 @@ const TestBackings = () => {
                         <li>PDF upload to Dropbox: {
                           result.pdfUploadSuccess !== undefined
                             ? result.pdfUploadSuccess 
+                              ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                              : <span className="font-semibold text-red-600">FAILED</span>
+                            : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
+                        }</li>
+                        <li>Logic Pro X template copy: {
+                          result.templateCopySuccess !== undefined
+                            ? result.templateCopySuccess 
                               ? <span className="font-semibold text-green-600">SUCCESS</span> 
                               : <span className="font-semibold text-red-600">FAILED</span>
                             : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
