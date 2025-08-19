@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { 
   CheckCircle, 
   Clock, 
@@ -23,7 +23,9 @@ import {
   Calendar,
   Search,
   Filter,
-  Trash2
+  Trash2,
+  List,
+  Grid3X3
 } from 'lucide-react';
 import {
   Select,
@@ -54,6 +56,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import CalendarComponent from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -74,6 +78,8 @@ const AdminDashboard = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -194,8 +200,15 @@ const AdminDashboard = () => {
       result = result.filter(request => request.backing_type === backingTypeFilter);
     }
     
+    // Apply date filter for calendar view
+    if (viewMode === 'calendar' && selectedDate) {
+      result = result.filter(request => 
+        request.delivery_date && isSameDay(new Date(request.delivery_date), selectedDate)
+      );
+    }
+    
     setFilteredRequests(result);
-  }, [searchTerm, statusFilter, backingTypeFilter, requests]);
+  }, [searchTerm, statusFilter, backingTypeFilter, requests, viewMode, selectedDate]);
 
   const getBadgeVariant = (type: string) => {
     switch (type) {
@@ -511,6 +524,7 @@ const AdminDashboard = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setBackingTypeFilter('all');
+    setSelectedDate(null);
   };
 
   const deleteRequest = async (id: string) => {
@@ -574,6 +588,47 @@ const AdminDashboard = () => {
 
   const openBatchDeleteDialog = () => {
     setBatchDeleteDialogOpen(true);
+  };
+
+  const tileContent = ({ date, view }: { date: Date; view: string }) => {
+    if (view !== 'month') return null;
+    
+    const requestsForDate = requests.filter(request => 
+      request.delivery_date && isSameDay(new Date(request.delivery_date), date)
+    );
+    
+    if (requestsForDate.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap justify-center gap-1 mt-1">
+        {requestsForDate.slice(0, 3).map((request, index) => (
+          <div 
+            key={index} 
+            className={`w-2 h-2 rounded-full ${
+              request.status === 'completed' ? 'bg-green-500' :
+              request.status === 'in-progress' ? 'bg-yellow-500' :
+              request.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-400'
+            }`}
+          />
+        ))}
+        {requestsForDate.length > 3 && (
+          <div className="text-xs">+{requestsForDate.length - 3}</div>
+        )}
+      </div>
+    );
+  };
+
+  const tileClassName = ({ date, view }: { date: Date; view: string }) => {
+    if (view !== 'month') return '';
+    
+    const requestsForDate = requests.filter(request => 
+      request.delivery_date && isSameDay(new Date(request.delivery_date), date)
+    );
+    
+    if (requestsForDate.length === 0) return '';
+    
+    // Highlight dates with requests
+    return 'bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50';
   };
 
   if (!isAdmin) {
@@ -669,13 +724,31 @@ const AdminDashboard = () => {
           <CardHeader>
             <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
               <span>Filters</span>
-              <Button 
-                variant="outline" 
-                onClick={clearFilters}
-                className="text-sm"
-              >
-                Clear All Filters
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('list')}
+                  className={viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}
+                >
+                  <List className="w-4 h-4 mr-2" />
+                  List View
+                </Button>
+                <Button 
+                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('calendar')}
+                  className={viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Calendar View
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={clearFilters}
+                  className="text-sm"
+                >
+                  Clear All Filters
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -734,223 +807,325 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
-              <span>Backing Requests</span>
-              <div className="flex flex-wrap items-center gap-4">
-                <Button 
-                  onClick={handleSelectAll}
-                  variant="outline"
-                  className="flex items-center"
-                >
-                  {selectedRequests.length === filteredRequests.length ? 'Deselect All' : 'Select All'}
-                </Button>
-                {selectedRequests.length > 0 && (
-                  <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
-                    <span className="font-medium">Selected: {selectedRequests.length}</span>
-                    <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="default" 
-                          className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-                        >
-                          Batch Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            // Batch update selected requests to "in-progress"
-                            selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
-                            toast({
-                              title: "Batch Update",
-                              description: `${selectedRequests.length} requests marked as In Progress`,
-                            });
-                          }}
-                        >
-                          <Clock className="w-4 h-4 mr-2" /> Mark In Progress
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            // Batch update selected requests to "completed"
-                            selectedRequests.forEach(id => updateStatus(id, 'completed'));
-                            toast({
-                              title: "Batch Update",
-                              description: `${selectedRequests.length} requests marked as Completed`,
-                            });
-                          }}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" /> Mark Completed
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            // Batch update selected requests to "cancelled"
-                            selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
-                            toast({
-                              title: "Batch Update",
-                              description: `${selectedRequests.length} requests marked as Cancelled`,
-                            });
-                          }}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" /> Mark Cancelled
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={openBatchDeleteDialog}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
+          <Card className="shadow-lg mb-6">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+                <span>Delivery Calendar</span>
+                {selectedDate && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSelectedDate(null)}
+                    className="text-sm"
+                  >
+                    Clear Date Selection
+                  </Button>
                 )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <p>Loading requests...</p>
-              </div>
-            ) : (
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">
-                        <input
-                          type="checkbox"
-                          checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
-                          onChange={handleSelectAll}
-                        />
-                      </TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Song</TableHead>
-                      <TableHead>Backing Type</TableHead>
-                      <TableHead>Delivery Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cost</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRequests.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8">
-                          <div className="text-center">
-                            <FileAudio className="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No requests found</h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                              Try adjusting your search or filter criteria
-                            </p>
-                            <div className="mt-6">
-                              <Button onClick={clearFilters} variant="outline">
-                                Clear Filters
-                              </Button>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredRequests.map((request) => (
-                        <TableRow key={request.id} className={selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}>
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={selectedRequests.includes(request.id)}
-                              onChange={() => handleSelectRequest(request.id)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {format(new Date(request.created_at), 'MMM dd, yyyy')}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {format(new Date(request.created_at), 'HH:mm')}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{request.name || 'N/A'}</div>
-                            <div className="text-sm text-gray-500">{request.email}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{request.song_title}</div>
-                            <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={getBadgeVariant(request.backing_type)}>
-                              {request.backing_type?.replace('-', ' ') || 'N/A'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                              {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Select 
-                              value={request.status || 'pending'} 
-                              onValueChange={(value) => updateStatus(request.id, value)}
-                            >
-                              <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="in-progress">In Progress</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center font-medium">
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-1">
-                              <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
-                                <Mail className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                <Upload className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                                <Share2 className="w-4 h-4" />
-                              </Button>
-                              <Link to={`/admin/request/${request.id}`}>
-                                <Button variant="outline" size="sm">
-                                  View
-                                </Button>
-                              </Link>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => openDeleteDialog(request.id)}
-                                className="text-red-600 hover:text-red-800"
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="lg:w-2/3">
+                  <CalendarComponent
+                    onChange={setSelectedDate}
+                    value={selectedDate}
+                    tileContent={tileContent}
+                    tileClassName={tileClassName}
+                    className="border rounded-lg p-4 w-full"
+                  />
+                </div>
+                <div className="lg:w-1/3">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg text-[#1C0357]">
+                        {selectedDate 
+                          ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
+                          : 'Select a date to view requests'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedDate ? (
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                          {filteredRequests.length > 0 ? (
+                            filteredRequests.map((request) => (
+                              <div 
+                                key={request.id} 
+                                className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20"
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h3 className="font-bold">{request.song_title}</h3>
+                                    <p className="text-sm text-gray-600">{request.name || request.email}</p>
+                                    <p className="text-sm text-gray-600">{request.musical_or_artist}</p>
+                                  </div>
+                                  <Badge variant={getBadgeVariant(request.backing_type)}>
+                                    {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                  </Badge>
+                                </div>
+                                <div className="mt-2 flex justify-between items-center">
+                                  <div className="flex items-center">
+                                    <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                                    <span className="text-sm">
+                                      {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                    </span>
+                                  </div>
+                                  {getStatusBadge(request.status || 'pending')}
+                                </div>
+                                <div className="mt-3 flex justify-end space-x-1">
+                                  <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
+                                    <Mail className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                    <Upload className="w-4 h-4" />
+                                  </Button>
+                                  <Link to={`/admin/request/${request.id}`}>
+                                    <Button variant="outline" size="sm">
+                                      View
+                                    </Button>
+                                  </Link>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-center text-gray-500 py-4">
+                              No requests scheduled for this date
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-center text-gray-500 py-4">
+                          Select a date on the calendar to view requests
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* List View */}
+        {viewMode === 'list' && (
+          <Card className="shadow-lg mb-6">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
+                <span>Backing Requests</span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <Button 
+                    onClick={handleSelectAll}
+                    variant="outline"
+                    className="flex items-center"
+                  >
+                    {selectedRequests.length === filteredRequests.length ? 'Deselect All' : 'Select All'}
+                  </Button>
+                  {selectedRequests.length > 0 && (
+                    <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
+                      <span className="font-medium">Selected: {selectedRequests.length}</span>
+                      <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="default" 
+                            className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                          >
+                            Batch Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              // Batch update selected requests to "in-progress"
+                              selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
+                              toast({
+                                title: "Batch Update",
+                                description: `${selectedRequests.length} requests marked as In Progress`,
+                              });
+                            }}
+                          >
+                            <Clock className="w-4 h-4 mr-2" /> Mark In Progress
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              // Batch update selected requests to "completed"
+                              selectedRequests.forEach(id => updateStatus(id, 'completed'));
+                              toast({
+                                title: "Batch Update",
+                                description: `${selectedRequests.length} requests marked as Completed`,
+                              });
+                            }}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" /> Mark Completed
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              // Batch update selected requests to "cancelled"
+                              selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
+                              toast({
+                                title: "Batch Update",
+                                description: `${selectedRequests.length} requests marked as Cancelled`,
+                              });
+                            }}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" /> Mark Cancelled
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={openBatchDeleteDialog}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center h-64">
+                  <p>Loading requests...</p>
+                </div>
+              ) : (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">
+                          <input
+                            type="checkbox"
+                            checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                            onChange={handleSelectAll}
+                          />
+                        </TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Song</TableHead>
+                        <TableHead>Backing Type</TableHead>
+                        <TableHead>Delivery Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Cost</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequests.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8">
+                            <div className="text-center">
+                              <FileAudio className="mx-auto h-12 w-12 text-gray-400" />
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">No requests found</h3>
+                              <p className="mt-1 text-sm text-gray-500">
+                                Try adjusting your search or filter criteria
+                              </p>
+                              <div className="mt-6">
+                                <Button onClick={clearFilters} variant="outline">
+                                  Clear Filters
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      ) : (
+                        filteredRequests.map((request) => (
+                          <TableRow key={request.id} className={selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}>
+                            <TableCell>
+                              <input
+                                type="checkbox"
+                                checked={selectedRequests.includes(request.id)}
+                                onChange={() => handleSelectRequest(request.id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {format(new Date(request.created_at), 'MMM dd, yyyy')}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {format(new Date(request.created_at), 'HH:mm')}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{request.name || 'N/A'}</div>
+                              <div className="text-sm text-gray-500">{request.email}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{request.song_title}</div>
+                              <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getBadgeVariant(request.backing_type)}>
+                                {request.backing_type?.replace('-', ' ') || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                                {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={request.status || 'pending'} 
+                                onValueChange={(value) => updateStatus(request.id, value)}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="in-progress">In Progress</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center font-medium">
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-1">
+                                <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
+                                  <Mail className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                  <Upload className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
+                                  <Share2 className="w-4 h-4" />
+                                </Button>
+                                <Link to={`/admin/request/${request.id}`}>
+                                  <Button variant="outline" size="sm">
+                                    View
+                                  </Button>
+                                </Link>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => openDeleteDialog(request.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         
         {/* Upload Track Dialog */}
         {uploadTrackId && (
