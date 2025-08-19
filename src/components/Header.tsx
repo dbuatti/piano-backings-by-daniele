@@ -2,29 +2,19 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-
-const menuItems = [
-  { name: "Home", href: "/" },
-  { name: "About", href: "/#about" },
-  { name: "Services", href: "/#services" },
-  { name: "Pricing", href: "/#pricing" },
-  { name: "Contact", href: "/#contact" },
-  { name: "Tips", href: "/#tips" },
-  { name: "Support", href: "/#support" },
-  { name: "Order Track", href: "/form-page" },
-];
+import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const location = useLocation();
   const [session, setSession] = React.useState<any>(null);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     const checkSession = async () => {
@@ -112,9 +102,22 @@ const Header = () => {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAdmin(false);
-    navigate('/');
+    try {
+      await supabase.auth.signOut();
+      setIsAdmin(false);
+      setMobileMenuOpen(false);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Function to handle anchor link navigation
@@ -130,79 +133,98 @@ const Header = () => {
         window.history.replaceState(null, '', `#${anchor}`);
       }
     }
+    setMobileMenuOpen(false);
   };
 
+  const menuItems = [
+    { name: "Home", href: "/" },
+    { name: "About", href: "/#about" },
+    { name: "Services", href: "/#services" },
+    { name: "Pricing", href: "/#pricing" },
+    { name: "Contact", href: "/#contact" },
+    { name: "Tips", href: "/#tips" },
+    { name: "Support", href: "/#support" },
+  ];
+
   return (
-    <header className="bg-[#FF00B3] text-white shadow-md sticky top-0 z-50">
+    <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link to="/">
-              <img className="h-16 w-auto" src="/logo.jpeg" alt="Piano Backings By Daniele Logo" />
+          <div className="flex-shrink-0 flex items-center">
+            <Link to="/" className="flex items-center">
+              <img 
+                className="h-16 w-auto rounded-lg border-2 border-white shadow-md" 
+                src="/logo.jpeg" 
+                alt="Piano Backings By Daniele Logo" 
+              />
+              <span className="ml-3 hidden md:block text-xl font-bold">Piano Backings</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-1">
             {menuItems.map((item) => (
-              item.name === "Order Track" ? (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "font-bold text-lg px-4 py-2 rounded-full transition-all",
-                    "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
-                    "border-2 border-white shadow-lg hover:shadow-xl",
-                    "transform hover:scale-105 transition-transform duration-200"
-                  )}
-                >
-                  <Music className="inline mr-2 h-5 w-5" />
-                  {item.name}
-                </Link>
-              ) : (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => handleAnchorLink(item.href, e)}
-                  className={cn(
-                    "font-medium text-lg transition-colors hover:text-gray-200",
-                    location.pathname === item.href.split('#')[0] && (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#')) 
-                      ? "border-b-2 border-white" 
-                      : ""
-                  )}
-                >
-                  {item.name}
-                </a>
-              )
+              <a
+                key={item.name}
+                href={item.href}
+                onClick={(e) => handleAnchorLink(item.href, e)}
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200",
+                  "hover:bg-white/20 hover:text-white",
+                  location.pathname === item.href.split('#')[0] && 
+                  (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
+                    ? "bg-white/30 text-white" 
+                    : "text-white"
+                )}
+              >
+                {item.name}
+              </a>
             ))}
+            
+            <Link to="/form-page">
+              <Button 
+                className={cn(
+                  "ml-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300",
+                  "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
+                  "border-2 border-white shadow-lg hover:shadow-xl",
+                  "transform hover:scale-105"
+                )}
+              >
+                <Music className="mr-2 h-4 w-4" />
+                Order Track
+              </Button>
+            </Link>
+            
             {session && (
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
-                  className="hover:bg-white/20 text-white font-medium text-lg flex items-center"
+                  className="ml-2 text-white hover:bg-white/20"
                 >
                   <User className="mr-2 h-4 w-4" />
                   My Tracks
                 </Button>
               </Link>
             )}
+            
             {isAdmin && (
               <Link to="/admin">
                 <Button 
                   variant="ghost" 
-                  className="hover:bg-white/20 text-white font-medium text-lg flex items-center"
+                  className="ml-2 text-white hover:bg-white/20"
                 >
                   <Shield className="mr-2 h-4 w-4" />
                   Admin
                 </Button>
               </Link>
             )}
+            
             {session ? (
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
-                className="hover:bg-white/20 text-white font-medium text-lg"
+                className="ml-2 text-white hover:bg-white/20"
               >
                 Logout
               </Button>
@@ -210,7 +232,7 @@ const Header = () => {
               <Link to="/login">
                 <Button 
                   variant="ghost" 
-                  className="hover:bg-white/20 text-white font-medium text-lg"
+                  className="ml-2 text-white hover:bg-white/20"
                 >
                   <LogIn className="mr-2 h-4 w-4" />
                   Login
@@ -219,96 +241,145 @@ const Header = () => {
             )}
           </nav>
 
-          {/* Mobile Navigation Trigger */}
-          <div className="md:hidden">
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:bg-white/20 text-white">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Toggle menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-[#FF00B3] text-white border-l-0">
-                <nav className="flex flex-col gap-6 mt-12">
-                  {menuItems.map((item) => (
-                    item.name === "Order Track" ? (
-                      <Link
-                        key={item.href}
-                        to={item.href}
-                        onClick={() => setIsOpen(false)}
-                        className={cn(
-                          "font-bold text-xl px-4 py-3 rounded-full transition-all",
-                          "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
-                          "border-2 border-white shadow-lg",
-                          "text-center"
-                        )}
-                      >
-                        <Music className="inline mr-2 h-5 w-5" />
-                        {item.name}
-                      </Link>
-                    ) : (
-                      <a
-                        key={item.href}
-                        href={item.href}
-                        onClick={(e) => {
-                          handleAnchorLink(item.href, e);
-                          setIsOpen(false);
-                        }}
-                        className="text-2xl font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors"
-                      >
-                        {item.name}
-                      </a>
-                    )
-                  ))}
-                  {session && (
-                    <Link
-                      to="/user-dashboard"
-                      onClick={() => setIsOpen(false)}
-                      className="text-2xl font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center"
-                    >
-                      <User className="mr-2 h-6 w-6" />
-                      My Tracks
-                    </Link>
-                  )}
-                  {isAdmin && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setIsOpen(false)}
-                      className="text-2xl font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center"
-                    >
-                      <Shield className="mr-2 h-6 w-6" />
-                      Admin Dashboard
-                    </Link>
-                  )}
-                  {session ? (
-                    <Button 
-                      onClick={() => {
-                        handleLogout();
-                        setIsOpen(false);
-                      }}
-                      variant="ghost" 
-                      className="justify-start hover:bg-white/20 text-white font-medium text-2xl"
-                    >
-                      Logout
-                    </Button>
-                  ) : (
-                    <Link to="/login">
-                      <Button 
-                        variant="ghost" 
-                        className="justify-start hover:bg-white/20 text-white font-medium text-2xl"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        <LogIn className="mr-2 h-6 w-6" />
-                        Login
-                      </Button>
-                    </Link>
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white hover:bg-white/20"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Open menu</span>
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50" 
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          
+          <div className="fixed inset-y-0 right-0 max-w-full flex">
+            <div className="relative w-screen max-w-md">
+              <div className="h-full flex flex-col bg-[#FF00B3] shadow-xl">
+                <div className="px-4 py-6 bg-[#1C0357]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <img 
+                        className="h-12 w-auto rounded-lg border-2 border-white" 
+                        src="/logo.jpeg" 
+                        alt="Piano Backings By Daniele Logo" 
+                      />
+                      <span className="ml-3 text-xl font-bold text-white">Piano Backings</span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-white hover:bg-white/20"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <X className="h-6 w-6" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
+                  <nav className="space-y-1">
+                    {menuItems.map((item) => (
+                      <a
+                        key={item.name}
+                        href={item.href}
+                        onClick={(e) => handleAnchorLink(item.href, e)}
+                        className={cn(
+                          "block px-4 py-3 rounded-md text-base font-medium",
+                          "text-white hover:bg-white/20"
+                        )}
+                      >
+                        {item.name}
+                      </a>
+                    ))}
+                    
+                    <div className="pt-4 border-t border-white/20">
+                      <Link 
+                        to="/form-page"
+                        className={cn(
+                          "block w-full px-4 py-3 rounded-md text-base font-bold text-center",
+                          "bg-white text-[#FF00B3] hover:bg-gray-100"
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Music className="inline mr-2 h-5 w-5" />
+                        Order Track
+                      </Link>
+                    </div>
+                    
+                    {session && (
+                      <Link 
+                        to="/user-dashboard"
+                        className={cn(
+                          "block px-4 py-3 rounded-md text-base font-medium",
+                          "text-white hover:bg-white/20 flex items-center"
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <User className="mr-2 h-5 w-5" />
+                        My Tracks
+                      </Link>
+                    )}
+                    
+                    {isAdmin && (
+                      <Link 
+                        to="/admin"
+                        className={cn(
+                          "block px-4 py-3 rounded-md text-base font-medium",
+                          "text-white hover:bg-white/20 flex items-center"
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Shield className="mr-2 h-5 w-5" />
+                        Admin Dashboard
+                      </Link>
+                    )}
+                    
+                    {session ? (
+                      <Button 
+                        onClick={handleLogout}
+                        variant="ghost" 
+                        className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20"
+                      >
+                        Logout
+                      </Button>
+                    ) : (
+                      <Link 
+                        to="/login"
+                        className={cn(
+                          "block px-4 py-3 rounded-md text-base font-medium",
+                          "text-white hover:bg-white/20 flex items-center"
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <LogIn className="mr-2 h-5 w-5" />
+                        Login
+                      </Link>
+                    )}
+                  </nav>
+                </div>
+                
+                <div className="border-t border-white/20 py-6 px-4">
+                  <div className="text-center text-sm text-white/80">
+                    © {new Date().getFullYear()} Piano Backings By Daniele
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
