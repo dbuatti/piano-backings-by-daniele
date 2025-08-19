@@ -285,11 +285,73 @@ serve(async (req) => {
         const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
         const uploadPath = `${dropboxFolderPath}/${mp3FileName}`;
         
+        // IMPORTANT: This is where you would integrate with a real YouTube-to-MP3 service
         // For now, we'll create a placeholder MP3 file since actual YouTube conversion
         // would require external services that may violate YouTube's Terms of Service
-        // In a real implementation, you would integrate with a YouTube-to-MP3 service here
+        // In a real implementation, you would:
+        // 1. Call a YouTube-to-MP3 API service
+        // 2. Wait for the conversion to complete
+        // 3. Download the resulting MP3 file
+        // 4. Upload it to Dropbox
         
-        // Create a simple placeholder MP3 file (1 second of silence)
+        // Example of how you might integrate with a YouTube-to-MP3 service:
+        /*
+        const conversionServiceUrl = 'https://api.your-youtube-to-mp3-service.com/convert';
+        const conversionResponse = await fetch(conversionServiceUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer YOUR_API_KEY'
+          },
+          body: JSON.stringify({
+            url: formData.youtubeLink,
+            format: 'mp3',
+            quality: '128'
+          })
+        });
+        
+        if (conversionResponse.ok) {
+          const conversionData = await conversionResponse.json();
+          // Get the download URL for the MP3
+          const mp3DownloadUrl = conversionData.download_url;
+          
+          // Download the MP3 file
+          const mp3Response = await fetch(mp3DownloadUrl);
+          if (mp3Response.ok) {
+            const mp3Buffer = await mp3Response.arrayBuffer();
+            
+            // Upload to Dropbox
+            const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${dropboxAccessToken}`,
+                'Dropbox-API-Arg': JSON.stringify({
+                  path: uploadPath,
+                  mode: 'add',
+                  autorename: true,
+                  mute: false
+                }),
+                'Content-Type': 'application/octet-stream'
+              },
+              body: mp3Buffer
+            });
+            
+            if (dropboxUploadResponse.ok) {
+              youtubeMp3Success = true;
+              console.log('MP3 uploaded successfully to Dropbox');
+            } else {
+              const errorText = await dropboxUploadResponse.text();
+              youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+            }
+          } else {
+            youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+          }
+        } else {
+          youtubeMp3Error = `YouTube conversion service error: ${conversionResponse.status}`;
+        }
+        */
+        
+        // For now, we'll create a placeholder MP3 file (1 second of silence)
         const mp3Buffer = createPlaceholderMp3();
         
         // Upload to Dropbox
