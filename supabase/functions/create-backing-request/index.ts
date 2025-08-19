@@ -56,20 +56,22 @@ serve(async (req) => {
     // Create a folder name based on the request
     const folderName = `${formData.name || 'anonymous'}-${Date.now()}`;
     
-    // Determine the parent folder based on form data or use default
+    // Determine the parent folder based on backing type
     let parentFolder = defaultDropboxParentFolder;
     
-    // Example: If you have a category field in your form
-    if (formData.category) {
-      parentFolder = `/Move over to NAS/PIANO BACKING TRACKS/${formData.category}`;
-    } else if (formData.trackPurpose) {
-      // Use track purpose as category if no specific category is provided
-      const categoryMap: Record<string, string> = {
-        'personal-practise': 'Practice Tracks',
-        'audition-backing': 'Audition Tracks',
-        'melody-bash': 'Melody Bash Tracks'
-      };
-      parentFolder = `/Move over to NAS/PIANO BACKING TRACKS/${categoryMap[formData.trackPurpose] || 'General'}`;
+    // Map backing types to specific subfolders
+    const backingTypeMap: Record<string, string> = {
+      'full-song': '00. FULL VERSIONS',
+      'audition-cut': '00. AUDITION CUTS',
+      'note-bash': '00. NOTE BASH'
+    };
+    
+    // Set parent folder based on backing type
+    if (formData.backingType && backingTypeMap[formData.backingType]) {
+      parentFolder = `${defaultDropboxParentFolder}/${backingTypeMap[formData.backingType]}`;
+    } else {
+      // Default to general folder if backing type is not recognized
+      parentFolder = `${defaultDropboxParentFolder}/00. GENERAL`;
     }
     
     // Create Dropbox folder
