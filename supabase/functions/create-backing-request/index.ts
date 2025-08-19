@@ -24,6 +24,8 @@ serve(async (req) => {
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     // @ts-ignore
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
+    // @ts-ignore
+    const templateFilePath = Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx';
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
@@ -31,6 +33,7 @@ serve(async (req) => {
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
       DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
+      LOGIC_TEMPLATE_PATH: templateFilePath,
       DROPBOX_ACCESS_TOKEN_LENGTH: dropboxAccessToken ? dropboxAccessToken.length : 0
     });
     
@@ -168,6 +171,64 @@ serve(async (req) => {
       }
     }
     
+    // Copy Logic Pro X template file to the new folder
+    let templateCopySuccess = false;
+    let templateCopyError = null;
+    
+    if (dropboxFolderId && dropboxAccessToken && templateFilePath) {
+      try {
+        // Get information about the template file
+        console.log('Getting template file info from path:', templateFilePath);
+        const fileInfoResponse = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            path: templateFilePath
+          })
+        });
+        
+        if (fileInfoResponse.ok) {
+          const fileInfo = await fileInfoResponse.json();
+          console.log('Template file info:', fileInfo);
+          
+          // Copy the template file to the new folder
+          const copyPath = `${dropboxFolderPath}/${fileInfo.name}`;
+          console.log('Copying template to:', copyPath);
+          
+          const copyResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dropboxAccessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from_path: templateFilePath,
+              to_path: copyPath
+            })
+          });
+          
+          if (copyResponse.ok) {
+            templateCopySuccess = true;
+            console.log('Template file copied successfully');
+          } else {
+            const errorText = await copyResponse.text();
+            console.error('Dropbox template copy error:', copyResponse.status, errorText);
+            templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
+          }
+        } else {
+          const errorText = await fileInfoResponse.text();
+          console.error('Dropbox template file info error:', fileInfoResponse.status, errorText);
+          templateCopyError = `Dropbox template file info error: ${fileInfoResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('Template copy error:', error);
+        templateCopyError = `Template copy error: ${error.message}`;
+      }
+    }
+    
     // Upload PDF to Dropbox folder if provided
     let pdfUploadSuccess = false;
     let pdfUploadError = null;
@@ -255,12 +316,17 @@ serve(async (req) => {
       folderNameUsed: folderName,
       firstNameUsed: firstName,
       trackTypeUsed: formData.trackType,
+      templateCopySuccess,
       pdfUploadSuccess,
       dropboxFolderPath
     };
     
     if (dropboxError) {
       responsePayload.dropboxError = dropboxError;
+    }
+    
+    if (templateCopyError) {
+      responsePayload.templateCopyError = templateCopyError;
     }
     
     if (pdfUploadError) {
