@@ -14,7 +14,6 @@ const TestBackings = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [testType, setTestType] = useState('full-song');
 
   // Check if user is authenticated
   useEffect(() => {
@@ -25,7 +24,7 @@ const TestBackings = () => {
     checkAuth();
   }, []);
 
-  const testFunction = async (backingType: string) => {
+  const testFunction = async (backingType: string, typeName: string) => {
     setIsTesting(true);
     setResult(null);
     
@@ -45,7 +44,7 @@ const TestBackings = () => {
           backingType: backingType,
           deliveryDate: "2023-12-31",
           additionalServices: ["rush-order"],
-          specialRequests: `This is a test request for ${backingType} backing type`,
+          specialRequests: `This is a test request for ${typeName} backing type`,
           category: "Test Category"
         }
       };
@@ -77,12 +76,12 @@ const TestBackings = () => {
         if (data.dropboxFolderId) {
           toast({
             title: "Success!",
-            description: `Function executed successfully for ${backingType}. A new folder was created in Dropbox.`,
+            description: `Function executed successfully for ${typeName}. A new folder was created in Dropbox.`,
           });
         } else {
           toast({
             title: "Partial Success",
-            description: `Request submitted successfully for ${backingType}, but Dropbox folder creation failed. Check the logs for details.`,
+            description: `Request submitted successfully for ${typeName}, but Dropbox folder creation failed. Check the logs for details.`,
             variant: "destructive",
           });
         }
@@ -102,9 +101,9 @@ const TestBackings = () => {
   };
 
   const backingTypeOptions = [
-    { value: 'full-song', label: 'Full Song Backing' },
-    { value: 'audition-cut', label: 'Audition Cut Backing' },
-    { value: 'note-bash', label: 'Note/Melody Bash' },
+    { value: 'full-song', label: 'Full Song Backing', folder: '00. FULL VERSIONS' },
+    { value: 'audition-cut', label: 'Audition Cut Backing', folder: '00. AUDITION CUTS' },
+    { value: 'note-bash', label: 'Note/Melody Bash', folder: '00. NOTE BASH' },
   ];
 
   return (
@@ -140,7 +139,7 @@ const TestBackings = () => {
                 <div className="mb-6">
                   <p className="mb-4">
                     This page tests the Supabase function that handles backing track requests. 
-                    It will test each backing type to ensure folders are created in the correct locations:
+                    Click the buttons below to test each backing type:
                   </p>
                   <ul className="list-disc pl-5 mb-4 space-y-2">
                     <li>Full Song Backing → 00. FULL VERSIONS folder</li>
@@ -148,57 +147,30 @@ const TestBackings = () => {
                     <li>Note/Melody Bash → 00. NOTE BASH folder</li>
                   </ul>
                   
-                  <div className="mb-4">
-                    <label className="block text-lg font-medium mb-2 text-[#1C0357]">Select Backing Type to Test:</label>
-                    <Select value={testType} onValueChange={setTestType}>
-                      <SelectTrigger className="w-full md:w-64">
-                        <SelectValue placeholder="Select backing type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {backingTypeOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {backingTypeOptions.map((option) => (
+                      <Button
+                        key={option.value}
+                        onClick={() => testFunction(option.value, option.label)}
+                        disabled={isTesting}
+                        className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-24 flex flex-col items-center justify-center"
+                      >
+                        <span className="font-bold text-lg">{option.label}</span>
+                        <span className="text-sm mt-1">→ {option.folder}</span>
+                      </Button>
+                    ))}
                   </div>
                   
-                  <div className="flex flex-wrap gap-3">
-                    <Button 
-                      onClick={() => testFunction(testType)} 
-                      disabled={isTesting}
-                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-                    >
-                      {isTesting ? 'Testing...' : `Test ${backingTypeOptions.find(o => o.value === testType)?.label}`}
-                    </Button>
-                    
-                    <Button 
-                      onClick={() => testFunction('full-song')} 
-                      disabled={isTesting}
-                      variant="outline"
-                      className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
-                    >
-                      Test Full Song
-                    </Button>
-                    
-                    <Button 
-                      onClick={() => testFunction('audition-cut')} 
-                      disabled={isTesting}
-                      variant="outline"
-                      className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
-                    >
-                      Test Audition Cut
-                    </Button>
-                    
-                    <Button 
-                      onClick={() => testFunction('note-bash')} 
-                      disabled={isTesting}
-                      variant="outline"
-                      className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
-                    >
-                      Test Note Bash
-                    </Button>
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 className="font-bold text-[#1C0357] mb-2">Folder Structure</h3>
+                    <p className="mb-2">All folders will be created within:</p>
+                    <p className="font-mono bg-white p-2 rounded border">/Move over to NAS/PIANO BACKING TRACKS</p>
+                    <p className="mt-2">With subfolders:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>00. FULL VERSIONS</li>
+                      <li>00. AUDITION CUTS</li>
+                      <li>00. NOTE BASH</li>
+                    </ul>
                   </div>
                 </div>
                 
