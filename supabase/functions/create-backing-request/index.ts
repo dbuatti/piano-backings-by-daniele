@@ -113,17 +113,54 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             path: fullPath,
-            autorename: false
+            autorename: true  // This will automatically rename if folder exists
           })
         });
         
         if (dropboxResponse.ok) {
           const dropboxData = await dropboxResponse.json();
           dropboxFolderId = dropboxData.metadata.id;
+          console.log('Dropbox folder created successfully with ID:', dropboxFolderId);
         } else {
           const errorText = await dropboxResponse.text();
           console.error('Dropbox API error:', dropboxResponse.status, errorText);
-          dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+          
+          // Try to parse the error to see if it's a conflict that we can handle
+          try {
+            const errorObj = JSON.parse(errorText);
+            if (errorObj.error_summary && errorObj.error_summary.includes('path/conflict')) {
+              // If it's a conflict, try to get the existing folder info
+              console.log('Folder already exists, trying to get folder info...');
+              const listResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${dropboxAccessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  path: fullPath
+                })
+              });
+              
+              if (listResponse.ok) {
+                const listData = await listResponse.json();
+                if (listData.entries && listData.entries.length > 0) {
+                  // Use the first entry (should be the folder)
+                  dropboxFolderId = listData.entries[0].id;
+                  console.log('Using existing folder with ID:', dropboxFolderId);
+                }
+              } else {
+                const listErrorText = await listResponse.text();
+                console.error('Error getting folder info:', listResponse.status, listErrorText);
+                dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+              }
+            } else {
+              dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+            }
+          } catch (parseError) {
+            // If we can't parse the error, just use the original error text
+            dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+          }
         }
       } catch (error) {
         console.error('Dropbox folder creation error:', error);
