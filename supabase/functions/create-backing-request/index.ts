@@ -88,6 +88,7 @@ serve(async (req) => {
     // Create Dropbox folder
     let dropboxFolderId = null;
     let dropboxError = null;
+    let dropboxFolderPath = null;
     
     if (!dropboxAccessToken) {
       console.log('Dropbox access token not configured');
@@ -100,6 +101,7 @@ serve(async (req) => {
           : `/${parentFolder}`.replace(/\/$/, '');
           
         const fullPath = `${normalizedParentFolder}/${folderName}`;
+        dropboxFolderPath = fullPath;
         
         console.log('Creating Dropbox folder at path:', fullPath);
         
@@ -129,6 +131,54 @@ serve(async (req) => {
       }
     }
     
+    // Upload PDF to Dropbox folder if provided
+    let pdfUploadSuccess = false;
+    let pdfUploadError = null;
+    
+    if (dropboxFolderId && formData.sheetMusicUrl && dropboxAccessToken) {
+      try {
+        // Download the PDF from Supabase storage
+        const pdfResponse = await fetch(formData.sheetMusicUrl);
+        if (!pdfResponse.ok) {
+          throw new Error(`Failed to download PDF from Supabase: ${pdfResponse.status}`);
+        }
+        
+        const pdfBuffer = await pdfResponse.arrayBuffer();
+        const pdfFileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sheet_music.pdf`;
+        
+        // Upload to Dropbox
+        const uploadPath = `${dropboxFolderPath}/${pdfFileName}`;
+        console.log('Uploading PDF to Dropbox at path:', uploadPath);
+        
+        const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Dropbox-API-Arg': JSON.stringify({
+              path: uploadPath,
+              mode: 'add',
+              autorename: true,
+              mute: false
+            }),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: pdfBuffer
+        });
+        
+        if (dropboxUploadResponse.ok) {
+          pdfUploadSuccess = true;
+          console.log('PDF uploaded successfully to Dropbox');
+        } else {
+          const errorText = await dropboxUploadResponse.text();
+          console.error('Dropbox PDF upload error:', dropboxUploadResponse.status, errorText);
+          pdfUploadError = `Dropbox PDF upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('PDF upload error:', error);
+        pdfUploadError = `PDF upload error: ${error.message}`;
+      }
+    }
+    
     // Save to the database
     const { data, error } = await supabase
       .from('backing_requests')
@@ -144,6 +194,7 @@ serve(async (req) => {
           key_for_track: formData.keyForTrack,
           youtube_link: formData.youtubeLink,
           voice_memo: formData.voiceMemo,
+          sheet_music_url: formData.sheetMusicUrl,
           track_purpose: formData.trackPurpose,
           backing_type: formData.backingType,
           delivery_date: formData.deliveryDate,
@@ -165,11 +216,17 @@ serve(async (req) => {
       parentFolderUsed: parentFolder,
       folderNameUsed: folderName,
       firstNameUsed: firstName,
-      trackTypeUsed: formData.trackType
+      trackTypeUsed: formData.trackType,
+      pdfUploadSuccess,
+      dropboxFolderPath
     };
     
     if (dropboxError) {
       responsePayload.dropboxError = dropboxError;
+    }
+    
+    if (pdfUploadError) {
+      responsePayload.pdfUploadError = pdfUploadError;
     }
 
     return new Response(

@@ -97,7 +97,31 @@ const FormPage = () => {
         throw new Error(`Session error: ${sessionError.message}`);
       }
       
-      // For now, we'll send the data to our backend function
+      // First, upload the sheet music to Supabase storage if provided
+      let sheetMusicUrl = null;
+      if (formData.sheetMusic) {
+        const fileExt = formData.sheetMusic.name.split('.').pop();
+        const fileName = `sheet-music-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from('sheet-music')
+          .upload(fileName, formData.sheetMusic);
+        
+        if (uploadError) {
+          throw new Error(`File upload error: ${uploadError.message}`);
+        }
+        
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('sheet-music')
+          .getPublicUrl(fileName);
+        
+        sheetMusicUrl = publicUrl;
+      }
+      
+      // Send the data to our backend function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
         {
@@ -117,13 +141,14 @@ const FormPage = () => {
               keyForTrack: formData.keyForTrack,
               youtubeLink: formData.youtubeLink,
               voiceMemo: formData.voiceMemo,
+              sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL
               trackPurpose: formData.trackPurpose,
               backingType: formData.backingType,
               deliveryDate: formData.deliveryDate,
               additionalServices: formData.additionalServices,
               specialRequests: formData.specialRequests,
-              category: formData.category, // Include category in the data sent to the function
-              trackType: formData.trackType // Include track type in the data sent to the function
+              category: formData.category,
+              trackType: formData.trackType
             }
           }),
         }
