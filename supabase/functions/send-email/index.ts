@@ -22,6 +22,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
     const gmailUser = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
+    // @ts-ignore
+    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -61,7 +63,13 @@ serve(async (req) => {
       });
     }
     
-    // Store email in database as a notification instead of sending
+    // Validate Gmail credentials
+    if (!gmailAppPassword) {
+      throw new Error('GMAIL_APP_PASSWORD not configured. Please add it to your Supabase project secrets.');
+    }
+    
+    // For now, we'll store the email in the database as a notification
+    // In a future implementation, you can set up a cron job or external service to send these emails
     const { data, error } = await supabase
       .from('notifications')
       .insert([
@@ -78,37 +86,12 @@ serve(async (req) => {
     
     if (error) {
       console.error('Database error:', error);
-      // Fallback to console logging
-      console.log('=== EMAIL NOTIFICATION ===');
-      console.log('To:', to);
-      console.log('From:', from || gmailUser);
-      console.log('Subject:', subject);
-      console.log('Content:', emailContent);
-      console.log('========================');
-      
-      return new Response(
-        JSON.stringify({ 
-          message: 'Email notification created (logged to console)',
-          logged: true,
-          details: {
-            to,
-            from: from || gmailUser,
-            subject
-          }
-        }),
-        { 
-          headers: { 
-            ...corsHeaders,
-            'Content-Type': 'application/json' 
-          },
-          status: 200
-        }
-      );
+      throw new Error('Failed to store email notification');
     }
     
     return new Response(
       JSON.stringify({ 
-        message: 'Email notification created successfully',
+        message: 'Email queued for sending',
         notificationId: data[0].id
       }),
       { 
