@@ -286,17 +286,23 @@ serve(async (req) => {
           youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
           console.error('RapidAPI key not configured in Supabase secrets');
         } else {
-          // Use the correct RapidAPI YouTube to MP3 Converter endpoint
-          console.log('Converting YouTube video to MP3 using rapidapi-hosting2.p.rapidapi.com');
+          // Based on the tutorial, we need to make a GET request to the download endpoint
+          // with the YouTube URL as a query parameter and the API key in the headers
+          console.log('Converting YouTube video to MP3');
           
-          // Make the download request with the YouTube URL as a query parameter
-          const downloadUrl = `https://rapidapi-hosting2.p.rapidapi.com/download?url=${encodeURIComponent(formData.youtubeLink)}`;
+          // Extract the base URL and video ID
+          const videoId = extractYouTubeId(formData.youtubeLink);
+          if (!videoId) {
+            throw new Error('Invalid YouTube URL');
+          }
           
-          const rapidApiResponse = await fetch(downloadUrl, {
+          // Use the correct endpoint based on the tutorial
+          const apiUrl = `http://45.76.15.135:80/download?url=${encodeURIComponent(formData.youtubeLink)}`;
+          
+          const rapidApiResponse = await fetch(apiUrl, {
             method: 'GET',
             headers: {
-              'X-RapidAPI-Key': rapidApiKey,
-              'X-RapidAPI-Host': 'rapidapi-hosting2.p.rapidapi.com'
+              'X-RapidAPI-Key': rapidApiKey
             }
           });
           
@@ -304,47 +310,8 @@ serve(async (req) => {
             const rapidApiData = await rapidApiResponse.json();
             console.log('RapidAPI response:', rapidApiData);
             
-            // Check if conversion is successful and has download link
-            if (rapidApiData.status === 'AVAILABLE' && rapidApiData.link) {
-              // Download the MP3 file
-              console.log('Downloading MP3 from:', rapidApiData.link);
-              const mp3Response = await fetch(rapidApiData.link);
-              
-              if (mp3Response.ok) {
-                const mp3Buffer = await mp3Response.arrayBuffer();
-                
-                // Upload to Dropbox
-                console.log('Uploading MP3 to Dropbox at path:', uploadPath);
-                const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${dropboxAccessToken}`,
-                    'Dropbox-API-Arg': JSON.stringify({
-                      path: uploadPath,
-                      mode: 'add',
-                      autorename: true,
-                      mute: false
-                    }),
-                    'Content-Type': 'application/octet-stream'
-                  },
-                  body: mp3Buffer
-                });
-                
-                if (dropboxUploadResponse.ok) {
-                  youtubeMp3Success = true;
-                  console.log('MP3 uploaded successfully to Dropbox');
-                } else {
-                  const errorText = await dropboxUploadResponse.text();
-                  console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-                  youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-                }
-              } else {
-                youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
-              }
-            } else if (rapidApiData.id) {
-              // If we got an ID, we need to poll for the conversion status
-              console.log('Conversion started with ID:', rapidApiData.id);
-              
+            // Check if we got an ID for polling
+            if (rapidApiData.id) {
               // Poll for the conversion status
               let downloadUrl = null;
               let pollCount = 0;
@@ -355,11 +322,10 @@ serve(async (req) => {
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 // Check conversion status
-                const statusResponse = await fetch(`https://rapidapi-hosting2.p.rapidapi.com/status/${rapidApiData.id}`, {
+                const statusResponse = await fetch(`http://45.76.15.135:80/status/${rapidApiData.id}`, {
                   method: 'GET',
                   headers: {
-                    'X-RapidAPI-Key': rapidApiKey,
-                    'X-RapidAPI-Host': 'rapidapi-hosting2.p.rapidapi.com'
+                    'X-RapidAPI-Key': rapidApiKey
                   }
                 });
                 
