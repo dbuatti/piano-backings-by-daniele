@@ -9,7 +9,7 @@ import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon } from "lucide-reac
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -31,7 +31,6 @@ const FormPage = () => {
     additionalServices: [] as string[],
     specialRequests: ''
   });
-  const supabase = createClient();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

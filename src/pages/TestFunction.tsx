@@ -7,13 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 const TestFunction = () => {
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const supabase = createClient();
 
   const testFunction = async () => {
     setIsTesting(true);
