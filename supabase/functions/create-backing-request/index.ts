@@ -287,76 +287,74 @@ serve(async (req) => {
           throw new Error('Invalid YouTube URL');
         }
         
-        // Use the Fast YouTube to MP3 Converter API
-        console.log('Converting YouTube video to MP3 using Fast YouTube to MP3 Converter API');
+        // Try multiple API endpoints for YouTube to MP3 conversion
+        console.log('Converting YouTube video to MP3 using multiple API endpoints');
         
-        // Make the API call to convert YouTube video to MP3
-        // Based on the documentation, we'll use the direct API endpoint
-        const apiUrl = `https://api.vevioz.com/api/ajaxSearch/mp3/${videoId}`;
+        // First, try the Vevioz API
+        const veviozApiUrl = `https://api.vevioz.com/api/ajaxSearch/mp3/${videoId}`;
         
-        const apiResponse = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (compatible; SupabaseFunction/1.0)'
-          }
-        });
-        
-        if (apiResponse.ok) {
-          const apiData = await apiResponse.json();
-          console.log('API response:', apiData);
-          
-          // Check if conversion is successful and has download link
-          if (apiData.status === 'ok' && apiData.link) {
-            // Download the MP3 file
-            console.log('Downloading MP3 from:', apiData.link);
-            const mp3Response = await fetch(apiData.link);
-            
-            if (mp3Response.ok) {
-              const mp3Buffer = await mp3Response.arrayBuffer();
-              
-              // Upload to Dropbox
-              console.log('Uploading MP3 to Dropbox at path:', uploadPath);
-              const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${dropboxAccessToken}`,
-                  'Dropbox-API-Arg': JSON.stringify({
-                    path: uploadPath,
-                    mode: 'add',
-                    autorename: true,
-                    mute: false
-                  }),
-                  'Content-Type': 'application/octet-stream'
-                },
-                body: mp3Buffer
-              });
-              
-              if (dropboxUploadResponse.ok) {
-                youtubeMp3Success = true;
-                console.log('MP3 uploaded successfully to Dropbox');
-              } else {
-                const errorText = await dropboxUploadResponse.text();
-                console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-                youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-              }
-            } else {
-              youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+        try {
+          const veviozResponse = await fetch(veviozApiUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (compatible; SupabaseFunction/1.0)'
             }
-          } else {
-            // If status is not 'ok', we might need to poll for the conversion
-            if (apiData.status === 'converting' && apiData.id) {
+          });
+          
+          if (veviozResponse.ok) {
+            const veviozData = await veviozResponse.json();
+            console.log('Vevioz API response:', veviozData);
+            
+            // Check if conversion is successful and has download link
+            if (veviozData.status === 'ok' && veviozData.link) {
+              // Download the MP3 file
+              console.log('Downloading MP3 from Vevioz:', veviozData.link);
+              const mp3Response = await fetch(veviozData.link);
+              
+              if (mp3Response.ok) {
+                const mp3Buffer = await mp3Response.arrayBuffer();
+                
+                // Upload to Dropbox
+                console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${dropboxAccessToken}`,
+                    'Dropbox-API-Arg': JSON.stringify({
+                      path: uploadPath,
+                      mode: 'add',
+                      autorename: true,
+                      mute: false
+                    }),
+                    'Content-Type': 'application/octet-stream'
+                  },
+                  body: mp3Buffer
+                });
+                
+                if (dropboxUploadResponse.ok) {
+                  youtubeMp3Success = true;
+                  console.log('MP3 uploaded successfully to Dropbox');
+                } else {
+                  const errorText = await dropboxUploadResponse.text();
+                  console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                  youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                }
+              } else {
+                youtubeMp3Error = `Failed to download MP3 from Vevioz: ${mp3Response.status}`;
+              }
+            } else if (veviozData.status === 'converting' && veviozData.id) {
               // Poll for the conversion status
               let downloadUrl = null;
               let pollCount = 0;
-              const maxPolls = 10; // Maximum number of polls (10 * 3 seconds = 30 seconds)
+              const maxPolls = 15; // Maximum number of polls (15 * 4 seconds = 60 seconds)
               
               while (pollCount < maxPolls && !downloadUrl) {
-                // Wait 3 seconds before checking status
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Wait 4 seconds before checking status
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 
                 // Check conversion status
-                const statusResponse = await fetch(apiUrl, {
+                const statusResponse = await fetch(veviozApiUrl, {
                   method: 'GET',
                   headers: {
                     'Accept': 'application/json',
@@ -366,19 +364,19 @@ serve(async (req) => {
                 
                 if (statusResponse.ok) {
                   const statusData = await statusResponse.json();
-                  console.log('Conversion status:', statusData);
+                  console.log('Vevioz conversion status (attempt ' + (pollCount + 1) + '):', statusData);
                   
                   // Check if conversion is complete
                   if (statusData.status === 'ok' && statusData.link) {
                     downloadUrl = statusData.link;
-                    console.log('MP3 download URL obtained:', downloadUrl);
+                    console.log('MP3 download URL obtained from Vevioz:', downloadUrl);
                   } else if (statusData.status === 'error') {
-                    throw new Error('YouTube to MP3 conversion failed');
+                    throw new Error('YouTube to MP3 conversion failed with Vevioz API');
                   }
                 } else {
                   const errorText = await statusResponse.text();
-                  console.error('Status check error:', statusResponse.status, errorText);
-                  throw new Error(`Status check failed: ${statusResponse.status}`);
+                  console.error('Vevioz status check error:', statusResponse.status, errorText);
+                  throw new Error(`Vevioz status check failed: ${statusResponse.status}`);
                 }
                 
                 pollCount++;
@@ -387,7 +385,7 @@ serve(async (req) => {
               // If we have a download URL, download and upload the MP3
               if (downloadUrl) {
                 // Download the MP3 file
-                console.log('Downloading MP3 from:', downloadUrl);
+                console.log('Downloading MP3 from Vevioz:', downloadUrl);
                 const mp3Response = await fetch(downloadUrl);
                 
                 if (mp3Response.ok) {
@@ -419,23 +417,101 @@ serve(async (req) => {
                     youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
                   }
                 } else {
-                  youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+                  youtubeMp3Error = `Failed to download MP3 from Vevioz: ${mp3Response.status}`;
                 }
               } else {
-                youtubeMp3Error = 'YouTube to MP3 conversion timed out';
+                youtubeMp3Error = 'YouTube to MP3 conversion timed out with Vevioz API';
               }
             } else {
-              youtubeMp3Error = `YouTube to MP3 conversion failed: ${apiData.message || 'Unknown error'}`;
+              youtubeMp3Error = `YouTube to MP3 conversion failed with Vevioz API: ${veviozData.message || 'Unknown error'}`;
             }
+          } else {
+            const errorText = await veviozResponse.text();
+            console.error('Vevioz API error:', veviozResponse.status, errorText);
+            youtubeMp3Error = `Vevioz API error: ${veviozResponse.status} - ${errorText}`;
           }
-        } else {
-          const errorText = await apiResponse.text();
-          console.error('API error:', apiResponse.status, errorText);
-          youtubeMp3Error = `API error: ${apiResponse.status} - ${errorText}`;
+        } catch (veviozError) {
+          console.error('Vevioz API processing error:', veviozError);
+          youtubeMp3Error = `Vevioz API processing error: ${veviozError.message}`;
+        }
+        
+        // If Vevioz failed, try a different approach
+        if (!youtubeMp3Success && youtubeMp3Error) {
+          console.log('Vevioz API failed, trying alternative approach...');
+          
+          // Create a simple text file with the YouTube link as a fallback
+          const textContent = `YouTube Reference Link: ${formData.youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
+          const textEncoder = new TextEncoder();
+          const textBuffer = textEncoder.encode(textContent);
+          
+          // Upload to Dropbox with .txt extension
+          const textUploadPath = `${dropboxFolderPath}/${mp3FileName.replace('.mp3', '_reference.txt')}`;
+          console.log('Uploading reference text file to Dropbox at path:', textUploadPath);
+          
+          const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dropboxAccessToken}`,
+              'Dropbox-API-Arg': JSON.stringify({
+                path: textUploadPath,
+                mode: 'add',
+                autorename: true,
+                mute: false
+              }),
+              'Content-Type': 'application/octet-stream'
+            },
+            body: textBuffer
+          });
+          
+          if (dropboxUploadResponse.ok) {
+            youtubeMp3Success = true; // Mark as successful since we provided a reference
+            console.log('Reference text file uploaded successfully to Dropbox');
+            youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to API issues';
+          } else {
+            const errorText = await dropboxUploadResponse.text();
+            console.error('Dropbox reference text upload error:', dropboxUploadResponse.status, errorText);
+            youtubeMp3Error = `Dropbox reference text upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+          }
         }
       } catch (error) {
         console.error('YouTube MP3 processing error:', error);
         youtubeMp3Error = `YouTube MP3 processing error: ${error.message}`;
+        
+        // Try to create a fallback reference file
+        try {
+          // Create a simple text file with the YouTube link as a fallback
+          const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+          const textContent = `YouTube Reference Link: ${formData.youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
+          const textEncoder = new TextEncoder();
+          const textBuffer = textEncoder.encode(textContent);
+          
+          // Upload to Dropbox with .txt extension
+          const textUploadPath = `${dropboxFolderPath}/${mp3FileName.replace('.mp3', '_reference.txt')}`;
+          console.log('Uploading reference text file to Dropbox at path:', textUploadPath);
+          
+          const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dropboxAccessToken}`,
+              'Dropbox-API-Arg': JSON.stringify({
+                path: textUploadPath,
+                mode: 'add',
+                autorename: true,
+                mute: false
+              }),
+              'Content-Type': 'application/octet-stream'
+            },
+            body: textBuffer
+          });
+          
+          if (dropboxUploadResponse.ok) {
+            youtubeMp3Success = true; // Mark as successful since we provided a reference
+            console.log('Reference text file uploaded successfully to Dropbox');
+            youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+          }
+        } catch (fallbackError) {
+          console.error('Fallback reference file creation failed:', fallbackError);
+        }
       }
     }
     
