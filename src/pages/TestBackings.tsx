@@ -80,7 +80,7 @@ const TestBackings = () => {
           songKey: "C Major (0)",
           differentKey: "No",
           keyForTrack: "",
-          youtubeLink: "https://www.youtube.com/watch?v=g3lKxyJXFqg&list=RDg3lKxyJXFqg&start_radio=1",
+          youtubeLink: "https://www.youtube.com/watch?v=bIZNxHMDpjY",
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL if testing PDF
           trackPurpose: "personal-practise",
@@ -197,7 +197,7 @@ const TestBackings = () => {
           songKey: "C Major (0)",
           differentKey: "No",
           keyForTrack: "",
-          youtubeLink: "https://www.youtube.com/watch?v=g3lKxyJXFqg&list=RDg3lKxyJXFqg&start_radio=1",
+          youtubeLink: "https://www.youtube.com/watch?v=bIZNxHMDpjY",
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl,
           trackPurpose: "personal-practise",
