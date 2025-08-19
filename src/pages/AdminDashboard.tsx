@@ -27,22 +27,63 @@ const AdminDashboard = () => {
       }
       
       // Check if user is admin (daniele.buatti@gmail.com)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profile?.email === 'daniele.buatti@gmail.com') {
+      // First try to get email from user object directly
+      if (session.user.email === 'daniele.buatti@gmail.com') {
         setIsAdmin(true);
         fetchRequests();
-      } else {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access this page.",
-          variant: "destructive",
-        });
-        navigate('/');
+        return;
+      }
+      
+      // Fallback to checking profiles table
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching profile:', error);
+          // Even if we can't fetch profile, check user email directly
+          if (session.user.email === 'daniele.buatti@gmail.com') {
+            setIsAdmin(true);
+            fetchRequests();
+          } else {
+            toast({
+              title: "Access Denied",
+              description: "You don't have permission to access this page.",
+              variant: "destructive",
+            });
+            navigate('/');
+          }
+          return;
+        }
+        
+        if (profile?.email === 'daniele.buatti@gmail.com') {
+          setIsAdmin(true);
+          fetchRequests();
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access this page.",
+            variant: "destructive",
+          });
+          navigate('/');
+        }
+      } catch (error: any) {
+        console.error('Error checking admin status:', error);
+        // Fallback to checking user email directly
+        if (session.user.email === 'daniele.buatti@gmail.com') {
+          setIsAdmin(true);
+          fetchRequests();
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access this page.",
+            variant: "destructive",
+          });
+          navigate('/');
+        }
       }
     };
     
