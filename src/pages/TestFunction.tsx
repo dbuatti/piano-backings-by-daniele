@@ -13,6 +13,16 @@ const TestFunction = () => {
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check if user is authenticated
+  useState(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+  });
 
   const testFunction = async () => {
     setIsTesting(true);
@@ -39,10 +49,10 @@ const TestFunction = () => {
       };
 
       // Get the session from Supabase
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        throw new Error(`Session error: ${sessionError.message}`);
+      if (!session) {
+        throw new Error('You must be logged in to test this function');
       }
       
       const response = await fetch(
@@ -51,7 +61,7 @@ const TestFunction = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || 'no-token'}`
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify(testData),
         }
@@ -66,7 +76,7 @@ const TestFunction = () => {
           description: "Function executed successfully.",
         });
       } else {
-        throw new Error(data.error || 'Function failed');
+        throw new Error(data.error || `Function failed with status ${response.status}`);
       }
     } catch (error: any) {
       console.error('Error testing function:', error);
@@ -95,29 +105,40 @@ const TestFunction = () => {
             <CardTitle className="text-2xl text-[#1C0357]">Function Test</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-6">
-              <p className="mb-4">
-                This page allows you to test the Supabase function that handles form submissions.
-                Click the button below to send a test request to the function.
-              </p>
-              <Button 
-                onClick={testFunction} 
-                disabled={isTesting}
-                className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-              >
-                {isTesting ? 'Testing...' : 'Test Function'}
-              </Button>
-            </div>
-            
-            {result && (
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-2 text-[#1C0357]">Test Result</h3>
-                <div className="bg-gray-100 p-4 rounded-lg">
-                  <pre className="whitespace-pre-wrap break-words">
-                    {JSON.stringify(result, null, 2)}
-                  </pre>
-                </div>
+            {!isAuthenticated ? (
+              <div className="mb-6 p-4 bg-yellow-100 rounded-lg">
+                <h3 className="text-xl font-semibold mb-2 text-[#1C0357]">Authentication Required</h3>
+                <p className="mb-4">
+                  You need to be logged in to test this function. Please log in first and then return to this page.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <p className="mb-4">
+                    This page allows you to test the Supabase function that handles form submissions.
+                    Click the button below to send a test request to the function.
+                  </p>
+                  <Button 
+                    onClick={testFunction} 
+                    disabled={isTesting}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                  >
+                    {isTesting ? 'Testing...' : 'Test Function'}
+                  </Button>
+                </div>
+                
+                {result && (
+                  <div className="mt-6">
+                    <h3 className="text-xl font-semibold mb-2 text-[#1C0357]">Test Result</h3>
+                    <div className="bg-gray-100 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap break-words">
+                        {JSON.stringify(result, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
