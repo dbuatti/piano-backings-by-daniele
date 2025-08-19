@@ -301,7 +301,7 @@ serve(async (req) => {
           console.log('Converting YouTube video to MP3 using Cloud Api Hub - Youtube Downloader API');
           
           try {
-            // First, get video info
+            // Try to get video info first
             const infoUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/info?id=${videoId}`;
             
             const infoResponse = await fetch(infoUrl, {
@@ -315,63 +315,62 @@ serve(async (req) => {
             if (infoResponse.ok) {
               const infoData = await infoResponse.json();
               console.log('Video info:', infoData);
+            } else {
+              const errorText = await infoResponse.text();
+              console.error('Info API error:', infoResponse.status, errorText);
               
-              // Now get the audio download link
-              const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
+              // If info endpoint fails, we'll still try to get the audio
+              console.log('Info API failed, proceeding with audio download anyway');
+            }
+            
+            // Now get the audio download link
+            const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
+            
+            const downloadResponse = await fetch(downloadUrl, {
+              method: 'GET',
+              headers: {
+                'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
+                'x-rapidapi-key': rapidApiKey
+              }
+            });
+            
+            if (downloadResponse.ok) {
+              const downloadData = await downloadResponse.json();
+              console.log('Download data:', downloadData);
               
-              const downloadResponse = await fetch(downloadUrl, {
-                method: 'GET',
-                headers: {
-                  'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
-                  'x-rapidapi-key': rapidApiKey
-                }
-              });
-              
-              if (downloadResponse.ok) {
-                const downloadData = await downloadResponse.json();
-                console.log('Download data:', downloadData);
+              // Check if we have a download URL
+              if (downloadData.url) {
+                // Download the MP3 file
+                console.log('Downloading MP3 from:', downloadData.url);
+                const mp3Response = await fetch(downloadData.url);
                 
-                // Check if we have a download URL
-                if (downloadData.url) {
-                  // Download the MP3 file
-                  console.log('Downloading MP3 from:', downloadData.url);
-                  const mp3Response = await fetch(downloadData.url);
+                if (mp3Response.ok) {
+                  const mp3Buffer = await mp3Response.arrayBuffer();
                   
-                  if (mp3Response.ok) {
-                    const mp3Buffer = await mp3Response.arrayBuffer();
-                    
-                    // Upload to Dropbox
-                    console.log('Uploading MP3 to Dropbox at path:', uploadPath);
-                    const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${dropboxAccessToken}`,
-                        'Dropbox-API-Arg': JSON.stringify({
-                          path: uploadPath,
-                          mode: 'add',
-                          autorename: true,
-                          mute: false
-                        }),
-                        'Content-Type': 'application/octet-stream'
-                      },
-                      body: mp3Buffer
-                    });
-                    
-                    if (dropboxUploadResponse.ok) {
-                      youtubeMp3Success = true;
-                      console.log('MP3 uploaded successfully to Dropbox');
-                    } else {
-                      const errorText = await dropboxUploadResponse.text();
-                      console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-                      youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-                      
-                      // Create a fallback reference file
-                      await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
-                      youtubeMp3Success = true; // Mark as successful since we provided a reference
-                      youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
-                    }
+                  // Upload to Dropbox
+                  console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                  const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${dropboxAccessToken}`,
+                      'Dropbox-API-Arg': JSON.stringify({
+                        path: uploadPath,
+                        mode: 'add',
+                        autorename: true,
+                        mute: false
+                      }),
+                      'Content-Type': 'application/octet-stream'
+                    },
+                    body: mp3Buffer
+                  });
+                  
+                  if (dropboxUploadResponse.ok) {
+                    youtubeMp3Success = true;
+                    console.log('MP3 uploaded successfully to Dropbox');
                   } else {
-                    youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+                    const errorText = await dropboxUploadResponse.text();
+                    console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                    youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
                     
                     // Create a fallback reference file
                     await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
@@ -379,7 +378,7 @@ serve(async (req) => {
                     youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
                   }
                 } else {
-                  youtubeMp3Error = 'No download URL found in API response';
+                  youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
                   
                   // Create a fallback reference file
                   await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
@@ -387,15 +386,7 @@ serve(async (req) => {
                   youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
                 }
               } else {
-                const errorText = await downloadResponse.text();
-                console.error('Download API error:', downloadResponse.status, errorText);
-                
-                // Check if it's a subscription error
-                if (downloadResponse.status === 403) {
-                  youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
-                } else {
-                  youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
-                }
+                youtubeMp3Error = 'No download URL found in API response';
                 
                 // Create a fallback reference file
                 await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
@@ -403,14 +394,14 @@ serve(async (req) => {
                 youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
               }
             } else {
-              const errorText = await infoResponse.text();
-              console.error('Info API error:', infoResponse.status, errorText);
+              const errorText = await downloadResponse.text();
+              console.error('Download API error:', downloadResponse.status, errorText);
               
               // Check if it's a subscription error
-              if (infoResponse.status === 403) {
+              if (downloadResponse.status === 403) {
                 youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
               } else {
-                youtubeMp3Error = `Info API error: ${infoResponse.status} - ${errorText}`;
+                youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
               }
               
               // Create a fallback reference file
