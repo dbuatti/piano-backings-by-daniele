@@ -22,12 +22,15 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
+    // @ts-ignore
+    const dropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/piano-backings';
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
       DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
+      DROPBOX_PARENT_FOLDER: dropboxParentFolder,
       DROPBOX_ACCESS_TOKEN_LENGTH: dropboxAccessToken ? dropboxAccessToken.length : 0
     });
     
@@ -62,6 +65,13 @@ serve(async (req) => {
       dropboxError = 'Dropbox access token not configured';
     } else {
       try {
+        // Ensure the parent folder path starts with a slash and doesn't end with one
+        const normalizedParentFolder = dropboxParentFolder.startsWith('/') 
+          ? dropboxParentFolder.replace(/\/$/, '') 
+          : `/${dropboxParentFolder}`.replace(/\/$/, '');
+          
+        const fullPath = `${normalizedParentFolder}/${folderName}`;
+        
         const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
           method: 'POST',
           headers: {
@@ -69,7 +79,7 @@ serve(async (req) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            path: `/piano-backings/${folderName}`,
+            path: fullPath,
             autorename: false
           })
         });
