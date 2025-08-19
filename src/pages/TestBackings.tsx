@@ -24,11 +24,37 @@ const TestBackings = () => {
     checkAuth();
   }, []);
 
-  const testFunction = async (backingType: string, typeName: string, trackType: string | null = null) => {
+  const testFunction = async (backingType: string, typeName: string, trackType: string | null = null, includePdf: boolean = false) => {
     setIsTesting(true);
     setResult(null);
     
     try {
+      // Create a simple PDF for testing if needed
+      let sheetMusicUrl = null;
+      if (includePdf) {
+        // Create a simple PDF blob for testing
+        const pdfBlob = new Blob(['%PDF-1.4\n%âãÏÓ\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Resources <<\n/Font <<\n/F1 5 0 R\n>>\n>>\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 12 Tf\n72 720 Td\n(Testing PDF Upload) Tj\nET\nendstream\nendobj\n5 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000010 00000 n \n0000000053 00000 n \n0000000115 00000 n \n0000000287 00000 n \n0000000384 00000 n \ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n435\n%%EOF'], { type: 'application/pdf' });
+        
+        // Upload to Supabase storage
+        const fileName = `test-sheet-music-${Date.now()}.pdf`;
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from('sheet-music')
+          .upload(fileName, pdfBlob);
+        
+        if (uploadError) {
+          throw new Error(`File upload error: ${uploadError.message}`);
+        }
+        
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('sheet-music')
+          .getPublicUrl(fileName);
+        
+        sheetMusicUrl = publicUrl;
+      }
+      
       const testData = {
         formData: {
           email: "test@example.com",
@@ -40,6 +66,7 @@ const TestBackings = () => {
           keyForTrack: "",
           youtubeLink: "https://www.youtube.com/watch?v=test",
           voiceMemo: "",
+          sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL if testing PDF
           trackPurpose: "personal-practise",
           backingType: backingType,
           trackType: trackType, // Include trackType in the test data
@@ -157,15 +184,24 @@ const TestBackings = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     {backingTypeOptions.map((option) => (
-                      <Button
-                        key={option.value}
-                        onClick={() => testFunction(option.value, option.label)}
-                        disabled={isTesting}
-                        className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-24 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-lg">{option.label}</span>
-                        <span className="text-sm mt-1">→ {option.folder}</span>
-                      </Button>
+                      <div key={option.value} className="space-y-2">
+                        <Button
+                          onClick={() => testFunction(option.value, option.label, null, false)}
+                          disabled={isTesting}
+                          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-24 flex flex-col items-center justify-center w-full"
+                        >
+                          <span className="font-bold text-lg">{option.label}</span>
+                          <span className="text-sm mt-1">→ {option.folder}</span>
+                        </Button>
+                        <Button
+                          onClick={() => testFunction(option.value, `${option.label} with PDF`, null, true)}
+                          disabled={isTesting}
+                          variant="outline"
+                          className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10 h-10 w-full"
+                        >
+                          Test with PDF
+                        </Button>
+                      </div>
                     ))}
                   </div>
                   
@@ -177,15 +213,24 @@ const TestBackings = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {roughCutOptions.map((option) => (
-                      <Button
-                        key={option.value}
-                        onClick={() => testFunction('full-song', option.label, option.value)}
-                        disabled={isTesting}
-                        className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white h-24 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-lg">{option.label}</span>
-                        <span className="text-sm mt-1">→ {option.folder}</span>
-                      </Button>
+                      <div key={option.value} className="space-y-2">
+                        <Button
+                          onClick={() => testFunction('full-song', option.label, option.value, false)}
+                          disabled={isTesting}
+                          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white h-24 flex flex-col items-center justify-center w-full"
+                        >
+                          <span className="font-bold text-lg">{option.label}</span>
+                          <span className="text-sm mt-1">→ {option.folder}</span>
+                        </Button>
+                        <Button
+                          onClick={() => testFunction('full-song', `${option.label} with PDF`, option.value, true)}
+                          disabled={isTesting}
+                          variant="outline"
+                          className="border-[#F538BC] text-[#F538BC] hover:bg-[#F538BC]/10 h-10 w-full"
+                        >
+                          Test with PDF
+                        </Button>
+                      </div>
                     ))}
                   </div>
                   
@@ -217,6 +262,11 @@ const TestBackings = () => {
                         <li>Database entry: <span className="font-semibold text-green-600">SUCCESS</span></li>
                         <li>Dropbox folder creation: {
                           result.dropboxFolderId 
+                            ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                            : <span className="font-semibold text-red-600">FAILED</span>
+                        }</li>
+                        <li>PDF upload to Dropbox: {
+                          result.pdfUploadSuccess 
                             ? <span className="font-semibold text-green-600">SUCCESS</span> 
                             : <span className="font-semibold text-red-600">FAILED</span>
                         }</li>
