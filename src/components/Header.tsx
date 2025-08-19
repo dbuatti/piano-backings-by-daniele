@@ -158,7 +158,6 @@ const Header = () => {
                 src="/logo.jpeg" 
                 alt="Piano Backings By Daniele Logo" 
               />
-              <span className="ml-3 hidden md:block text-xl font-bold">Piano Backings</span>
             </Link>
           </div>
 
@@ -275,7 +274,6 @@ const Header = () => {
                         src="/logo.jpeg" 
                         alt="Piano Backings By Daniele Logo" 
                       />
-                      <span className="ml-3 text-xl font-bold text-white">Piano Backings</span>
                     </div>
                     <Button 
                       variant="ghost" 
