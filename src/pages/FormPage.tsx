@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, Coffee } from "lucide-react"; // Added Coffee icon
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, Coffee } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import NavigationMenu from "@/components/NavigationMenu";
 
@@ -82,7 +82,7 @@ const FormPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
       {/* Header Section - Designed based on EC8E16FF-8FB0-434A-B0FC-88D3199A594A_1_105_c.jpeg */}
-      <header className="bg-indigo-900 text-white py-8 px-4 sm:px-6 relative overflow-hidden">
+      <header className="bg-primary text-primary-foreground py-8 px-4 sm:px-6 relative overflow-hidden">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           {/* Placeholder for potential piano image or decorative element */}
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(/public/placeholder.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
@@ -95,10 +95,10 @@ const FormPage = () => {
           <div className="relative z-10 flex items-center space-x-2">
             <NavigationMenu />
             <div className="hidden md:flex space-x-4">
-              <Link to="/" className="text-indigo-200 hover:text-white font-medium transition-colors">
+              <Link to="/" className="text-primary-foreground hover:text-white font-medium transition-colors">
                 Home
               </Link>
-              <Link to="/form-page" className="text-indigo-200 hover:text-white font-medium transition-colors">
+              <Link to="/form-page" className="text-primary-foreground hover:text-white font-medium transition-colors">
                 Request Form
               </Link>
             </div>
@@ -107,8 +107,8 @@ const FormPage = () => {
       </header>
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded">
-          <p className="font-bold text-yellow-800">
+        <div className="bg-accent/10 border-l-4 border-accent p-4 mb-6 rounded">
+          <p className="font-bold text-accent-foreground">
             ⚠️ Important Notice: Due to high demand, there is a 2-3 week wait on backing tracks. 
             If you need a faster turnaround, consider the Rush Fee option below. Thank you for your patience!
           </p>
@@ -119,7 +119,7 @@ const FormPage = () => {
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-start mb-4">
-                <MusicIcon className="text-indigo-600 mr-3 mt-1" />
+                <MusicIcon className="text-primary mr-3 mt-1" />
                 <p className="text-lg">
                   I provide custom piano backing tracks for musical theatre and pop. Whether you need a quick reference or a polished audition track, 
                   I offer flexible options to suit your needs.
@@ -133,7 +133,7 @@ const FormPage = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800 flex items-center">
+              <CardTitle className="text-2xl text-primary flex items-center">
                 <LinkIcon className="mr-2" />
                 Payment & Pricing
               </CardTitle>
@@ -144,7 +144,7 @@ const FormPage = () => {
                   <h3 className="font-bold text-lg mb-2">📌 Payment Methods</h3>
                   <ul className="space-y-2">
                     <li>
-                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline flex items-center">
+                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center">
                         <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
                       </a>
                     </li>
@@ -166,7 +166,7 @@ const FormPage = () => {
               <div className="mt-4 pt-4 border-t">
                 <p>
                   💡 For more information:{" "}
-                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     www.danielebuatti.com/piano-backings
                   </a>
                 </p>
@@ -179,24 +179,24 @@ const FormPage = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">RECORDING TYPES</CardTitle>
+              <CardTitle className="text-2xl text-primary">RECORDING TYPES</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
                   <div>
                     <span className="font-bold">Quick Reference (Voice Memo)</span> – A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
                   <div>
                     <span className="font-bold">One-Take Recording</span> – A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
                   <div>
                     <span className="font-bold">Polished & Accurate Backing</span> – A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.
                   </div>
@@ -210,16 +210,16 @@ const FormPage = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">Request Form</CardTitle>
+              <CardTitle className="text-2xl text-primary">Request Form</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <div className="bg-secondary p-4 rounded-lg mb-6">
                 <h3 className="font-bold text-lg mb-2">Request Form Guidelines</h3>
                 <p className="mb-3">
                   This form is designed to capture details about your piano backing request.
                 </p>
-                <div className="border-l-4 border-yellow-500 pl-4">
-                  <p className="font-bold text-yellow-700">
+                <div className="border-l-4 border-accent pl-4">
+                  <p className="font-bold text-accent-foreground">
                     ✅ Important: Your sheet music must be clear, correctly cut, and in the right key.
                   </p>
                 </div>
@@ -234,7 +234,7 @@ const FormPage = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Section 1 */}
                 <div className="border-b pb-6">
-                  <h3 className="text-xl font-semibold mb-4 text-indigo-700">Section 1: Basic Information</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-primary">Section 1: Basic Information</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -331,7 +331,7 @@ const FormPage = () => {
 
                 {/* Section 2 */}
                 <div className="border-b pb-6">
-                  <h3 className="text-xl font-semibold mb-4 text-indigo-700">Section 2: Track Details</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-primary">Section 2: Track Details</h3>
                   
                   <div className="mt-4">
                     <Label htmlFor="youtubeLink" className="flex items-center">
@@ -408,7 +408,7 @@ const FormPage = () => {
 
                 {/* Section 3 */}
                 <div className="border-b pb-6">
-                  <h3 className="text-xl font-semibold mb-4 text-indigo-700">Section 3: Additional Services</h3>
+                  <h3 className="text-xl font-semibold mb-4 text-primary">Section 3: Additional Services</h3>
                   
                   <div className="mt-4">
                     <Label htmlFor="deliveryDate" className="flex items-center">
@@ -494,7 +494,7 @@ const FormPage = () => {
                 </div>
 
                 <div className="text-center">
-                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 text-lg">
+                  <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     Submit Request
                   </Button>
                 </div>

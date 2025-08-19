@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, MusicIcon, LinkIcon, Coffee } from "lucide-react"; // Added Coffee icon
+import { FileTextIcon, MusicIcon, LinkIcon, Coffee } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import NavigationMenu from "@/components/NavigationMenu";
 
@@ -9,7 +9,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
       {/* Header Section - Designed based on EC8E16FF-8FB0-434A-B0FC-88D3199A594A_1_105_c.jpeg */}
-      <header className="bg-indigo-900 text-white py-8 px-4 sm:px-6 relative overflow-hidden">
+      <header className="bg-primary text-primary-foreground py-8 px-4 sm:px-6 relative overflow-hidden">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           {/* Placeholder for potential piano image or decorative element */}
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(/public/placeholder.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
@@ -22,10 +22,10 @@ const Index = () => {
           <div className="relative z-10 flex items-center space-x-2">
             <NavigationMenu />
             <div className="hidden md:flex space-x-4">
-              <Link to="/" className="text-indigo-200 hover:text-white font-medium transition-colors">
+              <Link to="/" className="text-primary-foreground hover:text-white font-medium transition-colors">
                 Home
               </Link>
-              <Link to="/form-page" className="text-indigo-200 hover:text-white font-medium transition-colors">
+              <Link to="/form-page" className="text-primary-foreground hover:text-white font-medium transition-colors">
                 Request Form
               </Link>
             </div>
@@ -38,7 +38,7 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">Welcome to Piano Backings by Daniele</CardTitle>
+              <CardTitle className="text-2xl text-primary">Welcome to Piano Backings by Daniele</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4">
@@ -46,8 +46,8 @@ const Index = () => {
                 I initially offered a "pay as you feel" system, but as the business evolved, I transitioned to set prices for each track to streamline the process.
               </p>
               
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <p className="font-semibold text-yellow-800">
+              <div className="bg-accent/10 border-l-4 border-accent p-4 mb-6">
+                <p className="font-semibold text-accent-foreground">
                   Please be aware that songs from Stephen Sondheim, Jason Robert Brown, or Adam Guettel may require a price adjustment, 
                   as these pieces generally necessitate additional time and effort to craft the perfect backing track.
                 </p>
@@ -71,7 +71,7 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800 flex items-center">
+              <CardTitle className="text-2xl text-primary flex items-center">
                 <LinkIcon className="mr-2" />
                 Payment & Pricing
               </CardTitle>
@@ -82,7 +82,7 @@ const Index = () => {
                   <h3 className="font-bold text-lg mb-2">📌 Payment Methods</h3>
                   <ul className="space-y-2">
                     <li>
-                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline flex items-center">
+                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center">
                         <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
                       </a>
                     </li>
@@ -104,7 +104,7 @@ const Index = () => {
               <div className="mt-4 pt-4 border-t">
                 <p>
                   💡 For more information:{" "}
-                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     www.danielebuatti.com/piano-backings
                   </a>
                 </p>
@@ -117,24 +117,24 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">RECORDING TYPES</CardTitle>
+              <CardTitle className="text-2xl text-primary">RECORDING TYPES</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-4">
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
                   <div>
                     <span className="font-bold">Quick Reference (Voice Memo)</span> – A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
                   <div>
                     <span className="font-bold">One-Take Recording</span> – A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
+                  <div className="bg-secondary text-secondary-foreground font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
                   <div>
                     <span className="font-bold">Polished & Accurate Backing</span> – A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.
                   </div>
@@ -148,14 +148,14 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800 flex items-center">
+              <CardTitle className="text-2xl text-primary flex items-center">
                 <FileTextIcon className="mr-2" />
                 Scanning Tips
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p>
-                For a concise guide on scanning your music, please <a href="https://www.danielebuatti.com/post/scanning-applications" className="text-indigo-600 hover:underline font-medium">click here</a>.
+                For a concise guide on scanning your music, please <a href="https://www.danielebuatti.com/post/scanning-applications" className="text-primary hover:underline font-medium">click here</a>.
               </p>
             </CardContent>
           </Card>
@@ -165,7 +165,7 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">Support My Work</CardTitle>
+              <CardTitle className="text-2xl text-primary">Support My Work</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4">
@@ -177,7 +177,7 @@ const Index = () => {
                 rel="noopener noreferrer"
                 className="inline-block"
               >
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   ☕ Buy Me a Coffee
                 </Button>
               </a>
@@ -189,20 +189,20 @@ const Index = () => {
         <section className="mb-12">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl text-indigo-800">Pricing Structure</CardTitle>
+              <CardTitle className="text-2xl text-primary">Pricing Structure</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 mb-4">
                 <li className="flex items-start">
-                  <span className="text-indigo-600 font-bold mr-2">•</span>
+                  <span className="text-primary font-bold mr-2">•</span>
                   <span><strong>2-5 Coffees:</strong> 16 Bar Cut (roughly 30-45 seconds)</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-indigo-600 font-bold mr-2">•</span>
+                  <span className="text-primary font-bold mr-2">•</span>
                   <span><strong>3-6 Coffees:</strong> 32 Bar Cut (roughly 60-90 seconds)</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-indigo-600 font-bold mr-2">•</span>
+                  <span className="text-primary font-bold mr-2">•</span>
                   <span><strong>4-8 Coffees:</strong> Full Song</span>
                 </li>
               </ul>
@@ -215,9 +215,9 @@ const Index = () => {
 
         {/* Closing */}
         <section className="text-center mb-12">
-          <Card className="shadow-lg bg-indigo-50">
+          <Card className="shadow-lg bg-secondary">
             <CardContent className="py-8">
-              <p className="text-xl text-indigo-800 font-medium">
+              <p className="text-xl text-secondary-foreground font-medium">
                 Thank you for choosing Piano Backings by Daniele. I look forward to crafting your perfect backing track!
               </p>
             </CardContent>
