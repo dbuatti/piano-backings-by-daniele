@@ -21,9 +21,7 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const gmailUser = Deno.env.get('GMAIL_USER') || '';
-    // @ts-ignore
-    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD') || '';
+    const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -63,18 +61,48 @@ serve(async (req) => {
       });
     }
     
-    // For now, we'll return a success message without actually sending the email
-    // In a real implementation, you would integrate with an email service here
-    console.log('Email would be sent to:', to);
-    console.log('Subject:', subject);
-    console.log('Content:', emailContent);
+    // Send email using SendGrid API
+    if (!sendGridApiKey) {
+      throw new Error('SENDGRID_API_KEY not configured. Please add it to your Supabase project secrets.');
+    }
     
-    // Simulate email sending delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sendGridApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [
+          {
+            to: [{ email: to }],
+            subject: subject,
+          },
+        ],
+        from: {
+          email: from || 'pianobackingsbydaniele@gmail.com',
+        },
+        content: [
+          {
+            type: 'text/html',
+            value: emailContent.replace(/\n/g, '<br>'),
+          },
+          {
+            type: 'text/plain',
+            value: emailContent,
+          },
+        ],
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
+    }
     
     return new Response(
       JSON.stringify({ 
-        message: 'Email sent successfully (simulated)'
+        message: 'Email sent successfully'
       }),
       { 
         headers: { 
