@@ -5,84 +5,64 @@
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
-    --foreground: 240 5.9% 10%; /* Dark Blue/Purple for text */
+    --foreground: 260 98% 18%; /* 1C0357 - Dark Purple for text */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 5.9% 10%;
+    --card-foreground: 260 98% 18%; /* 1C0357 */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 5.9% 10%;
+    --popover-foreground: 260 98% 18%; /* 1C0357 */
 
-    --primary: 240 5.9% 10%; /* Deep Blue/Purple - for headers, buttons, main elements */
-    --primary-foreground: 210 40% 98%; /* Off-white text on primary */
+    --primary: 260 98% 18%; /* 1C0357 - Deep Purple */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
 
-    --secondary: 240 4.8% 95.9%; /* Very light gray-blue - for lighter backgrounds/elements */
-    --secondary-foreground: 240 5.9% 10%; /* Dark text on secondary */
+    --secondary: 258 35% 85%; /* D1AAF2 - Light Purple */
+    --secondary-foreground: 260 98% 18%; /* 1C0357 - Dark Purple */
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 258 35% 90%; /* Lighter version of D1AAF2 */
+    --muted-foreground: 261 97% 25%; /* Slightly darker 1C0357 */
 
-    --accent: 45 93% 58%; /* Vibrant Yellow/Gold */
-    --accent-foreground: 240 5.9% 10%; /* Dark text on accent */
+    --accent: 308 85% 59%; /* F538BC - Hot Pink */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 3.7% 15.9%; /* Darker border for contrast */
-    --input: 240 3.7% 15.9%;
-    --ring: 45 93% 58%; /* Ring color matching accent */
+    --border: 260 100% 16%; /* 1A0058 - Darker Purple for borders */
+    --input: 260 100% 16%; /* 1A0058 */
+    --ring: 308 85% 59%; /* F538BC - Ring color matching accent */
 
     --radius: 0.5rem;
-
-    /* Sidebar colors - adjusted to new theme */
-    --sidebar-background: var(--primary);
-    --sidebar-foreground: var(--primary-foreground);
-    --sidebar-primary: var(--accent);
-    --sidebar-primary-foreground: var(--primary);
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: var(--primary-foreground);
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: var(--accent);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%; /* Dark blue */
-    --foreground: 210 40% 98%; /* Off-white */
+    --background: 260 98% 10%; /* Darker version of 1C0357 */
+    --foreground: 258 35% 90%; /* D1AAF2 - Light Purple for text */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 260 98% 10%;
+    --card-foreground: 258 35% 90%; /* D1AAF2 */
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 260 98% 10%;
+    --popover-foreground: 258 35% 90%; /* D1AAF2 */
 
-    --primary: 210 40% 98%; /* Off-white for primary in dark mode */
-    --primary-foreground: 222.2 47.4% 11.2%; /* Dark blue */
+    --primary: 258 35% 85%; /* D1AAF2 - Light Purple */
+    --primary-foreground: 260 98% 18%; /* 1C0357 - Dark Purple */
 
-    --secondary: 217.2 32.6% 17.5%; /* Darker gray-blue */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 260 98% 18%; /* 1C0357 - Dark Purple */
+    --secondary-foreground: 0 0% 100%; /* White text on secondary */
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 260 98% 15%;
+    --muted-foreground: 258 35% 80%;
 
-    --accent: 45 93% 58%; /* Vibrant Yellow/Gold */
-    --accent-foreground: 222.2 47.4% 11.2%; /* Dark text on accent */
+    --accent: 308 85% 59%; /* F538BC - Hot Pink */
+    --accent-foreground: 0 0% 100%; /* White text on accent */
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 45 93% 58%; /* Ring color matching accent */
-
-    /* Sidebar colors - adjusted to new theme */
-    --sidebar-background: var(--background);
-    --sidebar-foreground: var(--foreground);
-    --sidebar-primary: var(--accent);
-    --sidebar-primary-foreground: var(--primary);
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: var(--foreground);
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: var(--accent);
+    --border: 260 100% 20%; /* Slightly lighter 1A0058 */
+    --input: 260 100% 20%;
+    --ring: 308 85% 59%; /* F538BC - Ring color matching accent */
   }
 }
 
