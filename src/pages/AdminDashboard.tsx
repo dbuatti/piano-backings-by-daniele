@@ -607,7 +607,22 @@ const AdminDashboard = () => {
   const openUploadPlatformsDialog = (id: string) => {
     const request = requests.find(req => req.id === id);
     if (request && request.uploaded_platforms) {
-      setPlatforms(request.uploaded_platforms);
+      // Parse JSON string if it's a string, otherwise use as is
+      if (typeof request.uploaded_platforms === 'string') {
+        try {
+          setPlatforms(JSON.parse(request.uploaded_platforms));
+        } catch (e) {
+          setPlatforms({
+            youtube: false,
+            tiktok: false,
+            facebook: false,
+            instagram: false,
+            gumroad: false
+          });
+        }
+      } else {
+        setPlatforms(request.uploaded_platforms);
+      }
     } else {
       setPlatforms({
         youtube: false,
@@ -627,14 +642,14 @@ const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('backing_requests')
-        .update({ uploaded_platforms: platforms })
+        .update({ uploaded_platforms: JSON.stringify(platforms) })
         .eq('id', selectedRequestForPlatforms);
       
       if (error) throw error;
       
       // Update local state
       setRequests(requests.map(req => 
-        req.id === selectedRequestForPlatforms ? { ...req, uploaded_platforms: platforms } : req
+        req.id === selectedRequestForPlatforms ? { ...req, uploaded_platforms: JSON.stringify(platforms) } : req
       ));
       
       toast({
@@ -705,12 +720,22 @@ const AdminDashboard = () => {
   const getPlatformIcons = (platforms: any) => {
     if (!platforms) return null;
     
+    // Handle both string and object formats
+    let platformsObj = platforms;
+    if (typeof platforms === 'string') {
+      try {
+        platformsObj = JSON.parse(platforms);
+      } catch (e) {
+        return null;
+      }
+    }
+    
     const icons = [];
-    if (platforms.youtube) icons.push(<Youtube key="youtube" className="w-4 h-4 text-red-600" />);
-    if (platforms.tiktok) icons.push(<Music key="tiktok" className="w-4 h-4 text-black" />);
-    if (platforms.facebook) icons.push(<Facebook key="facebook" className="w-4 h-4 text-blue-600" />);
-    if (platforms.instagram) icons.push(<Instagram key="instagram" className="w-4 h-4 text-pink-500" />);
-    if (platforms.gumroad) icons.push(<ExternalLink key="gumroad" className="w-4 h-4 text-purple-600" />);
+    if (platformsObj.youtube) icons.push(<Youtube key="youtube" className="w-4 h-4 text-red-600" />);
+    if (platformsObj.tiktok) icons.push(<Music key="tiktok" className="w-4 h-4 text-black" />);
+    if (platformsObj.facebook) icons.push(<Facebook key="facebook" className="w-4 h-4 text-blue-600" />);
+    if (platformsObj.instagram) icons.push(<Instagram key="instagram" className="w-4 h-4 text-pink-500" />);
+    if (platformsObj.gumroad) icons.push(<ExternalLink key="gumroad" className="w-4 h-4 text-purple-600" />);
     
     return (
       <div className="flex gap-1">
