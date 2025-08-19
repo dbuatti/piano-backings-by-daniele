@@ -32,27 +32,40 @@ const TestBackings = () => {
       // Create a simple PDF for testing if needed
       let sheetMusicUrl = null;
       if (includePdf) {
-        // Create a simple PDF blob for testing
-        const pdfBlob = new Blob(['%PDF-1.4\n%âãÏÓ\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Resources <<\n/Font <<\n/F1 5 0 R\n>>\n>>\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 12 Tf\n72 720 Td\n(Testing PDF Upload) Tj\nET\nendstream\nendobj\n5 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000010 00000 n \n0000000053 00000 n \n0000000115 00000 n \n0000000287 00000 n \n0000000384 00000 n \ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n435\n%%EOF'], { type: 'application/pdf' });
-        
-        // Upload to Supabase storage
-        const fileName = `test-sheet-music-${Date.now()}.pdf`;
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from('sheet-music')
-          .upload(fileName, pdfBlob);
-        
-        if (uploadError) {
-          throw new Error(`File upload error: ${uploadError.message}`);
+        try {
+          // Create a simple PDF blob for testing
+          const pdfBlob = new Blob(['%PDF-1.4\n%âãÏÓ\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Resources <<\n/Font <<\n/F1 5 0 R\n>>\n>>\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 12 Tf\n72 720 Td\n(Testing PDF Upload) Tj\nET\nendstream\nendobj\n5 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000010 00000 n \n0000000053 00000 n \n0000000115 00000 n \n0000000287 00000 n \n0000000384 00000 n \ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n435\n%%EOF'], { type: 'application/pdf' });
+          
+          // Upload to Supabase storage
+          const fileName = `test-sheet-music-${Date.now()}.pdf`;
+          const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('sheet-music')
+            .upload(fileName, pdfBlob, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            throw new Error(`File upload error: ${uploadError.message}`);
+          }
+          
+          // Get the public URL for the uploaded file
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('sheet-music')
+            .getPublicUrl(fileName);
+          
+          sheetMusicUrl = publicUrl;
+        } catch (uploadError: any) {
+          console.error('PDF creation/upload error:', uploadError);
+          toast({
+            title: "PDF Upload Error",
+            description: `Failed to create/upload test PDF: ${uploadError.message}`,
+            variant: "destructive",
+          });
+          // Continue with the test even if PDF upload fails
         }
-        
-        // Get the public URL for the uploaded file
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('sheet-music')
-          .getPublicUrl(fileName);
-        
-        sheetMusicUrl = publicUrl;
       }
       
       const testData = {
@@ -266,9 +279,11 @@ const TestBackings = () => {
                             : <span className="font-semibold text-red-600">FAILED</span>
                         }</li>
                         <li>PDF upload to Dropbox: {
-                          result.pdfUploadSuccess 
-                            ? <span className="font-semibold text-green-600">SUCCESS</span> 
-                            : <span className="font-semibold text-red-600">FAILED</span>
+                          result.pdfUploadSuccess !== undefined
+                            ? result.pdfUploadSuccess 
+                              ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                              : <span className="font-semibold text-red-600">FAILED</span>
+                            : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
                         }</li>
                         <li>Folder path: <span className="font-mono">{result.parentFolderUsed}</span></li>
                       </ul>
