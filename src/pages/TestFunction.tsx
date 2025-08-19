@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { createClient } from '@/integrations/supabase/client';
 
 const TestFunction = () => {
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const supabase = createClient();
 
   const testFunction = async () => {
     setIsTesting(true);
@@ -37,12 +39,16 @@ const TestFunction = () => {
         }
       };
 
+      // Get the session from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`
           },
           body: JSON.stringify(testData),
         }

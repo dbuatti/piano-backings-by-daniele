@@ -9,6 +9,7 @@ import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon } from "lucide-reac
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
+import { createClient } from '@/integrations/supabase/client';
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -30,6 +31,7 @@ const FormPage = () => {
     additionalServices: [] as string[],
     specialRequests: ''
   });
+  const supabase = createClient();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -85,20 +87,8 @@ const FormPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Create a FormData object to handle file uploads
-      const formDataToSend = new FormData();
-      
-      // Add all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'sheetMusic') {
-          formDataToSend.append(key, value as string);
-        }
-      });
-      
-      // Add the file if it exists
-      if (formData.sheetMusic) {
-        formDataToSend.append('sheetMusic', formData.sheetMusic);
-      }
+      // Get the session from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
       
       // For now, we'll send the data to our backend function
       const response = await fetch(
@@ -107,6 +97,7 @@ const FormPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`
           },
           body: JSON.stringify({
             formData: {
