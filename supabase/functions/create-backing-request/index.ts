@@ -26,6 +26,8 @@ serve(async (req) => {
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     // @ts-ignore
     const templateFilePath = Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx';
+    // @ts-ignore
+    const rapidApiKey = '1f1091acdamshaa341433b2cc02ap1e1f96jsn4ab82cdaae2a'; // Your RapidAPI key
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
@@ -285,100 +287,69 @@ serve(async (req) => {
         const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
         const uploadPath = `${dropboxFolderPath}/${mp3FileName}`;
         
-        // IMPORTANT: This is where you would integrate with a real YouTube-to-MP3 service
-        // For now, we'll create a placeholder MP3 file since actual YouTube conversion
-        // would require external services that may violate YouTube's Terms of Service
-        // In a real implementation, you would:
-        // 1. Call a YouTube-to-MP3 API service
-        // 2. Wait for the conversion to complete
-        // 3. Download the resulting MP3 file
-        // 4. Upload it to Dropbox
+        // Use RapidAPI YouTube to MP3 Converter
+        console.log('Converting YouTube video to MP3 using RapidAPI');
         
-        // Example of how you might integrate with a YouTube-to-MP3 service:
-        /*
-        const conversionServiceUrl = 'https://api.your-youtube-to-mp3-service.com/convert';
-        const conversionResponse = await fetch(conversionServiceUrl, {
-          method: 'POST',
+        const rapidApiResponse = await fetch(`https://youtube-mp3-download1.p.rapidapi.com/dl?id=${videoId}`, {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer YOUR_API_KEY'
-          },
-          body: JSON.stringify({
-            url: formData.youtubeLink,
-            format: 'mp3',
-            quality: '128'
-          })
+            'X-RapidAPI-Key': rapidApiKey,
+            'X-RapidAPI-Host': 'youtube-mp3-download1.p.rapidapi.com'
+          }
         });
         
-        if (conversionResponse.ok) {
-          const conversionData = await conversionResponse.json();
-          // Get the download URL for the MP3
-          const mp3DownloadUrl = conversionData.download_url;
+        if (rapidApiResponse.ok) {
+          const rapidApiData = await rapidApiResponse.json();
+          console.log('RapidAPI response:', rapidApiData);
           
-          // Download the MP3 file
-          const mp3Response = await fetch(mp3DownloadUrl);
-          if (mp3Response.ok) {
-            const mp3Buffer = await mp3Response.arrayBuffer();
+          // Check if conversion is complete
+          if (rapidApiData.status === 'ok' && rapidApiData.downloadUrl) {
+            // Download the MP3 file
+            console.log('Downloading MP3 from:', rapidApiData.downloadUrl);
+            const mp3Response = await fetch(rapidApiData.downloadUrl);
             
-            // Upload to Dropbox
-            const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${dropboxAccessToken}`,
-                'Dropbox-API-Arg': JSON.stringify({
-                  path: uploadPath,
-                  mode: 'add',
-                  autorename: true,
-                  mute: false
-                }),
-                'Content-Type': 'application/octet-stream'
-              },
-              body: mp3Buffer
-            });
-            
-            if (dropboxUploadResponse.ok) {
-              youtubeMp3Success = true;
-              console.log('MP3 uploaded successfully to Dropbox');
+            if (mp3Response.ok) {
+              const mp3Buffer = await mp3Response.arrayBuffer();
+              
+              // Upload to Dropbox
+              console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+              const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${dropboxAccessToken}`,
+                  'Dropbox-API-Arg': JSON.stringify({
+                    path: uploadPath,
+                    mode: 'add',
+                    autorename: true,
+                    mute: false
+                  }),
+                  'Content-Type': 'application/octet-stream'
+                },
+                body: mp3Buffer
+              });
+              
+              if (dropboxUploadResponse.ok) {
+                youtubeMp3Success = true;
+                console.log('MP3 uploaded successfully to Dropbox');
+              } else {
+                const errorText = await dropboxUploadResponse.text();
+                console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+              }
             } else {
-              const errorText = await dropboxUploadResponse.text();
-              youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+              youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
             }
+          } else if (rapidApiData.status === 'processing') {
+            // If still processing, we might want to implement a retry mechanism
+            // For now, we'll just log it and consider it a failure
+            youtubeMp3Error = 'YouTube to MP3 conversion still processing';
           } else {
-            youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+            youtubeMp3Error = `YouTube to MP3 conversion failed: ${rapidApiData.status || 'Unknown error'}`;
           }
         } else {
-          youtubeMp3Error = `YouTube conversion service error: ${conversionResponse.status}`;
-        }
-        */
-        
-        // For now, we'll create a placeholder MP3 file (1 second of silence)
-        const mp3Buffer = createPlaceholderMp3();
-        
-        // Upload to Dropbox
-        console.log('Uploading placeholder MP3 to Dropbox at path:', uploadPath);
-        
-        const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${dropboxAccessToken}`,
-            'Dropbox-API-Arg': JSON.stringify({
-              path: uploadPath,
-              mode: 'add',
-              autorename: true,
-              mute: false
-            }),
-            'Content-Type': 'application/octet-stream'
-          },
-          body: mp3Buffer
-        });
-        
-        if (dropboxUploadResponse.ok) {
-          youtubeMp3Success = true;
-          console.log('Placeholder MP3 uploaded successfully to Dropbox');
-        } else {
-          const errorText = await dropboxUploadResponse.text();
-          console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-          youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+          const errorText = await rapidApiResponse.text();
+          console.error('RapidAPI error:', rapidApiResponse.status, errorText);
+          youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
         }
       } catch (error) {
         console.error('YouTube MP3 processing error:', error);
@@ -527,19 +498,4 @@ function extractYouTubeId(url: string): string | null {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
-}
-
-// Helper function to create a placeholder MP3 file (1 second of silence)
-function createPlaceholderMp3(): ArrayBuffer {
-  // This creates a minimal valid MP3 file with 1 second of silence
-  // In a real implementation, this would be replaced with actual MP3 data
-  const mp3Data = [
-    0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0x54, 0x53, 0x53, 0x45, 0x00, 0x00,
-    0x00, 0x0F, 0x00, 0x00, 0x03, 0x65, 0x6E, 0x63, 0x6F, 0x64, 0x65, 0x64, 0x20, 0x62, 0x79, 0x20,
-    0x44, 0x79, 0x61, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFB, 0x90, 0x64, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-  ];
-  
-  return new Uint8Array(mp3Data).buffer;
 }
