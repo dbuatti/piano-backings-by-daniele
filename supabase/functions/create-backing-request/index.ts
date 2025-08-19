@@ -26,6 +26,19 @@ serve(async (req) => {
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get the authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing Authorization header');
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      throw new Error('Invalid or expired token');
+    }
+    
     // Get the request data
     const { formData } = await req.json();
     
@@ -61,6 +74,7 @@ serve(async (req) => {
       .from('backing_requests')
       .insert([
         {
+          user_id: user.id,
           email: formData.email,
           name: formData.name,
           song_title: formData.songTitle,
