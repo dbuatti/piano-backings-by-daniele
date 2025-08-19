@@ -286,46 +286,42 @@ serve(async (req) => {
           youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
           console.error('RapidAPI key not configured in Supabase secrets');
         } else {
-          // Based on the tutorial, we need to make a GET request to the download endpoint
-          // with the YouTube URL as a query parameter and the API key in the headers
-          console.log('Converting YouTube video to MP3');
+          // Use the correct RapidAPI endpoint
+          console.log('Converting YouTube video to MP3 using youtube-to-mp315.p.rapidapi.com');
           
-          // Extract the base URL and video ID
-          const videoId = extractYouTubeId(formData.youtubeLink);
-          if (!videoId) {
-            throw new Error('Invalid YouTube URL');
-          }
+          // First, make the download request
+          const downloadUrl = `https://youtube-to-mp315.p.rapidapi.com/download?url=${encodeURIComponent(formData.youtubeLink)}`;
           
-          // Use the correct endpoint based on the tutorial
-          const apiUrl = `http://45.76.15.135:80/download?url=${encodeURIComponent(formData.youtubeLink)}`;
-          
-          const rapidApiResponse = await fetch(apiUrl, {
+          const downloadResponse = await fetch(downloadUrl, {
             method: 'GET',
             headers: {
-              'X-RapidAPI-Key': rapidApiKey
+              'x-rapidapi-host': 'youtube-to-mp315.p.rapidapi.com',
+              'x-rapidapi-key': rapidApiKey
             }
           });
           
-          if (rapidApiResponse.ok) {
-            const rapidApiData = await rapidApiResponse.json();
-            console.log('RapidAPI response:', rapidApiData);
+          if (downloadResponse.ok) {
+            const downloadData = await downloadResponse.json();
+            console.log('Download response:', downloadData);
             
             // Check if we got an ID for polling
-            if (rapidApiData.id) {
+            if (downloadData.id) {
               // Poll for the conversion status
-              let downloadUrl = null;
+              let downloadLink = null;
               let pollCount = 0;
               const maxPolls = 10; // Maximum number of polls (10 * 3 seconds = 30 seconds)
               
-              while (pollCount < maxPolls && !downloadUrl) {
+              while (pollCount < maxPolls && !downloadLink) {
                 // Wait 3 seconds before checking status
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 // Check conversion status
-                const statusResponse = await fetch(`http://45.76.15.135:80/status/${rapidApiData.id}`, {
+                const statusUrl = `https://youtube-to-mp315.p.rapidapi.com/status/${downloadData.id}`;
+                const statusResponse = await fetch(statusUrl, {
                   method: 'GET',
                   headers: {
-                    'X-RapidAPI-Key': rapidApiKey
+                    'x-rapidapi-host': 'youtube-to-mp315.p.rapidapi.com',
+                    'x-rapidapi-key': rapidApiKey
                   }
                 });
                 
@@ -335,8 +331,8 @@ serve(async (req) => {
                   
                   // Check if conversion is complete
                   if (statusData.status === 'AVAILABLE' && statusData.link) {
-                    downloadUrl = statusData.link;
-                    console.log('MP3 download URL obtained:', downloadUrl);
+                    downloadLink = statusData.link;
+                    console.log('MP3 download URL obtained:', downloadLink);
                   } else if (statusData.status === 'FAILED' || statusData.status === 'CONVERSION_ERROR') {
                     throw new Error('YouTube to MP3 conversion failed');
                   }
@@ -350,10 +346,10 @@ serve(async (req) => {
               }
               
               // If we have a download URL, download and upload the MP3
-              if (downloadUrl) {
+              if (downloadLink) {
                 // Download the MP3 file
-                console.log('Downloading MP3 from:', downloadUrl);
-                const mp3Response = await fetch(downloadUrl);
+                console.log('Downloading MP3 from:', downloadLink);
+                const mp3Response = await fetch(downloadLink);
                 
                 if (mp3Response.ok) {
                   const mp3Buffer = await mp3Response.arrayBuffer();
@@ -390,17 +386,17 @@ serve(async (req) => {
                 youtubeMp3Error = 'YouTube to MP3 conversion timed out';
               }
             } else {
-              youtubeMp3Error = `YouTube to MP3 conversion failed: ${rapidApiData.message || 'Unknown error'}`;
+              youtubeMp3Error = `YouTube to MP3 conversion failed: ${downloadData.message || 'Unknown error'}`;
             }
           } else {
-            const errorText = await rapidApiResponse.text();
-            console.error('RapidAPI error:', rapidApiResponse.status, errorText);
+            const errorText = await downloadResponse.text();
+            console.error('Download request error:', downloadResponse.status, errorText);
             
             // Check if it's a subscription error
-            if (rapidApiResponse.status === 403) {
+            if (downloadResponse.status === 403) {
               youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube to MP3 API';
             } else {
-              youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
+              youtubeMp3Error = `Download request error: ${downloadResponse.status} - ${errorText}`;
             }
           }
         }
