@@ -27,16 +27,16 @@ serve(async (req) => {
     // @ts-ignore
     const templateFilePath = Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx';
     // @ts-ignore
-    const rapidApiKey = '1f1091acdamshaa341433b2cc02ap1e1f96jsn4ab82cdaae2a'; // Your RapidAPI key
+    const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     
-    // Log environment variable status for debugging
+    // Log environment variable status for debugging (without exposing the actual key)
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
       DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       LOGIC_TEMPLATE_PATH: templateFilePath,
-      DROPBOX_ACCESS_TOKEN_LENGTH: dropboxAccessToken ? dropboxAccessToken.length : 0
+      RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET'
     });
     
     // Create a Supabase client with service role key (has full permissions)
@@ -287,74 +287,80 @@ serve(async (req) => {
         const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
         const uploadPath = `${dropboxFolderPath}/${mp3FileName}`;
         
-        // Use RapidAPI YouTube to MP3 Converter
-        console.log('Converting YouTube video to MP3 using RapidAPI');
-        
-        const rapidApiResponse = await fetch(`https://youtube-mp3-download1.p.rapidapi.com/dl?id=${videoId}`, {
-          method: 'GET',
-          headers: {
-            'X-RapidAPI-Key': rapidApiKey,
-            'X-RapidAPI-Host': 'youtube-mp3-download1.p.rapidapi.com'
-          }
-        });
-        
-        if (rapidApiResponse.ok) {
-          const rapidApiData = await rapidApiResponse.json();
-          console.log('RapidAPI response:', rapidApiData);
-          
-          // Check if conversion is complete
-          if (rapidApiData.status === 'ok' && rapidApiData.downloadUrl) {
-            // Download the MP3 file
-            console.log('Downloading MP3 from:', rapidApiData.downloadUrl);
-            const mp3Response = await fetch(rapidApiData.downloadUrl);
-            
-            if (mp3Response.ok) {
-              const mp3Buffer = await mp3Response.arrayBuffer();
-              
-              // Upload to Dropbox
-              console.log('Uploading MP3 to Dropbox at path:', uploadPath);
-              const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${dropboxAccessToken}`,
-                  'Dropbox-API-Arg': JSON.stringify({
-                    path: uploadPath,
-                    mode: 'add',
-                    autorename: true,
-                    mute: false
-                  }),
-                  'Content-Type': 'application/octet-stream'
-                },
-                body: mp3Buffer
-              });
-              
-              if (dropboxUploadResponse.ok) {
-                youtubeMp3Success = true;
-                console.log('MP3 uploaded successfully to Dropbox');
-              } else {
-                const errorText = await dropboxUploadResponse.text();
-                console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-                youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-              }
-            } else {
-              youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
-            }
-          } else if (rapidApiData.status === 'processing') {
-            // If still processing, we might want to implement a retry mechanism
-            // For now, we'll just log it and consider it a failure
-            youtubeMp3Error = 'YouTube to MP3 conversion still processing';
-          } else {
-            youtubeMp3Error = `YouTube to MP3 conversion failed: ${rapidApiData.status || 'Unknown error'}`;
-          }
+        // Check if RapidAPI key is available
+        if (!rapidApiKey) {
+          youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
+          console.error('RapidAPI key not configured in Supabase secrets');
         } else {
-          const errorText = await rapidApiResponse.text();
-          console.error('RapidAPI error:', rapidApiResponse.status, errorText);
+          // Use RapidAPI YouTube to MP3 Converter
+          console.log('Converting YouTube video to MP3 using RapidAPI');
           
-          // Check if it's a subscription error
-          if (rapidApiResponse.status === 403) {
-            youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription';
+          const rapidApiResponse = await fetch(`https://youtube-mp3-download1.p.rapidapi.com/dl?id=${videoId}`, {
+            method: 'GET',
+            headers: {
+              'X-RapidAPI-Key': rapidApiKey,
+              'X-RapidAPI-Host': 'youtube-mp3-download1.p.rapidapi.com'
+            }
+          });
+          
+          if (rapidApiResponse.ok) {
+            const rapidApiData = await rapidApiResponse.json();
+            console.log('RapidAPI response:', rapidApiData);
+            
+            // Check if conversion is complete
+            if (rapidApiData.status === 'ok' && rapidApiData.downloadUrl) {
+              // Download the MP3 file
+              console.log('Downloading MP3 from:', rapidApiData.downloadUrl);
+              const mp3Response = await fetch(rapidApiData.downloadUrl);
+              
+              if (mp3Response.ok) {
+                const mp3Buffer = await mp3Response.arrayBuffer();
+                
+                // Upload to Dropbox
+                console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${dropboxAccessToken}`,
+                    'Dropbox-API-Arg': JSON.stringify({
+                      path: uploadPath,
+                      mode: 'add',
+                      autorename: true,
+                      mute: false
+                    }),
+                    'Content-Type': 'application/octet-stream'
+                  },
+                  body: mp3Buffer
+                });
+                
+                if (dropboxUploadResponse.ok) {
+                  youtubeMp3Success = true;
+                  console.log('MP3 uploaded successfully to Dropbox');
+                } else {
+                  const errorText = await dropboxUploadResponse.text();
+                  console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                  youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                }
+              } else {
+                youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+              }
+            } else if (rapidApiData.status === 'processing') {
+              // If still processing, we might want to implement a retry mechanism
+              // For now, we'll just log it and consider it a failure
+              youtubeMp3Error = 'YouTube to MP3 conversion still processing';
+            } else {
+              youtubeMp3Error = `YouTube to MP3 conversion failed: ${rapidApiData.status || 'Unknown error'}`;
+            }
           } else {
-            youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
+            const errorText = await rapidApiResponse.text();
+            console.error('RapidAPI error:', rapidApiResponse.status, errorText);
+            
+            // Check if it's a subscription error
+            if (rapidApiResponse.status === 403) {
+              youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube MP3 API';
+            } else {
+              youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
+            }
           }
         }
       } catch (error) {
