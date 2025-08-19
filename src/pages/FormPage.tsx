@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, Menu } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, Coffee } from "lucide-react"; // Added Coffee icon
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import NavigationMenu from "@/components/NavigationMenu";
 
@@ -80,32 +80,39 @@ const FormPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100 py-12 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <header className="text-center mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <div></div>
-            <h1 className="text-4xl md:text-5xl font-bold text-indigo-900">Piano Backings Form</h1>
-            <div className="flex items-center space-x-2">
-              <NavigationMenu />
-              <div className="hidden md:flex space-x-4">
-                <Link to="/" className="text-indigo-700 hover:text-indigo-900 font-medium">
-                  Home
-                </Link>
-                <Link to="/form-page" className="text-indigo-700 hover:text-indigo-900 font-medium">
-                  Request Form
-                </Link>
-              </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
+      {/* Header Section - Designed based on EC8E16FF-8FB0-434A-B0FC-88D3199A594A_1_105_c.jpeg */}
+      <header className="bg-indigo-900 text-white py-8 px-4 sm:px-6 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          {/* Placeholder for potential piano image or decorative element */}
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(/public/placeholder.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+          
+          <div className="relative z-10 flex-grow text-center">
+            <h1 className="text-4xl md:text-6xl font-extrabold mb-2 tracking-tight">Piano Backings Form</h1>
+            <p className="text-xl md:text-2xl font-light opacity-90">Submit Your Custom Track Request</p>
+          </div>
+          
+          <div className="relative z-10 flex items-center space-x-2">
+            <NavigationMenu />
+            <div className="hidden md:flex space-x-4">
+              <Link to="/" className="text-indigo-200 hover:text-white font-medium transition-colors">
+                Home
+              </Link>
+              <Link to="/form-page" className="text-indigo-200 hover:text-white font-medium transition-colors">
+                Request Form
+              </Link>
             </div>
           </div>
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded">
-            <p className="font-bold text-yellow-800">
-              ⚠️ Important Notice: Due to high demand, there is a 2-3 week wait on backing tracks. 
-              If you need a faster turnaround, consider the Rush Fee option below. Thank you for your patience!
-            </p>
-          </div>
-        </header>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded">
+          <p className="font-bold text-yellow-800">
+            ⚠️ Important Notice: Due to high demand, there is a 2-3 week wait on backing tracks. 
+            If you need a faster turnaround, consider the Rush Fee option below. Thank you for your patience!
+          </p>
+        </div>
 
         {/* Introduction */}
         <section className="mb-12">
@@ -137,8 +144,8 @@ const FormPage = () => {
                   <h3 className="font-bold text-lg mb-2">📌 Payment Methods</h3>
                   <ul className="space-y-2">
                     <li>
-                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-                        ☕ Buy Me a Coffee
+                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline flex items-center">
+                        <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
                       </a>
                     </li>
                     <li>
