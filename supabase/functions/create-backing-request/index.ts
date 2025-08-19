@@ -64,6 +64,9 @@ serve(async (req) => {
     const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
     const folderName = `${dateString} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}`;
     
+    // Create the Logic Pro X file name based on the request
+    const logicFileName = `${formData.songTitle} from ${formData.musicalOrArtist} for ${firstName}`;
+    
     // Determine the parent folder based on track type first, then backing type
     let parentFolder = defaultDropboxParentFolder;
     
@@ -171,7 +174,7 @@ serve(async (req) => {
       }
     }
     
-    // Copy Logic Pro X template file to the new folder
+    // Copy Logic Pro X template file to the new folder with custom name
     let templateCopySuccess = false;
     let templateCopyError = null;
     
@@ -194,8 +197,9 @@ serve(async (req) => {
           const fileInfo = await fileInfoResponse.json();
           console.log('Template file info:', fileInfo);
           
-          // Copy the template file to the new folder
-          const copyPath = `${dropboxFolderPath}/${fileInfo.name}`;
+          // Create the new file name with .logicx extension
+          const newFileName = `${logicFileName}.logicx`;
+          const copyPath = `${dropboxFolderPath}/${newFileName}`;
           console.log('Copying template to:', copyPath);
           
           const copyResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
@@ -212,7 +216,7 @@ serve(async (req) => {
           
           if (copyResponse.ok) {
             templateCopySuccess = true;
-            console.log('Template file copied successfully');
+            console.log('Template file copied successfully with new name:', newFileName);
           } else {
             const errorText = await copyResponse.text();
             console.error('Dropbox template copy error:', copyResponse.status, errorText);
@@ -318,7 +322,8 @@ serve(async (req) => {
       trackTypeUsed: formData.trackType,
       templateCopySuccess,
       pdfUploadSuccess,
-      dropboxFolderPath
+      dropboxFolderPath,
+      logicFileNameUsed: logicFileName
     };
     
     if (dropboxError) {
