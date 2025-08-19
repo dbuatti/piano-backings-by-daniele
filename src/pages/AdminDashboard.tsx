@@ -22,7 +22,8 @@ import {
   FileAudio,
   Calendar,
   Search,
-  Filter
+  Filter,
+  Trash2
 } from 'lucide-react';
 import {
   Select,
@@ -43,6 +44,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -60,6 +71,9 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [backingTypeFilter, setBackingTypeFilter] = useState('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -499,6 +513,69 @@ const AdminDashboard = () => {
     setBackingTypeFilter('all');
   };
 
+  const deleteRequest = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setRequests(requests.filter(req => req.id !== id));
+      setSelectedRequests(selectedRequests.filter(reqId => reqId !== id));
+      
+      toast({
+        title: "Request Deleted",
+        description: "The request has been deleted successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete request: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const batchDeleteRequests = async () => {
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .delete()
+        .in('id', selectedRequests);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setRequests(requests.filter(req => !selectedRequests.includes(req.id)));
+      setSelectedRequests([]);
+      
+      toast({
+        title: "Requests Deleted",
+        description: `${selectedRequests.length} requests have been deleted successfully.`,
+      });
+      
+      setBatchDeleteDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete requests: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (id: string) => {
+    setRequestToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const openBatchDeleteDialog = () => {
+    setBatchDeleteDialogOpen(true);
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -721,6 +798,13 @@ const AdminDashboard = () => {
                         >
                           <XCircle className="w-4 h-4 mr-2" /> Mark Cancelled
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={openBatchDeleteDialog}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -848,6 +932,14 @@ const AdminDashboard = () => {
                                   View
                                 </Button>
                               </Link>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => openDeleteDialog(request.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -938,6 +1030,53 @@ Daniele"
             </div>
           </DialogContent>
         </Dialog>
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete this request?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the request and remove all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  if (requestToDelete) {
+                    deleteRequest(requestToDelete);
+                    setDeleteDialogOpen(false);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Batch Delete Confirmation Dialog */}
+        <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete {selectedRequests.length} requests?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete all selected requests and remove all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={batchDeleteRequests}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         
         <MadeWithDyad />
       </div>
