@@ -45,6 +45,21 @@ const Header = () => {
     await supabase.auth.signOut();
   };
 
+  // Function to handle anchor link navigation
+  const handleAnchorLink = (href: string, e: React.MouseEvent) => {
+    // If it's an anchor link on the same page
+    if (href.startsWith('/#') && location.pathname === '/') {
+      e.preventDefault();
+      const anchor = href.split('#')[1];
+      const element = document.getElementById(anchor);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+        // Update URL without page reload
+        window.history.replaceState(null, '', `#${anchor}`);
+      }
+    }
+  };
+
   return (
     <header className="bg-[#FF00B3] text-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,18 +74,19 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             {menuItems.map((item) => (
-              <Link
+              <a
                 key={item.name}
-                to={item.href}
+                href={item.href}
+                onClick={(e) => handleAnchorLink(item.href, e)}
                 className={cn(
                   "font-medium text-lg transition-colors hover:text-gray-200",
-                  location.pathname === item.href.split('#')[0] && (location.hash === item.href.split('#')[1] || !item.href.includes('#')) 
+                  location.pathname === item.href.split('#')[0] && (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#')) 
                     ? "border-b-2 border-white" 
                     : ""
                 )}
               >
                 {item.name}
-              </Link>
+              </a>
             ))}
             {session ? (
               <Button 
@@ -105,14 +121,17 @@ const Header = () => {
               <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-[#FF00B3] text-white border-l-0">
                 <nav className="flex flex-col gap-6 mt-12">
                   {menuItems.map((item) => (
-                    <Link
+                    <a
                       key={item.href}
-                      to={item.href}
+                      href={item.href}
+                      onClick={(e) => {
+                        handleAnchorLink(item.href, e);
+                        setIsOpen(false);
+                      }}
                       className="text-2xl font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors"
-                      onClick={() => setIsOpen(false)}
                     >
                       {item.name}
-                    </Link>
+                    </a>
                   ))}
                   {session ? (
                     <Button 
