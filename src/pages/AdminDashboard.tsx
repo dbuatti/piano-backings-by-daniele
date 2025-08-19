@@ -25,7 +25,12 @@ import {
   Filter,
   Trash2,
   List,
-  Grid3X3
+  Grid3X3,
+  Youtube,
+  Music,
+  Facebook,
+  Instagram,
+  ExternalLink
 } from 'lucide-react';
 import {
   Select,
@@ -80,6 +85,15 @@ const AdminDashboard = () => {
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen] = useState(false);
+  const [selectedRequestForPlatforms, setSelectedRequestForPlatforms] = useState<string | null>(null);
+  const [platforms, setPlatforms] = useState({
+    youtube: false,
+    tiktok: false,
+    facebook: false,
+    instagram: false,
+    gumroad: false
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -590,6 +604,63 @@ const AdminDashboard = () => {
     setBatchDeleteDialogOpen(true);
   };
 
+  const openUploadPlatformsDialog = (id: string) => {
+    const request = requests.find(req => req.id === id);
+    if (request && request.uploaded_platforms) {
+      setPlatforms(request.uploaded_platforms);
+    } else {
+      setPlatforms({
+        youtube: false,
+        tiktok: false,
+        facebook: false,
+        instagram: false,
+        gumroad: false
+      });
+    }
+    setSelectedRequestForPlatforms(id);
+    setUploadPlatformsDialogOpen(true);
+  };
+
+  const saveUploadPlatforms = async () => {
+    if (!selectedRequestForPlatforms) return;
+    
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ uploaded_platforms: platforms })
+        .eq('id', selectedRequestForPlatforms);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setRequests(requests.map(req => 
+        req.id === selectedRequestForPlatforms ? { ...req, uploaded_platforms: platforms } : req
+      ));
+      
+      toast({
+        title: "Platforms Updated",
+        description: "Upload platforms have been updated successfully.",
+      });
+      
+      setUploadPlatformsDialogOpen(false);
+      setSelectedRequestForPlatforms(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update platforms: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDateChange = (value: Date | [Date, Date] | null) => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    } else if (value === null) {
+      setSelectedDate(null);
+    }
+  };
+
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
     if (view !== 'month') return null;
     
@@ -629,6 +700,23 @@ const AdminDashboard = () => {
     
     // Highlight dates with requests
     return 'bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50';
+  };
+
+  const getPlatformIcons = (platforms: any) => {
+    if (!platforms) return null;
+    
+    const icons = [];
+    if (platforms.youtube) icons.push(<Youtube key="youtube" className="w-4 h-4 text-red-600" />);
+    if (platforms.tiktok) icons.push(<Music key="tiktok" className="w-4 h-4 text-black" />);
+    if (platforms.facebook) icons.push(<Facebook key="facebook" className="w-4 h-4 text-blue-600" />);
+    if (platforms.instagram) icons.push(<Instagram key="instagram" className="w-4 h-4 text-pink-500" />);
+    if (platforms.gumroad) icons.push(<ExternalLink key="gumroad" className="w-4 h-4 text-purple-600" />);
+    
+    return (
+      <div className="flex gap-1">
+        {icons}
+      </div>
+    );
   };
 
   if (!isAdmin) {
@@ -828,7 +916,7 @@ const AdminDashboard = () => {
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="lg:w-2/3">
                   <CalendarComponent
-                    onChange={setSelectedDate}
+                    onChange={handleDateChange}
                     value={selectedDate}
                     tileContent={tileContent}
                     tileClassName={tileClassName}
@@ -1010,13 +1098,14 @@ const AdminDashboard = () => {
                         <TableHead>Delivery Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Cost</TableHead>
+                        <TableHead>Platforms</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8">
+                          <TableCell colSpan={10} className="text-center py-8">
                             <div className="text-center">
                               <FileAudio className="mx-auto h-12 w-12 text-gray-400" />
                               <h3 className="mt-2 text-sm font-medium text-gray-900">No requests found</h3>
@@ -1089,6 +1178,17 @@ const AdminDashboard = () => {
                                 <DollarSign className="w-4 h-4 mr-1" />
                                 <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {getPlatformIcons(request.uploaded_platforms)}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => openUploadPlatformsDialog(request.id)}
+                                className="mt-1"
+                              >
+                                Edit
+                              </Button>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-1">
@@ -1200,6 +1300,102 @@ Daniele"
                   className="bg-[#1C0357] hover:bg-[#1C0357]/90"
                 >
                   {sendingEmail ? 'Sending...' : 'Send Email'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Upload Platforms Dialog */}
+        <Dialog open={uploadPlatformsDialogOpen} onOpenChange={setUploadPlatformsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Specify Upload Platforms</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Select the platforms where this track has been uploaded:</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Youtube className="w-5 h-5 text-red-600 mr-2" />
+                    <span>YouTube</span>
+                  </div>
+                  <Button 
+                    variant={platforms.youtube ? "default" : "outline"}
+                    onClick={() => setPlatforms({...platforms, youtube: !platforms.youtube})}
+                    className={platforms.youtube ? "bg-red-600 hover:bg-red-700" : ""}
+                  >
+                    {platforms.youtube ? "Uploaded" : "Mark as Uploaded"}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Music className="w-5 h-5 text-black mr-2" />
+                    <span>TikTok</span>
+                  </div>
+                  <Button 
+                    variant={platforms.tiktok ? "default" : "outline"}
+                    onClick={() => setPlatforms({...platforms, tiktok: !platforms.tiktok})}
+                    className={platforms.tiktok ? "bg-black hover:bg-gray-800 text-white" : ""}
+                  >
+                    {platforms.tiktok ? "Uploaded" : "Mark as Uploaded"}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Facebook className="w-5 h-5 text-blue-600 mr-2" />
+                    <span>Facebook</span>
+                  </div>
+                  <Button 
+                    variant={platforms.facebook ? "default" : "outline"}
+                    onClick={() => setPlatforms({...platforms, facebook: !platforms.facebook})}
+                    className={platforms.facebook ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    {platforms.facebook ? "Uploaded" : "Mark as Uploaded"}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Instagram className="w-5 h-5 text-pink-500 mr-2" />
+                    <span>Instagram</span>
+                  </div>
+                  <Button 
+                    variant={platforms.instagram ? "default" : "outline"}
+                    onClick={() => setPlatforms({...platforms, instagram: !platforms.instagram})}
+                    className={platforms.instagram ? "bg-pink-500 hover:bg-pink-600" : ""}
+                  >
+                    {platforms.instagram ? "Uploaded" : "Mark as Uploaded"}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <ExternalLink className="w-5 h-5 text-purple-600 mr-2" />
+                    <span>Gumroad</span>
+                  </div>
+                  <Button 
+                    variant={platforms.gumroad ? "default" : "outline"}
+                    onClick={() => setPlatforms({...platforms, gumroad: !platforms.gumroad})}
+                    className={platforms.gumroad ? "bg-purple-600 hover:bg-purple-700" : ""}
+                  >
+                    {platforms.gumroad ? "Uploaded" : "Mark as Uploaded"}
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setUploadPlatformsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={saveUploadPlatforms}
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                >
+                  Save Platforms
                 </Button>
               </div>
             </div>
