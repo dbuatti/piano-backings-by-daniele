@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle, Clock, Headphones, FileAudio } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -309,6 +309,7 @@ const FormPage = () => {
                       onChange={handleInputChange} 
                       required 
                       placeholder="your.email@example.com"
+                      className="mt-1"
                     />
                   </div>
                   <div>
@@ -319,6 +320,7 @@ const FormPage = () => {
                       value={formData.name} 
                       onChange={handleInputChange} 
                       placeholder="Your full name"
+                      className="mt-1"
                     />
                   </div>
                 </div>
@@ -335,6 +337,7 @@ const FormPage = () => {
                       onChange={handleInputChange} 
                       required 
                       placeholder="e.g., Defying Gravity"
+                      className="mt-1"
                     />
                   </div>
                   <div>
@@ -348,6 +351,7 @@ const FormPage = () => {
                       onChange={handleInputChange} 
                       required 
                       placeholder="e.g., Wicked"
+                      className="mt-1"
                     />
                   </div>
                 </div>
@@ -357,7 +361,7 @@ const FormPage = () => {
                     Category <span className="text-red-500 ml-1">*</span>
                   </Label>
                   <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -379,59 +383,59 @@ const FormPage = () => {
                 </h2>
                 
                 <div className="space-y-4">
-                  <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="quick-reference"
                         name="trackType"
                         value="quick"
-                        className="mt-1 mr-3"
+                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'quick'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="quick-reference" className="flex flex-col">
-                        <span className="font-bold">Quick Reference (Voice Memo)</span>
-                        <span className="text-[#1C0357] font-medium">$5 - $10</span>
-                        <span className="text-sm mt-1 text-gray-600">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</span>
+                        <span className="font-bold text-lg">Quick Reference (Voice Memo)</span>
+                        <span className="text-[#1C0357] font-medium mt-1">$5 - $10</span>
+                        <span className="text-sm mt-2 text-gray-600">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</span>
                       </Label>
                     </div>
                   </div>
                   
-                  <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="one-take"
                         name="trackType"
                         value="one-take"
-                        className="mt-1 mr-3"
+                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'one-take'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="one-take" className="flex flex-col">
-                        <span className="font-bold">One-Take Recording</span>
-                        <span className="text-[#1C0357] font-medium">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</span>
-                        <span className="text-sm mt-1 text-gray-600">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</span>
+                        <span className="font-bold text-lg">One-Take Recording</span>
+                        <span className="text-[#1C0357] font-medium mt-1">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</span>
+                        <span className="text-sm mt-2 text-gray-600">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</span>
                       </Label>
                     </div>
                   </div>
                   
-                  <div className="p-4 border border-gray-200 rounded-lg">
+                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="polished"
                         name="trackType"
                         value="polished"
-                        className="mt-1 mr-3"
+                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'polished'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="polished" className="flex flex-col">
-                        <span className="font-bold">Polished & Accurate Backing</span>
-                        <span className="text-[#1C0357] font-medium">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</span>
-                        <span className="text-sm mt-1 text-gray-600">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</span>
+                        <span className="font-bold text-lg">Polished & Accurate Backing</span>
+                        <span className="text-[#1C0357] font-medium mt-1">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</span>
+                        <span className="text-sm mt-2 text-gray-600">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</span>
                       </Label>
                     </div>
                   </div>
@@ -449,7 +453,7 @@ const FormPage = () => {
                   <div>
                     <Label htmlFor="songKey">What key is your song in? (Don't worry if you're unsure)</Label>
                     <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey}>
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select key" />
                       </SelectTrigger>
                       <SelectContent>
@@ -465,7 +469,7 @@ const FormPage = () => {
                   <div>
                     <Label htmlFor="differentKey">Do you require it in a different key?</Label>
                     <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey}>
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select option" />
                       </SelectTrigger>
                       <SelectContent>
@@ -480,9 +484,9 @@ const FormPage = () => {
                 <div className="mt-4">
                   <Label htmlFor="keyForTrack">Which key?</Label>
                   <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select key" />
-                    </SelectTrigger>
+                    <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select key" />
+                      </SelectTrigger>
                     <SelectContent>
                       {keyOptions.map((key) => (
                         <SelectItem key={key.value} value={key.value}>
@@ -501,7 +505,7 @@ const FormPage = () => {
                   Track Details
                 </h2>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
                     <Label htmlFor="youtubeLink" className="flex items-center">
                       <LinkIcon className="mr-2" size={16} />
@@ -514,6 +518,7 @@ const FormPage = () => {
                       onChange={handleInputChange} 
                       placeholder="https://www.youtube.com/watch?v=..."
                       required
+                      className="mt-1"
                     />
                   </div>
                   
@@ -528,6 +533,7 @@ const FormPage = () => {
                       value={formData.voiceMemo} 
                       onChange={handleInputChange} 
                       placeholder="Upload a voice memo or provide a link"
+                      className="mt-1"
                     />
                   </div>
                   
@@ -543,6 +549,7 @@ const FormPage = () => {
                       accept=".pdf" 
                       onChange={handleFileChange} 
                       required 
+                      className="mt-1"
                     />
                     <p className="text-sm text-gray-500 mt-1">Make sure it's clear, correctly cut, and in the right key</p>
                   </div>
@@ -551,7 +558,7 @@ const FormPage = () => {
                     <div>
                       <Label htmlFor="trackPurpose">This track is for...</Label>
                       <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select purpose" />
                         </SelectTrigger>
                         <SelectContent>
@@ -565,7 +572,7 @@ const FormPage = () => {
                     <div>
                       <Label htmlFor="backingType">What do you need?</Label>
                       <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select backing type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -586,7 +593,7 @@ const FormPage = () => {
                   Additional Services
                 </h2>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
                     <Label htmlFor="deliveryDate" className="flex items-center">
                       <CalendarIcon className="mr-2" size={16} />
@@ -598,72 +605,99 @@ const FormPage = () => {
                       type="date" 
                       value={formData.deliveryDate} 
                       onChange={handleInputChange} 
+                      className="mt-1 w-full md:w-1/2"
                     />
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-3">Additional Services</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start p-3 border border-gray-200 rounded">
-                        <input
-                          type="checkbox"
-                          id="rush-order"
-                          className="mt-1 mr-3"
-                          checked={formData.additionalServices.includes('rush-order')}
-                          onChange={() => handleCheckboxChange('rush-order')}
-                        />
-                        <Label htmlFor="rush-order" className="flex items-start">
-                          <span className="font-medium">Rush Order (24-hour turnaround) +$10</span>
-                          <p className="text-sm text-gray-600 mt-1">Need your track urgently? Select this option for priority processing.</p>
-                        </Label>
+                    <h3 className="font-semibold mb-3 flex items-center">
+                      <Headphones className="mr-2" size={16} />
+                      Additional Services
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id="rush-order"
+                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            checked={formData.additionalServices.includes('rush-order')}
+                            onChange={() => handleCheckboxChange('rush-order')}
+                          />
+                          <div className="flex flex-col">
+                            <Label htmlFor="rush-order" className="font-medium">
+                              Rush Order
+                            </Label>
+                            <span className="text-sm text-[#1C0357] font-medium">+$10</span>
+                            <p className="text-sm text-gray-600 mt-1">24-hour turnaround</p>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex items-start p-3 border border-gray-200 rounded">
-                        <input
-                          type="checkbox"
-                          id="complex-songs"
-                          className="mt-1 mr-3"
-                          checked={formData.additionalServices.includes('complex-songs')}
-                          onChange={() => handleCheckboxChange('complex-songs')}
-                        />
-                        <Label htmlFor="complex-songs" className="flex items-start">
-                          <span className="font-medium">Complex Songs (e.g., Sondheim, JRB, Guettel) +$5–$10</span>
-                          <p className="text-sm text-gray-600 mt-1">Songs with complex arrangements may require additional time and effort.</p>
-                        </Label>
+                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id="complex-songs"
+                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            checked={formData.additionalServices.includes('complex-songs')}
+                            onChange={() => handleCheckboxChange('complex-songs')}
+                          />
+                          <div className="flex flex-col">
+                            <Label htmlFor="complex-songs" className="font-medium">
+                              Complex Songs
+                            </Label>
+                            <span className="text-sm text-[#1C0357] font-medium">+$5–$10</span>
+                            <p className="text-sm text-gray-600 mt-1">Sondheim, JRB, Guettel</p>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex items-start p-3 border border-gray-200 rounded">
-                        <input
-                          type="checkbox"
-                          id="additional-edits"
-                          className="mt-1 mr-3"
-                          checked={formData.additionalServices.includes('additional-edits')}
-                          onChange={() => handleCheckboxChange('additional-edits')}
-                        />
-                        <Label htmlFor="additional-edits" className="flex items-start">
-                          <span className="font-medium">Additional Edits/Revisions +$5 per request</span>
-                          <p className="text-sm text-gray-600 mt-1">Need changes after the initial track? This covers additional revisions.</p>
-                        </Label>
+                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id="additional-edits"
+                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            checked={formData.additionalServices.includes('additional-edits')}
+                            onChange={() => handleCheckboxChange('additional-edits')}
+                          />
+                          <div className="flex flex-col">
+                            <Label htmlFor="additional-edits" className="font-medium">
+                              Additional Edits
+                            </Label>
+                            <span className="text-sm text-[#1C0357] font-medium">+$5 per request</span>
+                            <p className="text-sm text-gray-600 mt-1">Post-completion revisions</p>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex items-start p-3 border border-gray-200 rounded">
-                        <input
-                          type="checkbox"
-                          id="exclusive-ownership"
-                          className="mt-1 mr-3"
-                          checked={formData.additionalServices.includes('exclusive-ownership')}
-                          onChange={() => handleCheckboxChange('exclusive-ownership')}
-                        />
-                        <Label htmlFor="exclusive-ownership" className="flex items-start">
-                          <span className="font-medium">Exclusive Ownership (not uploaded/shared online) $40</span>
-                          <p className="text-sm text-gray-600 mt-1">Want to ensure your track remains private? This option guarantees exclusivity.</p>
-                        </Label>
+                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id="exclusive-ownership"
+                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            checked={formData.additionalServices.includes('exclusive-ownership')}
+                            onChange={() => handleCheckboxChange('exclusive-ownership')}
+                          />
+                          <div className="flex flex-col">
+                            <Label htmlFor="exclusive-ownership" className="font-medium">
+                              Exclusive Ownership
+                            </Label>
+                            <span className="text-sm text-[#1C0357] font-medium">$40</span>
+                            <p className="text-sm text-gray-600 mt-1">Not uploaded/shared online</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="specialRequests">Is there anything else you'd like to add?</Label>
+                    <Label htmlFor="specialRequests" className="flex items-center">
+                      <FileAudio className="mr-2" size={16} />
+                      Is there anything else you'd like to add?
+                    </Label>
                     <Textarea 
                       id="specialRequests" 
                       name="specialRequests" 
@@ -671,18 +705,27 @@ const FormPage = () => {
                       onChange={handleInputChange} 
                       placeholder="Any special requests or additional information..."
                       rows={4}
+                      className="mt-1"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="text-center">
+              <div className="text-center pt-4">
                 <Button 
                   type="submit" 
                   className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </span>
+                  ) : 'Submit Request'}
                 </Button>
               </div>
             </form>
