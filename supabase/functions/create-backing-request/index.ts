@@ -47,26 +47,37 @@ serve(async (req) => {
     
     // Create Dropbox folder
     let dropboxFolderId = null;
-    try {
-      const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${dropboxAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          path: `/piano-backings/${folderName}`,
-          autorename: false
-        })
-      });
-      
-      if (dropboxResponse.ok) {
-        const dropboxData = await dropboxResponse.json();
-        dropboxFolderId = dropboxData.metadata.id;
+    let dropboxError = null;
+    
+    if (!dropboxAccessToken) {
+      console.log('Dropbox access token not configured');
+      dropboxError = 'Dropbox access token not configured';
+    } else {
+      try {
+        const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            path: `/piano-backings/${folderName}`,
+            autorename: false
+          })
+        });
+        
+        if (dropboxResponse.ok) {
+          const dropboxData = await dropboxResponse.json();
+          dropboxFolderId = dropboxData.metadata.id;
+        } else {
+          const errorText = await dropboxResponse.text();
+          console.error('Dropbox API error:', dropboxResponse.status, errorText);
+          dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('Dropbox folder creation error:', error);
+        dropboxError = `Dropbox folder creation error: ${error.message}`;
       }
-    } catch (dropboxError) {
-      console.error('Dropbox folder creation error:', dropboxError);
-      // Continue with form submission even if Dropbox fails
     }
     
     // Save to the database
@@ -98,12 +109,18 @@ serve(async (req) => {
       throw error;
     }
 
+    const responsePayload: any = { 
+      message: 'Request submitted successfully',
+      data,
+      dropboxFolderId
+    };
+    
+    if (dropboxError) {
+      responsePayload.dropboxError = dropboxError;
+    }
+
     return new Response(
-      JSON.stringify({ 
-        message: 'Request submitted successfully',
-        data,
-        dropboxFolderId
-      }),
+      JSON.stringify(responsePayload),
       { 
         headers: { 
           ...corsHeaders,
