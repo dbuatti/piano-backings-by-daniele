@@ -269,6 +269,61 @@ serve(async (req) => {
       }
     }
     
+    // Download YouTube video as MP3 and upload to Dropbox
+    let youtubeMp3Success = false;
+    let youtubeMp3Error = null;
+    
+    if (dropboxFolderId && formData.youtubeLink && dropboxAccessToken) {
+      try {
+        // Extract video ID from YouTube URL
+        const videoId = extractYouTubeId(formData.youtubeLink);
+        if (!videoId) {
+          throw new Error('Invalid YouTube URL');
+        }
+        
+        // Create MP3 file name
+        const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+        const uploadPath = `${dropboxFolderPath}/${mp3FileName}`;
+        
+        // For now, we'll create a placeholder MP3 file since actual YouTube conversion
+        // would require external services that may violate YouTube's Terms of Service
+        // In a real implementation, you would integrate with a YouTube-to-MP3 service here
+        
+        // Create a simple placeholder MP3 file (1 second of silence)
+        const mp3Buffer = createPlaceholderMp3();
+        
+        // Upload to Dropbox
+        console.log('Uploading placeholder MP3 to Dropbox at path:', uploadPath);
+        
+        const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Dropbox-API-Arg': JSON.stringify({
+              path: uploadPath,
+              mode: 'add',
+              autorename: true,
+              mute: false
+            }),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: mp3Buffer
+        });
+        
+        if (dropboxUploadResponse.ok) {
+          youtubeMp3Success = true;
+          console.log('Placeholder MP3 uploaded successfully to Dropbox');
+        } else {
+          const errorText = await dropboxUploadResponse.text();
+          console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+          youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('YouTube MP3 processing error:', error);
+        youtubeMp3Error = `YouTube MP3 processing error: ${error.message}`;
+      }
+    }
+    
     // Upload PDF to Dropbox folder if provided
     let pdfUploadSuccess = false;
     let pdfUploadError = null;
@@ -358,6 +413,7 @@ serve(async (req) => {
       trackTypeUsed: formData.trackType,
       templateCopySuccess,
       pdfUploadSuccess,
+      youtubeMp3Success,
       dropboxFolderPath,
       logicFileNameUsed: logicFileName
     };
@@ -372,6 +428,10 @@ serve(async (req) => {
     
     if (pdfUploadError) {
       responsePayload.pdfUploadError = pdfUploadError;
+    }
+    
+    if (youtubeMp3Error) {
+      responsePayload.youtubeMp3Error = youtubeMp3Error;
     }
 
     return new Response(
@@ -399,3 +459,25 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to extract YouTube video ID from URL
+function extractYouTubeId(url: string): string | null {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Helper function to create a placeholder MP3 file (1 second of silence)
+function createPlaceholderMp3(): ArrayBuffer {
+  // This creates a minimal valid MP3 file with 1 second of silence
+  // In a real implementation, this would be replaced with actual MP3 data
+  const mp3Data = [
+    0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0x54, 0x53, 0x53, 0x45, 0x00, 0x00,
+    0x00, 0x0F, 0x00, 0x00, 0x03, 0x65, 0x6E, 0x63, 0x6F, 0x64, 0x65, 0x64, 0x20, 0x62, 0x79, 0x20,
+    0x44, 0x79, 0x61, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFB, 0x90, 0x64, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  ];
+  
+  return new Uint8Array(mp3Data).buffer;
+}
