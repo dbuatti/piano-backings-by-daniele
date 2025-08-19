@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import ErrorDisplay from '@/components/ErrorDisplay';
 
 const TestBackings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check if user is authenticated
@@ -27,6 +28,7 @@ const TestBackings = () => {
   const testFunction = async (backingType: string, typeName: string, trackType: string | null = null, includePdf: boolean = false) => {
     setIsTesting(true);
     setResult(null);
+    setError(null);
     
     try {
       // Create a simple PDF for testing if needed
@@ -110,9 +112,9 @@ const TestBackings = () => {
       );
       
       const data = await response.json();
-      setResult(data);
       
       if (response.ok) {
+        setResult(data);
         // Check if Dropbox folder was created
         if (data.dropboxFolderId) {
           toast({
@@ -129,11 +131,12 @@ const TestBackings = () => {
       } else {
         throw new Error(data.error || `Function failed with status ${response.status}`);
       }
-    } catch (error: any) {
-      console.error('Error testing function:', error);
+    } catch (err: any) {
+      console.error('Error testing function:', err);
+      setError(err);
       toast({
         title: "Error",
-        description: `There was a problem testing the function: ${error.message}`,
+        description: `There was a problem testing the function: ${err.message}`,
         variant: "destructive",
       });
     } finally {
@@ -260,6 +263,12 @@ const TestBackings = () => {
                     </ul>
                   </div>
                 </div>
+                
+                {error && (
+                  <div className="mt-6">
+                    <ErrorDisplay error={error} />
+                  </div>
+                )}
                 
                 {result && (
                   <div className="mt-6">
