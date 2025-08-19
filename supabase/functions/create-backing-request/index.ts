@@ -23,7 +23,7 @@ serve(async (req) => {
     // @ts-ignore
     const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     // @ts-ignore
-    const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/PIANO BACKING TRACKS';
+    const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
@@ -61,7 +61,7 @@ serve(async (req) => {
     
     // Example: If you have a category field in your form
     if (formData.category) {
-      parentFolder = `/PIANO BACKING TRACKS/${formData.category}`;
+      parentFolder = `/Move over to NAS/PIANO BACKING TRACKS/${formData.category}`;
     } else if (formData.trackPurpose) {
       // Use track purpose as category if no specific category is provided
       const categoryMap: Record<string, string> = {
@@ -69,7 +69,7 @@ serve(async (req) => {
         'audition-backing': 'Audition Tracks',
         'melody-bash': 'Melody Bash Tracks'
       };
-      parentFolder = `/PIANO BACKING TRACKS/${categoryMap[formData.trackPurpose] || 'General'}`;
+      parentFolder = `/Move over to NAS/PIANO BACKING TRACKS/${categoryMap[formData.trackPurpose] || 'General'}`;
     }
     
     // Create Dropbox folder
