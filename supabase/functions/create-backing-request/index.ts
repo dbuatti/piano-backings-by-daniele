@@ -349,7 +349,13 @@ serve(async (req) => {
         } else {
           const errorText = await rapidApiResponse.text();
           console.error('RapidAPI error:', rapidApiResponse.status, errorText);
-          youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
+          
+          // Check if it's a subscription error
+          if (rapidApiResponse.status === 403) {
+            youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription';
+          } else {
+            youtubeMp3Error = `RapidAPI error: ${rapidApiResponse.status} - ${errorText}`;
+          }
         }
       } catch (error) {
         console.error('YouTube MP3 processing error:', error);
