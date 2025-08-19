@@ -79,7 +79,7 @@ const TestBackings = () => {
           songKey: "C Major (0)",
           differentKey: "No",
           keyForTrack: "",
-          youtubeLink: "https://www.youtube.com/watch?v=test",
+          youtubeLink: "https://www.youtube.com/watch?v=g3lKxyJXFqg&list=RDg3lKxyJXFqg&start_radio=1",
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL if testing PDF
           trackPurpose: "personal-practise",
@@ -307,6 +307,13 @@ const TestBackings = () => {
                               : <span className="font-semibold text-red-600">FAILED</span>
                             : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
                         }</li>
+                        <li>YouTube MP3 upload to Dropbox: {
+                          result.youtubeMp3Success !== undefined
+                            ? result.youtubeMp3Success 
+                              ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                              : <span className="font-semibold text-red-600">FAILED</span>
+                            : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
+                        }</li>
                         <li>Logic Pro X template copy: {
                           result.templateCopySuccess !== undefined
                             ? result.templateCopySuccess 
@@ -315,6 +322,7 @@ const TestBackings = () => {
                             : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
                         }</li>
                         <li>Folder path: <span className="font-mono">{result.parentFolderUsed}</span></li>
+                        <li>Logic Pro X file name: <span className="font-mono">{result.logicFileNameUsed}</span></li>
                       </ul>
                     </div>
                   </div>

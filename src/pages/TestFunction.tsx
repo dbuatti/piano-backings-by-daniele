@@ -40,7 +40,7 @@ const TestFunction = () => {
           songKey: "C Major (0)",
           differentKey: "No",
           keyForTrack: "",
-          youtubeLink: "https://www.youtube.com/watch?v=test",
+          youtubeLink: "https://www.youtube.com/watch?v=g3lKxyJXFqg&list=RDg3lKxyJXFqg&start_radio=1",
           voiceMemo: "",
           trackPurpose: "personal-practise",
           backingType: backingType,
@@ -208,9 +208,29 @@ const TestFunction = () => {
                             ? <span className="font-semibold text-green-600">SUCCESS</span> 
                             : <span className="font-semibold text-red-600">FAILED</span>
                         }</li>
-                        <li>Folder path: <span className="font-mono">{result.parentFolderUsed}</span></li>
+                        <li>Dropbox folder path: <span className="font-mono">{result.parentFolderUsed}</span></li>
                         <li>Folder name: <span className="font-mono">{result.folderNameUsed}</span></li>
                         <li>First name used: <span className="font-mono">{result.firstNameUsed}</span></li>
+                        <li>Logic Pro X file name: <span className="font-mono">{result.logicFileNameUsed}</span></li>
+                        <li>Logic Pro X template copy: {
+                          result.templateCopySuccess 
+                            ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                            : <span className="font-semibold text-red-600">FAILED</span>
+                        }</li>
+                        <li>PDF upload to Dropbox: {
+                          result.pdfUploadSuccess !== undefined
+                            ? result.pdfUploadSuccess 
+                              ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                              : <span className="font-semibold text-red-600">FAILED</span>
+                            : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
+                        }</li>
+                        <li>YouTube MP3 upload to Dropbox: {
+                          result.youtubeMp3Success !== undefined
+                            ? result.youtubeMp3Success 
+                              ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                              : <span className="font-semibold text-red-600">FAILED</span>
+                            : <span className="font-semibold text-gray-600">NOT ATTEMPTED</span>
+                        }</li>
                       </ul>
                     </div>
                   </div>
