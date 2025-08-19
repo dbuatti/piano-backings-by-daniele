@@ -55,6 +55,31 @@ const FormPage = () => {
     });
   };
 
+  const fillDummyData = () => {
+    setFormData({
+      email: 'test@example.com',
+      name: 'Test User',
+      songTitle: 'Test Song',
+      musicalOrArtist: 'Test Musical',
+      songKey: 'C Major (0)',
+      differentKey: 'No',
+      keyForTrack: '',
+      voiceMemo: 'https://example.com/voice-memo.mp3',
+      sheetMusic: null,
+      youtubeLink: 'https://www.youtube.com/watch?v=test',
+      trackPurpose: 'personal-practise',
+      backingType: 'full-song',
+      deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+      additionalServices: ['rush-order'],
+      specialRequests: 'This is a test request'
+    });
+    
+    toast({
+      title: "Dummy Data Filled",
+      description: "The form has been pre-filled with sample data.",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -219,6 +244,16 @@ const FormPage = () => {
                   <li>✔️ A YouTube link to the song (for tempo reference) (required)</li>
                   <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
                 </ul>
+                
+                <div className="mt-4">
+                  <Button 
+                    type="button" 
+                    onClick={fillDummyData}
+                    className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white"
+                  >
+                    Fill with Dummy Data
+                  </Button>
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
