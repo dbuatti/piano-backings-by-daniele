@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -73,10 +70,19 @@ const TestFunction = () => {
       setResult(data);
       
       if (response.ok) {
-        toast({
-          title: "Success!",
-          description: "Function executed successfully. Check Dropbox for new folder.",
-        });
+        // Check if Dropbox folder was created
+        if (data.dropboxFolderId) {
+          toast({
+            title: "Success!",
+            description: "Function executed successfully. A new folder was created in Dropbox.",
+          });
+        } else {
+          toast({
+            title: "Partial Success",
+            description: "Request submitted successfully, but Dropbox folder creation failed. Check the logs for details.",
+            variant: "destructive",
+          });
+        }
       } else {
         throw new Error(data.error || `Function failed with status ${response.status}`);
       }
@@ -125,8 +131,12 @@ const TestFunction = () => {
                 <div className="mb-6">
                   <p className="mb-4">
                     This page tests the Supabase function that handles backing track requests. 
-                    When you click the button below, it will create a new folder in Dropbox for the request.
+                    When you click the button below, it will:
                   </p>
+                  <ul className="list-disc pl-5 mb-4 space-y-2">
+                    <li>Create a new entry in the database</li>
+                    <li>Attempt to create a new folder in Dropbox</li>
+                  </ul>
                   <Button 
                     onClick={testFunction} 
                     disabled={isTesting}
@@ -140,9 +150,20 @@ const TestFunction = () => {
                   <div className="mt-6">
                     <h3 className="text-xl font-semibold mb-2 text-[#1C0357]">Test Result</h3>
                     <div className="bg-gray-100 p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap break-words">
+                      <pre className="whitespace-pre-wrap break-words text-sm">
                         {JSON.stringify(result, null, 2)}
                       </pre>
+                    </div>
+                    <div className="mt-4 p-4 rounded-lg bg-blue-50">
+                      <h4 className="font-semibold text-[#1C0357] mb-2">Result Summary:</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>Database entry: <span className="font-semibold text-green-600">SUCCESS</span></li>
+                        <li>Dropbox folder creation: {
+                          result.dropboxFolderId 
+                            ? <span className="font-semibold text-green-600">SUCCESS</span> 
+                            : <span className="font-semibold text-red-600">FAILED</span>
+                        }</li>
+                      </ul>
                     </div>
                   </div>
                 )}
