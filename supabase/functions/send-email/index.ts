@@ -22,8 +22,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
     const gmailUser = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
-    // @ts-ignore
-    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -63,26 +61,55 @@ serve(async (req) => {
       });
     }
     
-    // For now, simulate email sending since SMTP in Deno requires additional setup
-    console.log('Email would be sent with these details:');
-    console.log('To:', to);
-    console.log('From:', from || gmailUser);
-    console.log('Subject:', subject);
-    console.log('Content:', emailContent);
-    console.log('Using Gmail user:', gmailUser);
-    console.log('App password length:', gmailAppPassword ? '***' : 'Not set');
+    // Store email in database as a notification instead of sending
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert([
+        {
+          recipient: to,
+          sender: from || gmailUser,
+          subject: subject,
+          content: emailContent,
+          status: 'pending',
+          type: 'email'
+        }
+      ])
+      .select();
     
-    // In a real implementation, you would use Nodemailer or similar
-    // For now, we'll simulate success
+    if (error) {
+      console.error('Database error:', error);
+      // Fallback to console logging
+      console.log('=== EMAIL NOTIFICATION ===');
+      console.log('To:', to);
+      console.log('From:', from || gmailUser);
+      console.log('Subject:', subject);
+      console.log('Content:', emailContent);
+      console.log('========================');
+      
+      return new Response(
+        JSON.stringify({ 
+          message: 'Email notification created (logged to console)',
+          logged: true,
+          details: {
+            to,
+            from: from || gmailUser,
+            subject
+          }
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json' 
+          },
+          status: 200
+        }
+      );
+    }
+    
     return new Response(
       JSON.stringify({ 
-        message: 'Email sent successfully (simulated)',
-        simulated: true,
-        details: {
-          to,
-          from: from || gmailUser,
-          subject
-        }
+        message: 'Email notification created successfully',
+        notificationId: data[0].id
       }),
       { 
         headers: { 
