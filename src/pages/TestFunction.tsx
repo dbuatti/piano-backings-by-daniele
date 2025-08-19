@@ -39,7 +39,11 @@ const TestFunction = () => {
       };
 
       // Get the session from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error(`Session error: ${sessionError.message}`);
+      }
       
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
@@ -47,7 +51,7 @@ const TestFunction = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
+            'Authorization': `Bearer ${session?.access_token || 'no-token'}`
           },
           body: JSON.stringify(testData),
         }
@@ -64,7 +68,7 @@ const TestFunction = () => {
       } else {
         throw new Error(data.error || 'Function failed');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error testing function:', error);
       toast({
         title: "Error",

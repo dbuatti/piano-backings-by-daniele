@@ -87,7 +87,11 @@ const FormPage = () => {
     
     try {
       // Get the session from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error(`Session error: ${sessionError.message}`);
+      }
       
       // For now, we'll send the data to our backend function
       const response = await fetch(
@@ -96,7 +100,7 @@ const FormPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
+            'Authorization': `Bearer ${session?.access_token || 'no-token'}`
           },
           body: JSON.stringify({
             formData: {
@@ -120,7 +124,8 @@ const FormPage = () => {
       );
       
       if (!response.ok) {
-        throw new Error('Failed to submit form');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit form');
       }
       
       const result = await response.json();
@@ -148,11 +153,11 @@ const FormPage = () => {
         additionalServices: [],
         specialRequests: ''
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting form:', error);
       toast({
         title: "Error",
-        description: "There was a problem submitting your request. Please try again.",
+        description: `There was a problem submitting your request: ${error.message}`,
         variant: "destructive",
       });
     } finally {
