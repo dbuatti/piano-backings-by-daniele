@@ -61,22 +61,28 @@ serve(async (req) => {
     const dateString = today.toISOString().slice(0, 10).replace(/-/g, '');
     const folderName = `${dateString} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}`;
     
-    // Determine the parent folder based on backing type
+    // Determine the parent folder based on track type first, then backing type
     let parentFolder = defaultDropboxParentFolder;
     
-    // Map backing types to specific subfolders
-    const backingTypeMap: Record<string, string> = {
-      'full-song': '00. FULL VERSIONS',
-      'audition-cut': '00. AUDITION CUTS',
-      'note-bash': '00. NOTE BASH'
-    };
-    
-    // Set parent folder based on backing type
-    if (formData.backingType && backingTypeMap[formData.backingType]) {
-      parentFolder = `${defaultDropboxParentFolder}/${backingTypeMap[formData.backingType]}`;
+    // Check if trackType is for rough cuts
+    if (formData.trackType === 'quick' || formData.trackType === 'one-take') {
+      // Override all other rules and use ROUGH CUTS folder
+      parentFolder = `${defaultDropboxParentFolder}/00. ROUGH CUTS`;
     } else {
-      // Default to general folder if backing type is not recognized
-      parentFolder = `${defaultDropboxParentFolder}/00. GENERAL`;
+      // Map backing types to specific subfolders (for polished tracks)
+      const backingTypeMap: Record<string, string> = {
+        'full-song': '00. FULL VERSIONS',
+        'audition-cut': '00. AUDITION CUTS',
+        'note-bash': '00. NOTE BASH'
+      };
+      
+      // Set parent folder based on backing type
+      if (formData.backingType && backingTypeMap[formData.backingType]) {
+        parentFolder = `${defaultDropboxParentFolder}/${backingTypeMap[formData.backingType]}`;
+      } else {
+        // Default to general folder if backing type is not recognized
+        parentFolder = `${defaultDropboxParentFolder}/00. GENERAL`;
+      }
     }
     
     // Create Dropbox folder
@@ -158,7 +164,8 @@ serve(async (req) => {
       dropboxFolderId,
       parentFolderUsed: parentFolder,
       folderNameUsed: folderName,
-      firstNameUsed: firstName
+      firstNameUsed: firstName,
+      trackTypeUsed: formData.trackType
     };
     
     if (dropboxError) {
