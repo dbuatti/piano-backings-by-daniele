@@ -6,12 +6,14 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import ErrorDisplay from '@/components/ErrorDisplay';
 
 const TestFunction = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isTesting, setIsTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check if user is authenticated
@@ -26,6 +28,7 @@ const TestFunction = () => {
   const testFunction = async (backingType: string) => {
     setIsTesting(true);
     setResult(null);
+    setError(null);
     
     try {
       const testData = {
@@ -68,9 +71,9 @@ const TestFunction = () => {
       );
       
       const data = await response.json();
-      setResult(data);
       
       if (response.ok) {
+        setResult(data);
         // Check if Dropbox folder was created
         if (data.dropboxFolderId) {
           toast({
@@ -87,11 +90,12 @@ const TestFunction = () => {
       } else {
         throw new Error(data.error || `Function failed with status ${response.status}`);
       }
-    } catch (error: any) {
-      console.error('Error testing function:', error);
+    } catch (err: any) {
+      console.error('Error testing function:', err);
+      setError(err);
       toast({
         title: "Error",
-        description: `There was a problem testing the function: ${error.message}`,
+        description: `There was a problem testing the function: ${err.message}`,
         variant: "destructive",
       });
     } finally {
@@ -180,6 +184,12 @@ const TestFunction = () => {
                     </ul>
                   </div>
                 </div>
+                
+                {error && (
+                  <div className="mt-6">
+                    <ErrorDisplay error={error} />
+                  </div>
+                )}
                 
                 {result && (
                   <div className="mt-6">
