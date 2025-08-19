@@ -175,9 +175,10 @@ serve(async (req) => {
     if (dropboxFolderId && formData.sheetMusicUrl && dropboxAccessToken) {
       try {
         // Download the PDF from Supabase storage
+        console.log('Attempting to download PDF from:', formData.sheetMusicUrl);
         const pdfResponse = await fetch(formData.sheetMusicUrl);
         if (!pdfResponse.ok) {
-          throw new Error(`Failed to download PDF from Supabase: ${pdfResponse.status}`);
+          throw new Error(`Failed to download PDF from Supabase: ${pdfResponse.status} ${pdfResponse.statusText}`);
         }
         
         const pdfBuffer = await pdfResponse.arrayBuffer();
