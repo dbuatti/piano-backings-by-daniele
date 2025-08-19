@@ -20,6 +20,8 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    // @ts-ignore
+    const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
     
     // Create a Supabase client with service role key (has full permissions)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -30,13 +32,31 @@ serve(async (req) => {
     // Create a folder name based on the request
     const folderName = `${formData.name || 'anonymous'}-${Date.now()}`;
     
-    // TODO: Implement Dropbox API integration here
-    // This would require:
-    // 1. Adding Dropbox API credentials as secrets in Supabase
-    // 2. Using the Dropbox API to create a folder
-    // 3. Saving the Dropbox folder information
+    // Create Dropbox folder
+    let dropboxFolderId = null;
+    try {
+      const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${dropboxAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          path: `/piano-backings/${folderName}`,
+          autorename: false
+        })
+      });
+      
+      if (dropboxResponse.ok) {
+        const dropboxData = await dropboxResponse.json();
+        dropboxFolderId = dropboxData.metadata.id;
+      }
+    } catch (dropboxError) {
+      console.error('Dropbox folder creation error:', dropboxError);
+      // Continue with form submission even if Dropbox fails
+    }
     
-    // For now, we'll just save to the database
+    // Save to the database
     const { data, error } = await supabase
       .from('backing_requests')
       .insert([
@@ -55,7 +75,7 @@ serve(async (req) => {
           delivery_date: formData.deliveryDate,
           additional_services: formData.additionalServices,
           special_requests: formData.specialRequests,
-          // dropbox_folder: dropboxFolderId, // Will add this when we implement Dropbox
+          dropbox_folder_id: dropboxFolderId
         }
       ])
       .select();
@@ -67,7 +87,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         message: 'Request submitted successfully',
-        data 
+        data,
+        dropboxFolderId
       }),
       { 
         headers: { 
