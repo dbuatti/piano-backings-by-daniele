@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import RequestDetails from "./pages/RequestDetails";
 import UserDashboard from "./pages/UserDashboard";
+import TestEmail from "./pages/TestEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/form-page" element={<FormPage />} />
           <Route path="/test-function" element={<TestFunction />} />
           <Route path="/test-backings" element={<TestBackings />} />
+          <Route path="/test-email" element={<TestEmail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
