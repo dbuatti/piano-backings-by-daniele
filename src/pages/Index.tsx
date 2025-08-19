@@ -1,38 +1,22 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, MusicIcon, LinkIcon, Coffee } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import NavigationMenu from "@/components/NavigationMenu";
+import Header from "@/components/Header";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      {/* Header Section - Using brand colors */}
-      <header className="bg-[#FF00B3] text-white py-8 px-4 sm:px-6 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          {/* Placeholder for potential piano image or decorative element */}
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(/public/placeholder.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-          
-          <div className="relative z-10 flex-grow text-center">
-            <img src="/logo.jpeg" alt="Piano Backings By Daniele Logo" className="mx-auto mb-4 h-32 object-cover" />
-            <h1 className="text-4xl md:text-6xl font-extrabold mb-2 tracking-tight">Piano Backings By Daniele</h1>
-            <p className="text-xl md:text-2xl font-light opacity-90">Professional Piano Backing Tracks for Auditions</p>
-          </div>
-          
-          <div className="relative z-10 flex items-center space-x-2">
-            <NavigationMenu />
-            <div className="hidden md:flex space-x-4">
-              <Link to="/" className="text-white hover:text-[#F538BC] font-medium transition-colors">
-                Home
-              </Link>
-              <Link to="/form-page" className="text-white hover:text-[#F538BC] font-medium transition-colors">
-                Request Form
-              </Link>
-            </div>
-          </div>
+      <Header />
+      
+      {/* Hero Section */}
+      <section className="bg-white/50 text-center py-16 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings By Daniele</h1>
+          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Professional Piano Backing Tracks for Auditions</p>
         </div>
-      </header>
+      </section>
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         {/* Introduction Section */}

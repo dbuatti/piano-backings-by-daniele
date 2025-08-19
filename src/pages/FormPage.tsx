@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, Coffee } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import NavigationMenu from "@/components/NavigationMenu";
+import Header from "@/components/Header";
 
 const FormPage = () => {
   const [formData, setFormData] = useState({
@@ -81,33 +80,14 @@ const FormPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      {/* Header Section - Using brand colors */}
-      <header className="bg-[#FF00B3] text-white py-8 px-4 sm:px-6 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          {/* Placeholder for potential piano image or decorative element */}
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url(/public/placeholder.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-          
-          <div className="relative z-10 flex-grow text-center">
-            <img src="/logo.jpeg" alt="Piano Backings By Daniele Logo" className="mx-auto mb-4 h-32 object-cover" />
-            <h1 className="text-4xl md:text-6xl font-extrabold mb-2 tracking-tight">Piano Backings Form</h1>
-            <p className="text-xl md:text-2xl font-light opacity-90">Submit Your Custom Track Request</p>
-          </div>
-          
-          <div className="relative z-10 flex items-center space-x-2">
-            <NavigationMenu />
-            <div className="hidden md:flex space-x-4">
-              <Link to="/" className="text-white hover:text-[#F538BC] font-medium transition-colors">
-                Home
-              </Link>
-              <Link to="/form-page" className="text-white hover:text-[#F538BC] font-medium transition-colors">
-                Request Form
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+        <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings Form</h1>
+            <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Submit Your Custom Track Request</p>
+        </div>
+
         <div className="bg-[#F538BC]/10 border-l-4 border-[#F538BC] p-4 mb-6 rounded">
           <p className="font-bold text-[#1C0357]">
             ⚠️ Important Notice: Due to high demand, there is a 2-3 week wait on backing tracks. 
@@ -126,83 +106,6 @@ const FormPage = () => {
                   I offer flexible options to suit your needs.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Payment & Pricing */}
-        <section className="mb-12">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-                <LinkIcon className="mr-2" />
-                Payment & Pricing
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-bold text-lg mb-2">📌 Payment Methods</h3>
-                  <ul className="space-y-2">
-                    <li>
-                      <a href="https://buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline flex items-center">
-                        <Coffee className="mr-2 h-5 w-5" /> ☕ Buy Me a Coffee
-                      </a>
-                    </li>
-                    <li>
-                      <span className="font-medium">Bank Transfer:</span> BSB: 923100 | Account: 301110875
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-2">🔗 Follow & Connect</h3>
-                  <ul className="space-y-1">
-                    <li>📺 YouTube: Piano Backings</li>
-                    <li>📸 Instagram: @pianobackingsbydaniele</li>
-                    <li>📧 Email: pianobackingsbydaniele@gmail.com</li>
-                    <li>📘 Facebook: Piano Backings</li>
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <p>
-                  💡 For more information:{" "}
-                  <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                    www.danielebuatti.com/piano-backings
-                  </a>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Recording Types */}
-        <section className="mb-12">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">RECORDING TYPES</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">1</div>
-                  <div>
-                    <span className="font-bold">Quick Reference (Voice Memo)</span> – A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">2</div>
-                  <div>
-                    <span className="font-bold">One-Take Recording</span> – A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">3</div>
-                  <div>
-                    <span className="font-bold">Polished & Accurate Backing</span> – A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.
-                  </div>
-                </li>
-              </ul>
             </CardContent>
           </Card>
         </section>
