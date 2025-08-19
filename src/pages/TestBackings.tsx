@@ -24,7 +24,7 @@ const TestBackings = () => {
     checkAuth();
   }, []);
 
-  const testFunction = async (backingType: string, typeName: string) => {
+  const testFunction = async (backingType: string, typeName: string, trackType: string | null = null) => {
     setIsTesting(true);
     setResult(null);
     
@@ -42,6 +42,7 @@ const TestBackings = () => {
           voiceMemo: "",
           trackPurpose: "personal-practise",
           backingType: backingType,
+          trackType: trackType, // Include trackType in the test data
           deliveryDate: "2023-12-31",
           additionalServices: ["rush-order"],
           specialRequests: `This is a test request for ${typeName} backing type`,
@@ -178,86 +179,7 @@ const TestBackings = () => {
                     {roughCutOptions.map((option) => (
                       <Button
                         key={option.value}
-                        onClick={() => {
-                          // For rough cuts, we need to pass both backingType and trackType
-                          const testData = {
-                            formData: {
-                              email: "test@example.com",
-                              name: "Test User",
-                              songTitle: "Test Song",
-                              musicalOrArtist: "Test Musical",
-                              songKey: "C Major (0)",
-                              differentKey: "No",
-                              keyForTrack: "",
-                              youtubeLink: "https://www.youtube.com/watch?v=test",
-                              voiceMemo: "",
-                              trackPurpose: "personal-practise",
-                              backingType: "full-song", // This will be overridden
-                              trackType: option.value, // This takes priority
-                              deliveryDate: "2023-12-31",
-                              additionalServices: ["rush-order"],
-                              specialRequests: `This is a test request for ${option.label}`,
-                              category: "Test Category"
-                            }
-                          };
-                          
-                          // Direct test function call with modified data
-                          setIsTesting(true);
-                          setResult(null);
-                          
-                          const executeTest = async () => {
-                            try {
-                              const { data: { session } } = await supabase.auth.getSession();
-                              
-                              if (!session) {
-                                throw new Error('You must be logged in to test this function');
-                              }
-                              
-                              const response = await fetch(
-                                `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
-                                {
-                                  method: 'POST',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${session.access_token}`
-                                  },
-                                  body: JSON.stringify(testData),
-                                }
-                              );
-                              
-                              const data = await response.json();
-                              setResult(data);
-                              
-                              if (response.ok) {
-                                if (data.dropboxFolderId) {
-                                  toast({
-                                    title: "Success!",
-                                    description: `Function executed successfully for ${option.label}. A new folder was created in Dropbox.`,
-                                  });
-                                } else {
-                                  toast({
-                                    title: "Partial Success",
-                                    description: `Request submitted successfully for ${option.label}, but Dropbox folder creation failed. Check the logs for details.`,
-                                    variant: "destructive",
-                                  });
-                                }
-                              } else {
-                                throw new Error(data.error || `Function failed with status ${response.status}`);
-                              }
-                            } catch (error: any) {
-                              console.error('Error testing function:', error);
-                              toast({
-                                title: "Error",
-                                description: `There was a problem testing the function: ${error.message}`,
-                                variant: "destructive",
-                              });
-                            } finally {
-                              setIsTesting(false);
-                            }
-                          };
-                          
-                          executeTest();
-                        }}
+                        onClick={() => testFunction('full-song', option.label, option.value)}
                         disabled={isTesting}
                         className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white h-24 flex flex-col items-center justify-center"
                       >
