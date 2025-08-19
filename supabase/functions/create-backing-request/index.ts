@@ -291,29 +291,20 @@ serve(async (req) => {
         if (!rapidApiKey) {
           youtubeMp3Error = 'RapidAPI key not configured in Supabase secrets';
           console.error('RapidAPI key not configured in Supabase secrets');
+          
+          // Create a fallback reference file
+          await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+          youtubeMp3Success = true; // Mark as successful since we provided a reference
+          youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to missing API key';
         } else {
           // Use the Cloud Api Hub - Youtube Downloader API
           console.log('Converting YouTube video to MP3 using Cloud Api Hub - Youtube Downloader API');
           
-          // First, get video info
-          const infoUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/info?id=${videoId}`;
-          
-          const infoResponse = await fetch(infoUrl, {
-            method: 'GET',
-            headers: {
-              'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
-              'x-rapidapi-key': rapidApiKey
-            }
-          });
-          
-          if (infoResponse.ok) {
-            const infoData = await infoResponse.json();
-            console.log('Video info:', infoData);
+          try {
+            // First, get video info
+            const infoUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/info?id=${videoId}`;
             
-            // Now get the audio download link
-            const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
-            
-            const downloadResponse = await fetch(downloadUrl, {
+            const infoResponse = await fetch(infoUrl, {
               method: 'GET',
               headers: {
                 'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
@@ -321,76 +312,135 @@ serve(async (req) => {
               }
             });
             
-            if (downloadResponse.ok) {
-              const downloadData = await downloadResponse.json();
-              console.log('Download data:', downloadData);
+            if (infoResponse.ok) {
+              const infoData = await infoResponse.json();
+              console.log('Video info:', infoData);
               
-              // Check if we have a download URL
-              if (downloadData.url) {
-                // Download the MP3 file
-                console.log('Downloading MP3 from:', downloadData.url);
-                const mp3Response = await fetch(downloadData.url);
+              // Now get the audio download link
+              const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
+              
+              const downloadResponse = await fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                  'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
+                  'x-rapidapi-key': rapidApiKey
+                }
+              });
+              
+              if (downloadResponse.ok) {
+                const downloadData = await downloadResponse.json();
+                console.log('Download data:', downloadData);
                 
-                if (mp3Response.ok) {
-                  const mp3Buffer = await mp3Response.arrayBuffer();
+                // Check if we have a download URL
+                if (downloadData.url) {
+                  // Download the MP3 file
+                  console.log('Downloading MP3 from:', downloadData.url);
+                  const mp3Response = await fetch(downloadData.url);
                   
-                  // Upload to Dropbox
-                  console.log('Uploading MP3 to Dropbox at path:', uploadPath);
-                  const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${dropboxAccessToken}`,
-                      'Dropbox-API-Arg': JSON.stringify({
-                        path: uploadPath,
-                        mode: 'add',
-                        autorename: true,
-                        mute: false
-                      }),
-                      'Content-Type': 'application/octet-stream'
-                    },
-                    body: mp3Buffer
-                  });
-                  
-                  if (dropboxUploadResponse.ok) {
-                    youtubeMp3Success = true;
-                    console.log('MP3 uploaded successfully to Dropbox');
+                  if (mp3Response.ok) {
+                    const mp3Buffer = await mp3Response.arrayBuffer();
+                    
+                    // Upload to Dropbox
+                    console.log('Uploading MP3 to Dropbox at path:', uploadPath);
+                    const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${dropboxAccessToken}`,
+                        'Dropbox-API-Arg': JSON.stringify({
+                          path: uploadPath,
+                          mode: 'add',
+                          autorename: true,
+                          mute: false
+                        }),
+                        'Content-Type': 'application/octet-stream'
+                      },
+                      body: mp3Buffer
+                    });
+                    
+                    if (dropboxUploadResponse.ok) {
+                      youtubeMp3Success = true;
+                      console.log('MP3 uploaded successfully to Dropbox');
+                    } else {
+                      const errorText = await dropboxUploadResponse.text();
+                      console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
+                      youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                      
+                      // Create a fallback reference file
+                      await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+                      youtubeMp3Success = true; // Mark as successful since we provided a reference
+                      youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+                    }
                   } else {
-                    const errorText = await dropboxUploadResponse.text();
-                    console.error('Dropbox MP3 upload error:', dropboxUploadResponse.status, errorText);
-                    youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                    youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+                    
+                    // Create a fallback reference file
+                    await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+                    youtubeMp3Success = true; // Mark as successful since we provided a reference
+                    youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
                   }
                 } else {
-                  youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+                  youtubeMp3Error = 'No download URL found in API response';
+                  
+                  // Create a fallback reference file
+                  await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+                  youtubeMp3Success = true; // Mark as successful since we provided a reference
+                  youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
                 }
               } else {
-                youtubeMp3Error = 'No download URL found in API response';
+                const errorText = await downloadResponse.text();
+                console.error('Download API error:', downloadResponse.status, errorText);
+                
+                // Check if it's a subscription error
+                if (downloadResponse.status === 403) {
+                  youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
+                } else {
+                  youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
+                }
+                
+                // Create a fallback reference file
+                await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+                youtubeMp3Success = true; // Mark as successful since we provided a reference
+                youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
               }
             } else {
-              const errorText = await downloadResponse.text();
-              console.error('Download API error:', downloadResponse.status, errorText);
+              const errorText = await infoResponse.text();
+              console.error('Info API error:', infoResponse.status, errorText);
               
               // Check if it's a subscription error
-              if (downloadResponse.status === 403) {
+              if (infoResponse.status === 403) {
                 youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
               } else {
-                youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
+                youtubeMp3Error = `Info API error: ${infoResponse.status} - ${errorText}`;
               }
+              
+              // Create a fallback reference file
+              await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+              youtubeMp3Success = true; // Mark as successful since we provided a reference
+              youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
             }
-          } else {
-            const errorText = await infoResponse.text();
-            console.error('Info API error:', infoResponse.status, errorText);
+          } catch (apiError) {
+            console.error('API error:', apiError);
+            youtubeMp3Error = `API error: ${apiError.message}`;
             
-            // Check if it's a subscription error
-            if (infoResponse.status === 403) {
-              youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
-            } else {
-              youtubeMp3Error = `Info API error: ${infoResponse.status} - ${errorText}`;
-            }
+            // Create a fallback reference file
+            await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+            youtubeMp3Success = true; // Mark as successful since we provided a reference
+            youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
           }
         }
       } catch (error) {
         console.error('YouTube MP3 processing error:', error);
         youtubeMp3Error = `YouTube MP3 processing error: ${error.message}`;
+        
+        // Try to create a fallback reference file
+        try {
+          const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+          await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+          youtubeMp3Success = true; // Mark as successful since we provided a reference
+          youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+        } catch (fallbackError) {
+          console.error('Fallback reference file creation failed:', fallbackError);
+        }
       }
     }
     
@@ -535,4 +585,44 @@ function extractYouTubeId(url: string): string | null {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Helper function to create a fallback reference file
+async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFolderPath: string, youtubeLink: string, mp3FileName: string) {
+  try {
+    // Create a simple text file with the YouTube link as a fallback
+    const textContent = `YouTube Reference Link: ${youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
+    const textEncoder = new TextEncoder();
+    const textBuffer = textEncoder.encode(textContent);
+    
+    // Upload to Dropbox with .txt extension
+    const textUploadPath = `${dropboxFolderPath}/${mp3FileName.replace('.mp3', '_reference.txt')}`;
+    console.log('Uploading reference text file to Dropbox at path:', textUploadPath);
+    
+    const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${dropboxAccessToken}`,
+        'Dropbox-API-Arg': JSON.stringify({
+          path: textUploadPath,
+          mode: 'add',
+          autorename: true,
+          mute: false
+        }),
+        'Content-Type': 'application/octet-stream'
+      },
+      body: textBuffer
+    });
+    
+    if (!dropboxUploadResponse.ok) {
+      const errorText = await dropboxUploadResponse.text();
+      console.error('Dropbox reference text upload error:', dropboxUploadResponse.status, errorText);
+      throw new Error(`Dropbox reference text upload error: ${dropboxUploadResponse.status} - ${errorText}`);
+    }
+    
+    console.log('Reference text file uploaded successfully to Dropbox');
+  } catch (error) {
+    console.error('Fallback reference file creation failed:', error);
+    throw error;
+  }
 }
