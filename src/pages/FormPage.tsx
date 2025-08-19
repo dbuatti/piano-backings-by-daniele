@@ -23,6 +23,7 @@ const FormPage = () => {
     differentKey: 'No',
     keyForTrack: '',
     voiceMemo: '',
+    voiceMemoFile: null as File | null,
     sheetMusic: null as File | null,
     youtubeLink: '',
     trackPurpose: '',
@@ -43,9 +44,9 @@ const FormPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, sheetMusic: e.target.files![0] }));
+      setFormData(prev => ({ ...prev, [fieldName]: e.target.files![0] }));
     }
   };
 
@@ -68,6 +69,7 @@ const FormPage = () => {
       differentKey: 'No',
       keyForTrack: '',
       voiceMemo: 'https://example.com/voice-memo.mp3',
+      voiceMemoFile: null,
       sheetMusic: null,
       youtubeLink: 'https://www.youtube.com/watch?v=test',
       trackPurpose: 'personal-practise',
@@ -171,6 +173,7 @@ const FormPage = () => {
         differentKey: 'No',
         keyForTrack: '',
         voiceMemo: '',
+        voiceMemoFile: null,
         sheetMusic: null,
         youtubeLink: '',
         trackPurpose: '',
@@ -301,27 +304,33 @@ const FormPage = () => {
                     <Label htmlFor="email" className="flex items-center">
                       Email <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input 
-                      id="email" 
-                      name="email" 
-                      type="email" 
-                      value={formData.email} 
-                      onChange={handleInputChange} 
-                      required 
-                      placeholder="your.email@example.com"
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        value={formData.email} 
+                        onChange={handleInputChange} 
+                        required 
+                        placeholder="your.email@example.com"
+                        className="pl-10"
+                      />
+                      <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="name">Name</Label>
-                    <Input 
-                      id="name" 
-                      name="name" 
-                      value={formData.name} 
-                      onChange={handleInputChange} 
-                      placeholder="Your full name"
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="name" 
+                        name="name" 
+                        value={formData.name} 
+                        onChange={handleInputChange} 
+                        placeholder="Your full name"
+                        className="pl-10"
+                      />
+                      <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                 </div>
                 
@@ -330,29 +339,35 @@ const FormPage = () => {
                     <Label htmlFor="songTitle" className="flex items-center">
                       Song Title <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input 
-                      id="songTitle" 
-                      name="songTitle" 
-                      value={formData.songTitle} 
-                      onChange={handleInputChange} 
-                      required 
-                      placeholder="e.g., Defying Gravity"
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="songTitle" 
+                        name="songTitle" 
+                        value={formData.songTitle} 
+                        onChange={handleInputChange} 
+                        required 
+                        placeholder="e.g., Defying Gravity"
+                        className="pl-10"
+                      />
+                      <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="musicalOrArtist" className="flex items-center">
                       Musical or Artist <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input 
-                      id="musicalOrArtist" 
-                      name="musicalOrArtist" 
-                      value={formData.musicalOrArtist} 
-                      onChange={handleInputChange} 
-                      required 
-                      placeholder="e.g., Wicked"
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="musicalOrArtist" 
+                        name="musicalOrArtist" 
+                        value={formData.musicalOrArtist} 
+                        onChange={handleInputChange} 
+                        required 
+                        placeholder="e.g., Wicked"
+                        className="pl-10"
+                      />
+                      <TheaterIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                 </div>
                 
@@ -360,18 +375,21 @@ const FormPage = () => {
                   <Label htmlFor="category" className="flex items-center">
                     Category <span className="text-red-500 ml-1">*</span>
                   </Label>
-                  <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-1 relative">
+                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
+                      <SelectTrigger className="pl-10">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((category) => (
+                          <SelectItem key={category.value} value={category.value}>
+                            {category.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FolderIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
                 </div>
               </div>
 
@@ -452,50 +470,61 @@ const FormPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="songKey">What key is your song in? (Don't worry if you're unsure)</Label>
-                    <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select key" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {keyOptions.map((key) => (
-                          <SelectItem key={key.value} value={key.value}>
-                            {key.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-1 relative">
+                      <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Select key" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {keyOptions.map((key) => (
+                            <SelectItem key={key.value} value={key.value}>
+                              {key.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <KeyIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                   
                   <div>
                     <Label htmlFor="differentKey">Do you require it in a different key?</Label>
-                    <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="No">No</SelectItem>
-                        <SelectItem value="Yes">Yes</SelectItem>
-                        <SelectItem value="Maybe">Maybe</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-1 relative">
+                      <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Select option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="No">No</SelectItem>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="Maybe">Maybe</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <KeyRoundIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                 </div>
                 
-                <div className="mt-4">
-                  <Label htmlFor="keyForTrack">Which key?</Label>
-                  <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack}>
-                    <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select key" />
-                      </SelectTrigger>
-                    <SelectContent>
-                      {keyOptions.map((key) => (
-                        <SelectItem key={key.value} value={key.value}>
-                          {key.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {formData.differentKey === 'Yes' && (
+                  <div className="mt-4">
+                    <Label htmlFor="keyForTrack">Which key?</Label>
+                    <div className="mt-1 relative">
+                      <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Select key" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {keyOptions.map((key) => (
+                            <SelectItem key={key.value} value={key.value}>
+                              {key.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <KeySquareIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Section 4: Track Details */}
@@ -511,30 +540,54 @@ const FormPage = () => {
                       <LinkIcon className="mr-2" size={16} />
                       YouTube URL for tempo reference <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input 
-                      id="youtubeLink" 
-                      name="youtubeLink" 
-                      value={formData.youtubeLink} 
-                      onChange={handleInputChange} 
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      required
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="youtubeLink" 
+                        name="youtubeLink" 
+                        value={formData.youtubeLink} 
+                        onChange={handleInputChange} 
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        required
+                        className="pl-10"
+                      />
+                      <YoutubeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="voiceMemo" className="flex items-center">
+                    <Label className="flex items-center">
                       <MicIcon className="mr-2" size={16} />
                       Voice Memo (optional)
                     </Label>
-                    <Input 
-                      id="voiceMemo" 
-                      name="voiceMemo" 
-                      value={formData.voiceMemo} 
-                      onChange={handleInputChange} 
-                      placeholder="Upload a voice memo or provide a link"
-                      className="mt-1"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                      <div>
+                        <Label htmlFor="voiceMemo" className="text-sm text-gray-600">Link to voice memo</Label>
+                        <div className="mt-1 relative">
+                          <Input 
+                            id="voiceMemo" 
+                            name="voiceMemo" 
+                            value={formData.voiceMemo} 
+                            onChange={handleInputChange} 
+                            placeholder="https://example.com/voice-memo.mp3"
+                            className="pl-10"
+                          />
+                          <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="voiceMemoFile" className="text-sm text-gray-600">Upload voice memo file</Label>
+                        <div className="mt-1">
+                          <Input 
+                            id="voiceMemoFile" 
+                            name="voiceMemoFile" 
+                            type="file" 
+                            accept="audio/*" 
+                            onChange={(e) => handleFileChange(e, 'voiceMemoFile')} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">You can provide either a link or upload a file (or both)</p>
                   </div>
                   
                   <div>
@@ -542,45 +595,54 @@ const FormPage = () => {
                       <FileTextIcon className="mr-2" size={16} />
                       Please upload your sheet music as a PDF <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input 
-                      id="sheetMusic" 
-                      name="sheetMusic" 
-                      type="file" 
-                      accept=".pdf" 
-                      onChange={handleFileChange} 
-                      required 
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="sheetMusic" 
+                        name="sheetMusic" 
+                        type="file" 
+                        accept=".pdf" 
+                        onChange={(e) => handleFileChange(e, 'sheetMusic')} 
+                        required 
+                        className="pl-10"
+                      />
+                      <FileTextIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                     <p className="text-sm text-gray-500 mt-1">Make sure it's clear, correctly cut, and in the right key</p>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="trackPurpose">This track is for...</Label>
-                      <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select purpose" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="personal-practise">Personal Practise</SelectItem>
-                          <SelectItem value="audition-backing">Audition Backing Track (selftape)</SelectItem>
-                          <SelectItem value="melody-bash">Melody/note bash (no formal backing required)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="mt-1 relative">
+                        <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
+                          <SelectTrigger className="pl-10">
+                            <SelectValue placeholder="Select purpose" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="personal-practise">Personal Practise</SelectItem>
+                            <SelectItem value="audition-backing">Audition Backing Track (selftape)</SelectItem>
+                            <SelectItem value="melody-bash">Melody/note bash (no formal backing required)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <TargetIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      </div>
                     </div>
                     
                     <div>
                       <Label htmlFor="backingType">What do you need?</Label>
-                      <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select backing type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="full-song">Full song backing</SelectItem>
-                          <SelectItem value="audition-cut">Audition cut backing</SelectItem>
-                          <SelectItem value="note-bash">Note/melody bash</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="mt-1 relative">
+                        <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
+                          <SelectTrigger className="pl-10">
+                            <SelectValue placeholder="Select backing type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="full-song">Full song backing</SelectItem>
+                            <SelectItem value="audition-cut">Audition cut backing</SelectItem>
+                            <SelectItem value="note-bash">Note/melody bash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <HeadphonesIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -599,14 +661,17 @@ const FormPage = () => {
                       <CalendarIcon className="mr-2" size={16} />
                       When do you need your track for?
                     </Label>
-                    <Input 
-                      id="deliveryDate" 
-                      name="deliveryDate" 
-                      type="date" 
-                      value={formData.deliveryDate} 
-                      onChange={handleInputChange} 
-                      className="mt-1 w-full md:w-1/2"
-                    />
+                    <div className="mt-1 relative">
+                      <Input 
+                        id="deliveryDate" 
+                        name="deliveryDate" 
+                        type="date" 
+                        value={formData.deliveryDate} 
+                        onChange={handleInputChange} 
+                        className="pl-10 w-full md:w-1/2"
+                      />
+                      <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    </div>
                   </div>
                   
                   <div>
@@ -698,15 +763,18 @@ const FormPage = () => {
                       <FileAudio className="mr-2" size={16} />
                       Is there anything else you'd like to add?
                     </Label>
-                    <Textarea 
-                      id="specialRequests" 
-                      name="specialRequests" 
-                      value={formData.specialRequests} 
-                      onChange={handleInputChange} 
-                      placeholder="Any special requests or additional information..."
-                      rows={4}
-                      className="mt-1"
-                    />
+                    <div className="mt-1 relative">
+                      <Textarea 
+                        id="specialRequests" 
+                        name="specialRequests" 
+                        value={formData.specialRequests} 
+                        onChange={handleInputChange} 
+                        placeholder="Any special requests or additional information..."
+                        rows={4}
+                        className="pl-10"
+                      />
+                      <FileAudio className="absolute left-3 top-3 text-gray-400" size={16} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -737,5 +805,74 @@ const FormPage = () => {
     </div>
   );
 };
+
+// Additional icon components with proper TypeScript definitions
+const MailIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+
+const UserIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const TheaterIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2 10s3-3 3-8"/>
+    <path d="M22 10s-3-3-3-8"/>
+    <path d="M8 10v8a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-8"/>
+    <path d="M10 10h4"/>
+    <path d="M2 10h20"/>
+  </svg>
+);
+
+const FolderIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+  </svg>
+);
+
+const KeyRoundIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/>
+    <circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>
+  </svg>
+);
+
+const KeySquareIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M10 12v.1"/>
+    <path d="M13.1 10.1a3 3 0 1 0 3.9 3.9"/>
+    <path d="m14 10-4.5 4.5"/>
+    <path d="M14 10c.1.4.1.9 0 1.3l-1.5 1.5c-.4.4-1 .4-1.3 0l-1-1c-.4-.4-.4-1 0-1.3L12 9c.4-.4 1-.4 1.3 0l.5.5c.4.4.4 1 0 1.3l-1 1c-.4.4-1 .4-1.3 0"/>
+    <path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/>
+  </svg>
+);
+
+const YoutubeIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/>
+    <path d="m10 15 5-3-5-3z"/>
+  </svg>
+);
+
+const TargetIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="6"/>
+    <circle cx="12" cy="12" r="2"/>
+  </svg>
+);
+
+const HeadphonesIcon = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>
+  </svg>
+);
 
 export default FormPage;
