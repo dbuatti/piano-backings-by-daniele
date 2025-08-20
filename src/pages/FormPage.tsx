@@ -276,39 +276,39 @@ const FormPage = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
 
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings Request Form</h1>
-          <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Submit Your Custom Track Request</p>
+      <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings Request</h1>
+          <p className="text-base md:text-xl font-light text-[#1C0357]/90">Submit Your Custom Track Request</p>
         </div>
 
-        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded">
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 mb-4 rounded">
           <div className="flex items-start">
-            <AlertCircle className="text-yellow-600 mr-2 mt-0.5 flex-shrink-0" size={20} />
+            <AlertCircle className="text-yellow-600 mr-2 mt-0.5 flex-shrink-0" size={16} />
             <div>
-              <p className="font-bold text-[#1C0357]">
-                ⚠️ Important Notice: Due to high demand, there is a 2-3 week wait on backing tracks. 
-                If you need a faster turnaround, consider the Rush Fee option below. Thank you for your patience!
+              <p className="font-bold text-[#1C0357] text-sm">
+                ⚠️ Important: 2-3 week wait on backing tracks. Rush fee available.
               </p>
             </div>
           </div>
         </div>
 
         {showAccountPrompt && (
-          <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357]">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row items-center justify-between">
-                <div className="mb-4 md:mb-0">
-                  <h3 className="text-xl font-bold flex items-center">
-                    <UserPlus className="mr-2" /> Create an Account
+          <Card className="shadow-lg mb-4 bg-[#1C0357] text-white border-[#1C0357]">
+            <CardContent className="p-4">
+              <div className="flex flex-col items-center justify-between gap-3">
+                <div className="text-center">
+                  <h3 className="text-lg font-bold flex items-center justify-center">
+                    <UserPlus className="mr-2" size={16} /> Create an Account
                   </h3>
-                  <p className="mt-1">
+                  <p className="mt-1 text-sm">
                     Save your request and access all your tracks in one place!
                   </p>
                 </div>
                 <Button 
                   onClick={createAccount}
-                  className="bg-white text-[#1C0357] hover:bg-gray-100"
+                  className="bg-white text-[#1C0357] hover:bg-gray-100 text-sm w-full"
+                  size="sm"
                 >
                   Create Account
                 </Button>
@@ -317,41 +317,40 @@ const FormPage = () => {
           </Card>
         )}
 
-        <Card className="shadow-lg mb-8">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <MusicIcon className="mr-2" />
+        <Card className="shadow-lg mb-6">
+          <CardHeader className="bg-[#D1AAF2]/20 py-3 px-4">
+            <CardTitle className="text-lg md:text-xl text-[#1C0357] flex items-center">
+              <MusicIcon className="mr-2" size={16} />
               Request Guidelines
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex items-start mb-4">
-              <MusicIcon className="text-[#1C0357] mr-3 mt-1" />
-              <p className="text-base">
-                I provide custom piano backing tracks for musical theatre and pop. Whether you need a quick reference or a polished audition track, 
-                I offer flexible options to suit your needs.
+          <CardContent className="p-4">
+            <div className="flex items-start mb-3">
+              <MusicIcon className="text-[#1C0357] mr-2 mt-0.5" size={16} />
+              <p className="text-sm">
+                I provide custom piano backing tracks for musical theatre and pop.
               </p>
             </div>
             
-            <div className="border-l-4 border-[#F538BC] pl-4 py-2 my-4">
-              <p className="font-bold text-[#1C0357]">
+            <div className="border-l-2 border-[#F538BC] pl-3 py-2 my-3">
+              <p className="font-bold text-[#1C0357] text-sm">
                 ✅ Important: Your sheet music must be clear, correctly cut, and in the right key.
               </p>
             </div>
             
-            <p className="mt-3 font-medium">Before submitting, please make sure to include:</p>
-            <ul className="list-disc pl-5 mt-2 space-y-1">
+            <p className="mt-2 font-medium text-sm">Before submitting, please make sure to include:</p>
+            <ul className="list-disc pl-4 mt-1 space-y-1 text-sm">
               <li>✔️ Your sheet music in PDF format (required)</li>
               <li>✔️ A YouTube link to the song (for tempo reference) (required)</li>
               <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
             </ul>
             
-            <div className="mt-6">
+            <div className="mt-4">
               <Button 
                 type="button" 
                 onClick={fillDummyData}
-                className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white"
-                variant="outline"
+                className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-sm w-full"
+                size="sm"
               >
                 Fill with Sample Data
               </Button>
@@ -360,21 +359,21 @@ const FormPage = () => {
         </Card>
 
         <Card className="shadow-lg">
-          <CardHeader className="bg-[#1C0357] text-white">
-            <CardTitle className="text-2xl">Request Form</CardTitle>
+          <CardHeader className="bg-[#1C0357] text-white py-3 px-4">
+            <CardTitle className="text-lg md:text-xl">Request Form</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <CardContent className="p-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Section 1: Basic Information */}
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-xl font-semibold mb-4 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">1</span>
                   Basic Information
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="email" className="flex items-center">
+                    <Label htmlFor="email" className="flex items-center text-sm">
                       Email <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <div className="mt-1 relative">
@@ -386,13 +385,13 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="your.email@example.com"
-                        className="pl-10"
+                        className="pl-8 py-2 text-sm"
                       />
-                      <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <MailIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name" className="text-sm">Name</Label>
                     <div className="mt-1 relative">
                       <Input 
                         id="name" 
@@ -400,16 +399,16 @@ const FormPage = () => {
                         value={formData.name} 
                         onChange={handleInputChange} 
                         placeholder="Your full name"
-                        className="pl-10"
+                        className="pl-8 py-2 text-sm"
                       />
-                      <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="songTitle" className="flex items-center">
+                    <Label htmlFor="songTitle" className="flex items-center text-sm">
                       Song Title <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <div className="mt-1 relative">
@@ -420,13 +419,13 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="e.g., Defying Gravity"
-                        className="pl-10"
+                        className="pl-8 py-2 text-sm"
                       />
-                      <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="musicalOrArtist" className="flex items-center">
+                    <Label htmlFor="musicalOrArtist" className="flex items-center text-sm">
                       Musical or Artist <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <div className="mt-1 relative">
@@ -437,96 +436,96 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="e.g., Wicked"
-                        className="pl-10"
+                        className="pl-8 py-2 text-sm"
                       />
-                      <TheaterIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <TheaterIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                 </div>
                 
                 <div className="mt-4">
-                  <Label htmlFor="category" className="flex items-center">
+                  <Label htmlFor="category" className="flex items-center text-sm">
                     Category <span className="text-red-500 ml-1">*</span>
                   </Label>
                   <div className="mt-1 relative">
                     <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
-                      <SelectTrigger className="pl-10">
+                      <SelectTrigger className="pl-8 py-2 text-sm">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
                         {categoryOptions.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
+                          <SelectItem key={category.value} value={category.value} className="text-sm">
                             {category.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <FolderIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    <FolderIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                   </div>
                 </div>
               </div>
 
               {/* Section 2: Track Type */}
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-xl font-semibold mb-4 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
                   Track Type
                 </h2>
                 
-                <div className="space-y-4">
-                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                <div className="space-y-3">
+                  <div className="p-3 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="quick-reference"
                         name="trackType"
                         value="quick"
-                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
+                        className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'quick'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="quick-reference" className="flex flex-col">
-                        <span className="font-bold text-lg">Quick Reference (Voice Memo)</span>
-                        <span className="text-[#1C0357] font-medium mt-1">$5 - $10</span>
-                        <span className="text-sm mt-2 text-gray-600">A fast and rough voice memo ideal for quick learning or audition notes, not suited for professional use.</span>
+                        <span className="font-bold text-sm">Quick Reference (Voice Memo)</span>
+                        <span className="text-[#1C0357] font-medium mt-1 text-xs">$5 - $10</span>
+                        <span className="text-xs mt-1 text-gray-600">Fast voice memo for quick learning</span>
                       </Label>
                     </div>
                   </div>
                   
-                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                  <div className="p-3 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="one-take"
                         name="trackType"
                         value="one-take"
-                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
+                        className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'one-take'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="one-take" className="flex flex-col">
-                        <span className="font-bold text-lg">One-Take Recording</span>
-                        <span className="text-[#1C0357] font-medium mt-1">$10 - $15 (Audition Cut) / $15 - $20 (Full Song)</span>
-                        <span className="text-sm mt-2 text-gray-600">A single-pass, good-quality DAW recording with potential minor errors, suitable for self-tapes and quick references.</span>
+                        <span className="font-bold text-sm">One-Take Recording</span>
+                        <span className="text-[#1C0357] font-medium mt-1 text-xs">$10 - $20</span>
+                        <span className="text-xs mt-1 text-gray-600">Single-pass DAW recording</span>
                       </Label>
                     </div>
                   </div>
                   
-                  <div className="p-4 border border-gray-200 rounded-lg bg-white">
+                  <div className="p-3 border border-gray-200 rounded-lg bg-white">
                     <div className="flex items-start">
                       <input
                         type="radio"
                         id="polished"
                         name="trackType"
                         value="polished"
-                        className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357]"
+                        className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357]"
                         checked={formData.trackType === 'polished'}
                         onChange={(e) => setFormData(prev => ({ ...prev, trackType: e.target.value }))}
                       />
                       <Label htmlFor="polished" className="flex flex-col">
-                        <span className="font-bold text-lg">Polished & Accurate Backing</span>
-                        <span className="text-[#1C0357] font-medium mt-1">$15 - $20 (Audition Cut) / $30 - $35 (Full Song)</span>
-                        <span className="text-sm mt-2 text-gray-600">A refined, accurate track with correct notes and rhythm, ideal for auditions, performances, and dedicated practice.</span>
+                        <span className="font-bold text-sm">Polished & Accurate Backing</span>
+                        <span className="text-[#1C0357] font-medium mt-1 text-xs">$15 - $35</span>
+                        <span className="text-xs mt-1 text-gray-600">Refined track for auditions</span>
                       </Label>
                     </div>
                   </div>
@@ -534,83 +533,83 @@ const FormPage = () => {
               </div>
 
               {/* Section 3: Musical Details */}
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-xl font-semibold mb-4 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span>
                   Musical Details
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="songKey">What key is your song in? (Don't worry if you're unsure)</Label>
+                    <Label htmlFor="songKey" className="text-sm">What key is your song in?</Label>
                     <div className="mt-1 relative">
                       <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey}>
-                        <SelectTrigger className="pl-10">
+                        <SelectTrigger className="pl-8 py-2 text-sm">
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
                         <SelectContent>
                           {keyOptions.map((key) => (
-                            <SelectItem key={key.value} value={key.value}>
+                            <SelectItem key={key.value} value={key.value} className="text-sm">
                               {key.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <KeyIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <KeyIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="differentKey">Do you require it in a different key?</Label>
+                    <Label htmlFor="differentKey" className="text-sm">Do you require it in a different key?</Label>
                     <div className="mt-1 relative">
                       <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey}>
-                        <SelectTrigger className="pl-10">
+                        <SelectTrigger className="pl-8 py-2 text-sm">
                           <SelectValue placeholder="Select option" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="No">No</SelectItem>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="Maybe">Maybe</SelectItem>
+                          <SelectItem value="No" className="text-sm">No</SelectItem>
+                          <SelectItem value="Yes" className="text-sm">Yes</SelectItem>
+                          <SelectItem value="Maybe" className="text-sm">Maybe</SelectItem>
                         </SelectContent>
                       </Select>
-                      <KeyRoundIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <KeyRoundIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                 </div>
                 
                 {formData.differentKey === 'Yes' && (
                   <div className="mt-4">
-                    <Label htmlFor="keyForTrack">Which key?</Label>
+                    <Label htmlFor="keyForTrack" className="text-sm">Which key?</Label>
                     <div className="mt-1 relative">
                       <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack}>
-                        <SelectTrigger className="pl-10">
+                        <SelectTrigger className="pl-8 py-2 text-sm">
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
                         <SelectContent>
                           {keyOptions.map((key) => (
-                            <SelectItem key={key.value} value={key.value}>
+                            <SelectItem key={key.value} value={key.value} className="text-sm">
                               {key.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <KeySquareIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <KeySquareIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Section 4: Track Details */}
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-xl font-semibold mb-4 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">4</span>
                   Track Details
                 </h2>
                 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="youtubeLink" className="flex items-center">
-                      <LinkIcon className="mr-2" size={16} />
+                    <Label htmlFor="youtubeLink" className="flex items-center text-sm">
+                      <LinkIcon className="mr-1" size={14} />
                       YouTube URL for tempo reference <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <div className="mt-1 relative">
@@ -621,20 +620,20 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         placeholder="https://www.youtube.com/watch?v=..."
                         required
-                        className="pl-10"
+                        className="pl-8 py-2 text-sm"
                       />
-                      <YoutubeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <YoutubeIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   
                   <div>
-                    <Label className="flex items-center">
-                      <MicIcon className="mr-2" size={16} />
+                    <Label className="flex items-center text-sm">
+                      <MicIcon className="mr-1" size={14} />
                       Voice Memo (optional)
                     </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                    <div className="space-y-3 mt-1">
                       <div>
-                        <Label htmlFor="voiceMemo" className="text-sm text-gray-600">Link to voice memo</Label>
+                        <Label htmlFor="voiceMemo" className="text-xs text-gray-600">Link to voice memo</Label>
                         <div className="mt-1 relative">
                           <Input 
                             id="voiceMemo" 
@@ -642,13 +641,13 @@ const FormPage = () => {
                             value={formData.voiceMemo} 
                             onChange={handleInputChange} 
                             placeholder="https://example.com/voice-memo.mp3"
-                            className="pl-10"
+                            className="pl-8 py-2 text-sm"
                           />
-                          <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                          <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="voiceMemoFile" className="text-sm text-gray-600">Upload voice memo file</Label>
+                        <Label htmlFor="voiceMemoFile" className="text-xs text-gray-600">Upload voice memo file</Label>
                         <div className="mt-1">
                           <Input 
                             id="voiceMemoFile" 
@@ -656,16 +655,17 @@ const FormPage = () => {
                             type="file" 
                             accept="audio/*" 
                             onChange={(e) => handleFileChange(e, 'voiceMemoFile')} 
+                            className="py-1 text-sm"
                           />
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">You can provide either a link or upload a file (or both)</p>
+                    <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
                   </div>
                   
                   <div>
-                    <Label htmlFor="sheetMusic" className="flex items-center">
-                      <FileTextIcon className="mr-2" size={16} />
+                    <Label htmlFor="sheetMusic" className="flex items-center text-sm">
+                      <FileTextIcon className="mr-1" size={14} />
                       Please upload your sheet music as a PDF <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <div className="mt-1 relative">
@@ -676,45 +676,45 @@ const FormPage = () => {
                         accept=".pdf" 
                         onChange={(e) => handleFileChange(e, 'sheetMusic')} 
                         required 
-                        className="pl-10"
+                        className="pl-8 py-1 text-sm"
                       />
-                      <FileTextIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <FileTextIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">Make sure it's clear, correctly cut, and in the right key</p>
+                    <p className="text-xs text-gray-500 mt-1">Make sure it's clear and in the right key</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="trackPurpose">This track is for...</Label>
+                      <Label htmlFor="trackPurpose" className="text-sm">This track is for...</Label>
                       <div className="mt-1 relative">
                         <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
-                          <SelectTrigger className="pl-10">
+                          <SelectTrigger className="pl-8 py-2 text-sm">
                             <SelectValue placeholder="Select purpose" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="personal-practise">Personal Practise</SelectItem>
-                            <SelectItem value="audition-backing">Audition Backing Track (selftape)</SelectItem>
-                            <SelectItem value="melody-bash">Melody/note bash (no formal backing required)</SelectItem>
+                            <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
+                            <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
+                            <SelectItem value="melody-bash" className="text-sm">Melody/note bash</SelectItem>
                           </SelectContent>
                         </Select>
-                        <TargetIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                        <TargetIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
                     </div>
                     
                     <div>
-                      <Label htmlFor="backingType">What do you need?</Label>
+                      <Label htmlFor="backingType" className="text-sm">What do you need?</Label>
                       <div className="mt-1 relative">
                         <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
-                          <SelectTrigger className="pl-10">
+                          <SelectTrigger className="pl-8 py-2 text-sm">
                             <SelectValue placeholder="Select backing type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="full-song">Full song backing</SelectItem>
-                            <SelectItem value="audition-cut">Audition cut backing</SelectItem>
-                            <SelectItem value="note-bash">Note/melody bash</SelectItem>
+                            <SelectItem value="full-song" className="text-sm">Full song backing</SelectItem>
+                            <SelectItem value="audition-cut" className="text-sm">Audition cut backing</SelectItem>
+                            <SelectItem value="note-bash" className="text-sm">Note/melody bash</SelectItem>
                           </SelectContent>
                         </Select>
-                        <HeadphonesIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                        <HeadphonesIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
                     </div>
                   </div>
@@ -722,16 +722,16 @@ const FormPage = () => {
               </div>
 
               {/* Section 5: Additional Services */}
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-xl font-semibold mb-4 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
                   Additional Services
                 </h2>
                 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="deliveryDate" className="flex items-center">
-                      <CalendarIcon className="mr-2" size={16} />
+                    <Label htmlFor="deliveryDate" className="flex items-center text-sm">
+                      <CalendarIcon className="mr-1" size={14} />
                       When do you need your track for?
                     </Label>
                     <div className="mt-1 relative">
@@ -741,90 +741,90 @@ const FormPage = () => {
                         type="date" 
                         value={formData.deliveryDate} 
                         onChange={handleInputChange} 
-                        className="pl-10 w-full md:w-1/2"
+                        className="pl-8 py-2 text-sm w-full"
                       />
-                      <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                      <CalendarIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-3 flex items-center">
-                      <Headphones className="mr-2" size={16} />
+                    <h3 className="font-semibold mb-2 flex items-center text-sm">
+                      <Headphones className="mr-1" size={14} />
                       Additional Services
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                    <div className="space-y-2">
+                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start">
                           <input
                             type="checkbox"
                             id="rush-order"
-                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357] rounded"
                             checked={formData.additionalServices.includes('rush-order')}
                             onChange={() => handleCheckboxChange('rush-order')}
                           />
                           <div className="flex flex-col">
-                            <Label htmlFor="rush-order" className="font-medium">
+                            <Label htmlFor="rush-order" className="font-medium text-sm">
                               Rush Order
                             </Label>
-                            <span className="text-sm text-[#1C0357] font-medium">+$10</span>
-                            <p className="text-sm text-gray-600 mt-1">24-hour turnaround</p>
+                            <span className="text-xs text-[#1C0357] font-medium">+$10</span>
+                            <p className="text-xs text-gray-600 mt-1">24-hour turnaround</p>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start">
                           <input
                             type="checkbox"
                             id="complex-songs"
-                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357] rounded"
                             checked={formData.additionalServices.includes('complex-songs')}
                             onChange={() => handleCheckboxChange('complex-songs')}
                           />
                           <div className="flex flex-col">
-                            <Label htmlFor="complex-songs" className="font-medium">
+                            <Label htmlFor="complex-songs" className="font-medium text-sm">
                               Complex Songs
                             </Label>
-                            <span className="text-sm text-[#1C0357] font-medium">+$5–$10</span>
-                            <p className="text-sm text-gray-600 mt-1">Sondheim, JRB, Guettel</p>
+                            <span className="text-xs text-[#1C0357] font-medium">+$5–$10</span>
+                            <p className="text-xs text-gray-600 mt-1">Sondheim, JRB, Guettel</p>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start">
                           <input
                             type="checkbox"
                             id="additional-edits"
-                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357] rounded"
                             checked={formData.additionalServices.includes('additional-edits')}
                             onChange={() => handleCheckboxChange('additional-edits')}
                           />
                           <div className="flex flex-col">
-                            <Label htmlFor="additional-edits" className="font-medium">
+                            <Label htmlFor="additional-edits" className="font-medium text-sm">
                               Additional Edits
                             </Label>
-                            <span className="text-sm text-[#1C0357] font-medium">+$5 per request</span>
-                            <p className="text-sm text-gray-600 mt-1">Post-completion revisions</p>
+                            <span className="text-xs text-[#1C0357] font-medium">+$5 per request</span>
+                            <p className="text-xs text-gray-600 mt-1">Post-completion revisions</p>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start">
                           <input
                             type="checkbox"
                             id="exclusive-ownership"
-                            className="mt-1 mr-3 h-5 w-5 text-[#1C0357] focus:ring-[#1C0357] rounded"
+                            className="mt-1 mr-2 h-4 w-4 text-[#1C0357] focus:ring-[#1C0357] rounded"
                             checked={formData.additionalServices.includes('exclusive-ownership')}
                             onChange={() => handleCheckboxChange('exclusive-ownership')}
                           />
                           <div className="flex flex-col">
-                            <Label htmlFor="exclusive-ownership" className="font-medium">
+                            <Label htmlFor="exclusive-ownership" className="font-medium text-sm">
                               Exclusive Ownership
                             </Label>
-                            <span className="text-sm text-[#1C0357] font-medium">$40</span>
-                            <p className="text-sm text-gray-600 mt-1">Not uploaded/shared online</p>
+                            <span className="text-xs text-[#1C0357] font-medium">$40</span>
+                            <p className="text-xs text-gray-600 mt-1">Not uploaded/shared online</p>
                           </div>
                         </div>
                       </div>
@@ -832,8 +832,8 @@ const FormPage = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="specialRequests" className="flex items-center">
-                      <FileAudio className="mr-2" size={16} />
+                    <Label htmlFor="specialRequests" className="flex items-center text-sm">
+                      <FileAudio className="mr-1" size={14} />
                       Is there anything else you'd like to add?
                     </Label>
                     <div className="mt-1 relative">
@@ -843,24 +843,24 @@ const FormPage = () => {
                         value={formData.specialRequests} 
                         onChange={handleInputChange} 
                         placeholder="Any special requests or additional information..."
-                        rows={4}
-                        className="pl-10"
+                        rows={3}
+                        className="pl-8 py-2 text-sm"
                       />
-                      <FileAudio className="absolute left-3 top-3 text-gray-400" size={16} />
+                      <FileAudio className="absolute left-2 top-2 text-gray-400" size={14} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="text-center pt-4">
+              <div className="text-center pt-2">
                 <Button 
                   type="submit" 
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg flex items-center justify-center mx-auto"
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-6 py-2 text-base flex items-center justify-center mx-auto w-full"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -868,7 +868,7 @@ const FormPage = () => {
                     </>
                   ) : (
                     <>
-                      <Upload className="mr-2" size={20} />
+                      <Upload className="mr-2" size={16} />
                       Submit Request
                     </>
                   )}
