@@ -43,7 +43,8 @@ import {
   Eye,
   Edit,
   Check,
-  X
+  X,
+  Calculator
 } from 'lucide-react';
 import {
   Select,
@@ -81,6 +82,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import PricingMatrix from '@/components/PricingMatrix';
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -98,7 +100,7 @@ const AdminDashboard = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'pricing'>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen] = useState(false);
   const [selectedRequestForPlatforms, setSelectedRequestForPlatforms] = useState<string | null>(null);
@@ -913,6 +915,15 @@ const AdminDashboard = () => {
                     Calendar View
                   </Button>
                   <Button 
+                    variant={viewMode === 'pricing' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('pricing')}
+                    className={`flex items-center ${viewMode === 'pricing' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                    size="sm"
+                  >
+                    <Calculator className="w-4 h-4 mr-2" />
+                    Pricing Matrix
+                  </Button>
+                  <Button 
                     variant="outline" 
                     onClick={clearFilters}
                     className="text-sm"
@@ -924,60 +935,67 @@ const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search by name, email, song..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <div>
+              {viewMode !== 'pricing' && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search by name, email, song..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  <div>
+                    <div className="relative">
+                      <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Statuses</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="relative">
+                      <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Backing Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="full-song">Full Song</SelectItem>
+                          <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                          <SelectItem value="note-bash">Note Bash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <p className="text-sm text-gray-500">
+                      Showing {filteredRequests.length} of {requests.length} requests
+                    </p>
                   </div>
                 </div>
-                
-                <div>
-                  <div className="relative">
-                    <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Backing Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="full-song">Full Song</SelectItem>
-                        <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                        <SelectItem value="note-bash">Note Bash</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="flex items-end">
-                  <p className="text-sm text-gray-500">
-                    Showing {filteredRequests.length} of {requests.length} requests
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
+          
+          {/* Pricing Matrix View */}
+          {viewMode === 'pricing' && (
+            <PricingMatrix />
+          )}
           
           {/* Calendar View */}
           {viewMode === 'calendar' && (
