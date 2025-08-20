@@ -32,7 +32,18 @@ import {
   Bell,
   Download,
   HardDrive,
-  CreditCard
+  CreditCard,
+  User,
+  Mail,
+  MusicIcon,
+  Tag,
+  CalendarDays,
+  Hash,
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Check,
+  X
 } from 'lucide-react';
 import {
   Select,
@@ -64,6 +75,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import CalendarComponent from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -234,11 +251,11 @@ const AdminDashboard = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
+        return <Badge variant="default" className="bg-green-500"><Check className="w-3 h-3 mr-1" /> Completed</Badge>;
       case 'in-progress':
         return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+        return <Badge variant="destructive"><X className="w-3 h-3 mr-1" /> Cancelled</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;
     }
@@ -736,710 +753,871 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#1C0357]">Admin Dashboard</h1>
-          <p className="text-lg text-[#1C0357]/90">Manage all backing track requests</p>
-        </div>
+    <TooltipProvider>
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
-                  <p className="text-2xl font-bold text-[#1C0357]">{requests.length}</p>
-                </div>
-                <FileAudio className="h-10 w-10 text-[#D1AAF2]" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-[#1C0357]">Admin Dashboard</h1>
+            <p className="text-lg text-[#1C0357]/90">Manage all backing track requests</p>
+          </div>
           
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">In Progress</p>
-                  <p className="text-2xl font-bold text-[#1C0357]">
-                    {requests.filter(r => r.status === 'in-progress').length}
-                  </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <Card className="shadow-lg bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 flex items-center">
+                      <FileAudio className="w-4 h-4 mr-2" />
+                      Total Requests
+                    </p>
+                    <p className="text-2xl font-bold text-[#1C0357] mt-2">{requests.length}</p>
+                  </div>
+                  <div className="p-3 bg-[#D1AAF2]/20 rounded-full">
+                    <FileAudio className="h-8 w-8 text-[#1C0357]" />
+                  </div>
                 </div>
-                <Clock className="h-10 w-10 text-yellow-500" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 flex items-center">
+                      <Clock className="w-4 h-4 mr-2" />
+                      In Progress
+                    </p>
+                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                      {requests.filter(r => r.status === 'in-progress').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-yellow-100 rounded-full">
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 flex items-center">
+                      <DollarSign className="w-4 h-4 mr-2" />
+                      Pending Revenue
+                    </p>
+                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                      ${requests
+                        .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
+                        .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
+                        .toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-[#1C0357]/10 rounded-full">
+                    <DollarSign className="h-8 w-8 text-[#1C0357]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 flex items-center">
+                      <Check className="w-4 h-4 mr-2" />
+                      Completed
+                    </p>
+                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                      {requests.filter(r => r.status === 'completed').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <Check className="h-8 w-8 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Pending Revenue</p>
-                  <p className="text-2xl font-bold text-[#1C0357]">
-                    ${requests
-                      .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
-                      .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
-                      .toFixed(2)}
-                  </p>
-                </div>
-                <DollarSign className="h-10 w-10 text-[#1C0357]" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Completed</p>
-                  <p className="text-2xl font-bold text-[#1C0357]">
-                    {requests.filter(r => r.status === 'completed').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-10 w-10 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Dropbox Connection Card */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
-              <span>System Status</span>
-              <Link to="/dropbox-monitor">
-                <Button variant="outline" className="flex items-center">
-                  <HardDrive className="mr-2 h-4 w-4" />
-                  Dropbox Monitor
-                </Button>
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Dropbox Integration</p>
-                <p className="text-lg font-medium text-green-600">Connected</p>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                <span className="text-sm text-gray-500">Active</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Filters Section */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
-              <span>Filters</span>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}
-                >
-                  <List className="w-4 h-4 mr-2" />
-                  List View
-                </Button>
-                <Button 
-                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('calendar')}
-                  className={viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Calendar View
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={clearFilters}
-                  className="text-sm"
-                >
-                  Clear All Filters
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by name, email, song..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="pl-10">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
-                    <SelectTrigger className="pl-10">
-                      <SelectValue placeholder="Backing Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="full-song">Full Song</SelectItem>
-                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                      <SelectItem value="note-bash">Note Bash</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="flex items-end">
-                <p className="text-sm text-gray-500">
-                  Showing {filteredRequests.length} of {requests.length} requests
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Calendar View */}
-        {viewMode === 'calendar' && (
-          <Card className="shadow-lg mb-6">
+          {/* Dropbox Connection Card */}
+          <Card className="shadow-lg mb-6 bg-white">
             <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-                <span>Delivery Calendar</span>
-                {selectedDate && (
+              <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
+                <span className="flex items-center">
+                  <HardDrive className="mr-2 h-5 w-5" />
+                  System Status
+                </span>
+                <Link to="/dropbox-monitor">
+                  <Button variant="outline" className="flex items-center text-sm">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Dropbox Monitor
+                  </Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                  <div>
+                    <p className="font-medium">Dropbox Integration</p>
+                    <p className="text-sm text-gray-500">Connected and active</p>
+                  </div>
+                </div>
+                <Badge variant="default" className="bg-green-500">Active</Badge>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Filters Section */}
+          <Card className="shadow-lg mb-6 bg-white">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
+                <span className="flex items-center">
+                  <Filter className="mr-2 h-5 w-5" />
+                  Filters & View Options
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('list')}
+                    className={`flex items-center ${viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                    size="sm"
+                  >
+                    <List className="w-4 h-4 mr-2" />
+                    List View
+                  </Button>
+                  <Button 
+                    variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('calendar')}
+                    className={`flex items-center ${viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                    size="sm"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Calendar View
+                  </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => setSelectedDate(null)}
+                    onClick={clearFilters}
                     className="text-sm"
+                    size="sm"
                   >
-                    Clear Date Selection
+                    Clear Filters
                   </Button>
-                )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col lg:flex-row gap-6">
-                <div className="lg:w-2/3">
-                  <CalendarComponent
-                    onChange={handleDateChange}
-                    value={selectedDate}
-                    tileContent={tileContent}
-                    tileClassName={tileClassName}
-                    className="border rounded-lg p-4 w-full"
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search by name, email, song..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
                   />
                 </div>
-                <div className="lg:w-1/3">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg text-[#1C0357]">
-                        {selectedDate 
-                          ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
-                          : 'Select a date to view requests'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {selectedDate ? (
-                        <div className="space-y-4 max-h-96 overflow-y-auto">
-                          {filteredRequests.length > 0 ? (
-                            filteredRequests.map((request) => (
-                              <div 
-                                key={request.id} 
-                                className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h3 className="font-bold">{request.song_title}</h3>
-                                    <p className="text-sm text-gray-600">{request.name || request.email}</p>
-                                    <p className="text-sm text-gray-600">{request.musical_or_artist}</p>
-                                  </div>
-                                  <Badge variant={getBadgeVariant(request.backing_type)}>
-                                    {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                  </Badge>
-                                </div>
-                                <div className="mt-2 flex justify-between items-center">
-                                  <div className="flex items-center">
-                                    <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                                    <span className="text-sm">
-                                      {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                                    </span>
-                                  </div>
-                                  {getStatusBadge(request.status || 'pending')}
-                                </div>
-                                <div className="mt-3 flex justify-end space-x-1">
-                                  <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                    <Upload className="w-4 h-4" />
-                                  </Button>
-                                  <Link to={`/admin/request/${request.id}`}>
-                                    <Button variant="outline" size="sm">
-                                      View
-                                    </Button>
-                                  </Link>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-center text-gray-500 py-4">
-                              No requests scheduled for this date
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-center text-gray-500 py-4">
-                          Select a date on the calendar to view requests
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+                
+                <div>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="pl-10">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="relative">
+                    <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
+                      <SelectTrigger className="pl-10">
+                        <SelectValue placeholder="Backing Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="full-song">Full Song</SelectItem>
+                        <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                        <SelectItem value="note-bash">Note Bash</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="flex items-end">
+                  <p className="text-sm text-gray-500">
+                    Showing {filteredRequests.length} of {requests.length} requests
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
-        
-        {/* List View */}
-        {viewMode === 'list' && (
-          <Card className="shadow-lg mb-6">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
-                <span>Backing Requests</span>
-                <div className="flex flex-wrap items-center gap-4">
-                  <Button 
-                    onClick={handleSelectAll}
-                    variant="outline"
-                    className="flex items-center"
-                  >
-                    {selectedRequests.length === filteredRequests.length ? 'Deselect All' : 'Select All'}
-                  </Button>
-                  {selectedRequests.length > 0 && (
-                    <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
-                      <span className="font-medium">Selected: {selectedRequests.length}</span>
-                      <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="default" 
-                            className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-                          >
-                            Batch Actions
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              // Batch update selected requests to "in-progress"
-                              selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
-                              toast({
-                                title: "Batch Update",
-                                description: `${selectedRequests.length} requests marked as In Progress`,
-                              });
-                            }}
-                          >
-                            <Clock className="w-4 h-4 mr-2" /> Mark In Progress
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              // Batch update selected requests to "completed"
-                              selectedRequests.forEach(id => updateStatus(id, 'completed'));
-                              toast({
-                                title: "Batch Update",
-                                description: `${selectedRequests.length} requests marked as Completed`,
-                              });
-                            }}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" /> Mark Completed
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              // Batch update selected requests to "cancelled"
-                              selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
-                              toast({
-                                title: "Batch Update",
-                                description: `${selectedRequests.length} requests marked as Cancelled`,
-                              });
-                            }}
-                          >
-                            <XCircle className="w-4 h-4 mr-2" /> Mark Cancelled
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={openBatchDeleteDialog}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+          
+          {/* Calendar View */}
+          {viewMode === 'calendar' && (
+            <Card className="shadow-lg mb-6 bg-white">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Delivery Calendar
+                  </span>
+                  {selectedDate && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSelectedDate(null)}
+                      className="text-sm"
+                      size="sm"
+                    >
+                      Clear Date Selection
+                    </Button>
                   )}
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <p>Loading requests...</p>
-                </div>
-              ) : (
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[50px]">
-                          <input
-                            type="checkbox"
-                            checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
-                            onChange={handleSelectAll}
-                          />
-                        </TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Song</TableHead>
-                        <TableHead>Backing Type</TableHead>
-                        <TableHead>Delivery Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead>Cost</TableHead>
-                        <TableHead>Platforms</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRequests.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={11} className="text-center py-8">
-                            <div className="text-center">
-                              <FileAudio className="mx-auto h-12 w-12 text-gray-400" />
-                              <h3 className="mt-2 text-sm font-medium text-gray-900">No requests found</h3>
-                              <p className="mt-1 text-sm text-gray-500">
-                                Try adjusting your search or filter criteria
-                              </p>
-                              <div className="mt-6">
-                                <Button onClick={clearFilters} variant="outline">
-                                  Clear Filters
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredRequests.map((request) => (
-                          <TableRow key={request.id} className={selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}>
-                            <TableCell>
-                              <input
-                                type="checkbox"
-                                checked={selectedRequests.includes(request.id)}
-                                onChange={() => handleSelectRequest(request.id)}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                {format(new Date(request.created_at), 'MMM dd, yyyy')}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {format(new Date(request.created_at), 'HH:mm')}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{request.name || 'N/A'}</div>
-                              <div className="text-sm text-gray-500">{request.email}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{request.song_title}</div>
-                              <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getBadgeVariant(request.backing_type)}>
-                                {request.backing_type?.replace('-', ' ') || 'N/A'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                                {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Select 
-                                value={request.status || 'pending'} 
-                                onValueChange={(value) => updateStatus(request.id, value)}
-                              >
-                                <SelectTrigger className="w-[140px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="in-progress">In Progress</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Select 
-                                value={request.is_paid ? 'paid' : 'unpaid'} 
-                                onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
-                              >
-                                <SelectTrigger className="w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                                  <SelectItem value="paid">Paid</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center font-medium">
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {getPlatformIcons(request.uploaded_platforms)}
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => openUploadPlatformsDialog(request.id)}
-                                className="mt-1"
-                              >
-                                Edit
-                              </Button>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-1">
-                                <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                  <Upload className="w-4 h-4" />
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                                  <Share2 className="w-4 h-4" />
-                                </Button>
-                                <Link to={`/admin/request/${request.id}`}>
-                                  <Button variant="outline" size="sm">
-                                    View
-                                  </Button>
-                                </Link>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => openDeleteDialog(request.id)}
-                                  className="text-red-600 hover:text-red-800"
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col lg:flex-row gap-6">
+                  <div className="lg:w-2/3">
+                    <CalendarComponent
+                      onChange={handleDateChange}
+                      value={selectedDate}
+                      tileContent={tileContent}
+                      tileClassName={tileClassName}
+                      className="border rounded-lg p-4 w-full"
+                    />
+                  </div>
+                  <div className="lg:w-1/3">
+                    <Card className="bg-white">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-[#1C0357]">
+                          {selectedDate 
+                            ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
+                            : 'Select a date to view requests'}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {selectedDate ? (
+                          <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {filteredRequests.length > 0 ? (
+                              filteredRequests.map((request) => (
+                                <div 
+                                  key={request.id} 
+                                  className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
                                 >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h3 className="font-bold">{request.song_title}</h3>
+                                      <p className="text-sm text-gray-600 flex items-center mt-1">
+                                        <User className="w-3 h-3 mr-1" />
+                                        {request.name || request.email}
+                                      </p>
+                                      <p className="text-sm text-gray-600 flex items-center">
+                                        <Music className="w-3 h-3 mr-1" />
+                                        {request.musical_or_artist}
+                                      </p>
+                                    </div>
+                                    <Badge variant={getBadgeVariant(request.backing_type)}>
+                                      {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-3 flex justify-between items-center">
+                                    <div className="flex items-center text-sm">
+                                      <Calendar className="w-3 h-3 mr-1 text-gray-500" />
+                                      <span>
+                                        {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                      </span>
+                                    </div>
+                                    {getStatusBadge(request.status || 'pending')}
+                                  </div>
+                                  <div className="mt-3 flex justify-end space-x-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                          <Upload className="w-4 h-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Upload Track</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Link to={`/admin/request/${request.id}`}>
+                                          <Button variant="outline" size="sm">
+                                            <Eye className="w-4 h-4" />
+                                          </Button>
+                                        </Link>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>View Details</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-center text-gray-500 py-4">
+                                No requests scheduled for this date
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-center text-gray-500 py-4">
+                            Select a date on the calendar to view requests
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* List View */}
+          {viewMode === 'list' && (
+            <Card className="shadow-lg mb-6 bg-white">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
+                  <span className="flex items-center">
+                    <FileAudio className="mr-2 h-5 w-5" />
+                    Backing Requests
+                  </span>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Button 
+                      onClick={handleSelectAll}
+                      variant="outline"
+                      className="flex items-center"
+                      size="sm"
+                    >
+                      {selectedRequests.length === filteredRequests.length && filteredRequests.length > 0 ? 'Deselect All' : 'Select All'}
+                    </Button>
+                    {selectedRequests.length > 0 && (
+                      <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
+                        <span className="font-medium">Selected: {selectedRequests.length}</span>
+                        <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="default" 
+                              className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                              size="sm"
+                            >
+                              <MoreHorizontal className="w-4 h-4 mr-2" />
+                              Batch Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // Batch update selected requests to "in-progress"
+                                selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
+                                toast({
+                                  title: "Batch Update",
+                                  description: `${selectedRequests.length} requests marked as In Progress`,
+                                });
+                              }}
+                            >
+                              <Clock className="w-4 h-4 mr-2" /> Mark In Progress
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // Batch update selected requests to "completed"
+                                selectedRequests.forEach(id => updateStatus(id, 'completed'));
+                                toast({
+                                  title: "Batch Update",
+                                  description: `${selectedRequests.length} requests marked as Completed`,
+                                });
+                              }}
+                            >
+                              <Check className="w-4 h-4 mr-2" /> Mark Completed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                // Batch update selected requests to "cancelled"
+                                selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
+                                toast({
+                                  title: "Batch Update",
+                                  description: `${selectedRequests.length} requests marked as Cancelled`,
+                                });
+                              }}
+                            >
+                              <X className="w-4 h-4 mr-2" /> Mark Cancelled
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={openBatchDeleteDialog}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1C0357] mb-4"></div>
+                      <p>Loading requests...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-[#D1AAF2]/20">
+                        <TableRow>
+                          <TableHead className="w-[50px]">
+                            <input
+                              type="checkbox"
+                              checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                              onChange={handleSelectAll}
+                              className="h-4 w-4"
+                            />
+                          </TableHead>
+                          <TableHead className="w-[120px]">
+                            <div className="flex items-center">
+                              <CalendarDays className="w-4 h-4 mr-2" />
+                              Date
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <User className="w-4 h-4 mr-2" />
+                              Client
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <Music className="w-4 h-4 mr-2" />
+                              Song
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <Tag className="w-4 h-4 mr-2" />
+                              Type
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-2" />
+                              Delivery
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <Hash className="w-4 h-4 mr-2" />
+                              Status
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Payment
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              Cost
+                            </div>
+                          </TableHead>
+                          <TableHead>
+                            <div className="flex items-center">
+                              <Upload className="w-4 h-4 mr-2" />
+                              Platforms
+                            </div>
+                          </TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredRequests.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="text-center py-12">
+                              <div className="text-center">
+                                <FileAudio className="mx-auto h-16 w-16 text-gray-300" />
+                                <h3 className="mt-4 text-lg font-medium text-gray-900">No requests found</h3>
+                                <p className="mt-1 text-gray-500">
+                                  Try adjusting your search or filter criteria
+                                </p>
+                                <div className="mt-6">
+                                  <Button onClick={clearFilters} variant="outline">
+                                    Clear Filters
+                                  </Button>
+                                </div>
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          filteredRequests.map((request) => (
+                            <TableRow 
+                              key={request.id} 
+                              className={`hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`}
+                            >
+                              <TableCell>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRequests.includes(request.id)}
+                                  onChange={() => handleSelectRequest(request.id)}
+                                  className="h-4 w-4"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm font-medium">
+                                  {format(new Date(request.created_at), 'MMM dd')}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {format(new Date(request.created_at), 'HH:mm')}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-medium">{request.name || 'N/A'}</div>
+                                <div className="text-sm text-gray-500 flex items-center">
+                                  <Mail className="w-3 h-3 mr-1" />
+                                  {request.email}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-medium">{request.song_title}</div>
+                                <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getBadgeVariant(request.backing_type)}>
+                                  {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                              </TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={request.status || 'pending'} 
+                                  onValueChange={(value) => updateStatus(request.id, value)}
+                                >
+                                  <SelectTrigger className="w-[140px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="in-progress">In Progress</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={request.is_paid ? 'paid' : 'unpaid'} 
+                                  onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
+                                >
+                                  <SelectTrigger className="w-[120px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unpaid">Unpaid</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center font-medium">
+                                  <DollarSign className="w-4 h-4 mr-1" />
+                                  <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  {getPlatformIcons(request.uploaded_platforms)}
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => openUploadPlatformsDialog(request.id)}
+                                    className="mt-1 text-xs"
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end space-x-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                        <Upload className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Upload Track</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
+                                        <Share2 className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Share Track</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Link to={`/admin/request/${request.id}`}>
+                                        <Button variant="outline" size="sm">
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                      </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>View Details</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        onClick={() => openDeleteDialog(request.id)}
+                                        className="text-red-600 hover:text-red-800"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Delete Request</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Upload Track Dialog */}
+          {uploadTrackId && (
+            <Dialog open={!!uploadTrackId} onOpenChange={() => setUploadTrackId(null)}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center">
+                    <Upload className="mr-2 h-5 w-5" />
+                    Upload Track
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="track-file">Select MP3 File</Label>
+                    <Input 
+                      id="track-file"
+                      type="file" 
+                      accept="audio/mp3,audio/mpeg" 
+                      onChange={(e) => e.target.files && setUploadFile(e.target.files[0])}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setUploadTrackId(null)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleFileUpload}
+                      disabled={!uploadFile}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                    >
+                      Upload Track
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Upload Track Dialog */}
-        {uploadTrackId && (
-          <Dialog open={!!uploadTrackId} onOpenChange={() => setUploadTrackId(null)}>
-            <DialogContent>
+              </DialogContent>
+            </Dialog>
+          )}
+          
+          {/* Upload Platforms Dialog */}
+          <Dialog open={uploadPlatformsDialogOpen} onOpenChange={setUploadPlatformsDialogOpen}>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Upload Track</DialogTitle>
+                <DialogTitle className="flex items-center">
+                  <Upload className="mr-2 h-5 w-5" />
+                  Specify Upload Platforms
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="track-file">Select MP3 File</Label>
-                  <Input 
-                    id="track-file"
-                    type="file" 
-                    accept="audio/mp3,audio/mpeg" 
-                    onChange={(e) => e.target.files && setUploadFile(e.target.files[0])}
-                  />
+                <p className="text-sm text-gray-600">Select the platforms where this track has been uploaded:</p>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center">
+                      <Youtube className="w-5 h-5 text-red-600 mr-2" />
+                      <span>YouTube</span>
+                    </div>
+                    <Button 
+                      variant={platforms.youtube ? "default" : "outline"}
+                      onClick={() => setPlatforms({...platforms, youtube: !platforms.youtube})}
+                      className={platforms.youtube ? "bg-red-600 hover:bg-red-700" : ""}
+                      size="sm"
+                    >
+                      {platforms.youtube ? "Uploaded" : "Mark as Uploaded"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center">
+                      <Music className="w-5 h-5 text-black mr-2" />
+                      <span>TikTok</span>
+                    </div>
+                    <Button 
+                      variant={platforms.tiktok ? "default" : "outline"}
+                      onClick={() => setPlatforms({...platforms, tiktok: !platforms.tiktok})}
+                      className={platforms.tiktok ? "bg-black hover:bg-gray-800 text-white" : ""}
+                      size="sm"
+                    >
+                      {platforms.tiktok ? "Uploaded" : "Mark as Uploaded"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center">
+                      <Facebook className="w-5 h-5 text-blue-600 mr-2" />
+                      <span>Facebook</span>
+                    </div>
+                    <Button 
+                      variant={platforms.facebook ? "default" : "outline"}
+                      onClick={() => setPlatforms({...platforms, facebook: !platforms.facebook})}
+                      className={platforms.facebook ? "bg-blue-600 hover:bg-blue-700" : ""}
+                      size="sm"
+                    >
+                      {platforms.facebook ? "Uploaded" : "Mark as Uploaded"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center">
+                      <Instagram className="w-5 h-5 text-pink-500 mr-2" />
+                      <span>Instagram</span>
+                    </div>
+                    <Button 
+                      variant={platforms.instagram ? "default" : "outline"}
+                      onClick={() => setPlatforms({...platforms, instagram: !platforms.instagram})}
+                      className={platforms.instagram ? "bg-pink-500 hover:bg-pink-600" : ""}
+                      size="sm"
+                    >
+                      {platforms.instagram ? "Uploaded" : "Mark as Uploaded"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center">
+                      <ExternalLink className="w-5 h-5 text-purple-600 mr-2" />
+                      <span>Gumroad</span>
+                    </div>
+                    <Button 
+                      variant={platforms.gumroad ? "default" : "outline"}
+                      onClick={() => setPlatforms({...platforms, gumroad: !platforms.gumroad})}
+                      className={platforms.gumroad ? "bg-purple-600 hover:bg-purple-700" : ""}
+                      size="sm"
+                    >
+                      {platforms.gumroad ? "Uploaded" : "Mark as Uploaded"}
+                    </Button>
+                  </div>
                 </div>
+                
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setUploadTrackId(null)}>
+                  <Button variant="outline" onClick={() => setUploadPlatformsDialogOpen(false)}>
                     Cancel
                   </Button>
                   <Button 
-                    onClick={handleFileUpload}
-                    disabled={!uploadFile}
+                    onClick={saveUploadPlatforms}
                     className="bg-[#1C0357] hover:bg-[#1C0357]/90"
                   >
-                    Upload Track
+                    Save Platforms
                   </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
-        )}
-        
-        {/* Upload Platforms Dialog */}
-        <Dialog open={uploadPlatformsDialogOpen} onOpenChange={setUploadPlatformsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Specify Upload Platforms</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">Select the platforms where this track has been uploaded:</p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Youtube className="w-5 h-5 text-red-600 mr-2" />
-                    <span>YouTube</span>
-                  </div>
-                  <Button 
-                    variant={platforms.youtube ? "default" : "outline"}
-                    onClick={() => setPlatforms({...platforms, youtube: !platforms.youtube})}
-                    className={platforms.youtube ? "bg-red-600 hover:bg-red-700" : ""}
-                  >
-                    {platforms.youtube ? "Uploaded" : "Mark as Uploaded"}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Music className="w-5 h-5 text-black mr-2" />
-                    <span>TikTok</span>
-                  </div>
-                  <Button 
-                    variant={platforms.tiktok ? "default" : "outline"}
-                    onClick={() => setPlatforms({...platforms, tiktok: !platforms.tiktok})}
-                    className={platforms.tiktok ? "bg-black hover:bg-gray-800 text-white" : ""}
-                  >
-                    {platforms.tiktok ? "Uploaded" : "Mark as Uploaded"}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Facebook className="w-5 h-5 text-blue-600 mr-2" />
-                    <span>Facebook</span>
-                  </div>
-                  <Button 
-                    variant={platforms.facebook ? "default" : "outline"}
-                    onClick={() => setPlatforms({...platforms, facebook: !platforms.facebook})}
-                    className={platforms.facebook ? "bg-blue-600 hover:bg-blue-700" : ""}
-                  >
-                    {platforms.facebook ? "Uploaded" : "Mark as Uploaded"}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Instagram className="w-5 h-5 text-pink-500 mr-2" />
-                    <span>Instagram</span>
-                  </div>
-                  <Button 
-                    variant={platforms.instagram ? "default" : "outline"}
-                    onClick={() => setPlatforms({...platforms, instagram: !platforms.instagram})}
-                    className={platforms.instagram ? "bg-pink-500 hover:bg-pink-600" : ""}
-                  >
-                    {platforms.instagram ? "Uploaded" : "Mark as Uploaded"}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <ExternalLink className="w-5 h-5 text-purple-600 mr-2" />
-                    <span>Gumroad</span>
-                  </div>
-                  <Button 
-                    variant={platforms.gumroad ? "default" : "outline"}
-                    onClick={() => setPlatforms({...platforms, gumroad: !platforms.gumroad})}
-                    className={platforms.gumroad ? "bg-purple-600 hover:bg-purple-700" : ""}
-                  >
-                    {platforms.gumroad ? "Uploaded" : "Mark as Uploaded"}
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setUploadPlatformsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={saveUploadPlatforms}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+          
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center">
+                  <Trash2 className="mr-2 h-5 w-5 text-red-600" />
+                  Delete Request
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the request and remove all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => {
+                    if (requestToDelete) {
+                      deleteRequest(requestToDelete);
+                      setDeleteDialogOpen(false);
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
                 >
-                  Save Platforms
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete this request?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the request and remove all associated data.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => {
-                  if (requestToDelete) {
-                    deleteRequest(requestToDelete);
-                    setDeleteDialogOpen(false);
-                  }
-                }}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        
-        {/* Batch Delete Confirmation Dialog */}
-        <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete {selectedRequests.length} requests?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete all selected requests and remove all associated data.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={batchDeleteRequests}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Delete All
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        
-        <MadeWithDyad />
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          {/* Batch Delete Confirmation Dialog */}
+          <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center">
+                  <Trash2 className="mr-2 h-5 w-5 text-red-600" />
+                  Delete Selected Requests
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete all {selectedRequests.length} selected requests and remove all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={batchDeleteRequests}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Delete All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          <MadeWithDyad />
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
