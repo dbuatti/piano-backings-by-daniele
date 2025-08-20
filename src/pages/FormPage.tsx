@@ -122,8 +122,8 @@ const FormPage = () => {
           const fileExt = formData.sheetMusic.name.split('.').pop();
           const fileName = `sheet-music-${Date.now()}.${fileExt}`;
           
-          // First try to upload to storage
-          const { data: uploadData, error: uploadError } = await supabase
+          // Upload to Supabase storage
+          const { error: uploadError } = await supabase
             .storage
             .from('sheet-music')
             .upload(fileName, formData.sheetMusic, {
@@ -133,7 +133,6 @@ const FormPage = () => {
           
           if (uploadError) {
             console.error('Storage upload error:', uploadError);
-            // Try alternative approach - upload to a public bucket or handle differently
             throw new Error(`File upload error: ${uploadError.message}`);
           }
           
@@ -146,10 +145,9 @@ const FormPage = () => {
           sheetMusicUrl = publicUrl;
         } catch (uploadError: any) {
           console.error('File upload error:', uploadError);
-          // Continue with submission even if file upload fails
           toast({
             title: "Warning",
-            description: "Sheet music upload failed, but request will still be submitted.",
+            description: `Sheet music upload failed: ${uploadError.message}. Request will still be submitted.`,
             variant: "destructive",
           });
         }
@@ -185,7 +183,7 @@ const FormPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || 'no-token'}`
+            'Authorization': `Bearer ${session?.access_token || ''}`
           },
           body: JSON.stringify(submissionData),
         }
@@ -193,7 +191,7 @@ const FormPage = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit form');
+        throw new Error(errorData.error || `Failed to submit form: ${response.status} ${response.statusText}`);
       }
       
       const result = await response.json();
