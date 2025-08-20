@@ -31,7 +31,8 @@ import {
   Facebook,
   Instagram,
   ExternalLink,
-  Bell
+  Bell,
+  Key
 } from 'lucide-react';
 import {
   Select,
@@ -852,6 +853,27 @@ const AdminDashboard = () => {
     }
   };
 
+  const initiateGmailOAuth = () => {
+    // Use environment variables directly or fallback to a default
+    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID || "YOUR_GMAIL_CLIENT_ID";
+    const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
+    
+    // Scopes required for sending emails
+    const scopes = 'https://www.googleapis.com/auth/gmail.send';
+    
+    // Construct the authorization URL
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(clientId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=${encodeURIComponent(scopes)}` +
+      `&response_type=code` +
+      `&access_type=offline` +
+      `&prompt=consent`;
+    
+    // Redirect the user to Google's authorization server
+    window.location.href = authUrl;
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -939,6 +961,28 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Gmail OAuth Section */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
+              <span>Gmail Integration</span>
+              <Button 
+                onClick={initiateGmailOAuth}
+                className="bg-blue-500 hover:bg-blue-600 flex items-center"
+              >
+                <Key className="w-4 h-4 mr-2" />
+                Connect Gmail Account
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Connect your Gmail account to enable email notifications for your clients. 
+              You'll be redirected to Google to authorize the connection.
+            </p>
+          </CardContent>
+        </Card>
         
         {/* Filters Section */}
         <Card className="shadow-lg mb-6">
