@@ -64,8 +64,8 @@ serve(async (req) => {
     const results = [];
     for (const email of pendingEmails) {
       try {
-        // Log email details (in a real implementation, you would send via SMTP)
-        console.log('=== SENDING EMAIL ===');
+        // Log email details for debugging
+        console.log('=== EMAIL DETAILS ===');
         console.log('To:', email.recipient);
         console.log('From:', email.sender || gmailUser);
         console.log('Subject:', email.subject);
@@ -73,7 +73,7 @@ serve(async (req) => {
         console.log('=====================');
         
         // For now, we'll just mark as sent since we're using console logging
-        // In a real implementation, you would use an SMTP library here
+        // In a real implementation, you would use an SMTP library or Gmail API here
         
         // Update email status to "sent"
         const { error: updateError } = await supabase
