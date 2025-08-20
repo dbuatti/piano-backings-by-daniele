@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MadeWithDyad } from "@/components/made-with-dyad";
@@ -310,6 +310,14 @@ const TestBackings = () => {
             ) : (
               <>
                 <div className="mb-6">
+                  <div className="mb-6">
+                    <Link to="/test-dropbox">
+                      <Button className="bg-purple-600 hover:bg-purple-700 text-white mb-4">
+                        Test Dropbox Function Directly
+                      </Button>
+                    </Link>
+                  </div>
+                  
                   <p className="mb-4">
                     This page tests the Supabase function that handles backing track requests. 
                     Click the buttons below to test each backing type:

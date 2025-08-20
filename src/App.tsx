@@ -13,7 +13,8 @@ import RequestDetails from "./pages/RequestDetails";
 import UserDashboard from "./pages/UserDashboard";
 import TestEmail from "./pages/TestEmail";
 import NotFound from "./pages/NotFound";
-import GmailOAuthCallback from "./pages/GmailOAuthCallback"; // Import the new component
+import GmailOAuthCallback from "./pages/GmailOAuthCallback";
+import TestDropboxFunction from "./pages/TestDropboxFunction";
 
 const queryClient = new QueryClient();
 
@@ -29,11 +30,12 @@ const App = () => (
           <Route path="/test-function" element={<TestFunction />} />
           <Route path="/test-backings" element={<TestBackings />} />
           <Route path="/test-email" element={<TestEmail />} />
+          <Route path="/test-dropbox" element={<TestDropboxFunction />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
           <Route path="/user-dashboard" element={<UserDashboard />} />
-          <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} /> {/* Add the new route */}
+          <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
