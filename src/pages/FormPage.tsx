@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle, Clock, Headphones, FileAudio, UserPlus } from "lucide-react";
+import { LinkIcon, MicIcon, FileTextIcon, MusicIcon, KeyIcon, CalendarIcon, AlertCircle, Clock, Headphones, FileAudio, UserPlus, Upload, CheckCircle } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ const FormPage = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -37,6 +38,22 @@ const FormPage = () => {
     category: '',
     trackType: ''
   });
+
+  // Check user session on component mount
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+        setFormData(prev => ({
+          ...prev,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || ''
+        }));
+      }
+    };
+    checkUser();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -64,28 +81,28 @@ const FormPage = () => {
 
   const fillDummyData = () => {
     setFormData({
-      email: 'test@example.com',
-      name: 'Test User',
-      songTitle: 'Test Song',
-      musicalOrArtist: 'Test Musical',
+      email: user?.email || 'test@example.com',
+      name: user?.user_metadata?.full_name || 'Test User',
+      songTitle: 'Defying Gravity',
+      musicalOrArtist: 'Wicked',
       songKey: 'C Major (0)',
       differentKey: 'No',
       keyForTrack: '',
-      voiceMemo: 'https://example.com/voice-memo.mp3',
+      voiceMemo: '',
       voiceMemoFile: null,
       sheetMusic: null,
-      youtubeLink: 'https://www.youtube.com/watch?v=test',
+      youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY',
       trackPurpose: 'personal-practise',
       backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
-      specialRequests: 'This is a test request',
+      specialRequests: 'Please make sure the tempo matches the YouTube reference exactly.',
       category: 'Practice Tracks',
       trackType: 'polished'
     });
     
     toast({
-      title: "Dummy Data Filled",
+      title: "Sample Data Filled",
       description: "The form has been pre-filled with sample data.",
     });
   };
@@ -95,12 +112,10 @@ const FormPage = () => {
     setIsSubmitting(true);
     
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        throw new Error(`Session error: ${sessionError.message}`);
-      }
-      
+      // Upload sheet music if provided
       let sheetMusicUrl = null;
       if (formData.sheetMusic) {
         const fileExt = formData.sheetMusic.name.split('.').pop();
@@ -123,6 +138,30 @@ const FormPage = () => {
         sheetMusicUrl = publicUrl;
       }
       
+      // Prepare form data for submission
+      const submissionData = {
+        formData: {
+          email: formData.email,
+          name: formData.name,
+          songTitle: formData.songTitle,
+          musicalOrArtist: formData.musicalOrArtist,
+          songKey: formData.songKey,
+          differentKey: formData.differentKey,
+          keyForTrack: formData.keyForTrack,
+          youtubeLink: formData.youtubeLink,
+          voiceMemo: formData.voiceMemo,
+          sheetMusicUrl: sheetMusicUrl,
+          trackPurpose: formData.trackPurpose,
+          backingType: formData.backingType,
+          deliveryDate: formData.deliveryDate,
+          additionalServices: formData.additionalServices,
+          specialRequests: formData.specialRequests,
+          category: formData.category,
+          trackType: formData.trackType
+        }
+      };
+      
+      // Submit to Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
         {
@@ -131,27 +170,7 @@ const FormPage = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token || 'no-token'}`
           },
-          body: JSON.stringify({
-            formData: {
-              email: formData.email,
-              name: formData.name,
-              songTitle: formData.songTitle,
-              musicalOrArtist: formData.musicalOrArtist,
-              songKey: formData.songKey,
-              differentKey: formData.differentKey,
-              keyForTrack: formData.keyForTrack,
-              youtubeLink: formData.youtubeLink,
-              voiceMemo: formData.voiceMemo,
-              sheetMusicUrl: sheetMusicUrl,
-              trackPurpose: formData.trackPurpose,
-              backingType: formData.backingType,
-              deliveryDate: formData.deliveryDate,
-              additionalServices: formData.additionalServices,
-              specialRequests: formData.specialRequests,
-              category: formData.category,
-              trackType: formData.trackType
-            }
-          }),
+          body: JSON.stringify(submissionData),
         }
       );
       
@@ -163,14 +182,14 @@ const FormPage = () => {
       const result = await response.json();
       
       toast({
-        title: "Success!",
-        description: "Your request has been submitted successfully.",
+        title: "Request Submitted!",
+        description: "Your backing track request has been submitted successfully.",
       });
       
       // Clear form
       setFormData({
-        email: '',
-        name: '',
+        email: user?.email || '',
+        name: user?.user_metadata?.full_name || '',
         songTitle: '',
         musicalOrArtist: '',
         songKey: '',
@@ -821,18 +840,23 @@ const FormPage = () => {
               <div className="text-center pt-4">
                 <Button 
                   type="submit" 
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg"
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg flex items-center justify-center mx-auto"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <span className="flex items-center justify-center">
+                    <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Submitting...
-                    </span>
-                  ) : 'Submit Request'}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2" size={20} />
+                      Submit Request
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
