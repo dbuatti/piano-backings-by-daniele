@@ -31,7 +31,8 @@ import {
   ExternalLink,
   Bell,
   Download,
-  HardDrive
+  HardDrive,
+  CreditCard
 } from 'lucide-react';
 import {
   Select,
@@ -264,6 +265,32 @@ const AdminDashboard = () => {
       toast({
         title: "Error",
         description: `Failed to update status: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updatePaymentStatus = async (id: string, isPaid: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ is_paid: isPaid })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setRequests(requests.map(req => 
+        req.id === id ? { ...req, is_paid: isPaid } : req
+      ));
+      
+      toast({
+        title: "Payment Status Updated",
+        description: `Request marked as ${isPaid ? 'paid' : 'unpaid'}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update payment status: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -689,6 +716,14 @@ const AdminDashboard = () => {
     );
   };
 
+  const getPaymentBadge = (isPaid: boolean) => {
+    if (isPaid) {
+      return <Badge variant="default" className="bg-green-500"><CreditCard className="w-3 h-3 mr-1" /> Paid</Badge>;
+    } else {
+      return <Badge variant="destructive"><CreditCard className="w-3 h-3 mr-1" /> Unpaid</Badge>;
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -1083,6 +1118,7 @@ const AdminDashboard = () => {
                         <TableHead>Backing Type</TableHead>
                         <TableHead>Delivery Date</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Payment</TableHead>
                         <TableHead>Cost</TableHead>
                         <TableHead>Platforms</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -1091,7 +1127,7 @@ const AdminDashboard = () => {
                     <TableBody>
                       {filteredRequests.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8">
+                          <TableCell colSpan={11} className="text-center py-8">
                             <div className="text-center">
                               <FileAudio className="mx-auto h-12 w-12 text-gray-400" />
                               <h3 className="mt-2 text-sm font-medium text-gray-900">No requests found</h3>
@@ -1156,6 +1192,20 @@ const AdminDashboard = () => {
                                   <SelectItem value="in-progress">In Progress</SelectItem>
                                   <SelectItem value="completed">Completed</SelectItem>
                                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={request.is_paid ? 'paid' : 'unpaid'} 
+                                onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
+                              >
+                                <SelectTrigger className="w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                                  <SelectItem value="paid">Paid</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
