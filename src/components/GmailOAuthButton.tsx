@@ -1,19 +1,11 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { supabase } from '@/integrations/supabase/client';
 
 const GmailOAuthButton: React.FC = () => {
-  const initiateOAuth = async () => {
-    // Get current session for auth token
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      console.error('You must be logged in to connect Gmail');
-      return;
-    }
-    
-    // Replace these with your actual client ID and redirect URI
-    const clientId = Deno.env.get("GMAIL_CLIENT_ID") || "YOUR_GMAIL_CLIENT_ID";
+  const initiateOAuth = () => {
+    // Use environment variables directly or fallback to a default
+    // In a production app, these should be properly configured in your environment
+    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID || "YOUR_GMAIL_CLIENT_ID";
     const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
     
     // Scopes required for sending emails
@@ -25,8 +17,8 @@ const GmailOAuthButton: React.FC = () => {
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=${encodeURIComponent(scopes)}` +
       `&response_type=code` +
-      `&access_type=offline` + // This ensures we get a refresh token
-      `&prompt=consent`; // This ensures we get a refresh token every time (for demo purposes)
+      `&access_type=offline` +
+      `&prompt=consent`;
     
     // Redirect the user to Google's authorization server
     window.location.href = authUrl;
