@@ -118,24 +118,41 @@ const FormPage = () => {
       // Upload sheet music if provided
       let sheetMusicUrl = null;
       if (formData.sheetMusic) {
-        const fileExt = formData.sheetMusic.name.split('.').pop();
-        const fileName = `sheet-music-${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from('sheet-music')
-          .upload(fileName, formData.sheetMusic);
-        
-        if (uploadError) {
-          throw new Error(`File upload error: ${uploadError.message}`);
+        try {
+          const fileExt = formData.sheetMusic.name.split('.').pop();
+          const fileName = `sheet-music-${Date.now()}.${fileExt}`;
+          
+          // First try to upload to storage
+          const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('sheet-music')
+            .upload(fileName, formData.sheetMusic, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            // Try alternative approach - upload to a public bucket or handle differently
+            throw new Error(`File upload error: ${uploadError.message}`);
+          }
+          
+          // Get public URL for the uploaded file
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('sheet-music')
+            .getPublicUrl(fileName);
+          
+          sheetMusicUrl = publicUrl;
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError);
+          // Continue with submission even if file upload fails
+          toast({
+            title: "Warning",
+            description: "Sheet music upload failed, but request will still be submitted.",
+            variant: "destructive",
+          });
         }
-        
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('sheet-music')
-          .getPublicUrl(fileName);
-        
-        sheetMusicUrl = publicUrl;
       }
       
       // Prepare form data for submission
