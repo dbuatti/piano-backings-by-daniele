@@ -152,11 +152,11 @@ Piano Backings by Daniele`
         <div className="mt-8 p-6 bg-blue-50 rounded-lg">
           <h2 className="text-xl font-bold text-[#1C0357] mb-4">How to Test</h2>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Make sure you have set your `GMAIL_USER` and `GMAIL_APP_PASSWORD` secrets in Supabase.</li>
+            <li>Make sure you have set your `RESEND_API_KEY` secret in Supabase.</li>
             <li>Enter a recipient email address (you can use your own email for testing).</li>
             <li>Optionally customize the subject and email template.</li>
             <li>Click "Send Test Email".</li>
-            <li>Check the recipient's inbox for the email.</li>
+            <li>Check the recipient's inbox for the email. It will be sent from `onboarding@resend.dev` (Resend's default for free tier).</li>
           </ol>
         </div>
         

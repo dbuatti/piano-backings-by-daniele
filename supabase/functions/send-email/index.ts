@@ -3,38 +3,30 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // @ts-ignore
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { Resend } from 'https://esm.sh/resend@1.1.0'; // Import Resend
 
-// Setup CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // @ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    // @ts-ignore
-    const gmailUser = Deno.env.get('GMAIL_USER');
-    // @ts-ignore
-    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD');
-    
-    if (!gmailUser || !gmailAppPassword) {
-      throw new Error('GMAIL_USER and GMAIL_APP_PASSWORD must be set in Supabase secrets.');
-    }
-    
-    // Create a Supabase client with service role key
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const resendApiKey = Deno.env.get('RESEND_API_KEY'); // Get Resend API key from secrets
 
-    // Get the authenticated user
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY must be set in Supabase secrets.');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const resend = new Resend(resendApiKey); // Initialize Resend client
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
@@ -47,19 +39,17 @@ serve(async (req) => {
       throw new Error('Invalid or expired token');
     }
     
-    // Check if user is admin
+    // Check if user is admin (daniele.buatti@gmail.com)
     if (user.email !== 'daniele.buatti@gmail.com') {
       throw new Error('Unauthorized: Only admin can send emails');
     }
     
-    // Get the request data
     const { to, subject, template, requestData } = await req.json();
     
     if (!to || !subject || !template) {
       throw new Error('Missing required fields: to, subject, or template');
     }
     
-    // Replace template variables
     let emailContent = template;
     if (requestData) {
       Object.keys(requestData).forEach(key => {
@@ -68,42 +58,38 @@ serve(async (req) => {
       });
     }
     
-    // Setup SMTP client
-    const client = new SmtpClient();
-    await client.connect({
-      hostname: "smtp.gmail.com",
-      port: 587, // Use port 587 for STARTTLS
-      username: gmailUser,
-      password: gmailAppPassword,
-    });
-
-    // Send the email
-    await client.send({
-      from: gmailUser,
-      to: to,
+    // Send email using Resend
+    const { data: resendData, error: resendError } = await resend.emails.send({
+      from: 'onboarding@resend.dev', // IMPORTANT: Use 'onboarding@resend.dev' for testing with free tier
+      to: [to],
       subject: subject,
-      content: emailContent,
+      html: emailContent, // Use html for rich content, or text for plain text
     });
 
-    await client.close();
-    
+    if (resendError) {
+      console.error('Resend email error:', resendError);
+      throw new Error(`Failed to send email via Resend: ${resendError.message}`);
+    }
+
+    console.log('Resend email sent successfully:', resendData);
+
     // Store a record in the notifications table for tracking
     await supabase
       .from('notifications')
       .insert([
         {
           recipient: to,
-          sender: gmailUser,
+          sender: 'Resend', // Update sender to reflect Resend
           subject: subject,
           content: emailContent,
-          status: 'sent', // Mark as sent directly
+          status: 'sent',
           type: 'email'
         }
       ]);
 
     return new Response(
       JSON.stringify({ 
-        message: `Email successfully sent to ${to}`
+        message: `Email successfully sent to ${to} via Resend`
       }),
       { 
         headers: { 
