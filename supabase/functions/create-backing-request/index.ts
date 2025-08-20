@@ -113,6 +113,27 @@ serve(async (req) => {
         
         console.log('Creating Dropbox folder at path:', fullPath);
         
+        // First, check if the parent folder exists
+        console.log('Checking if parent folder exists:', normalizedParentFolder);
+        const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            path: normalizedParentFolder
+          })
+        });
+        
+        if (!parentCheckResponse.ok) {
+          const parentErrorText = await parentCheckResponse.text();
+          console.error('Parent folder check failed:', parentCheckResponse.status, parentErrorText);
+          throw new Error(`Parent folder check failed: ${parentCheckResponse.status} - ${parentErrorText}`);
+        }
+        
+        console.log('Parent folder exists, proceeding with folder creation');
+        
         const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
           method: 'POST',
           headers: {

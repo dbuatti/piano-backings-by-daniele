@@ -310,10 +310,15 @@ const TestBackings = () => {
             ) : (
               <>
                 <div className="mb-6">
-                  <div className="mb-6">
+                  <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Link to="/test-dropbox">
-                      <Button className="bg-purple-600 hover:bg-purple-700 text-white mb-4">
+                      <Button className="bg-purple-600 hover:bg-purple-700 text-white w-full">
                         Test Dropbox Function Directly
+                      </Button>
+                    </Link>
+                    <Link to="/test-dropbox-credentials">
+                      <Button className="bg-indigo-600 hover:bg-indigo-700 text-white w-full">
+                        Test Dropbox Credentials
                       </Button>
                     </Link>
                   </div>

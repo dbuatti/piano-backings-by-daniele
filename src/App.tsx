@@ -15,6 +15,7 @@ import TestEmail from "./pages/TestEmail";
 import NotFound from "./pages/NotFound";
 import GmailOAuthCallback from "./pages/GmailOAuthCallback";
 import TestDropboxFunction from "./pages/TestDropboxFunction";
+import TestDropboxCredentials from "./pages/TestDropboxCredentials";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/test-backings" element={<TestBackings />} />
           <Route path="/test-email" element={<TestEmail />} />
           <Route path="/test-dropbox" element={<TestDropboxFunction />} />
+          <Route path="/test-dropbox-credentials" element={<TestDropboxCredentials />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
