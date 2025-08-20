@@ -13,11 +13,9 @@ import {
   CheckCircle, 
   Clock, 
   XCircle, 
-  Mail, 
   Upload, 
   DollarSign, 
   Users,
-  Send,
   Share2,
   FileAudio,
   Calendar,
@@ -31,8 +29,7 @@ import {
   Facebook,
   Instagram,
   ExternalLink,
-  Bell,
-  Key
+  Bell
 } from 'lucide-react';
 import {
   Select,
@@ -41,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -69,16 +65,12 @@ import 'react-calendar/dist/Calendar.css';
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [totalCost, setTotalCost] = useState(0);
-  const [emailTemplate, setEmailTemplate] = useState('');
   const [uploadTrackId, setUploadTrackId] = useState<string | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -86,7 +78,7 @@ const AdminDashboard = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'notifications'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen] = useState(false);
   const [selectedRequestForPlatforms, setSelectedRequestForPlatforms] = useState<string | null>(null);
@@ -113,7 +105,6 @@ const AdminDashboard = () => {
       if (session.user.email === 'daniele.buatti@gmail.com') {
         setIsAdmin(true);
         fetchRequests();
-        fetchNotifications();
         return;
       }
       
@@ -130,7 +121,6 @@ const AdminDashboard = () => {
           if (session.user.email === 'daniele.buatti@gmail.com') {
             setIsAdmin(true);
             fetchRequests();
-            fetchNotifications();
           } else {
             toast({
               title: "Access Denied",
@@ -145,7 +135,6 @@ const AdminDashboard = () => {
         if (profile?.email === 'daniele.buatti@gmail.com') {
           setIsAdmin(true);
           fetchRequests();
-          fetchNotifications();
         } else {
           toast({
             title: "Access Denied",
@@ -159,7 +148,6 @@ const AdminDashboard = () => {
         if (session.user.email === 'daniele.buatti@gmail.com') {
           setIsAdmin(true);
           fetchRequests();
-          fetchNotifications();
         } else {
           toast({
             title: "Access Denied",
@@ -193,21 +181,6 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setNotifications(data || []);
-    } catch (error: any) {
-      console.error('Failed to fetch notifications:', error);
     }
   };
 
@@ -265,19 +238,6 @@ const AdminDashboard = () => {
         return <Badge variant="destructive"><XCircle className="w-4 h-4 mr-1" /> Cancelled</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;
-    }
-  };
-
-  const getNotificationStatusBadge = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return <Badge variant="default"><CheckCircle className="w-4 h-4 mr-1" /> Sent</Badge>;
-      case 'pending':
-        return <Badge variant="secondary"><Clock className="w-4 h-4 mr-1" /> Pending</Badge>;
-      case 'failed':
-        return <Badge variant="destructive"><XCircle className="w-4 h-4 mr-1" /> Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -378,92 +338,6 @@ const AdminDashboard = () => {
       setTotalCost(0);
     }
   }, [selectedRequests]);
-
-  const sendEmail = async (id: string) => {
-    setSelectedRequestId(id);
-    setEmailDialogOpen(true);
-  };
-
-  const handleEmailSend = async () => {
-    if (!selectedRequestId) return;
-    
-    setSendingEmail(true);
-    try {
-      // Get request details
-      const request = filteredRequests.find(req => req.id === selectedRequestId);
-      if (!request) throw new Error('Request not found');
-      
-      // Generate a shareable link
-      const shareLink = `${window.location.origin}/user-dashboard?email=${encodeURIComponent(request.email)}`;
-      
-      // Update request with shared link
-      const { error: updateError } = await supabase
-        .from('backing_requests')
-        .update({ shared_link: shareLink })
-        .eq('id', selectedRequestId);
-      
-      if (updateError) throw updateError;
-      
-      // Get current session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Prepare HTML content with placeholders replaced
-      let finalHtmlContent = emailTemplate;
-      finalHtmlContent = finalHtmlContent.replace(/\{\{name\}\}/g, request.name || 'there');
-      finalHtmlContent = finalHtmlContent.replace(/\{\{songTitle\}\}/g, request.song_title);
-      finalHtmlContent = finalHtmlContent.replace(/\{\{musicalOrArtist\}\}/g, request.musical_or_artist);
-      finalHtmlContent = finalHtmlContent.replace(/\{\{downloadLink\}\}/g, `<a href="${shareLink}">${shareLink}</a>`);
-      finalHtmlContent = finalHtmlContent.replace(/\{\{dashboardLink\}\}/g, `<a href="${window.location.origin}/user-dashboard">${window.location.origin}/user-dashboard</a>`);
-
-      // Send email using the new real email function
-      const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
-          },
-          body: JSON.stringify({
-            to: request.email,
-            subject: `Your Backing Track for "${request.song_title}" is Ready!`,
-            html: finalHtmlContent, // Send as HTML
-          }),
-        }
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send email');
-      }
-      
-      const result = await response.json();
-      
-      toast({
-        title: "Email Sent",
-        description: `Email has been sent to ${request.email}`,
-      });
-      
-      // Update local state
-      setRequests(requests.map(req => 
-        req.id === selectedRequestId ? { ...req, shared_link: shareLink } : req
-      ));
-      
-      // Refresh notifications
-      fetchNotifications();
-      
-      setEmailDialogOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `Failed to send email: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setSendingEmail(false);
-      setSelectedRequestId(null);
-    }
-  };
 
   const uploadTrack = async (id: string) => {
     setUploadTrackId(id);
@@ -813,67 +687,6 @@ const AdminDashboard = () => {
     );
   };
 
-  const processPendingEmails = async () => {
-    try {
-      // Get current session for auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Process pending emails
-      const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-pending-emails`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
-          }
-        }
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process emails');
-      }
-      
-      const result = await response.json();
-      
-      toast({
-        title: "Emails Processed",
-        description: result.message,
-      });
-      
-      // Refresh notifications
-      fetchNotifications();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `Failed to process emails: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const initiateGmailOAuth = () => {
-    // Use environment variables directly or fallback to a default
-    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID || "YOUR_GMAIL_CLIENT_ID";
-    const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
-    
-    // Scopes required for sending emails
-    const scopes = 'https://www.googleapis.com/auth/gmail.send';
-    
-    // Construct the authorization URL
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${encodeURIComponent(clientId)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=${encodeURIComponent(scopes)}` +
-      `&response_type=code` +
-      `&access_type=offline` +
-      `&prompt=consent`;
-    
-    // Redirect the user to Google's authorization server
-    window.location.href = authUrl;
-  };
-
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -962,44 +775,6 @@ const AdminDashboard = () => {
           </Card>
         </div>
         
-        {/* Gmail OAuth Section */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
-              <span>Gmail Integration</span>
-              <Button 
-                onClick={initiateGmailOAuth}
-                className="bg-blue-500 hover:bg-blue-600 flex items-center"
-              >
-                <Key className="w-4 h-4 mr-2" />
-                Connect Gmail Account
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Connect your Gmail account to enable email notifications for your clients. 
-                You'll be redirected to Google to authorize the connection.
-              </p>
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <Key className="h-5 w-5 text-yellow-400" />
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
-                      <strong>Important:</strong> You must use the same Google account that was used to create the OAuth client credentials. 
-                      If your OAuth client was created with <code className="bg-yellow-100 px-1 rounded">pianobackingsbydaniele@gmail.com</code>, 
-                      you must log in with that account during the OAuth flow.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
         {/* Filters Section */}
         <Card className="shadow-lg mb-6">
           <CardHeader>
@@ -1023,14 +798,6 @@ const AdminDashboard = () => {
                   Calendar View
                 </Button>
                 <Button 
-                  variant={viewMode === 'notifications' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('notifications')}
-                  className={viewMode === 'notifications' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}
-                >
-                  <Bell className="w-4 h-4 mr-2" />
-                  Email Queue
-                </Button>
-                <Button 
                   variant="outline" 
                   onClick={clearFilters}
                   className="text-sm"
@@ -1041,154 +808,60 @@ const AdminDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {viewMode !== 'notifications' && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search by name, email, song..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search by name, email, song..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <div>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Backing Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="full-song">Full Song</SelectItem>
-                        <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                        <SelectItem value="note-bash">Note Bash</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="flex items-end">
-                  <p className="text-sm text-gray-500">
-                    Showing {filteredRequests.length} of {requests.length} requests
-                  </p>
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
+              
+              <div>
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Backing Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="full-song">Full Song</SelectItem>
+                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                      <SelectItem value="note-bash">Note Bash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex items-end">
+                <p className="text-sm text-gray-500">
+                  Showing {filteredRequests.length} of {requests.length} requests
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        
-        {/* Notifications View */}
-        {viewMode === 'notifications' && (
-          <Card className="shadow-lg mb-6">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-                <span>Email Queue</span>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    onClick={processPendingEmails}
-                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Process Pending Emails
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={fetchNotifications}
-                  >
-                    Refresh
-                  </Button>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Recipient</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {notifications.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          <div className="text-center">
-                            <Bell className="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No emails in queue</h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                              All emails have been processed
-                            </p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      notifications.map((notification) => (
-                        <TableRow key={notification.id}>
-                          <TableCell>
-                            <div className="text-sm">
-                              {format(new Date(notification.created_at), 'MMM dd, yyyy')}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {format(new Date(notification.created_at), 'HH:mm')}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{notification.recipient}</div>
-                            <div className="text-sm text-gray-500">{notification.sender}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{notification.subject}</div>
-                          </TableCell>
-                          <TableCell>
-                            {getNotificationStatusBadge(notification.status)}
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                // Show email content in a dialog
-                                setEmailTemplate(notification.content);
-                                setEmailDialogOpen(true);
-                              }}
-                            >
-                              View Content
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
         
         {/* Calendar View */}
         {viewMode === 'calendar' && (
@@ -1256,9 +929,6 @@ const AdminDashboard = () => {
                                   {getStatusBadge(request.status || 'pending')}
                                 </div>
                                 <div className="mt-3 flex justify-end space-x-1">
-                                  <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
-                                    <Mail className="w-4 h-4" />
-                                  </Button>
                                   <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
                                     <Upload className="w-4 h-4" />
                                   </Button>
@@ -1487,9 +1157,6 @@ const AdminDashboard = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-1">
-                                <Button size="sm" variant="outline" onClick={() => sendEmail(request.id)}>
-                                  <Mail className="w-4 h-4" />
-                                </Button>
                                 <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
                                   <Upload className="w-4 h-4" />
                                 </Button>
@@ -1555,52 +1222,6 @@ const AdminDashboard = () => {
             </DialogContent>
           </Dialog>
         )}
-        
-        {/* Email Dialog */}
-        <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Send Email to User</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Email Template (HTML content)</Label>
-                <Textarea 
-                  value={emailTemplate}
-                  onChange={(e) => setEmailTemplate(e.target.value)}
-                  rows={12}
-                  placeholder={`<p>Dear {{name}},</p>
-
-<p>Your backing track for "{{songTitle}}" from "{{musicalOrArtist}}" is now ready!</p> 
-
-<p>You can download it directly using the link below:<br>
-<a href="{{downloadLink}}">{{downloadLink}}</a></p>
-
-<p>Or access all your tracks by logging into your dashboard:<br>
-<a href="{{dashboardLink}}">{{dashboardLink}}</a></p>
-
-<p>Thank you for choosing Piano Backings by Daniele!</p>
-
-<p>Best regards,<br>
-Daniele Buatti<br>
-Piano Backings by Daniele</p>`}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleEmailSend}
-                  disabled={sendingEmail}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  {sendingEmail ? 'Sending...' : 'Send Email'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
         
         {/* Upload Platforms Dialog */}
         <Dialog open={uploadPlatformsDialogOpen} onOpenChange={setUploadPlatformsDialogOpen}>
