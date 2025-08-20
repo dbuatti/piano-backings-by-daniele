@@ -63,8 +63,35 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
 
+    // For now, we'll use a placeholder implementation since we don't have the access token yet
     // In a real implementation, you would retrieve the access token from your database
-    // For now, we'll return a message indicating that the email would be sent
+    // and use it to send the email via the Gmail API
+    
+    // Create the email message in RFC 2822 format
+    let message = `To: ${Array.isArray(to) ? to.join(', ') : to}\r\n`;
+    message += `From: ${GMAIL_USER}\r\n`;
+    message += `Subject: ${subject}\r\n`;
+    
+    if (cc) {
+      message += `Cc: ${Array.isArray(cc) ? cc.join(', ') : cc}\r\n`;
+    }
+    
+    if (replyTo) {
+      message += `Reply-To: ${replyTo}\r\n`;
+    }
+    
+    // Add MIME headers for HTML content
+    message += 'MIME-Version: 1.0\r\n';
+    message += 'Content-Type: text/html; charset=utf-8\r\n';
+    message += '\r\n';
+    message += html;
+    
+    // Base64 encode the message
+    const encodedMessage = btoa(unescape(encodeURIComponent(message)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    
     console.log("Email sending functionality is currently a placeholder.");
     console.log("To:", to);
     console.log("Subject:", subject);
@@ -72,6 +99,7 @@ serve(async (req) => {
     console.log("CC:", cc);
     console.log("BCC:", bcc);
     console.log("Reply To:", replyTo);
+    console.log("Encoded Message:", encodedMessage);
 
     // Store a record in the notifications table for tracking
     await supabase
