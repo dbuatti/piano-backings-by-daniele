@@ -176,6 +176,8 @@ const FormPage = () => {
         }
       };
       
+      console.log('Submitting form data:', submissionData);
+      
       // Submit to Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
@@ -189,12 +191,25 @@ const FormPage = () => {
         }
       );
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to submit form: ${response.status} ${response.statusText}`);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', [...response.headers.entries()]);
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error(`Invalid response from server: ${responseText}`);
       }
       
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to submit form: ${response.status} ${response.statusText}`);
+      }
+      
+      console.log('Form submission result:', result);
       
       toast({
         title: "Request Submitted!",
@@ -694,7 +709,7 @@ const FormPage = () => {
                           <SelectContent>
                             <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
                             <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
-                            <SelectItem value="melody-bash" className="text-sm">Melody/note bash</SelectItem>
+                            <SelectItem value="melody-bash" className="text-sm">Note/melody bash</SelectItem>
                           </SelectContent>
                         </Select>
                         <TargetIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
