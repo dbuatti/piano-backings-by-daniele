@@ -405,7 +405,10 @@ const AdminDashboard = () => {
           upsert: true
         });
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
       
       // Get public URL
       const { data: { publicUrl } } = supabase
@@ -441,9 +444,10 @@ const AdminDashboard = () => {
       setUploadTrackId(null);
       setUploadFile(null);
     } catch (error: any) {
+      console.error('Error uploading track:', error);
       toast({
         title: "Error",
-        description: `Failed to upload track: ${error.message}`,
+        description: `Failed to upload track: ${error.message}. Please check your permissions and try again.`,
         variant: "destructive",
       });
     }
