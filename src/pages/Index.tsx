@@ -73,7 +73,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
                     1
                   </div>
@@ -83,7 +83,7 @@ const Index = () => {
                   </p>
                 </div>
                 
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
                     2
                   </div>
@@ -93,7 +93,7 @@ const Index = () => {
                   </p>
                 </div>
                 
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-2">
                     3
                   </div>
@@ -118,19 +118,19 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-4 text-center">
+                <div className="border rounded-lg p-4 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-3xl font-bold text-[#1C0357] mb-2">2-5 ☕</div>
                   <h3 className="font-bold text-lg mb-2">16 Bar Cut</h3>
                   <p className="text-sm">(roughly 30-45 seconds)</p>
                 </div>
                 
-                <div className="border rounded-lg p-4 text-center">
+                <div className="border rounded-lg p-4 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-3xl font-bold text-[#1C0357] mb-2">3-6 ☕</div>
                   <h3 className="font-bold text-lg mb-2">32 Bar Cut</h3>
                   <p className="text-sm">(roughly 60-90 seconds)</p>
                 </div>
                 
-                <div className="border rounded-lg p-4 text-center">
+                <div className="border rounded-lg p-4 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-3xl font-bold text-[#1C0357] mb-2">4-8 ☕</div>
                   <h3 className="font-bold text-lg mb-2">Full Song</h3>
                   <p className="text-sm">(entire song)</p>

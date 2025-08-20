@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -137,13 +137,13 @@ const Header = () => {
   };
 
   const menuItems = [
-    { name: "Home", href: "/" },
-    { name: "About", href: "/#about" },
-    { name: "Services", href: "/#services" },
-    { name: "Pricing", href: "/#pricing" },
-    { name: "Contact", href: "/#contact" },
-    { name: "Tips", href: "/#tips" },
-    { name: "Support", href: "/#support" },
+    { name: "Home", href: "/", icon: Home },
+    { name: "About", href: "/#about", icon: Info },
+    { name: "Services", href: "/#services", icon: Music },
+    { name: "Pricing", href: "/#pricing", icon: Music },
+    { name: "Contact", href: "/#contact", icon: Phone },
+    { name: "Tips", href: "/#tips", icon: Info },
+    { name: "Support", href: "/#support", icon: Mail },
   ];
 
   return (
@@ -163,23 +163,27 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
-            {menuItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                onClick={(e) => handleAnchorLink(item.href, e)}
-                className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200",
-                  "hover:bg-white/20 hover:text-white",
-                  location.pathname === item.href.split('#')[0] && 
-                  (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
-                    ? "bg-white/30 text-white" 
-                    : "text-white"
-                )}
-              >
-                {item.name}
-              </a>
-            ))}
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  onClick={(e) => handleAnchorLink(item.href, e)}
+                  className={cn(
+                    "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center",
+                    "hover:bg-white/20 hover:text-white",
+                    location.pathname === item.href.split('#')[0] && 
+                    (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
+                      ? "bg-white/30 text-white" 
+                      : "text-white"
+                  )}
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  {item.name}
+                </a>
+              );
+            })}
             
             <Link to="/form-page">
               <Button 
@@ -199,7 +203,7 @@ const Header = () => {
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20"
+                  className="ml-2 text-white hover:bg-white/20 flex items-center"
                 >
                   <User className="mr-2 h-4 w-4" />
                   My Tracks
@@ -211,7 +215,7 @@ const Header = () => {
               <Link to="/admin">
                 <Button 
                   variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20"
+                  className="ml-2 text-white hover:bg-white/20 flex items-center"
                 >
                   <Shield className="mr-2 h-4 w-4" />
                   Admin
@@ -223,15 +227,16 @@ const Header = () => {
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
-                className="ml-2 text-white hover:bg-white/20"
+                className="ml-2 text-white hover:bg-white/20 flex items-center"
               >
+                <LogIn className="mr-2 h-4 w-4" />
                 Logout
               </Button>
             ) : (
               <Link to="/login">
                 <Button 
                   variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20"
+                  className="ml-2 text-white hover:bg-white/20 flex items-center"
                 >
                   <LogIn className="mr-2 h-4 w-4" />
                   Login
@@ -288,30 +293,34 @@ const Header = () => {
                 
                 <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
                   <nav className="space-y-1">
-                    {menuItems.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.href}
-                        onClick={(e) => handleAnchorLink(item.href, e)}
-                        className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium",
-                          "text-white hover:bg-white/20"
-                        )}
-                      >
-                        {item.name}
-                      </a>
-                    ))}
+                    {menuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <a
+                          key={item.name}
+                          href={item.href}
+                          onClick={(e) => handleAnchorLink(item.href, e)}
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                        >
+                          <Icon className="mr-3 h-5 w-5" />
+                          {item.name}
+                        </a>
+                      );
+                    })}
                     
                     <div className="pt-4 border-t border-white/20">
                       <Link 
                         to="/form-page"
                         className={cn(
-                          "block w-full px-4 py-3 rounded-md text-base font-bold text-center",
+                          "block w-full px-4 py-3 rounded-md text-base font-bold text-center flex items-center justify-center",
                           "bg-white text-[#FF00B3] hover:bg-gray-100"
                         )}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <Music className="inline mr-2 h-5 w-5" />
+                        <Music className="mr-2 h-5 w-5" />
                         Order Track
                       </Link>
                     </div>
@@ -320,12 +329,12 @@ const Header = () => {
                       <Link 
                         to="/user-dashboard"
                         className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium",
-                          "text-white hover:bg-white/20 flex items-center"
+                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                          "text-white hover:bg-white/20"
                         )}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <User className="mr-2 h-5 w-5" />
+                        <User className="mr-3 h-5 w-5" />
                         My Tracks
                       </Link>
                     )}
@@ -334,12 +343,12 @@ const Header = () => {
                       <Link 
                         to="/admin"
                         className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium",
-                          "text-white hover:bg-white/20 flex items-center"
+                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                          "text-white hover:bg-white/20"
                         )}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <Shield className="mr-2 h-5 w-5" />
+                        <Shield className="mr-3 h-5 w-5" />
                         Admin Dashboard
                       </Link>
                     )}
@@ -348,20 +357,21 @@ const Header = () => {
                       <Button 
                         onClick={handleLogout}
                         variant="ghost" 
-                        className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20"
+                        className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20 flex items-center"
                       >
+                        <LogIn className="mr-3 h-5 w-5" />
                         Logout
                       </Button>
                     ) : (
                       <Link 
                         to="/login"
                         className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium",
-                          "text-white hover:bg-white/20 flex items-center"
+                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                          "text-white hover:bg-white/20"
                         )}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <LogIn className="mr-2 h-5 w-5" />
+                        <LogIn className="mr-3 h-5 w-5" />
                         Login
                       </Link>
                     )}

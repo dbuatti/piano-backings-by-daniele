@@ -8,6 +8,21 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { 
+  Calendar, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  Music, 
+  User, 
+  Mail, 
+  Link as LinkIcon, 
+  FileText, 
+  Headphones, 
+  Target, 
+  Key, 
+  Folder
+} from 'lucide-react';
 
 const RequestDetails = () => {
   const { id } = useParams();
@@ -146,6 +161,19 @@ const RequestDetails = () => {
     );
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
+      case 'in-progress':
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -164,62 +192,91 @@ const RequestDetails = () => {
         </div>
         
         <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Request Information</CardTitle>
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span>Request Information</span>
+              {getStatusBadge(request.status || 'pending')}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Basic Information</h3>
-                <div className="space-y-3">
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <User className="mr-2 h-5 w-5" />
+                  Basic Information
+                </h3>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Request ID</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Folder className="mr-1 h-4 w-4" /> Request ID
+                    </p>
                     <p className="font-medium">{request.id}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Submitted</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Calendar className="mr-1 h-4 w-4" /> Submitted
+                    </p>
                     <p className="font-medium">{format(new Date(request.created_at), 'MMMM dd, yyyy HH:mm')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Name</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <User className="mr-1 h-4 w-4" /> Name
+                    </p>
                     <p className="font-medium">{request.name || 'Not provided'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Mail className="mr-1 h-4 w-4" /> Email
+                    </p>
                     <p className="font-medium">{request.email}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Category</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Folder className="mr-1 h-4 w-4" /> Category
+                    </p>
                     <p className="font-medium">{request.category || 'Not specified'}</p>
                   </div>
                 </div>
               </div>
               
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Track Details</h3>
-                <div className="space-y-3">
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <Music className="mr-2 h-5 w-5" />
+                  Track Details
+                </h3>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Song Title</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Music className="mr-1 h-4 w-4" /> Song Title
+                    </p>
                     <p className="font-medium">{request.song_title}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Musical/Artist</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Target className="mr-1 h-4 w-4" /> Musical/Artist
+                    </p>
                     <p className="font-medium">{request.musical_or_artist}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Backing Type</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Headphones className="mr-1 h-4 w-4" /> Backing Type
+                    </p>
                     <Badge className="capitalize">
                       {request.backing_type?.replace('-', ' ') || 'Not specified'}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Track Purpose</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Target className="mr-1 h-4 w-4" /> Track Purpose
+                    </p>
                     <p className="font-medium capitalize">
                       {request.track_purpose?.replace('-', ' ') || 'Not specified'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Delivery Date</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Calendar className="mr-1 h-4 w-4" /> Delivery Date
+                    </p>
                     <p className="font-medium">
                       {request.delivery_date 
                         ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') 
@@ -233,14 +290,20 @@ const RequestDetails = () => {
         </Card>
         
         <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Musical Information</CardTitle>
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <Key className="mr-2 h-5 w-5" />
+              Musical Information
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Key Information</h3>
-                <div className="space-y-3">
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <Key className="mr-2 h-5 w-5" />
+                  Key Information
+                </h3>
+                <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-500">Song Key</p>
                     <p className="font-medium">{request.song_key || 'Not specified'}</p>
@@ -259,10 +322,15 @@ const RequestDetails = () => {
               </div>
               
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">References</h3>
-                <div className="space-y-3">
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <LinkIcon className="mr-2 h-5 w-5" />
+                  References
+                </h3>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">YouTube Link</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <LinkIcon className="mr-1 h-4 w-4" /> YouTube Link
+                    </p>
                     {request.youtube_link ? (
                       <a 
                         href={request.youtube_link} 
@@ -277,7 +345,9 @@ const RequestDetails = () => {
                     )}
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Voice Memo</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <Music className="mr-1 h-4 w-4" /> Voice Memo
+                    </p>
                     {request.voice_memo ? (
                       <a 
                         href={request.voice_memo} 
@@ -292,7 +362,9 @@ const RequestDetails = () => {
                     )}
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Sheet Music</p>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <FileText className="mr-1 h-4 w-4" /> Sheet Music
+                    </p>
                     {request.sheet_music_url ? (
                       <a 
                         href={request.sheet_music_url} 
@@ -313,13 +385,19 @@ const RequestDetails = () => {
         </Card>
         
         <Card className="shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Additional Information</CardTitle>
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <Folder className="mr-2 h-5 w-5" />
+              Additional Information
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Additional Services</h3>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <Headphones className="mr-2 h-5 w-5" />
+                  Additional Services
+                </h3>
                 {request.additional_services && request.additional_services.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {request.additional_services.map((service: string, index: number) => (
@@ -334,14 +412,29 @@ const RequestDetails = () => {
               </div>
               
               <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Special Requests</h3>
-                <p className="whitespace-pre-wrap">
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <FileText className="mr-2 h-5 w-5" />
+                  Special Requests
+                </h3>
+                <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
                   {request.special_requests || 'No special requests provided'}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        <div className="flex justify-end gap-4">
+          <Button 
+            onClick={() => navigate('/admin')} 
+            variant="outline"
+          >
+            Back to Dashboard
+          </Button>
+          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+            Edit Request
+          </Button>
+        </div>
         
         <MadeWithDyad />
       </div>

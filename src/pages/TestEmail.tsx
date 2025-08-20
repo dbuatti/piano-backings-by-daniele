@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
+import { Mail, Send } from 'lucide-react';
 
 const TestEmail = () => {
   const { toast } = useToast();
@@ -97,7 +98,10 @@ Piano Backings by Daniele</p>`
         
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Send Test Email</CardTitle>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <Mail className="mr-2 h-5 w-5" />
+              Send Test Email
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -141,8 +145,9 @@ Piano Backings by Daniele</p>`
                 <Button
                   onClick={handleSendEmail}
                   disabled={isSending || !emailData.to}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
                 >
+                  <Send className="mr-2 h-4 w-4" />
                   {isSending ? 'Sending...' : 'Send Test Email'}
                 </Button>
               </div>

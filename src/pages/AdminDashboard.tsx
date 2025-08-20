@@ -16,7 +16,7 @@ import {
   Upload, 
   DollarSign, 
   Users,
-  Share2,
+  Share2, 
   FileAudio,
   Calendar,
   Search,
@@ -29,7 +29,8 @@ import {
   Facebook,
   Instagram,
   ExternalLink,
-  Bell
+  Bell,
+  Download
 } from 'lucide-react';
 import {
   Select,
@@ -231,11 +232,11 @@ const AdminDashboard = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default"><CheckCircle className="w-4 h-4 mr-1" /> Completed</Badge>;
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
       case 'in-progress':
-        return <Badge variant="secondary"><Clock className="w-4 h-4 mr-1" /> In Progress</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive"><XCircle className="w-4 h-4 mr-1" /> Cancelled</Badge>;
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;
     }
@@ -711,40 +712,33 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="shadow-lg">
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-[#D1AAF2] p-3 mr-4">
-                  <FileAudio className="h-6 w-6 text-[#1C0357]" />
-                </div>
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Requests</p>
                   <p className="text-2xl font-bold text-[#1C0357]">{requests.length}</p>
                 </div>
+                <FileAudio className="h-10 w-10 text-[#D1AAF2]" />
               </div>
             </CardContent>
           </Card>
           
           <Card className="shadow-lg">
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-[#F538BC] p-3 mr-4">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">In Progress</p>
                   <p className="text-2xl font-bold text-[#1C0357]">
                     {requests.filter(r => r.status === 'in-progress').length}
                   </p>
                 </div>
+                <Clock className="h-10 w-10 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
           
           <Card className="shadow-lg">
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-[#1C0357] p-3 mr-4">
-                  <DollarSign className="h-6 w-6 text-white" />
-                </div>
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Pending Revenue</p>
                   <p className="text-2xl font-bold text-[#1C0357]">
@@ -754,22 +748,21 @@ const AdminDashboard = () => {
                       .toFixed(2)}
                   </p>
                 </div>
+                <DollarSign className="h-10 w-10 text-[#1C0357]" />
               </div>
             </CardContent>
           </Card>
           
           <Card className="shadow-lg">
             <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-[#4CAF50] p-3 mr-4">
-                  <CheckCircle className="h-6 w-6 text-white" />
-                </div>
+              <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Completed</p>
                   <p className="text-2xl font-bold text-[#1C0357]">
                     {requests.filter(r => r.status === 'completed').length}
                   </p>
                 </div>
+                <CheckCircle className="h-10 w-10 text-green-500" />
               </div>
             </CardContent>
           </Card>

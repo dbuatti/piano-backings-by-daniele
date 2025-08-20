@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MadeWithDyad } from "@/components/made-with-dyad";
@@ -22,7 +22,7 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        navigate('/test-function');
+        navigate('/user-dashboard');
       }
     };
     checkAuth();
@@ -31,7 +31,7 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        navigate('/test-function');
+        navigate('/user-dashboard');
       }
     });
 
@@ -109,8 +109,9 @@ const Login = () => {
         </div>
         
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Sign In</CardTitle>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-[#1C0357]">Welcome Back</CardTitle>
+            <CardDescription>Sign in to access your backing tracks and requests</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -122,6 +123,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  placeholder="your.email@example.com"
                 />
               </div>
               <div>
@@ -132,9 +134,10 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  placeholder="••••••••"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <Button 
                   type="submit" 
                   disabled={loading}
@@ -149,10 +152,14 @@ const Login = () => {
                   variant="outline"
                   className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
                 >
-                  {loading ? 'Signing up...' : 'Sign Up'}
+                  {loading ? 'Creating account...' : 'Create Account'}
                 </Button>
               </div>
             </form>
+            
+            <div className="mt-6 text-center text-sm text-gray-500">
+              <p>Don't have an account? Create one to save your requests and access all your tracks in one place.</p>
+            </div>
           </CardContent>
         </Card>
         

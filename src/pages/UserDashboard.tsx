@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus } from 'lucide-react';
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const UserDashboard = () => {
@@ -92,11 +92,11 @@ const UserDashboard = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default">Completed</Badge>;
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
       case 'in-progress':
-        return <Badge variant="secondary">In Progress</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
       case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive"><CheckCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;
     }
@@ -148,11 +148,60 @@ const UserDashboard = () => {
           </Alert>
         )}
         
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">{requests.length}</p>
+                </div>
+                <Music className="h-10 w-10 text-[#D1AAF2]" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Completed Tracks</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    {requests.filter(r => r.status === 'completed').length}
+                  </p>
+                </div>
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">In Progress</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    {requests.filter(r => r.status === 'in-progress').length}
+                  </p>
+                </div>
+                <Clock className="h-10 w-10 text-yellow-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
         <Card className="shadow-lg mb-6">
           <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Music className="mr-2" />
-              Your Backing Track Requests
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span className="flex items-center">
+                <Music className="mr-2" />
+                Your Backing Track Requests
+              </span>
+              <Link to="/form-page">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                  Order New Track
+                </Button>
+              </Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -197,18 +246,25 @@ const UserDashboard = () => {
                       requests.map((request) => (
                         <TableRow key={request.id}>
                           <TableCell>
-                            {format(new Date(request.created_at), 'MMM dd, yyyy')}
+                            <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
+                            <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
                           </TableCell>
-                          <TableCell className="font-medium">{request.song_title}</TableCell>
+                          <TableCell className="font-medium">
+                            <div>{request.song_title}</div>
+                            <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">
                               {request.backing_type?.replace('-', ' ') || 'Not specified'}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {request.delivery_date 
-                              ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
-                              : 'Not specified'}
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                              {request.delivery_date 
+                                ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
+                                : 'Not specified'}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(request.status)}

@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { Play, Music, Folder, FileText, Youtube } from 'lucide-react';
 
 const TestFunction = () => {
   const { toast } = useToast();
@@ -153,7 +154,10 @@ const TestFunction = () => {
         
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Function Test</CardTitle>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <Play className="mr-2 h-5 w-5" />
+              Function Test
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {!isAuthenticated ? (
@@ -190,6 +194,7 @@ const TestFunction = () => {
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
+                      <Music className="mr-2 h-5 w-5" />
                       <span className="font-bold">Full Song</span>
                       <span className="text-sm">00. FULL VERSIONS</span>
                     </Button>
@@ -199,6 +204,7 @@ const TestFunction = () => {
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
+                      <Folder className="mr-2 h-5 w-5" />
                       <span className="font-bold">Audition Cut</span>
                       <span className="text-sm">00. AUDITION CUTS</span>
                     </Button>
@@ -208,6 +214,7 @@ const TestFunction = () => {
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
+                      <FileText className="mr-2 h-5 w-5" />
                       <span className="font-bold">Note Bash</span>
                       <span className="text-sm">00. NOTE BASH</span>
                     </Button>
