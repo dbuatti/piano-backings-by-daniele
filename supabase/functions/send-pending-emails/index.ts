@@ -72,6 +72,9 @@ serve(async (req) => {
         console.log('Content:', email.content);
         console.log('=====================');
         
+        // For now, we'll just mark as sent since we're using console logging
+        // In a real implementation, you would use an SMTP library here
+        
         // Update email status to "sent"
         const { error: updateError } = await supabase
           .from('notifications')
