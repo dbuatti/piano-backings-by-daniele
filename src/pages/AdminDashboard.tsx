@@ -406,9 +406,9 @@ const AdminDashboard = () => {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Send email using Supabase function
+      // Send email using the new real email function
       const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email-real`,
         {
           method: 'POST',
           headers: {
@@ -439,8 +439,8 @@ const AdminDashboard = () => {
       const result = await response.json();
       
       toast({
-        title: "Email Queued",
-        description: `Email has been queued for sending to ${request.email}`,
+        title: "Email Sent",
+        description: `Email has been sent to ${request.email}`,
       });
       
       // Update local state
@@ -455,7 +455,7 @@ const AdminDashboard = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: `Failed to queue email: ${error.message}`,
+        description: `Failed to send email: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -1535,7 +1535,7 @@ Piano Backings by Daniele`}
                   disabled={sendingEmail}
                   className="bg-[#1C0357] hover:bg-[#1C0357]/90"
                 >
-                  {sendingEmail ? 'Sending...' : 'Queue Email'}
+                  {sendingEmail ? 'Sending...' : 'Send Email'}
                 </Button>
               </div>
             </div>
