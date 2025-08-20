@@ -30,7 +30,8 @@ import {
   Instagram,
   ExternalLink,
   Bell,
-  Download
+  Download,
+  HardDrive
 } from 'lucide-react';
 import {
   Select,
@@ -767,6 +768,33 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Dropbox Connection Card */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
+              <span>System Status</span>
+              <Link to="/dropbox-monitor">
+                <Button variant="outline" className="flex items-center">
+                  <HardDrive className="mr-2 h-4 w-4" />
+                  Dropbox Monitor
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Dropbox Integration</p>
+                <p className="text-lg font-medium text-green-600">Connected</p>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <span className="text-sm text-gray-500">Active</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         
         {/* Filters Section */}
         <Card className="shadow-lg mb-6">
