@@ -87,16 +87,8 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
     
-    // Store the tokens in Supabase (in a real implementation, you would store these securely)
-    // For now, we'll just log them
-    console.log('Access Token:', tokenData.access_token);
-    console.log('Refresh Token:', tokenData.refresh_token);
-    console.log('Expires In:', tokenData.expires_in);
-
-    // In a production environment, you would store these tokens securely in your database
-    // For example:
-    /*
-    await supabase
+    // Store the tokens in Supabase
+    const { error: insertError } = await supabase
       .from('gmail_tokens')
       .upsert({
         user_id: user.id,
@@ -104,17 +96,18 @@ serve(async (req) => {
         refresh_token: tokenData.refresh_token,
         expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         token_type: tokenData.token_type
+      }, {
+        onConflict: 'user_id'
       });
-    */
+
+    if (insertError) {
+      console.error('Error storing tokens:', insertError);
+      throw new Error('Failed to store tokens');
+    }
 
     return new Response(
       JSON.stringify({ 
-        message: "Gmail OAuth completed successfully",
-        // Note: In a real implementation, you would not return the tokens in the response
-        // This is just for demonstration purposes
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        expires_in: tokenData.expires_in
+        message: "Gmail OAuth completed successfully"
       }),
       { 
         headers: { 

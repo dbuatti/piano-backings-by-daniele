@@ -18,6 +18,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Function to refresh access token
+async function refreshAccessToken(refreshToken: string) {
+  const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
+  const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      client_id: GMAIL_CLIENT_ID,
+      client_secret: GMAIL_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to refresh access token: ${errorText}`);
+  }
+  
+  const tokenData = await response.json();
+  return tokenData.access_token;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -63,9 +90,42 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
 
-    // For now, we'll use a placeholder implementation since we don't have the access token yet
-    // In a real implementation, you would retrieve the access token from your database
-    // and use it to send the email via the Gmail API
+    // Retrieve stored tokens for the user
+    const { data: tokens, error: tokensError } = await supabase
+      .from('gmail_tokens')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (tokensError || !tokens) {
+      throw new Error('No Gmail tokens found for user. Please complete OAuth first.');
+    }
+    
+    let accessToken = tokens.access_token;
+    const refreshToken = tokens.refresh_token;
+    
+    // Check if access token is expired
+    const now = new Date();
+    const expiresAt = new Date(tokens.expires_at);
+    
+    if (now >= expiresAt) {
+      // Refresh the access token
+      try {
+        accessToken = await refreshAccessToken(refreshToken);
+        
+        // Update the stored access token
+        await supabase
+          .from('gmail_tokens')
+          .update({
+            access_token: accessToken,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } catch (refreshError) {
+        console.error('Error refreshing access token:', refreshError);
+        throw new Error('Failed to refresh access token');
+      }
+    }
     
     // Create the email message in RFC 2822 format
     let message = `To: ${Array.isArray(to) ? to.join(', ') : to}\r\n`;
@@ -92,15 +152,26 @@ serve(async (req) => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     
-    console.log("Email sending functionality is currently a placeholder.");
-    console.log("To:", to);
-    console.log("Subject:", subject);
-    console.log("HTML Content:", html);
-    console.log("CC:", cc);
-    console.log("BCC:", bcc);
-    console.log("Reply To:", replyTo);
-    console.log("Encoded Message:", encodedMessage);
-
+    // Send email via Gmail API
+    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        raw: encodedMessage
+      })
+    });
+    
+    if (!gmailResponse.ok) {
+      const errorText = await gmailResponse.text();
+      console.error('Gmail API error:', errorText);
+      throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
+    }
+    
+    const gmailData = await gmailResponse.json();
+    
     // Store a record in the notifications table for tracking
     await supabase
       .from('notifications')
@@ -110,14 +181,15 @@ serve(async (req) => {
           sender: GMAIL_USER,
           subject: subject,
           content: html,
-          status: 'sent', // We're marking it as sent for now, but it's not actually sent
+          status: 'sent',
           type: 'email'
         }
       ]);
 
     return new Response(
       JSON.stringify({ 
-        message: `Email would be sent to ${to} via Gmail API (functionality currently a placeholder)`
+        message: `Email sent successfully to ${to}`,
+        gmailData: gmailData
       }),
       { 
         headers: { 
