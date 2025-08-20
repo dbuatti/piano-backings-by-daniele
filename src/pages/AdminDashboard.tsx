@@ -408,7 +408,7 @@ const AdminDashboard = () => {
       
       // Send email using the new real email function
       const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email-real`,
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
         {
           method: 'POST',
           headers: {

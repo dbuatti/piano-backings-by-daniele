@@ -2,6 +2,8 @@
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+// @ts-ignore
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 // Setup CORS headers
 const corsHeaders = {
@@ -21,11 +23,15 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const gmailUser = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
+    const gmailUser = Deno.env.get('GMAIL_USER');
     // @ts-ignore
-    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD') || '';
+    const gmailAppPassword = Deno.env.get('GMAIL_APP_PASSWORD');
     
-    // Create a Supabase client with service role key (has full permissions)
+    if (!gmailUser || !gmailAppPassword) {
+      throw new Error('GMAIL_USER and GMAIL_APP_PASSWORD must be set in Supabase secrets.');
+    }
+    
+    // Create a Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the authenticated user
@@ -47,9 +53,8 @@ serve(async (req) => {
     }
     
     // Get the request data
-    const { to, from, subject, template, requestData } = await req.json();
+    const { to, subject, template, requestData } = await req.json();
     
-    // Validate required fields
     if (!to || !subject || !template) {
       throw new Error('Missing required fields: to, subject, or template');
     }
@@ -63,36 +68,42 @@ serve(async (req) => {
       });
     }
     
-    // Validate Gmail credentials
-    if (!gmailAppPassword) {
-      throw new Error('GMAIL_APP_PASSWORD not configured. Please add it to your Supabase project secrets.');
-    }
+    // Setup SMTP client
+    const client = new SmtpClient();
+    await client.connect({
+      hostname: "smtp.gmail.com",
+      port: 587, // Use port 587 for STARTTLS
+      username: gmailUser,
+      password: gmailAppPassword,
+    });
+
+    // Send the email
+    await client.send({
+      from: gmailUser,
+      to: to,
+      subject: subject,
+      content: emailContent,
+    });
+
+    await client.close();
     
-    // For now, we'll store the email in the database as a notification
-    // In a future implementation, you can set up a cron job or external service to send these emails
-    const { data, error } = await supabase
+    // Store a record in the notifications table for tracking
+    await supabase
       .from('notifications')
       .insert([
         {
           recipient: to,
-          sender: from || gmailUser,
+          sender: gmailUser,
           subject: subject,
           content: emailContent,
-          status: 'pending',
+          status: 'sent', // Mark as sent directly
           type: 'email'
         }
-      ])
-      .select();
-    
-    if (error) {
-      console.error('Database error:', error);
-      throw new Error('Failed to store email notification');
-    }
-    
+      ]);
+
     return new Response(
       JSON.stringify({ 
-        message: 'Email queued for sending',
-        notificationId: data[0].id
+        message: `Email successfully sent to ${to}`
       }),
       { 
         headers: { 
@@ -103,6 +114,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error("Error sending email:", error);
     return new Response(
       JSON.stringify({ 
         error: error.message 
@@ -112,7 +124,7 @@ serve(async (req) => {
           ...corsHeaders,
           'Content-Type': 'application/json' 
         },
-        status: 400
+        status: 500
       }
     );
   }

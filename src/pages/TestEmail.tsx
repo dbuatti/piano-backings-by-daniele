@@ -52,7 +52,6 @@ Piano Backings by Daniele`
           },
           body: JSON.stringify({
             to: emailData.to,
-            from: 'pianobackingsbydaniele@gmail.com',
             subject: emailData.subject,
             template: emailData.template,
             requestData: {
@@ -153,16 +152,12 @@ Piano Backings by Daniele`
         <div className="mt-8 p-6 bg-blue-50 rounded-lg">
           <h2 className="text-xl font-bold text-[#1C0357] mb-4">How to Test</h2>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Enter a recipient email address (you can use your own email for testing)</li>
-            <li>Optionally customize the subject and email template</li>
-            <li>Click "Send Test Email"</li>
-            <li>Check the recipient email inbox for the test email</li>
+            <li>Make sure you have set your `GMAIL_USER` and `GMAIL_APP_PASSWORD` secrets in Supabase.</li>
+            <li>Enter a recipient email address (you can use your own email for testing).</li>
+            <li>Optionally customize the subject and email template.</li>
+            <li>Click "Send Test Email".</li>
+            <li>Check the recipient's inbox for the email.</li>
           </ol>
-          <p className="mt-4 text-sm text-gray-600">
-            Note: Currently the email function is in simulation mode. In a real implementation, 
-            you would receive an actual email. The function logs the email details to the console 
-            for debugging purposes.
-          </p>
         </div>
         
         <MadeWithDyad />
