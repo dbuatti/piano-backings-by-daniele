@@ -26,13 +26,12 @@ serve(async (req) => {
 
   try {
     // Get environment variables
-    const GMAIL_USER = Deno.env.get("GMAIL_USER");
-    const GMAIL_APP_PASSWORD = Deno.env.get("GMAIL_APP_PASSWORD");
-    const SMTP_HOST = Deno.env.get("SMTP_HOST") ?? "smtp.gmail.com";
-    const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") ?? 465); // SSL
+    const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
+    const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
+    const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
 
-    if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
-      throw new Error('GMAIL_USER and GMAIL_APP_PASSWORD must be set in Supabase secrets.');
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
+      throw new Error('GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_USER must be set in Supabase secrets.');
     }
 
     // Create a Supabase client with service role key (has full permissions)
@@ -64,9 +63,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
 
-    // Since we can't use external SMTP libraries, we'll return a success message
-    // but note that actual email sending is not implemented in this version
-    console.log("Email sending functionality is currently disabled due to compatibility issues with Deno SMTP libraries.");
+    // In a real implementation, you would retrieve the access token from your database
+    // For now, we'll return a message indicating that the email would be sent
+    console.log("Email sending functionality is currently a placeholder.");
     console.log("To:", to);
     console.log("Subject:", subject);
     console.log("HTML Content:", html);
@@ -90,7 +89,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Email would be sent to ${to} via Gmail SMTP (functionality currently disabled due to compatibility issues)`
+        message: `Email would be sent to ${to} via Gmail API (functionality currently a placeholder)`
       }),
       { 
         headers: { 
