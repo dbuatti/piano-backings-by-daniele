@@ -397,6 +397,8 @@ const AdminDashboard = () => {
       const fileExt = uploadFile.name.split('.').pop();
       const fileName = `tracks/${uploadTrackId}.${fileExt}`;
       
+      console.log('Attempting to upload file:', fileName);
+      
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('tracks')
@@ -410,11 +412,15 @@ const AdminDashboard = () => {
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
       
+      console.log('Upload successful:', uploadData);
+      
       // Get public URL
       const { data: { publicUrl } } = supabase
         .storage
         .from('tracks')
         .getPublicUrl(fileName);
+      
+      console.log('Public URL:', publicUrl);
       
       // Update request with track URL
       const { error: updateError } = await supabase
@@ -425,7 +431,10 @@ const AdminDashboard = () => {
         })
         .eq('id', uploadTrackId);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
+      }
       
       // Update local state
       setRequests(requests.map(req => 
