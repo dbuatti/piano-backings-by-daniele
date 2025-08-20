@@ -406,6 +406,14 @@ const AdminDashboard = () => {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Prepare HTML content with placeholders replaced
+      let finalHtmlContent = emailTemplate;
+      finalHtmlContent = finalHtmlContent.replace(/\{\{name\}\}/g, request.name || 'there');
+      finalHtmlContent = finalHtmlContent.replace(/\{\{songTitle\}\}/g, request.song_title);
+      finalHtmlContent = finalHtmlContent.replace(/\{\{musicalOrArtist\}\}/g, request.musical_or_artist);
+      finalHtmlContent = finalHtmlContent.replace(/\{\{downloadLink\}\}/g, `<a href="${shareLink}">${shareLink}</a>`);
+      finalHtmlContent = finalHtmlContent.replace(/\{\{dashboardLink\}\}/g, `<a href="${window.location.origin}/user-dashboard">${window.location.origin}/user-dashboard</a>`);
+
       // Send email using the new real email function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
@@ -417,16 +425,8 @@ const AdminDashboard = () => {
           },
           body: JSON.stringify({
             to: request.email,
-            from: 'pianobackingsbydaniele@gmail.com',
             subject: `Your Backing Track for "${request.song_title}" is Ready!`,
-            template: emailTemplate,
-            requestData: {
-              name: request.name || 'there',
-              songTitle: request.song_title,
-              musicalOrArtist: request.musical_or_artist,
-              downloadLink: shareLink,
-              dashboardLink: `${window.location.origin}/user-dashboard`
-            }
+            html: finalHtmlContent, // Send as HTML
           }),
         }
       );
@@ -1504,26 +1504,26 @@ const AdminDashboard = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Email Template</Label>
+                <Label>Email Template (HTML content)</Label>
                 <Textarea 
                   value={emailTemplate}
                   onChange={(e) => setEmailTemplate(e.target.value)}
                   rows={12}
-                  placeholder={`Dear {{name}},
+                  placeholder={`<p>Dear {{name}},</p>
 
-Your backing track for "{{songTitle}}" from "{{musicalOrArtist}}" is now ready! 
+<p>Your backing track for "{{songTitle}}" from "{{musicalOrArtist}}" is now ready!</p> 
 
-You can download it directly using the link below:
-{{downloadLink}}
+<p>You can download it directly using the link below:<br>
+<a href="{{downloadLink}}">{{downloadLink}}</a></p>
 
-Or access all your tracks by logging into your dashboard:
-{{dashboardLink}}
+<p>Or access all your tracks by logging into your dashboard:<br>
+<a href="{{dashboardLink}}">{{dashboardLink}}</a></p>
 
-Thank you for choosing Piano Backings by Daniele!
+<p>Thank you for choosing Piano Backings by Daniele!</p>
 
-Best regards,
-Daniele Buatti
-Piano Backings by Daniele`}
+<p>Best regards,<br>
+Daniele Buatti<br>
+Piano Backings by Daniele</p>`}
                 />
               </div>
               <div className="flex justify-end space-x-2">

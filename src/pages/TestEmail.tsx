@@ -15,15 +15,15 @@ const TestEmail = () => {
   const [emailData, setEmailData] = useState({
     to: '',
     subject: 'Test Email from Piano Backings',
-    template: `Dear {{name}},
+    html: `<p>Dear {{name}},</p>
 
-This is a test email from Piano Backings by Daniele.
+<p>This is a test email from Piano Backings by Daniele.</p>
 
-Your backing track for "{{songTitle}}" is ready for download.
+<p>Your backing track for "{{songTitle}}" is ready for download.</p>
 
-Best regards,
-Daniele Buatti
-Piano Backings by Daniele`
+<p>Best regards,<br>
+Daniele Buatti<br>
+Piano Backings by Daniele</p>`
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -41,6 +41,11 @@ Piano Backings by Daniele`
       if (!session) {
         throw new Error('You must be logged in to send emails');
       }
+
+      // Replace placeholders in the HTML content
+      let finalHtmlContent = emailData.html;
+      finalHtmlContent = finalHtmlContent.replace(/\{\{name\}\}/g, 'Test User');
+      finalHtmlContent = finalHtmlContent.replace(/\{\{songTitle\}\}/g, 'Test Song');
       
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
@@ -53,11 +58,7 @@ Piano Backings by Daniele`
           body: JSON.stringify({
             to: emailData.to,
             subject: emailData.subject,
-            template: emailData.template,
-            requestData: {
-              name: 'Test User',
-              songTitle: 'Test Song'
-            }
+            html: finalHtmlContent, // Send as HTML
           }),
         }
       );
@@ -125,11 +126,11 @@ Piano Backings by Daniele`
               </div>
               
               <div>
-                <Label htmlFor="template">Email Template</Label>
+                <Label htmlFor="html">Email Template (HTML)</Label>
                 <Textarea
-                  id="template"
-                  name="template"
-                  value={emailData.template}
+                  id="html"
+                  name="html"
+                  value={emailData.html}
                   onChange={handleInputChange}
                   rows={10}
                   className="mt-1 font-mono text-sm"
@@ -152,11 +153,11 @@ Piano Backings by Daniele`
         <div className="mt-8 p-6 bg-blue-50 rounded-lg">
           <h2 className="text-xl font-bold text-[#1C0357] mb-4">How to Test</h2>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Make sure you have set your `RESEND_API_KEY` secret in Supabase.</li>
+            <li>Make sure you have set your `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `SMTP_HOST`, and `SMTP_PORT` secrets in Supabase.</li>
             <li>Enter a recipient email address (you can use your own email for testing).</li>
-            <li>Optionally customize the subject and email template.</li>
+            <li>Optionally customize the subject and email template (use HTML).</li>
             <li>Click "Send Test Email".</li>
-            <li>Check the recipient's inbox for the email. It will be sent from `onboarding@resend.dev` (Resend's default for free tier).</li>
+            <li>Check the recipient's inbox for the email.</li>
           </ol>
         </div>
         

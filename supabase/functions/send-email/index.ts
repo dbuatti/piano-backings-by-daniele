@@ -1,32 +1,48 @@
 // @ts-ignore
-import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+// @ts-ignore
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-// @ts-ignore
-import { Resend } from 'https://esm.sh/resend@1.1.0'; // Import Resend
 
+// Declare Deno global to resolve TypeScript errors
+declare global {
+  namespace Deno {
+    namespace env {
+      function get(key: string): string | undefined;
+    }
+  }
+}
+
+// Setup CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const resendApiKey = Deno.env.get('RESEND_API_KEY'); // Get Resend API key from secrets
+    // Get environment variables
+    const GMAIL_USER = Deno.env.get("GMAIL_USER");
+    const GMAIL_APP_PASSWORD = Deno.env.get("GMAIL_APP_PASSWORD");
+    const SMTP_HOST = Deno.env.get("SMTP_HOST") ?? "smtp.gmail.com";
+    const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") ?? 465); // SSL
 
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY must be set in Supabase secrets.');
+    if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
+      throw new Error('GMAIL_USER and GMAIL_APP_PASSWORD must be set in Supabase secrets.');
     }
 
+    // Create a Supabase client with service role key (has full permissions)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const resend = new Resend(resendApiKey); // Initialize Resend client
 
+    // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
@@ -44,34 +60,31 @@ serve(async (req) => {
       throw new Error('Unauthorized: Only admin can send emails');
     }
     
-    const { to, subject, template, requestData } = await req.json();
-    
-    if (!to || !subject || !template) {
-      throw new Error('Missing required fields: to, subject, or template');
+    const { to, subject, html, cc, bcc, replyTo } = await req.json();
+
+    if (!to || !subject || !html) {
+      return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
-    
-    let emailContent = template;
-    if (requestData) {
-      Object.keys(requestData).forEach(key => {
-        const placeholder = `{{${key}}}`;
-        emailContent = emailContent.replace(new RegExp(placeholder, 'g'), requestData[key]);
-      });
-    }
-    
-    // Send email using Resend
-    const { data: resendData, error: resendError } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // IMPORTANT: Use 'onboarding@resend.dev' for testing with free tier
-      to: [to],
-      subject: subject,
-      html: emailContent, // Use html for rich content, or text for plain text
+
+    const client = new SmtpClient();
+    await client.connectTLS({
+      hostname: SMTP_HOST,
+      port: SMTP_PORT,
+      username: GMAIL_USER,
+      password: GMAIL_APP_PASSWORD,
     });
 
-    if (resendError) {
-      console.error('Resend email error:', resendError);
-      throw new Error(`Failed to send email via Resend: ${resendError.message}`);
-    }
+    await client.send({
+      from: GMAIL_USER,
+      to: Array.isArray(to) ? to : [to],
+      cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
+      bcc: bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined,
+      subject,
+      content: { type: "text/html; charset=utf-8", value: html },
+      headers: replyTo ? { "Reply-To": replyTo } : undefined,
+    });
 
-    console.log('Resend email sent successfully:', resendData);
+    await client.close();
 
     // Store a record in the notifications table for tracking
     await supabase
@@ -79,9 +92,9 @@ serve(async (req) => {
       .insert([
         {
           recipient: to,
-          sender: 'Resend', // Update sender to reflect Resend
+          sender: GMAIL_USER,
           subject: subject,
-          content: emailContent,
+          content: html,
           status: 'sent',
           type: 'email'
         }
@@ -89,7 +102,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Email successfully sent to ${to} via Resend`
+        message: `Email successfully sent to ${to} via Gmail SMTP`
       }),
       { 
         headers: { 
