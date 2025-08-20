@@ -17,6 +17,7 @@ import GmailOAuthCallback from "./pages/GmailOAuthCallback";
 import TestDropboxFunction from "./pages/TestDropboxFunction";
 import TestDropboxCredentials from "./pages/TestDropboxCredentials";
 import DropboxMonitor from "./pages/DropboxMonitor";
+import ClientTrackView from "./pages/ClientTrackView";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
           <Route path="/user-dashboard" element={<UserDashboard />} />
+          <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

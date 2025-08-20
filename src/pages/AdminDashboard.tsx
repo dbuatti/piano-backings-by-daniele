@@ -1058,14 +1058,14 @@ const AdminDashboard = () => {
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <Link to={`/admin/request/${request.id}`}>
+                                        <Link to={`/track/${request.id}`}>
                                           <Button variant="outline" size="sm">
                                             <Eye className="w-4 h-4" />
                                           </Button>
                                         </Link>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>View Details</p>
+                                        <p>View Client Page</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </div>
@@ -1394,6 +1394,18 @@ const AdminDashboard = () => {
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p>View Details</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Link to={`/track/${request.id}`}>
+                                        <Button variant="outline" size="sm">
+                                          <User className="w-4 h-4" />
+                                        </Button>
+                                      </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Client View</p>
                                     </TooltipContent>
                                   </Tooltip>
                                   <Tooltip>

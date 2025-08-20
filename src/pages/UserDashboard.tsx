@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const UserDashboard = () => {
@@ -280,18 +280,9 @@ const UserDashboard = () => {
                                   <Download className="w-4 h-4 mr-1" /> Download
                                 </Button>
                               )}
-                              {request.shared_link && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => navigator.clipboard.writeText(request.shared_link)}
-                                >
-                                  <Share2 className="w-4 h-4 mr-1" /> Copy Link
-                                </Button>
-                              )}
-                              <Link to={`/admin/request/${request.id}`}>
+                              <Link to={`/track/${request.id}`}>
                                 <Button variant="outline" size="sm">
-                                  View Details
+                                  <Eye className="w-4 h-4 mr-1" /> View Details
                                 </Button>
                               </Link>
                             </div>
@@ -323,10 +314,10 @@ const UserDashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <Share2 className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
+                  <Eye className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
                   <div>
-                    <h3 className="font-semibold">Shared Links</h3>
-                    <p className="text-sm text-gray-600">Use the Copy Link button to share your tracks with others.</p>
+                    <h3 className="font-semibold">View Track Details</h3>
+                    <p className="text-sm text-gray-600">Click "View Details" to see your order information, payment options, and download your track when ready.</p>
                   </div>
                 </div>
                 <div className="flex items-start">
