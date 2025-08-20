@@ -977,10 +977,26 @@ const AdminDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600">
-              Connect your Gmail account to enable email notifications for your clients. 
-              You'll be redirected to Google to authorize the connection.
-            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Connect your Gmail account to enable email notifications for your clients. 
+                You'll be redirected to Google to authorize the connection.
+              </p>
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <Key className="h-5 w-5 text-yellow-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      <strong>Important:</strong> You must use the same Google account that was used to create the OAuth client credentials. 
+                      If your OAuth client was created with <code className="bg-yellow-100 px-1 rounded">pianobackingsbydaniele@gmail.com</code>, 
+                      you must log in with that account during the OAuth flow.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
         
