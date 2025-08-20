@@ -38,27 +38,6 @@ serve(async (req) => {
     
     console.log('Creating test folder at path:', fullPath);
     
-    // First, let's check if the parent folder exists
-    console.log('Checking if parent folder exists...');
-    const listResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        path: defaultDropboxParentFolder
-      })
-    });
-    
-    if (!listResponse.ok) {
-      const errorText = await listResponse.text();
-      console.error('Parent folder check failed:', listResponse.status, errorText);
-      throw new Error(`Parent folder check failed: ${listResponse.status} - ${errorText}`);
-    }
-    
-    console.log('Parent folder exists, proceeding with folder creation');
-    
     // Try to create a folder in Dropbox
     const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
       method: 'POST',
@@ -80,17 +59,27 @@ serve(async (req) => {
       dropboxData = await dropboxResponse.json();
       dropboxFolderId = dropboxData.metadata.id;
       console.log('Dropbox folder created successfully with ID:', dropboxFolderId);
+      
+      // Clean up: Delete the test folder immediately
+      try {
+        await fetch('https://api.dropboxapi.com/2/files/delete_v2', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            path: fullPath
+          })
+        });
+        console.log('Test folder cleaned up successfully');
+      } catch (cleanupError) {
+        console.log('Failed to clean up test folder, but test was successful');
+      }
     } else {
       const errorText = await dropboxResponse.text();
       console.error('Dropbox API error:', dropboxResponse.status, errorText);
-      
-      // Try to parse the error to get more details
-      try {
-        const errorObj = JSON.parse(errorText);
-        dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${JSON.stringify(errorObj, null, 2)}`;
-      } catch (parseError) {
-        dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
-      }
+      dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
     }
     
     return new Response(
@@ -99,8 +88,7 @@ serve(async (req) => {
         dropboxFolderId,
         dropboxError,
         fullPath,
-        dropboxData,
-        parentFolderCheck: 'SUCCESS'
+        dropboxData
       }),
       { 
         headers: { 
