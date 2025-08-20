@@ -57,8 +57,18 @@ serve(async (req) => {
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
 
+    // Log environment variable status for debugging
+    console.log('Environment variables status:', {
+      GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
+      GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
+      GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET'
+    });
+
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
-      throw new Error('GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_USER must be set in Supabase secrets.');
+      throw new Error(`Missing required environment variables:
+        GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID ? 'SET' : 'NOT SET'}
+        GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET'}
+        GMAIL_USER: ${GMAIL_USER ? 'SET' : 'NOT SET'}`);
     }
 
     // Create a Supabase client with service role key (has full permissions)
