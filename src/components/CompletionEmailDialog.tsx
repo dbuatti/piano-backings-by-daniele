@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, Send, Eye } from 'lucide-react';
+import { Mail, Send, Eye, RefreshCw } from 'lucide-react';
 
 interface CompletionEmailDialogProps {
   requestId: string;
@@ -29,36 +29,53 @@ const CompletionEmailDialog = ({
   const [emailSubject, setEmailSubject] = useState(`Your "${songTitle}" backing track is ready!`);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Generate the default email content
-  const generateDefaultEmailContent = () => {
-    return `Hi ${clientName},
+  // Generate the default email content as full HTML
+  const generateDefaultEmailHtml = (name: string, title: string, url?: string) => {
+    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+  <p>Hi ${name},</p>
 
-Great news! Your custom piano backing track for "${songTitle}" is now complete and ready for your use.
+  <p>Great news! Your custom piano backing track for <strong>"${title}"</strong> is now complete and ready for your use.</p>
 
-${trackUrl ? `You can download your track here: ${trackUrl}` : 'You can access your track through your dashboard.'}
+  ${url ? 
+    `<p style="margin-top: 20px;">You can download your track using the button below:</p>
+    <p style="text-align: center; margin: 30px 0;">
+      <a href="${url}" 
+         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+        Download Your Track
+      </a>
+    </p>` : 
+    '<p style="margin-top: 20px;">You can access your track through your dashboard.</p>'}
 
-If you have any questions or need any adjustments, please don't hesitate to reach out.
+  <p style="margin-top: 20px;">If you have any questions or need any adjustments, please don't hesitate to reach out.</p>
 
-Thank you for choosing Piano Backings by Daniele!`;
+  <p>Thank you for choosing Piano Backings by Daniele!</p>
+
+  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+    <p style="margin: 0;"><strong>Warmly,</strong></p>
+    <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
+    <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
+    <p style="margin: 5px 0 0 0;">
+      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
+    </p>
+  </div>
+</div>`;
   };
-
-  // Generate the email signature
-  const emailSignature = `
-Warmly,
-
-Daniele Buatti
-Piano Backings by Daniele
-https://pianobackings.com
-`;
 
   // Set default content when dialog opens
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
-      const defaultContent = generateDefaultEmailContent();
-      setEmailContent(defaultContent);
+      setEmailContent(generateDefaultEmailHtml(clientName, songTitle, trackUrl));
       setShowPreview(false);
     }
+  };
+
+  const handleResetContent = () => {
+    setEmailContent(generateDefaultEmailHtml(clientName, songTitle, trackUrl));
+    toast({
+      title: "Content Reset",
+      description: "Email content has been reset to default.",
+    });
   };
 
   const handleSendEmail = async () => {
@@ -72,9 +89,6 @@ https://pianobackings.com
         throw new Error('You must be logged in to send emails');
       }
 
-      // Combine content with signature
-      const finalEmailContent = `${emailContent}\n\n${emailSignature}`;
-
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
         {
@@ -86,34 +100,7 @@ https://pianobackings.com
           body: JSON.stringify({
             to: clientEmail,
             subject: emailSubject,
-            html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <p>Hi ${clientName},</p>
-
-  <p>Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> is now complete and ready for your use.</p>
-
-  ${trackUrl ? 
-    `<p>You can download your track using the button below:</p>
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="${trackUrl}" 
-         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-        Download Your Track
-      </a>
-    </p>` : 
-    '<p>You can access your track through your dashboard.</p>'}
-
-  <p>If you have any questions or need any adjustments, please don't hesitate to reach out.</p>
-
-  <p>Thank you for choosing Piano Backings by Daniele!</p>
-
-  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-    <p style="margin: 0;"><strong>Warmly,</strong></p>
-    <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
-    <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
-    <p style="margin: 5px 0 0 0;">
-      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
-    </p>
-  </div>
-</div>`,
+            html: emailContent, // Use the edited HTML content directly
             senderEmail: 'pianobackingsbydaniele@gmail.com'
           }),
         }
@@ -172,17 +159,28 @@ https://pianobackings.com
           {!showPreview ? (
             <>
               <div>
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="content">Email Content</Label>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowPreview(true)}
-                    className="flex items-center"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview
-                  </Button>
+                <div className="flex justify-between items-center mb-2">
+                  <Label htmlFor="content">Email Content (HTML)</Label>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleResetContent}
+                      className="flex items-center"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reset
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowPreview(true)}
+                      className="flex items-center"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   id="content"
@@ -216,36 +214,7 @@ https://pianobackings.com
               <div className="border rounded-md p-4 bg-gray-50 min-h-[200px]">
                 <div 
                   className="prose max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <p>Hi ${clientName},</p>
-
-  <p>Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> is now complete and ready for your use.</p>
-
-  ${trackUrl ? 
-    `<p>You can download your track using the button below:</p>
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="${trackUrl}" 
-         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-        Download Your Track
-      </a>
-    </p>` : 
-    '<p>You can access your track through your dashboard.</p>'}
-
-  <p>If you have any questions or need any adjustments, please don't hesitate to reach out.</p>
-
-  <p>Thank you for choosing Piano Backings by Daniele!</p>
-
-  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-    <p style="margin: 0;"><strong>Warmly,</strong></p>
-    <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
-    <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
-    <p style="margin: 5px 0 0 0;">
-      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
-    </p>
-  </div>
-</div>` 
-                  }} 
+                  dangerouslySetInnerHTML={{ __html: emailContent }} 
                 />
               </div>
             </div>
