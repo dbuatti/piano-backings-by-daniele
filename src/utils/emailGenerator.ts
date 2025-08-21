@@ -49,7 +49,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     Instructions for crafting the email:
     1. Create a compelling subject line that immediately tells the client their track is ready
     2. Open with a warm, personalized greeting using the client's name
-    3. Express genuine enthusiasm for working on their specific song
+    3. Use natural, conversational language - avoid overly enthusiastic phrases like "thrilled"
     4. Provide specific details about how you've addressed their special requests
     5. Include a detailed pricing breakdown with transparent costs
     6. Offer multiple payment options with clear instructions
@@ -59,7 +59,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     10. Include a link to their customer portal where they can view their request details and download their track
     11. Keep the tone professional yet friendly, showing genuine care for their success
     12. Never use "Break a leg" - end with "Warmly" instead
-    13. Make sure hyperlinks are properly formatted as HTML links that work in email clients like Gmail
+    13. Make sure hyperlinks are properly formatted as plain text URLs (not HTML) for better email compatibility
     
     Additional context for tone:
     - Many clients are preparing for auditions or performances, so be encouraging
@@ -91,9 +91,9 @@ export const generateEmailCopy = async (request: BackingRequest) => {
         subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
         body: `Hi ${request.name},
 
-I hope you're doing wonderfully!
+I hope you're doing well!
 
-I'm thrilled to let you know that your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
+Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
 ${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
 
@@ -129,9 +129,9 @@ Daniele
       subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
       body: `Hi ${request.name},
 
-I hope you're doing wonderfully!
+I hope you're doing well!
 
-I'm thrilled to let you know that your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
+Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
 ${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
 
