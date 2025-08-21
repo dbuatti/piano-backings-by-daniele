@@ -20,6 +20,17 @@ export interface BackingRequest {
   voice_memo?: string;
 }
 
+// Email signature template
+const EMAIL_SIGNATURE = `
+<p>Warmly,<br>
+Daniele Buatti<br>
+Piano Backings by Daniele<br>
+<a href="https://pianobackings.com">pianobackings.com</a><br>
+<a href="https://www.youtube.com/@pianobackingsbydaniele">YouTube</a> | 
+<a href="https://www.instagram.com/pianobackingsbydaniele/">Instagram</a> | 
+<a href="https://www.facebook.com/PianoBackingsbyDaniele">Facebook</a></p>
+`;
+
 export const generateEmailCopy = async (request: BackingRequest) => {
   try {
     // Get the generative model
@@ -86,6 +97,8 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     // Try to parse the response as JSON
     try {
       const emailData = JSON.parse(text);
+      // Add the signature to the email body
+      emailData.body += `\n\n${EMAIL_SIGNATURE}`;
       return emailData;
     } catch (parseError) {
       // If parsing fails, create a warm, personalized email with proper HTML links
@@ -130,11 +143,7 @@ If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just 
 
 Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
 
-Warmly,
-Daniele
-
-🎹 Piano Backings by Daniele
-📧 pianobackingsbydaniele@gmail.com`
+${EMAIL_SIGNATURE}`
       };
     }
   } catch (error) {
@@ -180,11 +189,7 @@ If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just 
 
 Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
 
-Warmly,
-Daniele
-
-🎹 Piano Backings by Daniele
-📧 pianobackingsbydaniele@gmail.com`
+${EMAIL_SIGNATURE}`
     };
   }
 };
