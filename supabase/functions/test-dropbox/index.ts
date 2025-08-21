@@ -18,19 +18,53 @@ serve(async (req) => {
   try {
     // Get environment variables
     // @ts-ignore
-    const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
+    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY') || '';
+    // @ts-ignore
+    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET') || '';
+    // @ts-ignore
+    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN') || '';
     // @ts-ignore
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     
     // Log environment variable status for debugging (without exposing the actual key)
     console.log('Dropbox environment variables status:', {
-      DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
+      DROPBOX_APP_KEY: dropboxAppKey ? 'SET' : 'NOT SET',
+      DROPBOX_APP_SECRET: dropboxAppSecret ? 'SET' : 'NOT SET',
+      DROPBOX_REFRESH_TOKEN: dropboxRefreshToken ? 'SET' : 'NOT SET',
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder
     });
     
-    if (!dropboxAccessToken) {
-      throw new Error('DROPBOX_ACCESS_TOKEN not configured in Supabase secrets');
+    if (!dropboxRefreshToken || !dropboxAppKey || !dropboxAppSecret) {
+      throw new Error('DROPBOX credentials not configured in Supabase secrets');
     }
+    
+    // Function to get a new access token using the refresh token
+    const getDropboxAccessToken = async () => {
+      const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: dropboxRefreshToken,
+          client_id: dropboxAppKey,
+          client_secret: dropboxAppSecret
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Dropbox token refresh error:', response.status, errorText);
+        throw new Error(`Dropbox token refresh failed: ${response.status} - ${errorText}`);
+      }
+      
+      const tokenData = await response.json();
+      return tokenData.access_token;
+    };
+    
+    // Get a fresh access token
+    const dropboxAccessToken = await getDropboxAccessToken();
     
     // Create a simple folder name for testing
     const folderName = `test_folder_${Date.now()}`;

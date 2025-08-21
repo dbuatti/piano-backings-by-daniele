@@ -87,13 +87,15 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
     
-    // Store the tokens in Supabase
+    // Store the refresh token in Supabase (we don't need to store the access token since we can refresh it)
     const { error: insertError } = await supabase
       .from('gmail_tokens')
       .upsert({
         user_id: user.id,
-        access_token: tokenData.access_token,
+        // We only store the refresh token since access tokens expire quickly
         refresh_token: tokenData.refresh_token,
+        // We also store the access token for immediate use, but we'll refresh it when needed
+        access_token: tokenData.access_token,
         expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         token_type: tokenData.token_type
       }, {

@@ -18,10 +18,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Function to refresh access token
-async function refreshAccessToken(refreshToken: string) {
+// Function to refresh access token using refresh token
+async function refreshAccessToken() {
   const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
   const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
+  const GMAIL_REFRESH_TOKEN = Deno.env.get("GMAIL_REFRESH_TOKEN");
+  
+  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN) {
+    throw new Error('Missing Gmail credentials in Supabase secrets');
+  }
   
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -31,7 +36,7 @@ async function refreshAccessToken(refreshToken: string) {
     body: new URLSearchParams({
       client_id: GMAIL_CLIENT_ID,
       client_secret: GMAIL_CLIENT_SECRET,
-      refresh_token: refreshToken,
+      refresh_token: GMAIL_REFRESH_TOKEN,
       grant_type: 'refresh_token'
     })
   });
@@ -55,19 +60,22 @@ serve(async (req) => {
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
+    const GMAIL_REFRESH_TOKEN = Deno.env.get("GMAIL_REFRESH_TOKEN");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
 
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
+      GMAIL_REFRESH_TOKEN: GMAIL_REFRESH_TOKEN ? 'SET' : 'NOT SET',
       GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET'
     });
 
-    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_USER) {
       throw new Error(`Missing required environment variables:
         GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID ? 'SET' : 'NOT SET'}
         GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET'}
+        GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN ? 'SET' : 'NOT SET'}
         GMAIL_USER: ${GMAIL_USER ? 'SET' : 'NOT SET'}`);
     }
 
@@ -100,41 +108,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
 
-    // Retrieve stored tokens for the user
-    const { data: tokens, error: tokensError } = await supabase
-      .from('gmail_tokens')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-    
-    if (tokensError || !tokens) {
-      throw new Error('No Gmail tokens found for user. Please complete OAuth first.');
-    }
-    
-    let accessToken = tokens.access_token;
-    const refreshToken = tokens.refresh_token;
-    
-    // Check if access token is expired
-    const now = new Date();
-    const expiresAt = new Date(tokens.expires_at);
-    
-    if (now >= expiresAt) {
-      // Refresh the access token
-      try {
-        accessToken = await refreshAccessToken(refreshToken);
-        
-        // Update the stored access token
-        await supabase
-          .from('gmail_tokens')
-          .update({
-            access_token: accessToken,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-      } catch (refreshError) {
-        console.error('Error refreshing access token:', refreshError);
-        throw new Error('Failed to refresh access token');
-      }
+    // Refresh the access token
+    let accessToken;
+    try {
+      accessToken = await refreshAccessToken();
+    } catch (refreshError) {
+      console.error('Error refreshing access token:', refreshError);
+      throw new Error('Failed to refresh access token');
     }
     
     // Create the email message in RFC 2822 format

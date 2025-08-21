@@ -21,7 +21,11 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const dropboxAccessToken = Deno.env.get('DROPBOX_ACCESS_TOKEN') || '';
+    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY') || '';
+    // @ts-ignore
+    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET') || '';
+    // @ts-ignore
+    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN') || '';
     // @ts-ignore
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     // @ts-ignore
@@ -33,7 +37,9 @@ serve(async (req) => {
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-      DROPBOX_ACCESS_TOKEN: dropboxAccessToken ? 'SET' : 'NOT SET',
+      DROPBOX_APP_KEY: dropboxAppKey ? 'SET' : 'NOT SET',
+      DROPBOX_APP_SECRET: dropboxAppSecret ? 'SET' : 'NOT SET',
+      DROPBOX_REFRESH_TOKEN: dropboxRefreshToken ? 'SET' : 'NOT SET',
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       LOGIC_TEMPLATE_PATH: templateFilePath,
       RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET'
@@ -93,16 +99,49 @@ serve(async (req) => {
       }
     }
     
+    // Function to get a new access token using the refresh token
+    const getDropboxAccessToken = async () => {
+      if (!dropboxAppKey || !dropboxAppSecret || !dropboxRefreshToken) {
+        throw new Error('Dropbox credentials not configured');
+      }
+      
+      const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: dropboxRefreshToken,
+          client_id: dropboxAppKey,
+          client_secret: dropboxAppSecret
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Dropbox token refresh error:', response.status, errorText);
+        throw new Error(`Dropbox token refresh failed: ${response.status} - ${errorText}`);
+      }
+      
+      const tokenData = await response.json();
+      return tokenData.access_token;
+    };
+    
     // Create Dropbox folder
     let dropboxFolderId = null;
     let dropboxError = null;
     let dropboxFolderPath = null;
+    let dropboxAccessToken = null;
     
-    if (!dropboxAccessToken) {
-      console.log('Dropbox access token not configured');
-      dropboxError = 'Dropbox access token not configured';
+    if (!dropboxRefreshToken || !dropboxAppKey || !dropboxAppSecret) {
+      console.log('Dropbox credentials not configured');
+      dropboxError = 'Dropbox credentials not configured';
     } else {
       try {
+        // Get a fresh access token
+        dropboxAccessToken = await getDropboxAccessToken();
+        
         // Ensure the parent folder path starts with a slash and doesn't end with one
         const normalizedParentFolder = parentFolder.startsWith('/') 
           ? parentFolder.replace(/\/$/, '') 
