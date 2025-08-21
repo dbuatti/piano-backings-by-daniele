@@ -49,19 +49,35 @@ serve(async (req) => {
     });
     
     // Create a Supabase client with service role key (has full permissions)
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // This client will be used for database operations regardless of user auth status
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the authenticated user
+    // Initialize user info variables
+    let userId = null;
+    let userEmail = null;
+    let userName = null;
+
+    // Try to get the authenticated user
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing Authorization header');
-    }
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      throw new Error('Invalid or expired token');
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        
+        if (!userError && user) {
+          userId = user.id;
+          userEmail = user.email;
+          // Note: user.user_metadata might not always have full_name, we'll prefer formData.name
+          userName = user.user_metadata?.full_name || null;
+          console.log('Authenticated user:', { userId, userEmail, userName });
+        } else {
+          console.log('Authorization header present but invalid/expired token, proceeding as anonymous');
+        }
+      } catch (authError) {
+        console.log('Error parsing auth header, proceeding as anonymous:', authError.message);
+      }
+    } else {
+      console.log('No Authorization header, proceeding as anonymous');
     }
     
     let requestBody;
@@ -81,8 +97,18 @@ serve(async (req) => {
       throw new Error('Missing formData in request body. Please ensure the request body contains a "formData" object.');
     }
     
+    // Use form data for user info if not obtained from auth
+    // This allows anonymous users to submit requests with their details
+    userEmail = userEmail || formData.email;
+    userName = userName || formData.name;
+    
+    // Validate required email
+    if (!userEmail) {
+       throw new Error('Email is required and must be provided in the form data.');
+    }
+    
     // Extract first name from the full name
-    const firstName = formData.name ? formData.name.split(' ')[0] : 'anonymous';
+    const firstName = userName ? userName.split(' ')[0] : 'anonymous';
     
     // Create a folder name based on the request with the specified format (without quotation marks)
     const today = new Date();
@@ -676,14 +702,15 @@ serve(async (req) => {
       }
     }
     
-    // Save to the database
-    const { data: insertedRecords, error: insertError } = await supabase
+    // Save to the database using the admin client
+    // This allows inserting records even for anonymous users
+    const { data: insertedRecords, error: insertError } = await supabaseAdmin
       .from('backing_requests')
       .insert([
         {
-          user_id: user.id,
-          email: formData.email,
-          name: formData.name,
+          user_id: userId, // Will be null for anonymous users
+          email: userEmail, // Guaranteed to be present
+          name: userName, // From form data or auth
           song_title: formData.songTitle,
           musical_or_artist: formData.musicalOrArtist,
           song_key: formData.songKey,
@@ -732,7 +759,7 @@ serve(async (req) => {
             <div style="margin-bottom: 10px;">
               <strong>Song:</strong> ${formData.songTitle}<br>
               <strong>Musical/Artist:</strong> ${formData.musicalOrArtist}<br>
-              <strong>Requested by:</strong> ${formData.name || 'N/A'} (${formData.email})<br>
+              <strong>Requested by:</strong> ${userName || 'N/A'} (${userEmail})<br>
               <strong>Submitted:</strong> ${new Date().toLocaleString()}
             </div>
             
@@ -774,6 +801,11 @@ serve(async (req) => {
       
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
+      // Use the service key for internal function calls if needed, but for send-email,
+      // we might still need a user token. Let's try without auth first, as the send-email
+      // function might be configured to allow service role calls.
+      // If that fails, we'll need to adjust send-email too.
+      
       for (const email of adminEmails) {
         try {
           const payloadToSend = {
@@ -787,11 +819,13 @@ serve(async (req) => {
             html: payloadToSend.html.substring(0, 50) + '...' // Truncate HTML for log readability
           }));
           
+          // For now, we'll call send-email without an auth header, relying on its internal logic
+          // or service role permissions. If it requires a user token, we'll need to adjust it too.
           const emailResponse = await fetch(sendEmailUrl, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': authHeader // Pass the auth header here
+              'Content-Type': 'application/json'
+              // Removed 'Authorization': authHeader for now
             },
             body: JSON.stringify(payloadToSend)
           });
@@ -802,7 +836,7 @@ serve(async (req) => {
             const emailErrorText = await emailResponse.text();
             console.error(`Failed to send notification email to ${email}:`, emailErrorText);
             // Try alternative method - store in notifications table
-            await supabase
+            await supabaseAdmin
               .from('notifications')
               .insert([
                 {
@@ -820,7 +854,7 @@ serve(async (req) => {
             console.log(`Notification email sent successfully to ${email}:`, result);
             
             // Store successful notification in database
-            await supabase
+            await supabaseAdmin
               .from('notifications')
               .insert([
                 {
@@ -836,7 +870,7 @@ serve(async (req) => {
         } catch (emailError) {
           console.error(`Error sending notification email to ${email}:`, emailError);
           // Store failed notification in database
-          await supabase
+          await supabaseAdmin
             .from('notifications')
             .insert([
               {
@@ -866,7 +900,7 @@ serve(async (req) => {
         
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         for (const email of adminEmails) {
-          await supabase
+          await supabaseAdmin
             .from('notifications')
             .insert([
               {
