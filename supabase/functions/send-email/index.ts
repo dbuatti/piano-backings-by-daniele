@@ -66,8 +66,8 @@ serve(async (req) => {
     let targetUserEmail: string | null = null;
 
     // Determine the user whose Gmail tokens should be used
-    if (adminUserId && typeof adminUserId === 'string' && adminUserId.length > 0) {
-      console.log("DEBUG: adminUserId is valid. Entering adminUserId branch.");
+    if (adminUserId) { // Simplified condition
+      console.log("DEBUG: Entered adminUserId branch. adminUserId is truthy."); // NEW LOG
       targetUserId = adminUserId;
       // Fetch email for logging/validation using admin client
       const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(adminUserId);
@@ -79,7 +79,7 @@ serve(async (req) => {
       console.log("DEBUG: Admin user email retrieved:", targetUserEmail);
 
     } else {
-      console.log("DEBUG: adminUserId is invalid or missing. Entering non-adminUserId branch.");
+      console.log("DEBUG: Entered non-adminUserId branch. adminUserId is falsy."); // NEW LOG
       // If no adminUserId, assume direct call from client and use Authorization header
       const authHeader = req.headers.get('Authorization');
       console.log(`DEBUG: Auth header present: ${!!authHeader}, Value: ${authHeader ? authHeader.substring(0, 20) + '...' : 'N/A'}`);
