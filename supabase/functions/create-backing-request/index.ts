@@ -21,11 +21,11 @@ serve(async (req) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     // @ts-ignore
-    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY') || '';
+    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY');
     // @ts-ignore
-    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET') || '';
+    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET');
     // @ts-ignore
-    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN') || '';
+    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN');
     // @ts-ignore
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     // @ts-ignore
@@ -33,7 +33,7 @@ serve(async (req) => {
     // @ts-ignore
     const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     
-    // Log environment variable status for debugging (without exposing the actual key)
+    // Log environment variable status for debugging (without exposing the actual values)
     console.log('Environment variables status:', {
       SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
@@ -101,10 +101,19 @@ serve(async (req) => {
     
     // Function to get a new access token using the refresh token
     const getDropboxAccessToken = async () => {
-      if (!dropboxAppKey || !dropboxAppSecret || !dropboxRefreshToken) {
-        throw new Error('Dropbox credentials not configured');
+      if (!dropboxAppKey) {
+        throw new Error('DROPBOX_APP_KEY is not configured in Supabase secrets');
       }
       
+      if (!dropboxAppSecret) {
+        throw new Error('DROPBOX_APP_SECRET is not configured in Supabase secrets');
+      }
+      
+      if (!dropboxRefreshToken) {
+        throw new Error('DROPBOX_REFRESH_TOKEN is not configured in Supabase secrets');
+      }
+      
+      console.log('Attempting to refresh Dropbox access token');
       const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
         method: 'POST',
         headers: {
@@ -125,6 +134,7 @@ serve(async (req) => {
       }
       
       const tokenData = await response.json();
+      console.log('Successfully refreshed Dropbox access token');
       return tokenData.access_token;
     };
     
@@ -133,10 +143,19 @@ serve(async (req) => {
     let dropboxError = null;
     let dropboxFolderPath = null;
     let dropboxAccessToken = null;
+    let parentFolderCheck = false;
     
-    if (!dropboxRefreshToken || !dropboxAppKey || !dropboxAppSecret) {
+    if (!dropboxAppKey || !dropboxAppSecret || !dropboxRefreshToken) {
       console.log('Dropbox credentials not configured');
-      dropboxError = 'Dropbox credentials not configured';
+      if (!dropboxAppKey) {
+        dropboxError = 'DROPBOX_APP_KEY not configured';
+      } else if (!dropboxAppSecret) {
+        dropboxError = 'DROPBOX_APP_SECRET not configured';
+      } else if (!dropboxRefreshToken) {
+        dropboxError = 'DROPBOX_REFRESH_TOKEN not configured';
+      } else {
+        dropboxError = 'Dropbox credentials not configured';
+      }
     } else {
       try {
         // Get a fresh access token
@@ -165,13 +184,14 @@ serve(async (req) => {
           })
         });
         
-        if (!parentCheckResponse.ok) {
+        if (parentCheckResponse.ok) {
+          parentFolderCheck = true;
+          console.log('Parent folder exists, proceeding with folder creation');
+        } else {
           const parentErrorText = await parentCheckResponse.text();
           console.error('Parent folder check failed:', parentCheckResponse.status, parentErrorText);
           throw new Error(`Parent folder check failed: ${parentCheckResponse.status} - ${parentErrorText}`);
         }
-        
-        console.log('Parent folder exists, proceeding with folder creation');
         
         const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
           method: 'POST',
@@ -586,7 +606,8 @@ serve(async (req) => {
       pdfUploadSuccess,
       youtubeMp3Success,
       dropboxFolderPath,
-      logicFileNameUsed: logicFileName
+      logicFileNameUsed: logicFileName,
+      parentFolderCheck
     };
     
     if (dropboxError) {

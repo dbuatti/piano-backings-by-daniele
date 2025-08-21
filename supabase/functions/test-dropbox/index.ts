@@ -18,15 +18,15 @@ serve(async (req) => {
   try {
     // Get environment variables
     // @ts-ignore
-    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY') || '';
+    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY');
     // @ts-ignore
-    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET') || '';
+    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET');
     // @ts-ignore
-    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN') || '';
+    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN');
     // @ts-ignore
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     
-    // Log environment variable status for debugging (without exposing the actual key)
+    // Log environment variable status for debugging (without exposing the actual values)
     console.log('Dropbox environment variables status:', {
       DROPBOX_APP_KEY: dropboxAppKey ? 'SET' : 'NOT SET',
       DROPBOX_APP_SECRET: dropboxAppSecret ? 'SET' : 'NOT SET',
@@ -34,12 +34,22 @@ serve(async (req) => {
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder
     });
     
-    if (!dropboxRefreshToken || !dropboxAppKey || !dropboxAppSecret) {
-      throw new Error('DROPBOX credentials not configured in Supabase secrets');
+    // Check each credential individually and provide specific error messages
+    if (!dropboxAppKey) {
+      throw new Error('DROPBOX_APP_KEY is not configured in Supabase secrets');
+    }
+    
+    if (!dropboxAppSecret) {
+      throw new Error('DROPBOX_APP_SECRET is not configured in Supabase secrets');
+    }
+    
+    if (!dropboxRefreshToken) {
+      throw new Error('DROPBOX_REFRESH_TOKEN is not configured in Supabase secrets');
     }
     
     // Function to get a new access token using the refresh token
     const getDropboxAccessToken = async () => {
+      console.log('Attempting to refresh Dropbox access token');
       const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
         method: 'POST',
         headers: {
@@ -60,6 +70,7 @@ serve(async (req) => {
       }
       
       const tokenData = await response.json();
+      console.log('Successfully refreshed Dropbox access token');
       return tokenData.access_token;
     };
     
@@ -88,6 +99,7 @@ serve(async (req) => {
     let dropboxData;
     let dropboxFolderId = null;
     let dropboxError = null;
+    let parentFolderCheck = false;
     
     if (dropboxResponse.ok) {
       dropboxData = await dropboxResponse.json();
@@ -110,9 +122,36 @@ serve(async (req) => {
       } catch (cleanupError) {
         console.log('Failed to clean up test folder, but test was successful');
       }
+      
+      parentFolderCheck = true;
     } else {
       const errorText = await dropboxResponse.text();
       console.error('Dropbox API error:', dropboxResponse.status, errorText);
+      
+      // Try to check if parent folder exists
+      try {
+        const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            path: defaultDropboxParentFolder
+          })
+        });
+        
+        if (parentCheckResponse.ok) {
+          parentFolderCheck = true;
+          console.log('Parent folder exists');
+        } else {
+          const parentErrorText = await parentCheckResponse.text();
+          console.error('Parent folder check failed:', parentCheckResponse.status, parentErrorText);
+        }
+      } catch (parentError) {
+        console.error('Error checking parent folder:', parentError);
+      }
+      
       dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
     }
     
@@ -122,7 +161,8 @@ serve(async (req) => {
         dropboxFolderId,
         dropboxError,
         fullPath,
-        dropboxData
+        dropboxData,
+        parentFolderCheck
       }),
       { 
         headers: { 
