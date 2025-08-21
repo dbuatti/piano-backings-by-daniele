@@ -87,6 +87,7 @@ import {
 } from "@/components/ui/tooltip";
 import PricingMatrix from '@/components/PricingMatrix';
 import CompletionEmailDialog from '@/components/CompletionEmailDialog';
+import { calculateRequestCost } from '@/utils/pricing';
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -121,7 +122,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } = { session: null } } = await supabase.auth.getSession(); // Destructure with default value
       
       if (!session) {
         navigate('/login');
@@ -337,7 +338,7 @@ const AdminDashboard = () => {
     );
   };
 
-  const calculateTotalCost = () => {
+  const calculateTotalCostForSelected = () => {
     // Calculate total cost based on selected requests
     const selected = filteredRequests.filter(req => selectedRequests.includes(req.id));
     let total = 0;
@@ -387,11 +388,11 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (selectedRequests.length > 0) {
-      setTotalCost(calculateTotalCost());
+      setTotalCost(calculateTotalCostForSelected());
     } else {
       setTotalCost(0);
     }
-  }, [selectedRequests]);
+  }, [selectedRequests, filteredRequests]); // Added filteredRequests to dependency array
 
   const uploadTrack = async (id: string) => {
     setUploadTrackId(id);
@@ -504,45 +505,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
-  const calculateRequestCost = (request: any) => {
-    let baseCost = 0;
-    switch (request.backing_type) {
-      case 'full-song':
-        baseCost = 30;
-        break;
-      case 'audition-cut':
-        baseCost = 15;
-        break;
-      case 'note-bash':
-        baseCost = 10;
-        break;
-      default:
-        baseCost = 20;
-    }
-    
-    // Add additional service costs
-    if (request.additional_services) {
-      request.additional_services.forEach((service: string) => {
-        switch (service) {
-          case 'rush-order':
-            baseCost += 10;
-            break;
-          case 'complex-songs':
-            baseCost += 7;
-            break;
-          case 'additional-edits':
-            baseCost += 5;
-            break;
-          case 'exclusive-ownership':
-            baseCost += 40;
-            break;
-          }
-        });
-      }
-      
-      return baseCost;
-    };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -1460,6 +1422,8 @@ const AdminDashboard = () => {
                                       <p>Client View</p>
                                     </TooltipContent>
                                   </Tooltip>
+                                  {/* Temporarily hide the Email Generator button */}
+                                  {/*
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button 
@@ -1474,6 +1438,7 @@ const AdminDashboard = () => {
                                       <p>Generate Email</p>
                                     </TooltipContent>
                                   </Tooltip>
+                                  */}
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <CompletionEmailDialog 
