@@ -472,7 +472,7 @@ serve(async (req) => {
                     // Create a fallback reference file
                     await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
                     youtubeMp3Success = true; // Mark as successful since we provided a reference
-                    youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+                    youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to missing API key';
                   }
                 } else {
                   youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
@@ -718,24 +718,35 @@ serve(async (req) => {
       console.log("Attempting to send email notification");
       
       // Get the admin user ID for the email sender
-      const { data: adminUser, error: adminUserError } = await supabase
+      let adminUserIdForEmail: string | null = null;
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+
+      // First, try to get from profiles table
+      const { data: profileAdminUser, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', adminEmail)
         .single();
 
-      let adminUserIdForEmail: string | null = null;
-      if (adminUserError || !adminUser) {
+      if (profileError || !profileAdminUser) {
         console.error(`Could not find admin user with email ${adminEmail} in profiles table. Attempting to get from auth.users.`);
-        const { data: authAdminUser, error: authAdminUserError } = await supabase.auth.admin.getUserByEmail(adminEmail);
-        if (authAdminUserError || !authAdminUser) {
+        // Fallback to auth.users table using listUsers
+        const { data: authAdminUsers, error: authAdminUserError } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1,
+          email: adminEmail
+        });
+        
+        if (authAdminUserError || !authAdminUsers || authAdminUsers.users.length === 0) {
           console.error(`Could not find admin user with email ${adminEmail} in auth.users table. Email notification will likely fail.`);
         } else {
-          adminUserIdForEmail = authAdminUser.user.id;
+          adminUserIdForEmail = authAdminUsers.users[0].id;
         }
       } else {
-        adminUserIdForEmail = adminUser.id;
+        adminUserIdForEmail = profileAdminUser.id;
       }
+
+      console.log("Admin user ID for email notification:", adminUserIdForEmail);
 
       if (!adminUserIdForEmail) {
         console.error("Admin user ID for email notification is null. Skipping email sending.");
@@ -793,9 +804,6 @@ serve(async (req) => {
           </p>
         </div>
       `;
-      
-      // Send email to both admin emails using a more robust approach
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
       console.log("Sending notification emails to:", adminEmails);
       
