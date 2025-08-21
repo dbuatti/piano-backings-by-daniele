@@ -127,8 +127,9 @@ const AdminDashboard = () => {
         return;
       }
       
-      // Check if user is admin (daniele.buatti@gmail.com)
-      if (session.user.email === 'daniele.buatti@gmail.com') {
+      // Check if user is admin (daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+      if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
         fetchRequests();
         return;
@@ -144,7 +145,7 @@ const AdminDashboard = () => {
         
         if (error) {
           console.error('Error fetching profile:', error);
-          if (session.user.email === 'daniele.buatti@gmail.com') {
+          if (adminEmails.includes(session.user.email)) {
             setIsAdmin(true);
             fetchRequests();
           } else {
@@ -158,7 +159,7 @@ const AdminDashboard = () => {
           return;
         }
         
-        if (profile?.email === 'daniele.buatti@gmail.com') {
+        if (adminEmails.includes(profile?.email)) {
           setIsAdmin(true);
           fetchRequests();
         } else {
@@ -171,7 +172,7 @@ const AdminDashboard = () => {
         }
       } catch (error: any) {
         console.error('Error checking admin status:', error);
-        if (session.user.email === 'daniele.buatti@gmail.com') {
+        if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
           fetchRequests();
         } else {
@@ -535,12 +536,12 @@ const AdminDashboard = () => {
           case 'exclusive-ownership':
             baseCost += 40;
             break;
-        }
-      });
-    }
-    
-    return baseCost;
-  };
+          }
+        });
+      }
+      
+      return baseCost;
+    };
 
   const clearFilters = () => {
     setSearchTerm('');

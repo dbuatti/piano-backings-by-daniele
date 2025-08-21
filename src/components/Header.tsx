@@ -23,14 +23,14 @@ const Header = () => {
       
       if (session) {
         // Check if user is admin
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        if (adminEmails.includes(session.user.email)) {
+          setIsAdmin(true);
+          return;
+        }
+        
+        // Fallback to checking profiles table
         try {
-          // First check if user is admin by email
-          if (session.user.email === 'daniele.buatti@gmail.com') {
-            setIsAdmin(true);
-            return;
-          }
-          
-          // Fallback to checking profiles table
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('email')
@@ -42,7 +42,7 @@ const Header = () => {
             return;
           }
           
-          if (profile?.email === 'daniele.buatti@gmail.com') {
+          if (adminEmails.includes(profile?.email)) {
             setIsAdmin(true);
           }
         } catch (error) {
@@ -59,14 +59,14 @@ const Header = () => {
       if (session) {
         // Check if user is admin
         const checkAdmin = async () => {
+          const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+          if (adminEmails.includes(session.user.email)) {
+            setIsAdmin(true);
+            return;
+          }
+          
+          // Fallback to checking profiles table
           try {
-            // First check if user is admin by email
-            if (session.user.email === 'daniele.buatti@gmail.com') {
-              setIsAdmin(true);
-              return;
-            }
-            
-            // Fallback to checking profiles table
             const { data: profile, error } = await supabase
               .from('profiles')
               .select('email')
@@ -79,7 +79,7 @@ const Header = () => {
               return;
             }
             
-            if (profile?.email === 'daniele.buatti@gmail.com') {
+            if (adminEmails.includes(profile?.email)) {
               setIsAdmin(true);
             } else {
               setIsAdmin(false);

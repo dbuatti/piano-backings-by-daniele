@@ -44,9 +44,9 @@ const RequestDetails = () => {
         return;
       }
       
-      // Check if user is admin (daniele.buatti@gmail.com)
-      // First try to get email from user object directly
-      if (session.user.email === 'daniele.buatti@gmail.com') {
+      // Check if user is admin (daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+      if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
         fetchRequest();
         return;
@@ -63,7 +63,7 @@ const RequestDetails = () => {
         if (error) {
           console.error('Error fetching profile:', error);
           // Even if we can't fetch profile, check user email directly
-          if (session.user.email === 'daniele.buatti@gmail.com') {
+          if (adminEmails.includes(session.user.email)) {
             setIsAdmin(true);
             fetchRequest();
           } else {
@@ -77,7 +77,7 @@ const RequestDetails = () => {
           return;
         }
         
-        if (profile?.email === 'daniele.buatti@gmail.com') {
+        if (adminEmails.includes(profile?.email)) {
           setIsAdmin(true);
           fetchRequest();
         } else {
@@ -91,7 +91,7 @@ const RequestDetails = () => {
       } catch (error: any) {
         console.error('Error checking admin status:', error);
         // Fallback to checking user email directly
-        if (session.user.email === 'daniele.buatti@gmail.com') {
+        if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
           fetchRequest();
         } else {
