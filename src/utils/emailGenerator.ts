@@ -58,7 +58,8 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     9. Add your signature with contact information
     10. Include a link to their customer portal where they can view their request details and download their track
     11. Keep the tone professional yet friendly, showing genuine care for their success
-    12. Make sure hyperlinks are properly formatted as HTML links
+    12. Never use "Break a leg" - end with "Warmly" instead
+    13. Make sure hyperlinks are properly formatted as HTML links that work in email clients like Gmail
     
     Additional context for tone:
     - Many clients are preparing for auditions or performances, so be encouraging
@@ -103,16 +104,17 @@ ${request.additional_services.map(service => `• ${service.replace('-', ' ')}: 
 Total amount: $${calculateTotal(request.track_type, request.additional_services)}
 
 You can complete your payment via:
-1. Buy Me a Coffee: <a href="https://www.buymeacoffee.com/Danielebuatti">https://www.buymeacoffee.com/Danielebuatti</a>
+1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
 2. Direct bank transfer: BSB: 923100 | Account: 301110875
 
-<a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}">Click here to view your request details and download your track</a>
+View your request details and download your track here:
+https://pianobackingsbydaniele.vercel.app/track/${request.id}
 
 If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
 
 Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
 
-Break a leg,
+Warmly,
 Daniele
 
 🎹 Piano Backings by Daniele
@@ -122,7 +124,7 @@ Daniele
   } catch (error) {
     console.error('Error generating email copy:', error);
     
-    // Fallback email template with warm tone and proper links
+    // Fallback email template with warm tone and plain text links for better email compatibility
     return {
       subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
       body: `Hi ${request.name},
@@ -140,16 +142,17 @@ ${request.additional_services.map(service => `• ${service.replace('-', ' ')}: 
 Total amount: $${calculateTotal(request.track_purpose, request.additional_services)}
 
 You can complete your payment via:
-1. Buy Me a Coffee: <a href="https://www.buymeacoffee.com/Danielebuatti">https://www.buymeacoffee.com/Danielebuatti</a>
+1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
 2. Direct bank transfer: BSB: 923100 | Account: 301110875
 
-<a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}">Click here to view your request details and download your track</a>
+View your request details and download your track here:
+https://pianobackingsbydaniele.vercel.app/track/${request.id}
 
 If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
 
 Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
 
-Break a leg,
+Warmly,
 Daniele
 
 🎹 Piano Backings by Daniele
