@@ -682,7 +682,7 @@ serve(async (req) => {
           backing_type: formData.backingType,
           delivery_date: formData.deliveryDate,
           additional_services: formData.additionalServices,
-          special_requests: formData.specialServices,
+          special_requests: formData.specialRequests,
           dropbox_folder_id: dropboxFolderId
         }
       ])
@@ -734,7 +734,7 @@ serve(async (req) => {
           </div>
           
           <div style="margin: 20px 0;">
-            <a href="https://pianobackings.com/admin/request/${data[0].id}" 
+            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${data[0].id}" 
                style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Request Details
             </a>
