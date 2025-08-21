@@ -184,16 +184,29 @@ const FormPage = () => {
           
           if (uploadError) {
             console.error('Voice memo upload error:', uploadError);
-            throw new Error(`Voice memo upload error: ${uploadError.message}`);
+            // Show a more user-friendly error message
+            if (uploadError.message.includes('Bucket not found')) {
+              toast({
+                title: "Warning",
+                description: "Voice memo upload failed: Storage bucket not configured. Request will still be submitted.",
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Warning",
+                description: `Voice memo upload failed: ${uploadError.message}. Request will still be submitted.`,
+                variant: "destructive",
+              });
+            }
+          } else {
+            // Get public URL for the uploaded file
+            const { data: { publicUrl } } = supabase
+              .storage
+              .from('voice-memos')
+              .getPublicUrl(fileName);
+            
+            voiceMemoFileUrl = publicUrl;
           }
-          
-          // Get public URL for the uploaded file
-          const { data: { publicUrl } } = supabase
-            .storage
-            .from('voice-memos')
-            .getPublicUrl(fileName);
-          
-          voiceMemoFileUrl = publicUrl;
         } catch (uploadError: any) {
           console.error('Voice memo upload error:', uploadError);
           toast({
@@ -725,6 +738,7 @@ const FormPage = () => {
                             className="py-1 text-sm"
                           />
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">Note: Voice memo uploads may not be available at this time</p>
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
