@@ -44,6 +44,7 @@ const App = () => (
           <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
           <Route path="/email-generator" element={<EmailGenerator />} />
+          <Route path="/email-generator/:id" element={<EmailGenerator />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

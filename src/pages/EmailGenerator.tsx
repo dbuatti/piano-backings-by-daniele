@@ -14,7 +14,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 
 const EmailGenerator = () => {
   const { toast } = useToast();
-  const { id } = useParams();
+  const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', body: '' });
