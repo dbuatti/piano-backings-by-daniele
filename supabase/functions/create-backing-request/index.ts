@@ -802,7 +802,8 @@ serve(async (req) => {
         </div>
       `;
       
-      const adminEmails = [adminEmail, secondaryAdminEmail]; // Use both admin emails
+      // Only send to the primary admin email (daniele.buatti@gmail.com)
+      const adminEmails = [adminEmail]; // Only send to daniele.buatti@gmail.com
       
       // Use the service key for internal function calls
       for (const email of adminEmails) {
@@ -897,7 +898,7 @@ serve(async (req) => {
           </div>
         `;
         
-        const adminEmails = [adminEmail, secondaryAdminEmail];
+        const adminEmails = [adminEmail];
         for (const email of adminEmails) {
           await supabaseAdmin
             .from('notifications')
