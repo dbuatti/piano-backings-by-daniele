@@ -8,6 +8,8 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 
 const Login = () => {
   const { toast } = useToast();
@@ -114,48 +116,35 @@ const Login = () => {
             <CardDescription>Sign in to access your backing tracks and requests</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="your.email@example.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={loading}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-                >
-                  {loading ? 'Signing in...' : 'Sign In'}
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleSignUp}
-                  disabled={loading}
-                  variant="outline"
-                  className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
-                >
-                  {loading ? 'Creating account...' : 'Create Account'}
-                </Button>
-              </div>
-            </form>
+            <Auth
+              supabaseClient={supabase}
+              providers={['google']}
+              appearance={{ theme: ThemeSupa }}
+              theme="light"
+              redirectTo={`${window.location.origin}/user-dashboard`}
+              localization={{
+                variables: {
+                  sign_in: {
+                    email_label: 'Email address',
+                    password_label: 'Your password',
+                    email_input_placeholder: 'Enter your email address',
+                    password_input_placeholder: 'Enter your password',
+                    button_label: 'Sign In',
+                    social_provider_text: 'Or continue with {{provider}}',
+                    link_text: 'Already have an account? Sign In',
+                  },
+                  sign_up: {
+                    email_label: 'Email address',
+                    password_label: 'Create a password',
+                    email_input_placeholder: 'Enter your email address',
+                    password_input_placeholder: 'Create a password',
+                    button_label: 'Sign Up',
+                    social_provider_text: 'Or continue with {{provider}}',
+                    link_text: 'Don\'t have an account? Sign Up',
+                  },
+                },
+              }}
+            />
             
             <div className="mt-6 text-center text-sm text-gray-500">
               <p>Don't have an account? Create one to save your requests and access all your tracks in one place.</p>
