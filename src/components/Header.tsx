@@ -2,20 +2,11 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, LogOut } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -151,6 +142,8 @@ const Header = () => {
     { name: "Services", href: "/#services", icon: Music },
     { name: "Pricing", href: "/#pricing", icon: Music },
     { name: "Contact", href: "/#contact", icon: Phone },
+    { name: "Tips", href: "/#tips", icon: Info },
+    { name: "Support", href: "/#support", icon: Mail },
   ];
 
   return (
@@ -206,62 +199,50 @@ const Header = () => {
               </Button>
             </Link>
             
-            {session ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="ml-2 text-white hover:bg-white/20 flex items-center">
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src={session.user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="bg-[#1C0357] text-white">
-                        {session.user.email?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="hidden md:inline">
-                      {session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'}
-                    </span>
+            {session && (
+              <Link to="/user-dashboard">
+                <Button 
+                  variant="ghost" 
+                  className="ml-2 text-white hover:bg-white/20 flex items-center"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  My Tracks
+                </Button>
+              </Link>
+            )}
+            
+            {isAdmin && (
+              <>
+                <Link to="/admin">
+                  <Button 
+                    variant="ghost" 
+                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {session.user.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/user-dashboard" className="w-full">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Tracks</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin" className="w-full">
-                          <Shield className="mr-2 h-4 w-4" />
-                          <span>Admin</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/test-email-notification" className="w-full">
-                          <TestTube className="mr-2 h-4 w-4" />
-                          <span>Test Email</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Link>
+                <Link to="/test-email-notification">
+                  <Button 
+                    variant="ghost" 
+                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  >
+                    <TestTube className="mr-2 h-4 w-4" />
+                    Test Email
+                  </Button>
+                </Link>
+              </>
+            )}
+            
+            {session ? (
+              <Button 
+                onClick={handleLogout}
+                variant="ghost" 
+                className="ml-2 text-white hover:bg-white/20 flex items-center"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
             ) : (
               <Link to="/login">
                 <Button 
@@ -355,54 +336,56 @@ const Header = () => {
                       </Link>
                     </div>
                     
-                    {session ? (
+                    {session && (
+                      <Link 
+                        to="/user-dashboard"
+                        className={cn(
+                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                          "text-white hover:bg-white/20"
+                        )}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <User className="mr-3 h-5 w-5" />
+                        My Tracks
+                      </Link>
+                    )}
+                    
+                    {isAdmin && (
                       <>
                         <Link 
-                          to="/user-dashboard"
+                          to="/admin"
                           className={cn(
                             "block px-4 py-3 rounded-md text-base font-medium flex items-center",
                             "text-white hover:bg-white/20"
                           )}
                           onClick={() => setMobileMenuOpen(false)}
                         >
-                          <User className="mr-3 h-5 w-5" />
-                          My Tracks
+                          <Shield className="mr-3 h-5 w-5" />
+                          Admin Dashboard
                         </Link>
-                        {isAdmin && (
-                          <>
-                            <Link 
-                              to="/admin"
-                              className={cn(
-                                "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                                "text-white hover:bg-white/20"
-                              )}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <Shield className="mr-3 h-5 w-5" />
-                              Admin Dashboard
-                            </Link>
-                            <Link 
-                              to="/test-email-notification"
-                              className={cn(
-                                "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                                "text-white hover:bg-white/20"
-                              )}
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <TestTube className="mr-3 h-5 w-5" />
-                              Test Email
-                            </Link>
-                          </>
-                        )}
-                        <Button 
-                          onClick={handleLogout}
-                          variant="ghost" 
-                          className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20 flex items-center"
+                        <Link 
+                          to="/test-email-notification"
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)}
                         >
-                          <LogOut className="mr-3 h-5 w-5" />
-                          Logout
-                        </Button>
+                          <TestTube className="mr-3 h-5 w-5" />
+                          Test Email
+                        </Link>
                       </>
+                    )}
+                    
+                    {session ? (
+                      <Button 
+                        onClick={handleLogout}
+                        variant="ghost" 
+                        className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20 flex items-center"
+                      >
+                        <LogIn className="mr-3 h-5 w-5" />
+                        Logout
+                      </Button>
                     ) : (
                       <Link 
                         to="/login"
