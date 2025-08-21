@@ -24,7 +24,7 @@ serve(async (req) => {
 
   try {
     console.log("Send email function invoked");
-
+    
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
@@ -140,43 +140,56 @@ serve(async (req) => {
         throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
       }
       
-      const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          client_id: GMAIL_CLIENT_ID!,
-          client_secret: GMAIL_CLIENT_SECRET!,
-          refresh_token: tokenData.refresh_token,
-          grant_type: 'refresh_token'
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Token refresh error response:', response.status, errorText);
-        throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for token refresh
+
+      try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            client_id: GMAIL_CLIENT_ID!,
+            client_secret: GMAIL_CLIENT_SECRET!,
+            refresh_token: tokenData.refresh_token,
+            grant_type: 'refresh_token'
+          }),
+          signal: controller.signal // Apply the abort signal
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Token refresh error response:', response.status, errorText);
+          throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
+        }
+        
+        const tokenResponse = await response.json();
+        console.log("Access token refreshed successfully");
+        
+        // Update the stored access token
+        const { error: updateError } = await supabase
+          .from('gmail_tokens')
+          .update({
+            access_token: tokenResponse.access_token,
+            expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
+          })
+          .eq('user_id', targetUserId);
+        
+        if (updateError) {
+          console.error('Error updating access token:', updateError);
+          // Don't throw here, as we still have the token
+        }
+        
+        return tokenResponse.access_token;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Gmail token refresh timed out.');
+        }
+        throw error; // Re-throw other errors
+      } finally {
+        clearTimeout(timeoutId);
       }
-      
-      const tokenResponse = await response.json();
-      console.log("Access token refreshed successfully");
-      
-      // Update the stored access token
-      const { error: updateError } = await supabase
-        .from('gmail_tokens')
-        .update({
-          access_token: tokenResponse.access_token,
-          expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
-        })
-        .eq('user_id', targetUserId);
-      
-      if (updateError) {
-        console.error('Error updating access token:', updateError);
-        // Don't throw here, as we still have the token
-      }
-      
-      return tokenResponse.access_token;
     };
 
     // Get or refresh the access token
@@ -214,61 +227,74 @@ serve(async (req) => {
       .replace(/=+$/, '');
     
     console.log("Sending email via Gmail API...");
-    // Send email via Gmail API
-    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        raw: encodedMessage
-      })
-    });
-    
-    if (!gmailResponse.ok) {
-      const errorText = await gmailResponse.text();
-      console.error('Gmail API error response:', errorText);
-      
-      // Check if this is a Gmail API not enabled error
-      if (errorText.includes('Gmail API has not been used in project') || 
-          errorText.includes('SERVICE_DISABLED')) {
-        throw new Error(`Gmail API is not enabled for your Google Cloud project. Please visit https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=138848645565 to enable it, then wait a few minutes for the changes to propagate.`);
-      }
-      
-      throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
-    }
-    
-    const gmailData = await gmailResponse.json();
-    console.log("Email sent successfully via Gmail API", gmailData);
-    
-    // Store a record in the notifications table for tracking
-    await supabase
-      .from('notifications')
-      .insert([
-        {
-          recipient: Array.isArray(to) ? to.join(', ') : to,
-          sender: GMAIL_USER,
-          subject: subject,
-          content: html,
-          status: 'sent',
-          type: 'email'
-        }
-      ]);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for Gmail API send
 
-    return new Response(
-      JSON.stringify({ 
-        message: `Email sent successfully to ${Array.isArray(to) ? to.join(', ') : to}`,
-        gmailData: gmailData
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
+    try {
+      // Send email via Gmail API
+      const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-        status: 200
+        body: JSON.stringify({
+          raw: encodedMessage
+        }),
+        signal: controller.signal // Apply the abort signal
+      });
+      
+      if (!gmailResponse.ok) {
+        const errorText = await gmailResponse.text();
+        console.error('Gmail API error response:', errorText);
+        
+        // Check if this is a Gmail API not enabled error
+        if (errorText.includes('Gmail API has not been used in project') || 
+            errorText.includes('SERVICE_DISABLED')) {
+          throw new Error(`Gmail API is not enabled for your Google Cloud project. Please visit https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=138848645565 to enable it, then wait a few minutes for the changes to propagate.`);
+        }
+        
+        throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
       }
-    );
+      
+      const gmailData = await gmailResponse.json();
+      console.log("Email sent successfully via Gmail API", gmailData);
+      
+      // Store a record in the notifications table for tracking
+      await supabase
+        .from('notifications')
+        .insert([
+          {
+            recipient: Array.isArray(to) ? to.join(', ') : to,
+            sender: GMAIL_USER,
+            subject: subject,
+            content: html,
+            status: 'sent',
+            type: 'email'
+          }
+        ]);
+
+      return new Response(
+        JSON.stringify({ 
+          message: `Email sent successfully to ${Array.isArray(to) ? to.join(', ') : to}`,
+          gmailData: gmailData
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json' 
+          },
+          status: 200
+        }
+      );
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Gmail API send timed out.');
+      }
+      throw error; // Re-throw other errors
+    } finally {
+      clearTimeout(timeoutId);
+    }
   } catch (error) {
     console.error("Error in email function:", error);
     return new Response(
