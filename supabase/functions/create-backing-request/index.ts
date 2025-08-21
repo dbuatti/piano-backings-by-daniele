@@ -746,7 +746,7 @@ serve(async (req) => {
         adminUserIdForEmail = profileAdminUser.id;
       }
 
-      console.log("Admin user ID for email notification:", adminUserIdForEmail);
+      console.log("Admin user ID for email notification (before send-email call):", adminUserIdForEmail);
 
       if (!adminUserIdForEmail) {
         console.error("Admin user ID for email notification is null. Skipping email sending.");

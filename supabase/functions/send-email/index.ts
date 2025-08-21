@@ -60,6 +60,7 @@ serve(async (req) => {
     }
     
     const { to, subject, html, cc, bcc, replyTo, adminUserId } = requestBody; // Added adminUserId
+    console.log("adminUserId received in send-email:", adminUserId); // New log
 
     let targetUserId: string | null = null;
     let targetUserEmail: string | null = null;
