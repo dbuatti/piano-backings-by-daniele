@@ -18,38 +18,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Function to refresh access token using refresh token
-async function refreshAccessToken() {
-  const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
-  const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
-  const GMAIL_REFRESH_TOKEN = Deno.env.get("GMAIL_REFRESH_TOKEN");
-  
-  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN) {
-    throw new Error('Missing Gmail credentials in Supabase secrets');
-  }
-  
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: new URLSearchParams({
-      client_id: GMAIL_CLIENT_ID,
-      client_secret: GMAIL_CLIENT_SECRET,
-      refresh_token: GMAIL_REFRESH_TOKEN,
-      grant_type: 'refresh_token'
-    })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to refresh access token: ${errorText}`);
-  }
-  
-  const tokenData = await response.json();
-  return tokenData.access_token;
-}
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -57,6 +25,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("send-email function invoked");
+
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
@@ -72,11 +42,13 @@ serve(async (req) => {
     });
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_USER) {
-      throw new Error(`Missing required environment variables:
-        GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID ? 'SET' : 'NOT SET'}
-        GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET'}
-        GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN ? 'SET' : 'NOT SET'}
-        GMAIL_USER: ${GMAIL_USER ? 'SET' : 'NOT SET'}`);
+      const missingVars = [];
+      if (!GMAIL_CLIENT_ID) missingVars.push('GMAIL_CLIENT_ID');
+      if (!GMAIL_CLIENT_SECRET) missingVars.push('GMAIL_CLIENT_SECRET');
+      if (!GMAIL_REFRESH_TOKEN) missingVars.push('GMAIL_REFRESH_TOKEN');
+      if (!GMAIL_USER) missingVars.push('GMAIL_USER');
+      
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
 
     // Create a Supabase client with service role key (has full permissions)
@@ -108,13 +80,40 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
     }
 
+    // Function to refresh access token using refresh token
+    const refreshAccessToken = async () => {
+      console.log("Refreshing access token...");
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: GMAIL_CLIENT_ID!,
+          client_secret: GMAIL_CLIENT_SECRET!,
+          refresh_token: GMAIL_REFRESH_TOKEN!,
+          grant_type: 'refresh_token'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Token refresh error response:', errorText);
+        throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
+      }
+      
+      const tokenData = await response.json();
+      console.log("Access token refreshed successfully");
+      return tokenData.access_token;
+    };
+
     // Refresh the access token
     let accessToken;
     try {
       accessToken = await refreshAccessToken();
     } catch (refreshError) {
       console.error('Error refreshing access token:', refreshError);
-      throw new Error('Failed to refresh access token');
+      throw new Error(`Failed to refresh access token: ${refreshError.message}`);
     }
     
     // Create the email message in RFC 2822 format
@@ -142,6 +141,7 @@ serve(async (req) => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     
+    console.log("Sending email via Gmail API...");
     // Send email via Gmail API
     const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
@@ -156,11 +156,12 @@ serve(async (req) => {
     
     if (!gmailResponse.ok) {
       const errorText = await gmailResponse.text();
-      console.error('Gmail API error:', errorText);
+      console.error('Gmail API error response:', errorText);
       throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
     }
     
     const gmailData = await gmailResponse.json();
+    console.log("Email sent successfully via Gmail API", gmailData);
     
     // Store a record in the notifications table for tracking
     await supabase

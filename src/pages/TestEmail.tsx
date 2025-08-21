@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Mail, Send } from 'lucide-react';
+import GmailOAuthButton from '@/components/GmailOAuthButton'; // Ensure this import is present
 
 const TestEmail = () => {
   const { toast } = useToast();
@@ -104,6 +105,13 @@ Piano Backings by Daniele</p>`
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* ADD THE MISSING BUTTON HERE */}
+            <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <h2 className="text-lg font-bold text-[#1C0357] mb-2">Step 1: Connect Gmail</h2>
+              <p className="mb-3">Before sending emails, you need to connect your Gmail account.</p>
+              <GmailOAuthButton /> {/* This line was missing */}
+            </div>
+
             <div className="space-y-6">
               <div>
                 <Label htmlFor="to">Recipient Email</Label>
@@ -126,7 +134,7 @@ Piano Backings by Daniele</p>`
                   value={emailData.subject}
                   onChange={handleInputChange}
                   className="mt-1"
-                />
+                  />
               </div>
               
               <div>
@@ -158,7 +166,7 @@ Piano Backings by Daniele</p>`
         <div className="mt-8 p-6 bg-blue-50 rounded-lg">
           <h2 className="text-xl font-bold text-[#1C0357] mb-4">How to Test</h2>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Make sure you have set your `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `SMTP_HOST`, and `SMTP_PORT` secrets in Supabase.</li>
+            <li>Click the "Connect Gmail Account" button above and follow the prompts.</li>
             <li>Enter a recipient email address (you can use your own email for testing).</li>
             <li>Optionally customize the subject and email template (use HTML).</li>
             <li>Click "Send Test Email".</li>
