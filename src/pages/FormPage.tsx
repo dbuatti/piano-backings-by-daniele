@@ -104,7 +104,7 @@ const FormPage = () => {
       voiceMemo: '',
       voiceMemoFile: null,
       sheetMusic: null,
-      youtubeLink: '', // Keeping this empty to show it's optional
+      youtubeLink: '', // Keep this empty to show it's optional
       trackPurpose: 'personal-practise',
       backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -428,7 +428,7 @@ const FormPage = () => {
             <p className="mt-2 font-medium text-sm">Before submitting, please make sure to include:</p>
             <ul className="list-disc pl-4 mt-1 space-y-1 text-sm">
               <li>✔️ Your sheet music in PDF format (required)</li>
-              <li>✔️ A YouTube link to the song (for tempo reference) (optional but recommended)</li>
+              <li>✔️ A YouTube link to the song (optional but recommended)</li>
               <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
             </ul>
             
