@@ -44,7 +44,9 @@ import {
   Edit,
   Check,
   X,
-  Calculator
+  Calculator,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import {
   Select,
@@ -111,6 +113,7 @@ const AdminDashboard = () => {
     instagram: false,
     gumroad: false
   });
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -865,12 +868,26 @@ const AdminDashboard = () => {
                   <HardDrive className="mr-2 h-5 w-5" />
                   System Status
                 </span>
-                <Link to="/dropbox-monitor">
-                  <Button variant="outline" className="flex items-center text-sm">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Dropbox Monitor
+                <div className="flex items-center gap-2">
+                  <Link to="/dropbox-monitor">
+                    <Button variant="outline" className="flex items-center text-sm">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Dropbox Monitor
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)}
+                    className="flex items-center text-sm"
+                  >
+                    {emailNotificationsEnabled ? (
+                      <ToggleRight className="mr-2 h-4 w-4 text-green-500" />
+                    ) : (
+                      <ToggleLeft className="mr-2 h-4 w-4 text-gray-400" />
+                    )}
+                    Email Notifications
                   </Button>
-                </Link>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
