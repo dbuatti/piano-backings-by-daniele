@@ -60,29 +60,29 @@ serve(async (req) => {
     }
     
     const { to, subject, html, cc, bcc, replyTo, adminUserId } = requestBody;
-    console.log("DEBUG: adminUserId received:", adminUserId, "Type:", typeof adminUserId, "Is truthy:", !!adminUserId); // NEW DEBUG LOG
+    console.log(`DEBUG: adminUserId received: '${adminUserId}', Type: ${typeof adminUserId}, Is truthy: ${!!adminUserId}`);
 
     let targetUserId: string | null = null;
     let targetUserEmail: string | null = null;
 
     // Determine the user whose Gmail tokens should be used
-    if (adminUserId) {
-      console.log("DEBUG: Entering adminUserId branch."); // NEW DEBUG LOG
+    if (adminUserId && typeof adminUserId === 'string' && adminUserId.length > 0) {
+      console.log("DEBUG: adminUserId is valid. Entering adminUserId branch.");
       targetUserId = adminUserId;
       // Fetch email for logging/validation using admin client
       const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(adminUserId);
       if (authUserError || !authUser) {
-        console.error(`DEBUG: Error fetching admin user by ID ${adminUserId}:`, authUserError?.message); // NEW DEBUG LOG
+        console.error(`DEBUG: Error fetching admin user by ID ${adminUserId}:`, authUserError?.message);
         throw new Error(`Admin user with ID ${adminUserId} not found or could not be retrieved: ${authUserError?.message}`);
       }
       targetUserEmail = authUser.user.email;
-      console.log("DEBUG: Admin user email retrieved:", targetUserEmail); // NEW DEBUG LOG
+      console.log("DEBUG: Admin user email retrieved:", targetUserEmail);
 
     } else {
-      console.log("DEBUG: Entering non-adminUserId branch. adminUserId is falsy."); // NEW DEBUG LOG
+      console.log("DEBUG: adminUserId is invalid or missing. Entering non-adminUserId branch.");
       // If no adminUserId, assume direct call from client and use Authorization header
       const authHeader = req.headers.get('Authorization');
-      console.log("DEBUG: Auth header present:", !!authHeader, "Value:", authHeader); // MODIFIED DEBUG LOG
+      console.log(`DEBUG: Auth header present: ${!!authHeader}, Value: ${authHeader ? authHeader.substring(0, 20) + '...' : 'N/A'}`);
       
       if (!authHeader) {
         throw new Error('Missing Authorization header - you must be logged into the application as an admin');
@@ -92,12 +92,12 @@ serve(async (req) => {
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !user) {
-        console.error("DEBUG: User authentication error in non-admin branch:", userError); // MODIFIED DEBUG LOG
+        console.error("DEBUG: User authentication error in non-admin branch:", userError);
         throw new Error('Invalid or expired token - you must be logged into the application as an admin');
       }
       targetUserId = user.id;
       targetUserEmail = user.email;
-      console.log("DEBUG: Authenticated user from header in non-admin branch:", targetUserEmail); // MODIFIED DEBUG LOG
+      console.log("DEBUG: Authenticated user from header in non-admin branch:", targetUserEmail);
     }
 
     if (!targetUserId || !targetUserEmail) {

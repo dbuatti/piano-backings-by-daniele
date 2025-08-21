@@ -810,7 +810,16 @@ serve(async (req) => {
       // Try to send email using the send-email function
       for (const email of adminEmails) {
         try {
-          console.log(`Attempting to send notification email to: ${email}`);
+          const payloadToSend = {
+            to: email,
+            subject: emailSubject,
+            html: emailHtml,
+            adminUserId: adminUserIdForEmail // Pass the admin user ID here
+          };
+          console.log(`DEBUG: Request body sent to send-email for ${email}:`, JSON.stringify({
+            ...payloadToSend,
+            html: payloadToSend.html.substring(0, 50) + '...' // Truncate HTML for log readability
+          }));
           
           const emailResponse = await fetch(
             `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
@@ -820,12 +829,7 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
                 // No Authorization header needed here, as adminUserId is passed in body
               },
-              body: JSON.stringify({
-                to: email,
-                subject: emailSubject,
-                html: emailHtml,
-                adminUserId: adminUserIdForEmail // Pass the admin user ID here
-              })
+              body: JSON.stringify(payloadToSend)
             }
           );
           
