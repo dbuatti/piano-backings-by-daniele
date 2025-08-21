@@ -33,9 +33,7 @@ serve(async (req) => {
     // @ts-ignore
     const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     // @ts-ignore
-    const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Primary admin email for notifications
-    // @ts-ignore
-    const secondaryAdminEmail = Deno.env.get('SECONDARY_ADMIN_EMAIL') || 'pianobackingsbydaniele@gmail.com'; // Secondary admin email for notifications
+    const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com'; // Default sender email for notifications
     
     // Log environment variable status for debugging (without exposing the actual values)
     console.log('Environment variables status:', {
@@ -47,8 +45,7 @@ serve(async (req) => {
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       LOGIC_TEMPLATE_PATH: templateFilePath,
       RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET',
-      ADMIN_EMAIL: adminEmail,
-      SECONDARY_ADMIN_EMAIL: secondaryAdminEmail
+      GMAIL_USER: defaultSenderEmail
     });
     
     // Create a Supabase client with service role key (has full permissions)
@@ -802,40 +799,68 @@ serve(async (req) => {
         </div>
       `;
       
-      // Only send to the primary admin email (daniele.buatti@gmail.com)
-      const adminEmails = [adminEmail]; // Only send to daniele.buatti@gmail.com
-      
-      // Use the service key for internal function calls
-      for (const email of adminEmails) {
-        try {
-          const payloadToSend = {
-            to: email,
-            subject: emailSubject,
-            html: emailHtml,
-            senderEmail: secondaryAdminEmail // Explicitly use pianobackingsbydaniele@gmail.com for sending
-          };
-          
-          console.log(`DEBUG: Request body sent to send-email for ${email}:`, JSON.stringify({
-            ...payloadToSend,
-            html: payloadToSend.html.substring(0, 50) + '...' // Truncate HTML for log readability
-          }));
-          
-          // Call send-email function with service role key in Authorization header
-          const emailResponse = await fetch(sendEmailUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}` // Use service role key
-            },
-            body: JSON.stringify(payloadToSend)
-          });
-          
-          console.log(`Email response status for ${email}:`, emailResponse.status);
-          
-          if (!emailResponse.ok) {
-            const emailErrorText = await emailResponse.text();
-            console.error(`Failed to send notification email to ${email}:`, emailErrorText);
-            // Try alternative method - store in notifications table
+      // Fetch notification recipients from the database
+      const { data: recipients, error: fetchRecipientsError } = await supabaseAdmin
+        .from('notification_recipients')
+        .select('email');
+
+      if (fetchRecipientsError) {
+        console.error('Error fetching notification recipients:', fetchRecipientsError);
+        // Fallback to default admin email if fetching fails
+        const adminEmails = [defaultSenderEmail];
+        console.log('Falling back to default admin email for notifications:', adminEmails);
+        
+        for (const email of adminEmails) {
+          try {
+            const payloadToSend = {
+              to: email,
+              subject: emailSubject,
+              html: emailHtml,
+              senderEmail: defaultSenderEmail
+            };
+            
+            const emailResponse = await fetch(sendEmailUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`
+              },
+              body: JSON.stringify(payloadToSend)
+            });
+            
+            if (!emailResponse.ok) {
+              const emailErrorText = await emailResponse.text();
+              console.error(`Failed to send notification email to ${email} (fallback):`, emailErrorText);
+              await supabaseAdmin
+                .from('notifications')
+                .insert([
+                  {
+                    recipient: email,
+                    sender: 'system@pianobackings.com',
+                    subject: emailSubject,
+                    content: emailHtml,
+                    status: 'failed',
+                    type: 'email',
+                    error_message: emailErrorText
+                  }
+                ]);
+            } else {
+              console.log(`Notification email sent successfully to ${email} (fallback)`);
+              await supabaseAdmin
+                .from('notifications')
+                .insert([
+                  {
+                    recipient: email,
+                    sender: 'system@pianobackings.com',
+                    subject: emailSubject,
+                    content: emailHtml,
+                    status: 'sent',
+                    type: 'email'
+                  }
+                ]);
+            }
+          } catch (emailError) {
+            console.error(`Error sending notification email to ${email} (fallback):`, emailError);
             await supabaseAdmin
               .from('notifications')
               .insert([
@@ -846,14 +871,71 @@ serve(async (req) => {
                   content: emailHtml,
                   status: 'failed',
                   type: 'email',
-                  error_message: emailErrorText
+                  error_message: emailError.message
                 }
               ]);
-          } else {
-            const result = await emailResponse.json();
-            console.log(`Notification email sent successfully to ${email}:`, result);
+          }
+        }
+      } else {
+        // Use fetched recipients
+        const adminEmails = recipients.map(r => r.email);
+        console.log('Sending notifications to fetched admin emails:', adminEmails);
+
+        if (adminEmails.length === 0) {
+          console.warn('No notification recipients configured in the database. No emails will be sent.');
+        }
+        
+        for (const email of adminEmails) {
+          try {
+            const payloadToSend = {
+              to: email,
+              subject: emailSubject,
+              html: emailHtml,
+              senderEmail: defaultSenderEmail
+            };
             
-            // Store successful notification in database
+            const emailResponse = await fetch(sendEmailUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`
+              },
+              body: JSON.stringify(payloadToSend)
+            });
+            
+            if (!emailResponse.ok) {
+              const emailErrorText = await emailResponse.text();
+              console.error(`Failed to send notification email to ${email}:`, emailErrorText);
+              await supabaseAdmin
+                .from('notifications')
+                .insert([
+                  {
+                    recipient: email,
+                    sender: 'system@pianobackings.com',
+                    subject: emailSubject,
+                    content: emailHtml,
+                    status: 'failed',
+                    type: 'email',
+                    error_message: emailErrorText
+                  }
+                ]);
+            } else {
+              console.log(`Notification email sent successfully to ${email}`);
+              await supabaseAdmin
+                .from('notifications')
+                .insert([
+                  {
+                    recipient: email,
+                    sender: 'system@pianobackings.com',
+                    subject: emailSubject,
+                    content: emailHtml,
+                    status: 'sent',
+                    type: 'email'
+                  }
+                ]);
+            }
+          } catch (emailError) {
+            console.error(`Error sending notification email to ${email}:`, emailError);
             await supabaseAdmin
               .from('notifications')
               .insert([
@@ -862,31 +944,16 @@ serve(async (req) => {
                   sender: 'system@pianobackings.com',
                   subject: emailSubject,
                   content: emailHtml,
-                  status: 'sent',
-                  type: 'email'
+                  status: 'failed',
+                  type: 'email',
+                  error_message: emailError.message
                 }
               ]);
           }
-        } catch (emailError) {
-          console.error(`Error sending notification email to ${email}:`, emailError);
-          // Store failed notification in database
-          await supabaseAdmin
-            .from('notifications')
-            .insert([
-              {
-                recipient: email,
-                sender: 'system@pianobackings.com',
-                subject: emailSubject,
-                content: emailHtml,
-                status: 'failed',
-                type: 'email',
-                error_message: emailError.message
-              }
-            ]);
         }
       }
     } catch (emailError) {
-      console.error('Error sending notification emails:', emailError);
+      console.error('Top-level error sending notification emails:', emailError);
       // Even if email fails, we still want to store the notification attempt
       try {
         const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
@@ -898,24 +965,22 @@ serve(async (req) => {
           </div>
         `;
         
-        const adminEmails = [adminEmail];
-        for (const email of adminEmails) {
-          await supabaseAdmin
-            .from('notifications')
-            .insert([
-              {
-                recipient: email,
-                sender: 'system@pianobackings.com',
-                subject: emailSubject,
-                content: emailHtml,
-                status: 'failed',
-                type: 'email',
-                error_message: emailError.message
-              }
-            ]);
-        }
+        // Attempt to log to default admin email if all else fails
+        await supabaseAdmin
+          .from('notifications')
+          .insert([
+            {
+              recipient: defaultSenderEmail,
+              sender: 'system@pianobackings.com',
+              subject: emailSubject,
+              content: emailHtml,
+              status: 'failed',
+              type: 'email',
+              error_message: emailError.message
+            }
+          ]);
       } catch (dbError) {
-        console.error('Failed to store notification in database:', dbError);
+        console.error('Failed to store notification in database after top-level email error:', dbError);
       }
     }
     

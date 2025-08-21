@@ -88,6 +88,7 @@ import {
 import PricingMatrix from '@/components/PricingMatrix';
 import CompletionEmailDialog from '@/components/CompletionEmailDialog';
 import { calculateRequestCost } from '@/utils/pricing';
+import NotificationRecipientsManager from '@/components/NotificationRecipientsManager'; // Import the new component
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -873,6 +874,11 @@ const AdminDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Notification Recipients Manager */}
+          <div className="mb-6">
+            <NotificationRecipientsManager />
+          </div>
           
           {/* Filters Section */}
           <Card className="shadow-lg mb-6 bg-white">
