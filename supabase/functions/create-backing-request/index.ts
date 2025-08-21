@@ -717,42 +717,9 @@ serve(async (req) => {
     try {
       console.log("Attempting to send email notification");
       
-      // Get the admin user ID for the email sender
-      let adminUserIdForEmail: string | null = null;
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-
-      // First, try to get from profiles table
-      const { data: profileAdminUser, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', adminEmail)
-        .single();
-
-      if (profileError || !profileAdminUser) {
-        console.error(`Could not find admin user with email ${adminEmail} in profiles table. Attempting to get from auth.users.`);
-        // Fallback to auth.users table using listUsers
-        const { data: authAdminUsers, error: authAdminUserError } = await supabase.auth.admin.listUsers({
-          page: 1,
-          perPage: 1,
-          email: adminEmail
-        });
-        
-        if (authAdminUserError || !authAdminUsers || authAdminUsers.users.length === 0) {
-          console.error(`Could not find admin user with email ${adminEmail} in auth.users table. Email notification will likely fail.`);
-        } else {
-          adminUserIdForEmail = authAdminUsers.users[0].id;
-        }
-      } else {
-        adminUserIdForEmail = profileAdminUser.id;
-      }
-
-      console.log("Admin user ID for email notification (before send-email call):", adminUserIdForEmail);
-
-      if (!adminUserIdForEmail) {
-        console.error("Admin user ID for email notification is null. Skipping email sending.");
-        throw new Error("Admin user ID for email notification is null. Cannot send email.");
-      }
-
+      const sendEmailUrl = `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`;
+      console.log("sendEmailUrl:", sendEmailUrl);
+      
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
       const emailHtml = `
@@ -805,33 +772,28 @@ serve(async (req) => {
         </div>
       `;
       
-      console.log("Sending notification emails to:", adminEmails);
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
-      // Try to send email using the send-email function
       for (const email of adminEmails) {
         try {
           const payloadToSend = {
             to: email,
             subject: emailSubject,
             html: emailHtml,
-            adminUserId: adminUserIdForEmail // Pass the admin user ID here
           };
+          
           console.log(`DEBUG: Request body sent to send-email for ${email}:`, JSON.stringify({
             ...payloadToSend,
             html: payloadToSend.html.substring(0, 50) + '...' // Truncate HTML for log readability
           }));
           
-          const emailResponse = await fetch(
-            `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                // No Authorization header needed here, as adminUserId is passed in body
-              },
-              body: JSON.stringify(payloadToSend)
-            }
-          );
+          const emailResponse = await fetch(sendEmailUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payloadToSend)
+          });
           
           console.log(`Email response status for ${email}:`, emailResponse.status);
           

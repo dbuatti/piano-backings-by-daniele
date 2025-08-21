@@ -59,54 +59,29 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
     
-    const { to, subject, html, cc, bcc, replyTo, adminUserId } = requestBody;
-    console.log(`DEBUG: adminUserId received: '${adminUserId}', Type: ${typeof adminUserId}, Is truthy: ${!!adminUserId}`);
+    const { to, subject, html, cc, bcc, replyTo } = requestBody;
 
-    let targetUserId: string | null = null;
-    let targetUserEmail: string | null = null;
-
-    // Determine the user whose Gmail tokens should be used
-    if (adminUserId) { // Simplified condition
-      console.log("DEBUG: Entered adminUserId branch. adminUserId is truthy."); // NEW LOG
-      targetUserId = adminUserId;
-      // Fetch email for logging/validation using admin client
-      const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(adminUserId);
-      if (authUserError || !authUser) {
-        console.error(`DEBUG: Error fetching admin user by ID ${adminUserId}:`, authUserError?.message);
-        throw new Error(`Admin user with ID ${adminUserId} not found or could not be retrieved: ${authUserError?.message}`);
-      }
-      targetUserEmail = authUser.user.email;
-      console.log("DEBUG: Admin user email retrieved:", targetUserEmail);
-
-    } else {
-      console.log("DEBUG: Entered non-adminUserId branch. adminUserId is falsy."); // NEW LOG
-      // If no adminUserId, assume direct call from client and use Authorization header
-      const authHeader = req.headers.get('Authorization');
-      console.log(`DEBUG: Auth header present: ${!!authHeader}, Value: ${authHeader ? authHeader.substring(0, 20) + '...' : 'N/A'}`);
-      
-      if (!authHeader) {
-        throw new Error('Missing Authorization header - you must be logged into the application as an admin');
-      }
-      
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      
-      if (userError || !user) {
-        console.error("DEBUG: User authentication error in non-admin branch:", userError);
-        throw new Error('Invalid or expired token - you must be logged into the application as an admin');
-      }
-      targetUserId = user.id;
-      targetUserEmail = user.email;
-      console.log("DEBUG: Authenticated user from header in non-admin branch:", targetUserEmail);
+    // Get the authenticated user (this will be the Supabase user, not the Gmail user)
+    const authHeader = req.headers.get('Authorization');
+    console.log("Auth header present:", !!authHeader);
+    
+    if (!authHeader) {
+      throw new Error('Missing Authorization header - you must be logged into the application as an admin to complete this OAuth flow');
     }
-
-    if (!targetUserId || !targetUserEmail) {
-      throw new Error('Could not determine target user for Gmail tokens.');
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      console.error("User authentication error:", userError);
+      throw new Error('Invalid or expired token - you must be logged into the application as an admin');
     }
+    
+    console.log("Authenticated Supabase user:", user.email);
 
-    // Check if target user is an admin
+    // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
     const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-    if (!adminEmails.includes(targetUserEmail)) {
+    if (!adminEmails.includes(user.email)) {
       throw new Error('Unauthorized: Only admin can send emails');
     }
     
@@ -119,13 +94,13 @@ serve(async (req) => {
 
     // Function to refresh access token using refresh token
     const refreshAccessToken = async () => {
-      console.log("Refreshing access token for user:", targetUserId);
+      console.log("Refreshing access token for user:", user.id);
       
       // Get the stored refresh token for this user
       const { data: tokenData, error: tokenError } = await supabase
         .from('gmail_tokens')
         .select('refresh_token, access_token, expires_at')
-        .eq('user_id', targetUserId)
+        .eq('user_id', user.id)
         .single();
       
       if (tokenError || !tokenData) {
@@ -177,7 +152,7 @@ serve(async (req) => {
             access_token: tokenResponse.access_token,
             expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
           })
-          .eq('user_id', targetUserId);
+          .eq('user_id', user.id);
         
         if (updateError) {
           console.error('Error updating access token:', updateError);
