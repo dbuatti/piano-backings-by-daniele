@@ -22,7 +22,8 @@ import {
   Mail,
   Mic, // Added Mic icon
   Headphones, // Added Headphones icon
-  Sparkles // Added Sparkles icon
+  Sparkles, // Added Sparkles icon
+  MessageSquare // New icon for special requests
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -974,7 +975,10 @@ const FormPage = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="specialRequests" className="text-sm mb-1">Special Requests</Label>
+                    <Label htmlFor="specialRequests" className="text-sm mb-1 flex items-center">
+                      <MessageSquare className="mr-1" size={14} />
+                      Special Requests
+                    </Label>
                     <Textarea
                       id="specialRequests"
                       name="specialRequests"
