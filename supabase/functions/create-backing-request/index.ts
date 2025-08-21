@@ -311,8 +311,8 @@ serve(async (req) => {
             try {
               const errorObj = JSON.parse(errorText);
               if (errorObj.error_summary && errorObj.error_summary.includes('to/conflict')) {
-                // If it's a conflict, try with autorename
-                console.log('File already exists, trying with autorename...');
+                // If it's a conflict, try to get the existing folder info
+                console.log('File already exists, trying to get folder info...');
                 const copyWithRenameResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
                   method: 'POST',
                   headers: {
@@ -663,7 +663,7 @@ serve(async (req) => {
     }
     
     // Save to the database
-    const { data, error } = await supabase
+    const { data: dbData, error: dbError } = await supabase
       .from('backing_requests')
       .insert([
         {
@@ -688,39 +688,14 @@ serve(async (req) => {
       ])
       .select();
 
-    if (error) {
-      throw error;
+    if (dbError) {
+      throw dbError;
     }
 
     // Send email notification to admins with improved error handling
     try {
       console.log("Attempting to send email notification");
       
-      // Get the admin user ID for the email sender
-      const { data: adminUser, error: adminUserError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', adminEmail)
-        .single();
-
-      let adminUserIdForEmail: string | null = null;
-      if (adminUserError || !adminUser) {
-        console.error(`Could not find admin user with email ${adminEmail} in profiles table. Attempting to get from auth.users.`);
-        const { data: authAdminUser, error: authAdminUserError } = await supabase.auth.admin.getUserByEmail(adminEmail);
-        if (authAdminUserError || !authAdminUser) {
-          console.error(`Could not find admin user with email ${adminEmail} in auth.users table. Email notification will likely fail.`);
-        } else {
-          adminUserIdForEmail = authAdminUser.user.id;
-        }
-      } else {
-        adminUserIdForEmail = adminUser.id;
-      }
-
-      if (!adminUserIdForEmail) {
-        console.error("Admin user ID for email notification is null. Skipping email sending.");
-        throw new Error("Admin user ID for email notification is null. Cannot send email.");
-      }
-
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
       const emailHtml = `
@@ -761,8 +736,8 @@ serve(async (req) => {
           </div>
           
           <div style="margin: 20px 0;">
-            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${data[0].id}" 
-               style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${dbData[0].id}" 
+               style="background-color: #1C0357; color: white; padding:  10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Request Details
             </a>
           </div>
@@ -789,13 +764,12 @@ serve(async (req) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                // No Authorization header needed here, as adminUserId is passed in body
+                'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for internal calls
               },
               body: JSON.stringify({
                 to: email,
                 subject: emailSubject,
-                html: emailHtml,
-                adminUserId: adminUserIdForEmail // Pass the admin user ID here
+                html: emailHtml
               })
             }
           );
