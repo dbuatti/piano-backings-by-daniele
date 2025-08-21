@@ -29,18 +29,21 @@ serve(async (req) => {
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
+    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Admin email to fetch token
 
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
-      GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET'
+      GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET',
+      ADMIN_EMAIL: ADMIN_EMAIL ? 'SET' : 'NOT SET'
     });
 
-    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER || !ADMIN_EMAIL) {
       const missingVars = [];
       if (!GMAIL_CLIENT_ID) missingVars.push('GMAIL_CLIENT_ID');
       if (!GMAIL_CLIENT_SECRET) missingVars.push('GMAIL_CLIENT_SECRET');
       if (!GMAIL_USER) missingVars.push('GMAIL_USER');
+      if (!ADMIN_EMAIL) missingVars.push('ADMIN_EMAIL');
       
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
@@ -93,157 +96,92 @@ serve(async (req) => {
     const refreshAccessToken = async () => {
       console.log("Refreshing access token using service role");
       
+      // First, get the user ID of the admin from auth.users table
+      const { data: adminUser, error: adminUserError } = await supabaseAdmin
+        .from('auth.users')
+        .select('id')
+        .eq('email', ADMIN_EMAIL)
+        .single();
+
+      if (adminUserError || !adminUser) {
+        console.error('Error fetching admin user ID:', adminUserError);
+        throw new Error(`Admin user with email ${ADMIN_EMAIL} not found in auth.users. Please ensure the admin user exists and has completed Gmail OAuth.`);
+      }
+
+      const adminUserId = adminUser.id;
+      console.log("Admin user ID for token retrieval:", adminUserId);
+
       // Get the stored refresh token for the admin user
       const { data: tokenData, error: tokenError } = await supabaseAdmin
         .from('gmail_tokens')
         .select('refresh_token, access_token, expires_at')
-        .eq('user_id', 'd0a1c2f3-4e56-7890-abcd-ef1234567890') // Placeholder user ID
+        .eq('user_id', adminUserId)
         .single();
       
-      // If we can't find by user ID, try to find by email (fallback)
       if (tokenError || !tokenData) {
-        console.log("Could not find token by user ID, trying to find any available token");
-        // Get any available token (assuming there's only one admin token)
-        const { data: allTokens, error: allTokensError } = await supabaseAdmin
+        console.error('Error fetching Gmail token for admin user:', tokenError);
+        throw new Error('No Gmail tokens found for admin user in database. Please ensure the admin has completed Gmail OAuth.');
+      }
+      
+      // Check if we have a refresh token
+      if (!tokenData.refresh_token) {
+        // If we don't have a refresh token, check if access token is still valid
+        if (tokenData.expires_at && new Date(tokenData.expires_at) > new Date()) {
+          console.log("Using existing access token (no refresh token available)");
+          return tokenData.access_token;
+        }
+        throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
+      }
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for token refresh
+
+      try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            client_id: GMAIL_CLIENT_ID!,
+            client_secret: GMAIL_CLIENT_SECRET!,
+            refresh_token: tokenData.refresh_token,
+            grant_type: 'refresh_token'
+          }),
+          signal: controller.signal // Apply the abort signal
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Token refresh error response:', response.status, errorText);
+          throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
+        }
+        
+        const tokenResponse = await response.json();
+        console.log("Access token refreshed successfully");
+        
+        // Update the stored access token
+        const { error: updateError } = await supabaseAdmin
           .from('gmail_tokens')
-          .select('refresh_token, access_token, expires_at')
-          .limit(1);
+          .update({
+            access_token: tokenResponse.access_token,
+            expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
+          })
+          .eq('user_id', adminUserId); // Update using the admin's user ID
         
-        if (allTokensError) {
-          console.error('Error fetching tokens:', allTokensError);
-          throw new Error('No Gmail tokens found in database. Please complete Gmail OAuth first.');
+        if (updateError) {
+          console.error('Error updating access token:', updateError);
+          // Don't throw here, as we still have the token
         }
         
-        if (!allTokens || allTokens.length === 0) {
-          throw new Error('No Gmail tokens found in database. Please complete Gmail OAuth first.');
+        return tokenResponse.access_token;
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Gmail token refresh timed out.');
         }
-        
-        // Use the first available token
-        const adminToken = allTokens[0];
-        console.log("Using available token for admin");
-        
-        // Check if we have a refresh token
-        if (!adminToken.refresh_token) {
-          // If we don't have a refresh token, check if access token is still valid
-          if (adminToken.expires_at && new Date(adminToken.expires_at) > new Date()) {
-            console.log("Using existing access token");
-            return adminToken.access_token;
-          }
-          throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
-        }
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for token refresh
-
-        try {
-          const response = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-              client_id: GMAIL_CLIENT_ID!,
-              client_secret: GMAIL_CLIENT_SECRET!,
-              refresh_token: adminToken.refresh_token,
-              grant_type: 'refresh_token'
-            }),
-            signal: controller.signal // Apply the abort signal
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Token refresh error response:', response.status, errorText);
-            throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
-          }
-          
-          const tokenResponse = await response.json();
-          console.log("Access token refreshed successfully");
-          
-          // Update the stored access token
-          const { error: updateError } = await supabaseAdmin
-            .from('gmail_tokens')
-            .update({
-              access_token: tokenResponse.access_token,
-              expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
-            })
-            .eq('refresh_token', adminToken.refresh_token);
-          
-          if (updateError) {
-            console.error('Error updating access token:', updateError);
-            // Don't throw here, as we still have the token
-          }
-          
-          return tokenResponse.access_token;
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            throw new Error('Gmail token refresh timed out.');
-          }
-          throw error; // Re-throw other errors
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      } else {
-        // We found a token by user ID
-        // Check if we have a refresh token
-        if (!tokenData.refresh_token) {
-          // If we don't have a refresh token, check if access token is still valid
-          if (tokenData.expires_at && new Date(tokenData.expires_at) > new Date()) {
-            console.log("Using existing access token");
-            return tokenData.access_token;
-          }
-          throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
-        }
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for token refresh
-
-        try {
-          const response = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams({
-              client_id: GMAIL_CLIENT_ID!,
-              client_secret: GMAIL_CLIENT_SECRET!,
-              refresh_token: tokenData.refresh_token,
-              grant_type: 'refresh_token'
-            }),
-            signal: controller.signal // Apply the abort signal
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Token refresh error response:', response.status, errorText);
-            throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
-          }
-          
-          const tokenResponse = await response.json();
-          console.log("Access token refreshed successfully");
-          
-          // Update the stored access token
-          const { error: updateError } = await supabaseAdmin
-            .from('gmail_tokens')
-            .update({
-              access_token: tokenResponse.access_token,
-              expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
-            })
-            .eq('refresh_token', tokenData.refresh_token);
-          
-          if (updateError) {
-            console.error('Error updating access token:', updateError);
-            // Don't throw here, as we still have the token
-          }
-          
-          return tokenResponse.access_token;
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            throw new Error('Gmail token refresh timed out.');
-          }
-          throw error; // Re-throw other errors
-        } finally {
-          clearTimeout(timeoutId);
-        }
+        throw error; // Re-throw other errors
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
