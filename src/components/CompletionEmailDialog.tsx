@@ -57,7 +57,7 @@ const CompletionEmailDialog = ({
 
   <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
 
-  <p>Thank you so much for choosing Piano Backings by Daniele. I truly appreciate your business and wish you all the best with your ${songTitle}!</p>
+  <p>Thank you so much for choosing Piano Backings by Daniele.</p>
 
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
     <p style="margin: 0;"><strong>Warmly,</strong></p>
