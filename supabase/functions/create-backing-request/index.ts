@@ -791,6 +791,7 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': authHeader // Pass the auth header here
             },
             body: JSON.stringify(payloadToSend)
           });
