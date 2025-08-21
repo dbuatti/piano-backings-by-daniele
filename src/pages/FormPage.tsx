@@ -884,78 +884,92 @@ const FormPage = () => {
                       <MusicIcon className="mr-1" size={14} />
                       Additional Services
                     </h3>
-                    <div className="space-y-2">
-                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div className="flex items-start">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Added grid layout */}
+                      <Label htmlFor="rush-order" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <div className={cn(
+                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.additionalServices.includes('rush-order') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                        )}>
                           <Checkbox
                             id="rush-order"
                             checked={formData.additionalServices.includes('rush-order')}
                             onCheckedChange={(checked) => handleCheckboxChange('rush-order')}
-                            className="mt-1 mr-2"
+                            className="mt-1 mr-3"
                           />
-                          <div className="flex flex-col">
-                            <Label htmlFor="rush-order" className="font-medium text-sm cursor-pointer">
-                              Rush Order
-                            </Label>
+                          <div className="flex flex-col flex-1">
+                            <span className="font-bold text-sm text-[#1C0357]">Rush Order</span>
                             <span className="text-xs text-[#1C0357] font-medium">+$10</span>
                             <p className="text-xs text-gray-600 mt-1">24-hour turnaround</p>
                           </div>
                         </div>
-                      </div>
+                      </Label>
                       
-                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div className="flex items-start">
+                      <Label htmlFor="complex-songs" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <div className={cn(
+                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.additionalServices.includes('complex-songs') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                        )}>
                           <Checkbox
                             id="complex-songs"
                             checked={formData.additionalServices.includes('complex-songs')}
                             onCheckedChange={(checked) => handleCheckboxChange('complex-songs')}
-                            className="mt-1 mr-2"
+                            className="mt-1 mr-3"
                           />
-                          <div className="flex flex-col">
-                            <Label htmlFor="complex-songs" className="font-medium text-sm cursor-pointer">
+                          <div className="flex flex-col flex-1">
+                            <Label htmlFor="complex-songs" className="font-bold text-sm text-[#1C0357] cursor-pointer">
                               Complex Songs
                             </Label>
                             <span className="text-xs text-[#1C0357] font-medium">+$7</span>
                             <p className="text-xs text-gray-600 mt-1">Sondheim, JRB, Guettel</p>
                           </div>
                         </div>
-                      </div>
+                      </Label>
                       
-                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div className="flex items-start">
+                      <Label htmlFor="additional-edits" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <div className={cn(
+                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.additionalServices.includes('additional-edits') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                        )}>
                           <Checkbox
                             id="additional-edits"
                             checked={formData.additionalServices.includes('additional-edits')}
                             onCheckedChange={(checked) => handleCheckboxChange('additional-edits')}
-                            className="mt-1 mr-2"
+                            className="mt-1 mr-3"
                           />
-                          <div className="flex flex-col">
-                            <Label htmlFor="additional-edits" className="font-medium text-sm cursor-pointer">
+                          <div className="flex flex-col flex-1">
+                            <Label htmlFor="additional-edits" className="font-bold text-sm text-[#1C0357] cursor-pointer">
                               Additional Edits
                             </Label>
                             <span className="text-xs text-[#1C0357] font-medium">+$5</span>
                             <p className="text-xs text-gray-600 mt-1">After completion</p>
                           </div>
                         </div>
-                      </div>
+                      </Label>
                       
-                      <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                        <div className="flex items-start">
+                      <Label htmlFor="exclusive-ownership" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <div className={cn(
+                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.additionalServices.includes('exclusive-ownership') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                        )}>
                           <Checkbox
                             id="exclusive-ownership"
                             checked={formData.additionalServices.includes('exclusive-ownership')}
                             onCheckedChange={(checked) => handleCheckboxChange('exclusive-ownership')}
-                            className="mt-1 mr-2"
+                            className="mt-1 mr-3"
                           />
-                          <div className="flex flex-col">
-                            <Label htmlFor="exclusive-ownership" className="font-medium text-sm cursor-pointer">
+                          <div className="flex flex-col flex-1">
+                            <Label htmlFor="exclusive-ownership" className="font-bold text-sm text-[#1C0357] cursor-pointer">
                               Exclusive Ownership
                             </Label>
                             <span className="text-xs text-[#1C0357] font-medium">+$40</span>
                             <p className="text-xs text-gray-600 mt-1">Prevent online sharing</p>
                           </div>
                         </div>
-                      </div>
+                      </Label>
                     </div>
                   </div>
                   
