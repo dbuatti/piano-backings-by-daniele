@@ -168,7 +168,7 @@ serve(async (req) => {
     
     // Create the email message in RFC 2822 format
     let message = `To: ${Array.isArray(to) ? to.join(', ') : to}\r\n`;
-    message += `From: ${GMAIL_USER}\r\n`;
+    message += `From: ${GMAIL_USER}\r\n`; // This will be pianobackingsbydaniele@gmail.com
     message += `Subject: ${subject}\r\n`;
     
     if (cc) {

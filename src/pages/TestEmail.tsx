@@ -111,7 +111,10 @@ Piano Backings by Daniele</p>`
           <CardContent>
             <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <h2 className="text-lg font-bold text-[#1C0357] mb-2">Step 1: Connect Gmail</h2>
-              <p className="mb-3">Before sending emails, you need to connect your Gmail account.</p>
+              <p className="mb-3">
+                Before sending emails, you need to connect your Gmail account. 
+                <strong> Important:</strong> You must use the pianobackingsbydaniele@gmail.com account for OAuth to send emails from that address.
+              </p>
               <GmailOAuthButton />
             </div>
 
@@ -175,7 +178,7 @@ Piano Backings by Daniele</p>`
         <div className="mt-8 p-6 bg-blue-50 rounded-lg">
           <h2 className="text-xl font-bold text-[#1C0357] mb-4">How to Test</h2>
           <ol className="list-decimal pl-5 space-y-2">
-            <li>Click the "Connect Gmail Account" button above and follow the prompts.</li>
+            <li>Click the "Connect Gmail Account" button above and log in with pianobackingsbydaniele@gmail.com</li>
             <li>Enter a recipient email address (you can use your own email for testing).</li>
             <li>Optionally customize the subject and email template (use HTML).</li>
             <li>Click "Send Test Email".</li>
@@ -185,7 +188,7 @@ Piano Backings by Daniele</p>`
           <div className="mt-6 p-4 bg-yellow-100 rounded-lg">
             <h3 className="font-bold text-[#1C0357] mb-2">Troubleshooting Tips</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Make sure you've completed the Gmail OAuth flow successfully</li>
+              <li>Make sure you've completed the Gmail OAuth flow with pianobackingsbydaniele@gmail.com</li>
               <li>Check that all required environment variables are set in Supabase</li>
               <li>Ensure your Google Cloud project is properly configured</li>
               <li>Verify that the Gmail API is enabled in your Google Cloud project</li>
