@@ -137,7 +137,7 @@ You can pay easily via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuat
 Or let me know if you'd prefer a direct bank transfer.
 
 You can view your request details and download your track at any time using this link:
-https://pianobackings.com/track/${request.id}
+https://pianobackingsbydaniele.vercel.app/track/${request.id}
 
 If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just let me know, and I'll happily adjust it.
 
@@ -166,7 +166,7 @@ ${request.additional_services.map(service => `- ${service}: $${getServicePrice(s
 You can pay via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
 
 You can view your request details and download your track at any time using this link:
-https://pianobackings.com/track/${request.id}
+https://pianobackingsbydaniele.vercel.app/track/${request.id}
 
 Let me know if you need any adjustments!
 
