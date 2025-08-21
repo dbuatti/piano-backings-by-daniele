@@ -34,6 +34,8 @@ const FormPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
+  const [loadingTrackCount, setLoadingTrackCount] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     name: '',
@@ -70,6 +72,53 @@ const FormPage = () => {
     };
     checkUser();
   }, []);
+
+  // Fetch incomplete track count
+  useEffect(() => {
+    const fetchIncompleteTracks = async () => {
+      setLoadingTrackCount(true);
+      try {
+        const { count, error } = await supabase
+          .from('backing_requests')
+          .select('id', { count: 'exact' })
+          .in('status', ['pending', 'in-progress']);
+
+        if (error) throw error;
+        setIncompleteTracksCount(count);
+      } catch (error: any) {
+        console.error('Error fetching incomplete track count:', error);
+        setIncompleteTracksCount(0); // Default to 0 on error
+        toast({
+          title: "Error",
+          description: `Failed to load current track queue: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingTrackCount(false);
+      }
+    };
+
+    fetchIncompleteTracks();
+  }, [toast]);
+
+  const getWaitTimeMessage = () => {
+    if (incompleteTracksCount === null || loadingTrackCount) {
+      return null; // Or a loading indicator
+    }
+
+    if (incompleteTracksCount === 0) {
+      return null; // No notice if 0 pending tracks
+    } else if (incompleteTracksCount >= 7) {
+      return "3 week wait";
+    } else if (incompleteTracksCount >= 4) {
+      return "2 weeks wait";
+    } else if (incompleteTracksCount >= 1) {
+      return "1 week wait";
+    }
+    return null;
+  };
+
+  const waitTimeMessage = getWaitTimeMessage();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -372,13 +421,15 @@ const FormPage = () => {
           <p className="text-base md:text-xl font-light text-[#1C0357]/90">Submit Your Custom Track Request</p>
         </div>
 
-        <Alert className="mb-4 bg-yellow-100 border-yellow-500 text-yellow-800">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Important Notice</AlertTitle>
-          <AlertDescription>
-            There is currently a <strong>2-3 week wait</strong> on backing tracks. A rush fee option is available for faster delivery.
-          </AlertDescription>
-        </Alert>
+        {waitTimeMessage && (
+          <Alert className="mb-4 bg-yellow-100 border-yellow-500 text-yellow-800">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Important Notice</AlertTitle>
+            <AlertDescription>
+              There is currently a <strong>{waitTimeMessage}</strong> on backing tracks. A rush fee option is available for faster delivery.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {showAccountPrompt && (
           <Card className="shadow-lg mb-4 bg-[#1C0357] text-white border-[#1C0357]">
