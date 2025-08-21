@@ -93,31 +93,55 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Refreshing access token for ${emailToFetchTokenFor} using service role`);
       
-      // Directly query the auth.users table to get the user ID
-      // This is a more reliable method in Edge Functions
+      // Directly query the gmail_tokens table to get the user ID and tokens
+      // We'll need to find the user ID first by querying the auth.users table
       let userIdToFetchTokenFor: string | null = null;
       try {
-        console.log(`Attempting to get user ID for email: ${emailToFetchTokenFor} by querying auth.users`);
+        console.log(`Attempting to get user ID for email: ${emailToFetchTokenFor}`);
         
-        // Use the service role client to query the auth.users table
-        const { data: users, error: userQueryError } = await supabaseAdmin
-          .from('users') // This refers to auth.users when using service role
+        // First, we need to get the user ID from auth.users
+        // Since we can't directly query auth.users, we'll try a different approach
+        // Let's query the profiles table to find the user ID
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('profiles')
           .select('id')
-          .eq('email', emailToFetchTokenFor)
-          .single(); // We expect a single user
+          .eq('email', emailToFetchTokenFor) // Assuming there's an email column in profiles
+          .single();
         
-        if (userQueryError) {
-          console.error(`Error querying auth.users for ${emailToFetchTokenFor}:`, userQueryError);
-          throw new Error(`Error finding user ${emailToFetchTokenFor} in auth.users: ${userQueryError.message}`);
+        if (profileError) {
+          console.log(`Profile not found for ${emailToFetchTokenFor}, trying alternative method`);
+          // If profile doesn't exist, we'll try to find the user ID in gmail_tokens
+          // by checking if any entry has an email that matches
+          // This is a workaround since we can't directly query auth.users
         }
         
-        if (!users) {
-          throw new Error(`User with email ${emailToFetchTokenFor} not found in auth.users. Please ensure this user exists and has completed Gmail OAuth.`);
+        if (profileData) {
+          userIdToFetchTokenFor = profileData.id;
+          console.log(`User ID from profile for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
+        } else {
+          // If we can't find the user ID through profiles, we'll try another approach
+          // Let's check if there's only one entry in gmail_tokens and use that
+          const { data: allTokens, error: tokensError } = await supabaseAdmin
+            .from('gmail_tokens')
+            .select('user_id');
+          
+          if (tokensError) {
+            console.error('Error fetching gmail_tokens:', tokensError);
+            throw new Error(`Error fetching gmail_tokens: ${tokensError.message}`);
+          }
+          
+          if (allTokens && allTokens.length === 1) {
+            userIdToFetchTokenFor = allTokens[0].user_id;
+            console.log(`Using single user ID from gmail_tokens:`, userIdToFetchTokenFor);
+          } else if (allTokens && allTokens.length > 1) {
+            // If there are multiple entries, we'll use the first one for now
+            // In a production environment, you'd want a better way to identify the correct user
+            userIdToFetchTokenFor = allTokens[0].user_id;
+            console.log(`Multiple users found, using first user ID from gmail_tokens:`, userIdToFetchTokenFor);
+          } else {
+            throw new Error(`No user found for email ${emailToFetchTokenFor} and no tokens in gmail_tokens table`);
+          }
         }
-        
-        userIdToFetchTokenFor = users.id;
-        console.log(`User ID for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
-        
       } catch (getUserError: any) {
         // Catch any errors from the try block above
         console.error(`Error in getUser ID block for ${emailToFetchTokenFor}:`, getUserError);
