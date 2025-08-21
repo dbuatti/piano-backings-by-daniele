@@ -19,7 +19,10 @@ import {
   Folder,
   Youtube,
   Target,
-  Mail
+  Mail,
+  Mic, // Added Mic icon
+  Headphones, // Added Headphones icon
+  Sparkles // Added Sparkles icon
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -27,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -613,34 +617,49 @@ const FormPage = () => {
                 <RadioGroup 
                   value={formData.trackType} 
                   onValueChange={(value) => setFormData(prev => ({ ...prev, trackType: value }))}
-                  className="space-y-3"
+                  className="grid grid-cols-1 md:grid-cols-3 gap-4" // Changed to grid layout
                 >
-                  <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-start">
-                    <RadioGroupItem value="quick" id="quick-reference" className="mt-1 mr-2" />
-                    <Label htmlFor="quick-reference" className="flex flex-col cursor-pointer">
-                      <span className="font-bold text-sm">Quick Reference (Voice Memo)</span>
+                  <Label htmlFor="quick" className="flex flex-col items-center justify-center cursor-pointer">
+                    <Card className={cn(
+                      "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
+                      "hover:border-[#F538BC] hover:shadow-md",
+                      formData.trackType === 'quick' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                    )}>
+                      <RadioGroupItem value="quick" id="quick" className="sr-only" /> {/* Hidden radio button */}
+                      <Mic className={cn("h-8 w-8 mb-2", formData.trackType === 'quick' ? "text-[#F538BC]" : "text-gray-500")} />
+                      <span className="font-bold text-sm text-[#1C0357]">Quick Reference</span>
                       <span className="text-[#1C0357] font-medium mt-1 text-xs">$5 - $10</span>
                       <span className="text-xs mt-1 text-gray-600">Fast voice memo for quick learning</span>
-                    </Label>
-                  </div>
+                    </Card>
+                  </Label>
                   
-                  <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-start">
-                    <RadioGroupItem value="one-take" id="one-take" className="mt-1 mr-2" />
-                    <Label htmlFor="one-take" className="flex flex-col cursor-pointer">
-                      <span className="font-bold text-sm">One-Take Recording</span>
+                  <Label htmlFor="one-take" className="flex flex-col items-center justify-center cursor-pointer">
+                    <Card className={cn(
+                      "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
+                      "hover:border-[#F538BC] hover:shadow-md",
+                      formData.trackType === 'one-take' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                    )}>
+                      <RadioGroupItem value="one-take" id="one-take" className="sr-only" />
+                      <Headphones className={cn("h-8 w-8 mb-2", formData.trackType === 'one-take' ? "text-[#F538BC]" : "text-gray-500")} />
+                      <span className="font-bold text-sm text-[#1C0357]">One-Take Recording</span>
                       <span className="text-[#1C0357] font-medium mt-1 text-xs">$10 - $20</span>
                       <span className="text-xs mt-1 text-gray-600">Single-pass DAW recording</span>
-                    </Label>
-                  </div>
+                    </Card>
+                  </Label>
                   
-                  <div className="p-3 border border-gray-200 rounded-lg bg-white flex items-start">
-                    <RadioGroupItem value="polished" id="polished" className="mt-1 mr-2" />
-                    <Label htmlFor="polished" className="flex flex-col cursor-pointer">
-                      <span className="font-bold text-sm">Polished & Accurate Backing</span>
+                  <Label htmlFor="polished" className="flex flex-col items-center justify-center cursor-pointer">
+                    <Card className={cn(
+                      "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
+                      "hover:border-[#F538BC] hover:shadow-md",
+                      formData.trackType === 'polished' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                    )}>
+                      <RadioGroupItem value="polished" id="polished" className="sr-only" />
+                      <Sparkles className={cn("h-8 w-8 mb-2", formData.trackType === 'polished' ? "text-[#F538BC]" : "text-gray-500")} />
+                      <span className="font-bold text-sm text-[#1C0357]">Polished Backing</span>
                       <span className="text-[#1C0357] font-medium mt-1 text-xs">$15 - $35</span>
                       <span className="text-xs mt-1 text-gray-600">Refined track for auditions</span>
-                    </Label>
-                  </div>
+                    </Card>
+                  </Label>
                 </RadioGroup>
               </div>
 
