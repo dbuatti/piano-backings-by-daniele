@@ -60,11 +60,14 @@ const CompletionEmailDialog = ({
   <p>Thank you so much for choosing Piano Backings by Daniele.</p>
 
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-    <p style="margin: 0;"><strong>Warmly,</strong></p>
-    <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
-    <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
+    <p style="margin: 0; font-weight: bold;">Warmly,</p>
+    <p style="margin: 0; font-weight: bold;">Daniele Buatti</p>
+    <p style="margin: 5px 0 0 0; color: #1C0357; font-weight: bold;">Piano Backings by Daniele</p>
     <p style="margin: 5px 0 0 0;">
-      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
+      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a><br>
+      <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none;">YouTube</a> | 
+      <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none;">Instagram</a> | 
+      <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none;">Facebook</a>
     </p>
   </div>
 </div>`;
