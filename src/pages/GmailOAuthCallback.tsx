@@ -6,33 +6,42 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import ErrorDisplay from '@/components/ErrorDisplay';
 
 const GmailOAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [status, setStatus] = useState('Processing OAuth callback...');
+  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
       const code = searchParams.get('code');
-      const error = searchParams.get('error');
+      const errorParam = searchParams.get('error');
       
-      if (error) {
-        setStatus(`OAuth error: ${error}`);
+      if (errorParam) {
+        const errorMessage = errorParam === 'access_denied' 
+          ? 'Access denied. You need to grant permission to connect your Gmail account.' 
+          : errorParam;
+        
+        setStatus(`OAuth error: ${errorMessage}`);
+        setError(new Error(errorMessage));
         toast({
           title: "OAuth Error",
-          description: error,
+          description: errorMessage,
           variant: "destructive",
         });
         return;
       }
       
       if (!code) {
-        setStatus('No authorization code found in callback');
+        const errorMessage = 'No authorization code found in callback';
+        setStatus(errorMessage);
+        setError(new Error(errorMessage));
         toast({
           title: "OAuth Error",
-          description: "No authorization code found in callback",
+          description: errorMessage,
           variant: "destructive",
         });
         return;
@@ -78,11 +87,13 @@ const GmailOAuthCallback = () => {
         setTimeout(() => {
           navigate('/admin');
         }, 2000);
-      } catch (error: any) {
-        setStatus(`Error: ${error.message}`);
+      } catch (err: any) {
+        console.error('Error in OAuth callback:', err);
+        setStatus(`Error: ${err.message}`);
+        setError(err);
         toast({
           title: "Error",
-          description: `Failed to complete OAuth: ${error.message}`,
+          description: `Failed to complete OAuth: ${err.message}`,
           variant: "destructive",
         });
       }
@@ -110,6 +121,12 @@ const GmailOAuthCallback = () => {
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1C0357] mb-4"></div>
               <p className="text-lg">{status}</p>
             </div>
+            
+            {error && (
+              <div className="mt-6">
+                <ErrorDisplay error={error} title="OAuth Error" />
+              </div>
+            )}
           </CardContent>
         </Card>
         

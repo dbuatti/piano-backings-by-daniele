@@ -9,11 +9,13 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Mail, Send } from 'lucide-react';
-import GmailOAuthButton from '@/components/GmailOAuthButton'; // Ensure this import is present
+import GmailOAuthButton from '@/components/GmailOAuthButton';
+import ErrorDisplay from '@/components/ErrorDisplay';
 
 const TestEmail = () => {
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<any>(null);
   const [emailData, setEmailData] = useState({
     to: '',
     subject: 'Test Email from Piano Backings',
@@ -35,6 +37,7 @@ Piano Backings by Daniele</p>`
 
   const handleSendEmail = async () => {
     setIsSending(true);
+    setError(null);
     
     try {
       // Get current session for auth token
@@ -60,26 +63,27 @@ Piano Backings by Daniele</p>`
           body: JSON.stringify({
             to: emailData.to,
             subject: emailData.subject,
-            html: finalHtmlContent, // Send as HTML
+            html: finalHtmlContent,
           }),
         }
       );
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send email');
-      }
-      
       const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to send email: ${response.status} ${response.statusText}`);
+      }
       
       toast({
         title: "Success",
         description: result.message,
       });
-    } catch (error: any) {
+    } catch (err: any) {
+      console.error('Error sending email:', err);
+      setError(err);
       toast({
         title: "Error",
-        description: `Failed to send email: ${error.message}`,
+        description: `Failed to send email: ${err.message}`,
         variant: "destructive",
       });
     } finally {
@@ -105,11 +109,10 @@ Piano Backings by Daniele</p>`
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* ADD THE MISSING BUTTON HERE */}
             <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <h2 className="text-lg font-bold text-[#1C0357] mb-2">Step 1: Connect Gmail</h2>
               <p className="mb-3">Before sending emails, you need to connect your Gmail account.</p>
-              <GmailOAuthButton /> {/* This line was missing */}
+              <GmailOAuthButton />
             </div>
 
             <div className="space-y-6">
@@ -134,7 +137,7 @@ Piano Backings by Daniele</p>`
                   value={emailData.subject}
                   onChange={handleInputChange}
                   className="mt-1"
-                  />
+                />
               </div>
               
               <div>
@@ -160,6 +163,12 @@ Piano Backings by Daniele</p>`
                 </Button>
               </div>
             </div>
+            
+            {error && (
+              <div className="mt-6">
+                <ErrorDisplay error={error} title="Email Sending Error" />
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -172,6 +181,16 @@ Piano Backings by Daniele</p>`
             <li>Click "Send Test Email".</li>
             <li>Check the recipient's inbox for the email.</li>
           </ol>
+          
+          <div className="mt-6 p-4 bg-yellow-100 rounded-lg">
+            <h3 className="font-bold text-[#1C0357] mb-2">Troubleshooting Tips</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Make sure you've completed the Gmail OAuth flow successfully</li>
+              <li>Check that all required environment variables are set in Supabase</li>
+              <li>Ensure your Google Cloud project is properly configured</li>
+              <li>Verify that the Gmail API is enabled in your Google Cloud project</li>
+            </ul>
+          </div>
         </div>
         
         <MadeWithDyad />

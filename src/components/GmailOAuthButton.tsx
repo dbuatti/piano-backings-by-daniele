@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const GmailOAuthButton: React.FC = () => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
   const initiateOAuth = () => {
+    setIsLoading(true);
+    
     // Use environment variables directly
     const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
     const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
@@ -10,7 +16,12 @@ const GmailOAuthButton: React.FC = () => {
     // Check if client ID is available
     if (!clientId) {
       console.error('GMAIL_CLIENT_ID is not set in environment variables');
-      alert('Gmail OAuth is not properly configured. Please check environment variables.');
+      toast({
+        title: "Configuration Error",
+        description: "Gmail OAuth is not properly configured. Please check environment variables.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
       return;
     }
     
@@ -31,8 +42,12 @@ const GmailOAuthButton: React.FC = () => {
   };
 
   return (
-    <Button onClick={initiateOAuth} className="bg-blue-500 hover:bg-blue-600">
-      Connect Gmail Account
+    <Button 
+      onClick={initiateOAuth} 
+      disabled={isLoading}
+      className="bg-blue-500 hover:bg-blue-600"
+    >
+      {isLoading ? 'Redirecting...' : 'Connect Gmail Account'}
     </Button>
   );
 };

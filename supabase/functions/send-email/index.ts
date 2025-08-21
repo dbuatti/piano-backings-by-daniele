@@ -99,17 +99,23 @@ serve(async (req) => {
       // Get the stored refresh token for this user
       const { data: tokenData, error: tokenError } = await supabase
         .from('gmail_tokens')
-        .select('refresh_token')
+        .select('refresh_token, access_token, expires_at')
         .eq('user_id', user.id)
         .single();
       
       if (tokenError || !tokenData) {
-        console.error('Error fetching refresh token:', tokenError);
-        throw new Error('No refresh token found for user. Please complete Gmail OAuth first.');
+        console.error('Error fetching token data:', tokenError);
+        throw new Error('No token data found for user. Please complete Gmail OAuth first.');
       }
       
+      // Check if we have a refresh token
       if (!tokenData.refresh_token) {
-        throw new Error('No refresh token available. Please complete Gmail OAuth again.');
+        // If we don't have a refresh token, check if access token is still valid
+        if (tokenData.expires_at && new Date(tokenData.expires_at) > new Date()) {
+          console.log("Using existing access token");
+          return tokenData.access_token;
+        }
+        throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
       }
       
       const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -212,7 +218,7 @@ serve(async (req) => {
       .from('notifications')
       .insert([
         {
-          recipient: to,
+          recipient: Array.isArray(to) ? to.join(', ') : to,
           sender: GMAIL_USER,
           subject: subject,
           content: html,
@@ -223,7 +229,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        message: `Email sent successfully to ${to}`,
+        message: `Email sent successfully to ${Array.isArray(to) ? to.join(', ') : to}`,
         gmailData: gmailData
       }),
       { 
