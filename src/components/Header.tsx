@@ -22,31 +22,10 @@ const Header = () => {
       setSession(session);
       
       if (session) {
-        // Check if user is admin
+        // Check if user is admin using their email from the session
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
-          return;
-        }
-        
-        // Fallback to checking profiles table
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching profile:', error);
-            return;
-          }
-          
-          if (adminEmails.includes(profile?.email)) {
-            setIsAdmin(true);
-          }
-        } catch (error) {
-          console.error('Error checking admin status:', error);
         }
       }
     };
@@ -57,40 +36,13 @@ const Header = () => {
       setSession(session);
       
       if (session) {
-        // Check if user is admin
-        const checkAdmin = async () => {
-          const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-          if (adminEmails.includes(session.user.email)) {
-            setIsAdmin(true);
-            return;
-          }
-          
-          // Fallback to checking profiles table
-          try {
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('email')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (error) {
-              console.error('Error fetching profile:', error);
-              setIsAdmin(false);
-              return;
-            }
-            
-            if (adminEmails.includes(profile?.email)) {
-              setIsAdmin(true);
-            } else {
-              setIsAdmin(false);
-            }
-          } catch (error) {
-            console.error('Error checking admin status:', error);
-            setIsAdmin(false);
-          }
-        };
-        
-        checkAdmin();
+        // Check if user is admin using their email from the session
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        if (adminEmails.includes(session.user.email)) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
       } else {
         setIsAdmin(false);
       }
