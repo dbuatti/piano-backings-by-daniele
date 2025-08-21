@@ -337,61 +337,52 @@ const AdminDashboard = () => {
     );
   };
 
-  const calculateTotalCost = () => {
-    // Calculate total cost based on selected requests
-    const selected = filteredRequests.filter(req => selectedRequests.includes(req.id));
-    let total = 0;
+  const calculateRequestCost = (request: any) => {
+    let baseCost = 0;
+    switch (request.backing_type) {
+      case 'full-song':
+        baseCost = 30;
+        break;
+      case 'audition-cut':
+        baseCost = 15;
+        break;
+      case 'note-bash':
+        baseCost = 10;
+        break;
+      default:
+        baseCost = 20;
+    }
     
-    selected.forEach(req => {
-      // Pricing logic based on backing type and additional services
-      let baseCost = 0;
-      switch (req.backing_type) {
-        case 'full-song':
-          baseCost = 30;
-          break;
-        case 'audition-cut':
-          baseCost = 15;
-          break;
-        case 'note-bash':
-          baseCost = 10;
-          break;
-        default:
-          baseCost = 20;
-      }
-      
-      // Add additional service costs
-      if (req.additional_services) {
-        req.additional_services.forEach((service: string) => {
-          switch (service) {
-            case 'rush-order':
-              baseCost += 10;
-              break;
-            case 'complex-songs':
-              baseCost += 7;
-              break;
-            case 'additional-edits':
-              baseCost += 5;
-              break;
-            case 'exclusive-ownership':
-              baseCost += 40;
-              break;
+    // Add additional service costs
+    if (request.additional_services) {
+      request.additional_services.forEach((service: string) => {
+        switch (service) {
+          case 'rush-order':
+            baseCost += 10;
+            break;
+          case 'complex-songs':
+            baseCost += 7;
+            break;
+          case 'additional-edits':
+            baseCost += 5;
+            break;
+          case 'exclusive-ownership':
+            baseCost += 40;
+            break;
           }
         });
       }
       
-      total += baseCost;
-    });
-    
-    return total;
-  };
+      return baseCost;
+    };
 
   useEffect(() => {
     if (selectedRequests.length > 0) {
-      setTotalCost(calculateTotalCost());
+      setTotalCost(calculateRequestCost(filteredRequests.find(req => req.id === selectedRequests[0]))); // Calculate for first selected
     } else {
       setTotalCost(0);
     }
-  }, [selectedRequests]);
+  }, [selectedRequests, filteredRequests]);
 
   const uploadTrack = async (id: string) => {
     setUploadTrackId(id);
@@ -477,7 +468,7 @@ const AdminDashboard = () => {
       if (!request) throw new Error('Request not found');
       
       // Generate a shareable link
-      const shareLink = `${window.location.origin}/user-dashboard?email=${encodeURIComponent(request.email)}`;
+      const shareLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
       
       // Update request with shared link
       const { error } = await supabase
@@ -504,45 +495,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
-  const calculateRequestCost = (request: any) => {
-    let baseCost = 0;
-    switch (request.backing_type) {
-      case 'full-song':
-        baseCost = 30;
-        break;
-      case 'audition-cut':
-        baseCost = 15;
-        break;
-      case 'note-bash':
-        baseCost = 10;
-        break;
-      default:
-        baseCost = 20;
-    }
-    
-    // Add additional service costs
-    if (request.additional_services) {
-      request.additional_services.forEach((service: string) => {
-        switch (service) {
-          case 'rush-order':
-            baseCost += 10;
-            break;
-          case 'complex-songs':
-            baseCost += 7;
-            break;
-          case 'additional-edits':
-            baseCost += 5;
-            break;
-          case 'exclusive-ownership':
-            baseCost += 40;
-            break;
-          }
-        });
-      }
-      
-      return baseCost;
-    };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -1481,7 +1433,12 @@ const AdminDashboard = () => {
                                         clientEmail={request.email}
                                         clientName={request.name || 'Client'}
                                         songTitle={request.song_title}
+                                        musicalOrArtist={request.musical_or_artist} // Pass musicalOrArtist
                                         trackUrl={request.track_url}
+                                        sharedLink={request.shared_link} // Pass sharedLink
+                                        backingType={request.backing_type} // Pass backingType
+                                        additionalServices={request.additional_services || []} // Pass additionalServices
+                                        cost={request.cost || calculateRequestCost(request)} // Pass cost
                                       />
                                     </TooltipTrigger>
                                     <TooltipContent>
