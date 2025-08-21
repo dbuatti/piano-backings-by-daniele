@@ -58,6 +58,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     9. Add your signature with contact information
     10. Include a link to their customer portal where they can view their request details and download their track
     11. Keep the tone professional yet friendly, showing genuine care for their success
+    12. Make sure hyperlinks are properly formatted as HTML links
     
     Additional context for tone:
     - Many clients are preparing for auditions or performances, so be encouraging
@@ -70,38 +71,6 @@ export const generateEmailCopy = async (request: BackingRequest) => {
       "subject": "Email subject line that creates excitement",
       "body": "Full email body content with proper line breaks"
     }
-    
-    Example structure to follow:
-    "subject": "Your [Song Title] backing track is ready for [Client Name]!",
-    "body": "Hi [Client Name],
-
-I hope you're having a wonderful day!
-
-I'm thrilled to let you know that your custom piano backing track for "[Song Title]" from [Musical/Artist] is now complete and ready for your audition/performance/practice.
-
-[Personalized details about how you addressed their specific requests]
-
-Here's a breakdown of the work completed:
-• [Track type] in [key]: [Price]
-${request.additional_services.map(service => `• ${service}: $${getServicePrice(service)}`).join('\n')}
-
-Total amount: $[Total]
-
-You can complete your payment via:
-1. Buy Me a Coffee: [link]
-2. Direct bank transfer: [details]
-
-You can view your request details and download your track at any time using this link:
-[Customer Portal Link]
-
-[Offer adjustments or revisions]
-
-Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your [audition/performance] goes!
-
-Break a leg,
-Daniele
-🎹 Piano Backings by Daniele
-📧 pianobackingsbydaniele@gmail.com"
     `;
     
     // Generate content
@@ -114,37 +83,38 @@ Daniele
       const emailData = JSON.parse(text);
       return emailData;
     } catch (parseError) {
-      // If parsing fails, try to extract subject and body from the text
+      // If parsing fails, create a warm, personalized email with proper HTML links
       console.error('Error parsing Gemini response:', parseError);
-      console.log('Raw response:', text);
       
-      // Fallback to a basic email structure
       return {
-        subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist} is ready!`,
+        subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
         body: `Hi ${request.name},
 
-I hope you're doing well!
+I hope you're doing wonderfully!
 
-Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now ready. I've prepared this as a ${request.track_type} in ${request.song_key}.
+I'm thrilled to let you know that your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
-Special requests included: ${request.special_requests || 'None'}
+${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
 
-Pricing summary:
-- ${request.track_type}: $${getBasePrice(request.track_type)}
-${request.additional_services.map(service => `- ${service}: $${getServicePrice(service)}`).join('\n')}
+Here's a breakdown of the work completed:
+• ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
+${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
 
-You can pay easily via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
-Or let me know if you'd prefer a direct bank transfer.
+Total amount: $${calculateTotal(request.track_type, request.additional_services)}
 
-You can view your request details and download your track at any time using this link:
-https://pianobackingsbydaniele.vercel.app/track/${request.id}
+You can complete your payment via:
+1. Buy Me a Coffee: <a href="https://www.buymeacoffee.com/Danielebuatti">https://www.buymeacoffee.com/Danielebuatti</a>
+2. Direct bank transfer: BSB: 923100 | Account: 301110875
 
-If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just let me know, and I'll happily adjust it.
+<a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}">Click here to view your request details and download your track</a>
 
-Thanks so much, and best of luck with your performance!
+If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
 
-Warm regards,
+Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
+
+Break a leg,
 Daniele
+
 🎹 Piano Backings by Daniele
 📧 pianobackingsbydaniele@gmail.com`
       };
@@ -152,27 +122,38 @@ Daniele
   } catch (error) {
     console.error('Error generating email copy:', error);
     
-    // Fallback email template
+    // Fallback email template with warm tone and proper links
     return {
-      subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist} is ready!`,
+      subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
       body: `Hi ${request.name},
 
-Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now ready.
+I hope you're doing wonderfully!
 
-Pricing summary:
-- ${request.track_type}: $${getBasePrice(request.track_type)}
-${request.additional_services.map(service => `- ${service}: $${getServicePrice(service)}`).join('\n')}
+I'm thrilled to let you know that your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
-You can pay via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
+${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
 
-You can view your request details and download your track at any time using this link:
-https://pianobackingsbydaniele.vercel.app/track/${request.id}
+Here's a breakdown of the work completed:
+• ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
+${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
 
-Let me know if you need any adjustments!
+Total amount: $${calculateTotal(request.track_purpose, request.additional_services)}
 
-Best regards,
+You can complete your payment via:
+1. Buy Me a Coffee: <a href="https://www.buymeacoffee.com/Danielebuatti">https://www.buymeacoffee.com/Danielebuatti</a>
+2. Direct bank transfer: BSB: 923100 | Account: 301110875
+
+<a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}">Click here to view your request details and download your track</a>
+
+If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
+
+Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
+
+Break a leg,
 Daniele
-🎹 Piano Backings by Daniele`
+
+🎹 Piano Backings by Daniele
+📧 pianobackingsbydaniele@gmail.com`
     };
   }
 };
@@ -195,4 +176,43 @@ const getServicePrice = (service: string) => {
     case 'exclusive-ownership': return '40';
     default: return '0';
   }
+};
+
+const calculateTotal = (trackType: string, additionalServices: string[]) => {
+  let total = 0;
+  
+  // Add base price
+  switch (trackType) {
+    case 'quick': 
+      total += 7.5; // Average of 5-10
+      break;
+    case 'one-take': 
+      total += 15; // Average of 10-20
+      break;
+    case 'polished': 
+      total += 25; // Average of 15-35
+      break;
+    default: 
+      total += 25;
+  }
+  
+  // Add additional service costs
+  additionalServices.forEach(service => {
+    switch (service) {
+      case 'rush-order':
+        total += 10;
+        break;
+      case 'complex-songs':
+        total += 7;
+        break;
+      case 'additional-edits':
+        total += 5;
+        break;
+      case 'exclusive-ownership':
+        total += 40;
+        break;
+    }
+  });
+  
+  return total.toFixed(2);
 };
