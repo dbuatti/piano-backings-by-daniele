@@ -29,21 +29,20 @@ serve(async (req) => {
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
-    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Admin email to fetch token
+    // ADMIN_EMAIL is no longer directly used for token retrieval here, but kept for reference if needed elsewhere
+    // const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; 
 
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
       GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET',
-      ADMIN_EMAIL: ADMIN_EMAIL ? 'SET' : 'NOT SET'
     });
 
-    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER || !ADMIN_EMAIL) {
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
       const missingVars = [];
       if (!GMAIL_CLIENT_ID) missingVars.push('GMAIL_CLIENT_ID');
       if (!GMAIL_CLIENT_SECRET) missingVars.push('GMAIL_CLIENT_SECRET');
       if (!GMAIL_USER) missingVars.push('GMAIL_USER');
-      if (!ADMIN_EMAIL) missingVars.push('ADMIN_EMAIL');
       
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
@@ -62,7 +61,7 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
     
-    const { to, subject, html, cc, bcc, replyTo } = requestBody;
+    const { to, subject, html, cc, bcc, replyTo, senderEmail } = requestBody;
 
     // Get the authenticated user (this will be the Supabase user, not the Gmail user)
     // We still check for a user token for logging purposes, but it's not required for operation
@@ -84,8 +83,8 @@ serve(async (req) => {
       console.log("No auth header provided, proceeding with service role access");
     }
     
-    if (!to || !subject || !html) {
-      return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { 
+    if (!to || !subject || !html || !senderEmail) {
+      return new Response(JSON.stringify({ error: "Missing 'to', 'subject', 'html', or 'senderEmail' content" }), { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -93,34 +92,34 @@ serve(async (req) => {
 
     // Function to refresh access token using refresh token
     // This now uses the service role to access the tokens table
-    const refreshAccessToken = async () => {
-      console.log("Refreshing access token using service role");
+    const refreshAccessToken = async (emailToFetchTokenFor: string) => {
+      console.log(`Refreshing access token for ${emailToFetchTokenFor} using service role`);
       
-      // First, get the user ID of the admin from auth.users table
-      const { data: adminUser, error: adminUserError } = await supabaseAdmin
+      // First, get the user ID from auth.users table for the specified email
+      const { data: userToFetchTokenFor, error: userToFetchTokenForError } = await supabaseAdmin
         .from('auth.users')
         .select('id')
-        .eq('email', ADMIN_EMAIL)
+        .eq('email', emailToFetchTokenFor)
         .single();
 
-      if (adminUserError || !adminUser) {
-        console.error('Error fetching admin user ID:', adminUserError);
-        throw new Error(`Admin user with email ${ADMIN_EMAIL} not found in auth.users. Please ensure the admin user exists and has completed Gmail OAuth.`);
+      if (userToFetchTokenForError || !userToFetchTokenFor) {
+        console.error(`Error fetching user ID for ${emailToFetchTokenFor}:`, userToFetchTokenForError);
+        throw new Error(`User with email ${emailToFetchTokenFor} not found in auth.users. Please ensure this user exists and has completed Gmail OAuth.`);
       }
 
-      const adminUserId = adminUser.id;
-      console.log("Admin user ID for token retrieval:", adminUserId);
+      const userIdToFetchTokenFor = userToFetchTokenFor.id;
+      console.log(`User ID for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
 
-      // Get the stored refresh token for the admin user
+      // Get the stored refresh token for this user
       const { data: tokenData, error: tokenError } = await supabaseAdmin
         .from('gmail_tokens')
         .select('refresh_token, access_token, expires_at')
-        .eq('user_id', adminUserId)
+        .eq('user_id', userIdToFetchTokenFor)
         .single();
       
       if (tokenError || !tokenData) {
-        console.error('Error fetching Gmail token for admin user:', tokenError);
-        throw new Error('No Gmail tokens found for admin user in database. Please ensure the admin has completed Gmail OAuth.');
+        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor}:`, tokenError);
+        throw new Error(`No Gmail tokens found for user ${emailToFetchTokenFor} in database. Please ensure this user has completed Gmail OAuth.`);
       }
       
       // Check if we have a refresh token
@@ -167,7 +166,7 @@ serve(async (req) => {
             access_token: tokenResponse.access_token,
             expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
           })
-          .eq('user_id', adminUserId); // Update using the admin's user ID
+          .eq('user_id', userIdToFetchTokenFor); // Update using the correct user's ID
         
         if (updateError) {
           console.error('Error updating access token:', updateError);
@@ -185,10 +184,10 @@ serve(async (req) => {
       }
     };
 
-    // Get or refresh the access token
+    // Get or refresh the access token for the specified senderEmail
     let accessToken;
     try {
-      accessToken = await refreshAccessToken();
+      accessToken = await refreshAccessToken(senderEmail);
     } catch (refreshError) {
       console.error('Error refreshing access token:', refreshError);
       throw new Error(`Failed to refresh access token: ${refreshError.message}`);

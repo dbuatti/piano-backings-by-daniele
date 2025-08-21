@@ -33,7 +33,9 @@ serve(async (req) => {
     // @ts-ignore
     const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     // @ts-ignore
-    const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com';
+    const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Primary admin email for notifications
+    // @ts-ignore
+    const secondaryAdminEmail = Deno.env.get('SECONDARY_ADMIN_EMAIL') || 'pianobackingsbydaniele@gmail.com'; // Secondary admin email for notifications
     
     // Log environment variable status for debugging (without exposing the actual values)
     console.log('Environment variables status:', {
@@ -45,7 +47,8 @@ serve(async (req) => {
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       LOGIC_TEMPLATE_PATH: templateFilePath,
       RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET',
-      ADMIN_EMAIL: adminEmail
+      ADMIN_EMAIL: adminEmail,
+      SECONDARY_ADMIN_EMAIL: secondaryAdminEmail
     });
     
     // Create a Supabase client with service role key (has full permissions)
@@ -799,7 +802,7 @@ serve(async (req) => {
         </div>
       `;
       
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+      const adminEmails = [adminEmail, secondaryAdminEmail]; // Use both admin emails
       
       // Use the service key for internal function calls
       for (const email of adminEmails) {
@@ -808,6 +811,7 @@ serve(async (req) => {
             to: email,
             subject: emailSubject,
             html: emailHtml,
+            senderEmail: secondaryAdminEmail // Explicitly use pianobackingsbydaniele@gmail.com for sending
           };
           
           console.log(`DEBUG: Request body sent to send-email for ${email}:`, JSON.stringify({
@@ -893,7 +897,7 @@ serve(async (req) => {
           </div>
         `;
         
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        const adminEmails = [adminEmail, secondaryAdminEmail];
         for (const email of adminEmails) {
           await supabaseAdmin
             .from('notifications')
