@@ -694,6 +694,8 @@ serve(async (req) => {
 
     // Send email notification to admins with improved error handling
     try {
+      console.log("Attempting to send email notification");
+      
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
       const emailHtml = `
@@ -749,6 +751,8 @@ serve(async (req) => {
       // Send email to both admin emails using a more robust approach
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
+      console.log("Sending notification emails to:", adminEmails);
+      
       // Try to send email using the send-email function
       for (const email of adminEmails) {
         try {
@@ -770,9 +774,11 @@ serve(async (req) => {
             }
           );
           
+          console.log(`Email response status for ${email}:`, emailResponse.status);
+          
           if (!emailResponse.ok) {
-            const emailError = await emailResponse.json();
-            console.error(`Failed to send notification email to ${email}:`, emailError);
+            const emailErrorText = await emailResponse.text();
+            console.error(`Failed to send notification email to ${email}:`, emailErrorText);
             // Try alternative method - store in notifications table
             await supabase
               .from('notifications')
@@ -783,7 +789,8 @@ serve(async (req) => {
                   subject: emailSubject,
                   content: emailHtml,
                   status: 'failed',
-                  type: 'email'
+                  type: 'email',
+                  error_message: emailErrorText
                 }
               ]);
           } else {
@@ -879,6 +886,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error('Error in create-backing-request function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message 
