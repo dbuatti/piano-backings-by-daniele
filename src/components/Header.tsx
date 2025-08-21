@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -212,15 +212,26 @@ const Header = () => {
             )}
             
             {isAdmin && (
-              <Link to="/admin">
-                <Button 
-                  variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20 flex items-center"
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin
-                </Button>
-              </Link>
+              <>
+                <Link to="/admin">
+                  <Button 
+                    variant="ghost" 
+                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin
+                  </Button>
+                </Link>
+                <Link to="/test-email-notification">
+                  <Button 
+                    variant="ghost" 
+                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  >
+                    <TestTube className="mr-2 h-4 w-4" />
+                    Test Email
+                  </Button>
+                </Link>
+              </>
             )}
             
             {session ? (
@@ -340,17 +351,30 @@ const Header = () => {
                     )}
                     
                     {isAdmin && (
-                      <Link 
-                        to="/admin"
-                        className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                          "text-white hover:bg-white/20"
-                        )}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Shield className="mr-3 h-5 w-5" />
-                        Admin Dashboard
-                      </Link>
+                      <>
+                        <Link 
+                          to="/admin"
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Shield className="mr-3 h-5 w-5" />
+                          Admin Dashboard
+                        </Link>
+                        <Link 
+                          to="/test-email-notification"
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <TestTube className="mr-3 h-5 w-5" />
+                          Test Email
+                        </Link>
+                      </>
                     )}
                     
                     {session ? (

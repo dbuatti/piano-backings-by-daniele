@@ -19,6 +19,7 @@ import TestDropboxCredentials from "./pages/TestDropboxCredentials";
 import DropboxMonitor from "./pages/DropboxMonitor";
 import ClientTrackView from "./pages/ClientTrackView";
 import EmailGenerator from "./pages/EmailGenerator";
+import TestEmailNotification from "./pages/TestEmailNotification";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
           <Route path="/email-generator" element={<EmailGenerator />} />
           <Route path="/email-generator/:id" element={<EmailGenerator />} />
+          <Route path="/test-email-notification" element={<TestEmailNotification />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
