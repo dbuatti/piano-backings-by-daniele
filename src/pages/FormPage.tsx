@@ -243,15 +243,22 @@ const FormPage = () => {
       
       console.log('Submitting form data:', submissionData);
       
+      // Prepare headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Only add Authorization header if user is logged in
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
       // Submit to Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token || ''}`
-          },
+          headers: headers,
           body: JSON.stringify(submissionData),
         }
       );
