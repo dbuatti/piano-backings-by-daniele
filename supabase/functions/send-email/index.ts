@@ -207,6 +207,13 @@ serve(async (req) => {
     if (!gmailResponse.ok) {
       const errorText = await gmailResponse.text();
       console.error('Gmail API error response:', errorText);
+      
+      // Check if this is a Gmail API not enabled error
+      if (errorText.includes('Gmail API has not been used in project') || 
+          errorText.includes('SERVICE_DISABLED')) {
+        throw new Error(`Gmail API is not enabled for your Google Cloud project. Please visit https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=138848645565 to enable it, then wait a few minutes for the changes to propagate.`);
+      }
+      
       throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
     }
     

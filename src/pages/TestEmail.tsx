@@ -191,6 +191,22 @@ Piano Backings by Daniele</p>`
               <li>Verify that the Gmail API is enabled in your Google Cloud project</li>
             </ul>
           </div>
+          
+          <div className="mt-6 p-4 bg-red-100 rounded-lg border border-red-300">
+            <h3 className="font-bold text-red-800 mb-2">Important: Enable Gmail API</h3>
+            <p className="mb-3">
+              If you're getting a "Gmail API has not been used in project" error, you need to enable the Gmail API in your Google Cloud project:
+            </p>
+            <ol className="list-decimal pl-5 space-y-1 mb-3">
+              <li>Go to the <a href="https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=138848645565" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Gmail API page in Google Cloud Console</a></li>
+              <li>Click "Enable" if the API is not already enabled</li>
+              <li>Wait 5-10 minutes for the changes to propagate</li>
+              <li>Try sending the test email again</li>
+            </ol>
+            <p className="text-sm text-red-700">
+              <strong>Note:</strong> After enabling the API, you may need to re-authenticate by clicking "Connect Gmail Account" again.
+            </p>
+          </div>
         </div>
         
         <MadeWithDyad />
