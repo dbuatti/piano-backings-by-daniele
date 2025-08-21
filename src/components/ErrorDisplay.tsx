@@ -13,10 +13,34 @@ const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => 
   
   const copyToClipboard = () => {
     const errorText = JSON.stringify(error, null, 2);
-    navigator.clipboard.writeText(errorText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(errorText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
   };
+
+  // Create a more readable error summary
+  const getErrorSummary = () => {
+    const summary = [];
+    
+    if (error.message) {
+      summary.push({ label: "Message", value: error.message });
+    }
+    
+    if (error.error) {
+      summary.push({ label: "Error", value: error.error });
+    }
+    
+    if (error.status) {
+      summary.push({ label: "Status", value: error.status });
+    }
+    
+    return summary;
+  };
+
+  const errorSummary = getErrorSummary();
 
   return (
     <Card className="border-red-300 bg-red-50">
@@ -47,20 +71,18 @@ const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => 
         <pre className="whitespace-pre-wrap break-words text-sm bg-red-100 p-4 rounded-lg max-h-60 overflow-y-auto">
           {JSON.stringify(error, null, 2)}
         </pre>
-        <div className="mt-4 text-sm text-red-700">
-          <p className="font-medium">Error Summary:</p>
-          <ul className="list-disc pl-5 mt-2 space-y-1">
-            {error.message && (
-              <li><span className="font-medium">Message:</span> {error.message}</li>
-            )}
-            {error.error && (
-              <li><span className="font-medium">Error:</span> {error.error}</li>
-            )}
-            {error.status && (
-              <li><span className="font-medium">Status:</span> {error.status}</li>
-            )}
-          </ul>
-        </div>
+        {errorSummary.length > 0 && (
+          <div className="mt-4 text-sm text-red-700">
+            <p className="font-medium">Error Summary:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              {errorSummary.map((item, index) => (
+                <li key={index}>
+                  <span className="font-medium">{item.label}:</span> {item.value}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
