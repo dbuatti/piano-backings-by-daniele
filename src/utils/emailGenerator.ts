@@ -50,7 +50,11 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     1. Create a compelling subject line that immediately tells the client their track is ready
     2. Open with a warm, personalized greeting using the client's name
     3. Use natural, conversational language - avoid overly enthusiastic phrases like "thrilled"
-    4. Provide specific details about how you've addressed their special requests
+    4. Address special requests intelligently:
+       - If the request is about tempo, mention you've adjusted the track to their specified tempo
+       - If they provided a reference link, mention you used it as a guide
+       - If they have specific musical requests, acknowledge them specifically
+       - Summarize the request in a natural way rather than quoting it verbatim
     5. Include a detailed pricing breakdown with transparent costs
     6. Offer multiple payment options with clear instructions
     7. Proactively offer adjustments or revisions to ensure satisfaction
@@ -87,6 +91,18 @@ export const generateEmailCopy = async (request: BackingRequest) => {
       // If parsing fails, create a warm, personalized email with proper HTML links
       console.error('Error parsing Gemini response:', parseError);
       
+      // Process special requests more intelligently
+      let specialRequestSummary = '';
+      if (request.special_requests) {
+        if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
+          specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
+        } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
+          specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
+        } else {
+          specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
+        }
+      }
+      
       return {
         subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
         body: `Hi ${request.name},
@@ -95,7 +111,7 @@ I hope you're doing well!
 
 Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
-${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
+${request.special_requests ? specialRequestSummary : 'I\'ve prepared this track with great care to match your needs.'}
 
 Here's a breakdown of the work completed:
 • ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
@@ -124,6 +140,18 @@ Daniele
   } catch (error) {
     console.error('Error generating email copy:', error);
     
+    // Process special requests more intelligently
+    let specialRequestSummary = '';
+    if (request.special_requests) {
+      if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
+        specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
+      } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
+        specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
+      } else {
+        specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
+      }
+    }
+    
     // Fallback email template with warm tone and plain text links for better email compatibility
     return {
       subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
@@ -133,7 +161,7 @@ I hope you're doing well!
 
 Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
 
-${request.special_requests ? `I've made sure to incorporate your special request: "${request.special_requests}"` : 'I\'ve prepared this track with great care to match your needs.'}
+${request.special_requests ? specialRequestSummary : 'I\'ve prepared this track with great care to match your needs.'}
 
 Here's a breakdown of the work completed:
 • ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
