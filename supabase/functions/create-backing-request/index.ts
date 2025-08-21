@@ -692,7 +692,7 @@ serve(async (req) => {
       throw error;
     }
 
-    // Send email notification to admins
+    // Send email notification to admins with improved error handling
     try {
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
@@ -746,11 +746,14 @@ serve(async (req) => {
         </div>
       `;
       
-      // Send email to both admin emails
+      // Send email to both admin emails using a more robust approach
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
+      // Try to send email using the send-email function
       for (const email of adminEmails) {
         try {
+          console.log(`Attempting to send notification email to: ${email}`);
+          
           const emailResponse = await fetch(
             `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
             {
@@ -770,11 +773,53 @@ serve(async (req) => {
           if (!emailResponse.ok) {
             const emailError = await emailResponse.json();
             console.error(`Failed to send notification email to ${email}:`, emailError);
+            // Try alternative method - store in notifications table
+            await supabase
+              .from('notifications')
+              .insert([
+                {
+                  recipient: email,
+                  sender: 'system@pianobackings.com',
+                  subject: emailSubject,
+                  content: emailHtml,
+                  status: 'failed',
+                  type: 'email'
+                }
+              ]);
           } else {
-            console.log(`Notification email sent successfully to ${email}`);
+            const result = await emailResponse.json();
+            console.log(`Notification email sent successfully to ${email}:`, result);
+            
+            // Store successful notification in database
+            await supabase
+              .from('notifications')
+              .insert([
+                {
+                  recipient: email,
+                  sender: 'system@pianobackings.com',
+                  subject: emailSubject,
+                  content: emailHtml,
+                  status: 'sent',
+                  type: 'email'
+                }
+              ]);
           }
         } catch (emailError) {
           console.error(`Error sending notification email to ${email}:`, emailError);
+          // Store failed notification in database
+          await supabase
+            .from('notifications')
+            .insert([
+              {
+                recipient: email,
+                sender: 'system@pianobackings.com',
+                subject: emailSubject,
+                content: emailHtml,
+                status: 'failed',
+                type: 'email',
+                error_message: emailError.message
+              }
+            ]);
         }
       }
     } catch (emailError) {
