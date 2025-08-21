@@ -3,22 +3,18 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-// Declare Deno global to resolve TypeScript errors
-declare global {
-  namespace Deno {
-    namespace env {
-      function get(key: string): string | undefined;
-    }
-  }
-}
+// Declare Deno namespace for TypeScript
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 // Setup CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Redeploy trigger comment added on 2023-10-27
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -27,10 +23,18 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Gmail OAuth callback function invoked");
+    
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
-    const GMAIL_REDIRECT_URI = Deno.env.get("GMAIL_REDIRECT_URI") || "http://localhost:8080/gmail-oauth-callback";
+    const GMAIL_REDIRECT_URI = Deno.env.get("GMAIL_REDIRECT_URI") || `${Deno.env.get("SITE_URL")}/gmail-oauth-callback`;
+    
+    console.log("Environment variables check:", {
+      GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
+      GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
+      GMAIL_REDIRECT_URI: GMAIL_REDIRECT_URI
+    });
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
       throw new Error('GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set in Supabase secrets.');
@@ -43,6 +47,8 @@ serve(async (req) => {
 
     // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
+    console.log("Auth header present:", !!authHeader);
+    
     if (!authHeader) {
       throw new Error('Missing Authorization header');
     }
@@ -51,21 +57,37 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
+      console.error("User authentication error:", userError);
       throw new Error('Invalid or expired token');
     }
+    
+    console.log("Authenticated user:", user.email);
     
     // Check if user is admin (daniele.buatti@gmail.com)
     if (user.email !== 'daniele.buatti@gmail.com') {
       throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
     }
     
-    const { code } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request body:", requestBody);
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { code } = requestBody;
 
     if (!code) {
-      return new Response(JSON.stringify({ error: "Missing authorization code" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Missing authorization code" }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Exchange authorization code for tokens
+    console.log("Exchanging authorization code for tokens");
     const tokenUrl = 'https://oauth2.googleapis.com/token';
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
@@ -84,19 +106,25 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Token exchange error:', errorText);
-      throw new Error(`Failed to exchange code for tokens: ${errorText}`);
+      throw new Error(`Failed to exchange code for tokens: ${tokenResponse.status} - ${errorText}`);
     }
 
     const tokenData = await tokenResponse.json();
+    console.log("Token exchange successful");
     
-    // Store the refresh token in Supabase (we don't need to store the access token since we can refresh it)
+    // Ensure we have a refresh token
+    if (!tokenData.refresh_token) {
+      console.warn("No refresh token received. User may have already granted permission.");
+      // We might still have an access token, but it will expire soon
+    }
+    
+    // Store the tokens in Supabase
+    console.log("Storing tokens in Supabase");
     const { error: insertError } = await supabase
       .from('gmail_tokens')
       .upsert({
         user_id: user.id,
-        // We only store the refresh token since access tokens expire quickly
-        refresh_token: tokenData.refresh_token,
-        // We also store the access token for immediate use, but we'll refresh it when needed
+        refresh_token: tokenData.refresh_token || null, // Might be null on subsequent auths
         access_token: tokenData.access_token,
         expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         token_type: tokenData.token_type
@@ -106,9 +134,10 @@ serve(async (req) => {
 
     if (insertError) {
       console.error('Error storing tokens:', insertError);
-      throw new Error('Failed to store tokens');
+      throw new Error('Failed to store tokens: ' + insertError.message);
     }
 
+    console.log("Gmail OAuth completed successfully");
     return new Response(
       JSON.stringify({ 
         message: "Gmail OAuth completed successfully"

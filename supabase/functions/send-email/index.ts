@@ -3,14 +3,12 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-// Declare Deno global to resolve TypeScript errors
-declare global {
-  namespace Deno {
-    namespace env {
-      function get(key: string): string | undefined;
-    }
-  }
-}
+// Declare Deno namespace for TypeScript
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 // Setup CORS headers
 const corsHeaders = {
@@ -25,27 +23,24 @@ serve(async (req) => {
   }
 
   try {
-    console.log("send-email function invoked");
+    console.log("Send email function invoked");
 
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
-    const GMAIL_REFRESH_TOKEN = Deno.env.get("GMAIL_REFRESH_TOKEN");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
 
     // Log environment variable status for debugging
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
-      GMAIL_REFRESH_TOKEN: GMAIL_REFRESH_TOKEN ? 'SET' : 'NOT SET',
       GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET'
     });
 
-    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_USER) {
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
       const missingVars = [];
       if (!GMAIL_CLIENT_ID) missingVars.push('GMAIL_CLIENT_ID');
       if (!GMAIL_CLIENT_SECRET) missingVars.push('GMAIL_CLIENT_SECRET');
-      if (!GMAIL_REFRESH_TOKEN) missingVars.push('GMAIL_REFRESH_TOKEN');
       if (!GMAIL_USER) missingVars.push('GMAIL_USER');
       
       throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
@@ -58,6 +53,8 @@ serve(async (req) => {
 
     // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
+    console.log("Auth header present:", !!authHeader);
+    
     if (!authHeader) {
       throw new Error('Missing Authorization header');
     }
@@ -66,23 +63,55 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
+      console.error("User authentication error:", userError);
       throw new Error('Invalid or expired token');
     }
+    
+    console.log("Authenticated user:", user.email);
     
     // Check if user is admin (daniele.buatti@gmail.com)
     if (user.email !== 'daniele.buatti@gmail.com') {
       throw new Error('Unauthorized: Only admin can send emails');
     }
     
-    const { to, subject, html, cc, bcc, replyTo } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request body:", requestBody);
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { to, subject, html, cc, bcc, replyTo } = requestBody;
 
     if (!to || !subject || !html) {
-      return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { status: 400 });
+      return new Response(JSON.stringify({ error: "Missing to, subject, or html content" }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Function to refresh access token using refresh token
     const refreshAccessToken = async () => {
       console.log("Refreshing access token...");
+      
+      // Get the stored refresh token for this user
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('gmail_tokens')
+        .select('refresh_token')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (tokenError || !tokenData) {
+        console.error('Error fetching refresh token:', tokenError);
+        throw new Error('No refresh token found for user. Please complete Gmail OAuth first.');
+      }
+      
+      if (!tokenData.refresh_token) {
+        throw new Error('No refresh token available. Please complete Gmail OAuth again.');
+      }
+      
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -91,7 +120,7 @@ serve(async (req) => {
         body: new URLSearchParams({
           client_id: GMAIL_CLIENT_ID!,
           client_secret: GMAIL_CLIENT_SECRET!,
-          refresh_token: GMAIL_REFRESH_TOKEN!,
+          refresh_token: tokenData.refresh_token,
           grant_type: 'refresh_token'
         })
       });
@@ -102,12 +131,27 @@ serve(async (req) => {
         throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
       }
       
-      const tokenData = await response.json();
+      const tokenResponse = await response.json();
       console.log("Access token refreshed successfully");
-      return tokenData.access_token;
+      
+      // Update the stored access token
+      const { error: updateError } = await supabase
+        .from('gmail_tokens')
+        .update({
+          access_token: tokenResponse.access_token,
+          expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
+        })
+        .eq('user_id', user.id);
+      
+      if (updateError) {
+        console.error('Error updating access token:', updateError);
+        // Don't throw here, as we still have the token
+      }
+      
+      return tokenResponse.access_token;
     };
 
-    // Refresh the access token
+    // Get or refresh the access token
     let accessToken;
     try {
       accessToken = await refreshAccessToken();
