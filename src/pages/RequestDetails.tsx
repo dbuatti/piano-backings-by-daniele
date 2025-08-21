@@ -44,64 +44,18 @@ const RequestDetails = () => {
         return;
       }
       
-      // Check if user is admin (daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+      // Check if user is admin using their email from the session
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
         fetchRequest();
-        return;
-      }
-      
-      // Fallback to checking profiles table
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching profile:', error);
-          // Even if we can't fetch profile, check user email directly
-          if (adminEmails.includes(session.user.email)) {
-            setIsAdmin(true);
-            fetchRequest();
-          } else {
-            toast({
-              title: "Access Denied",
-              description: "You don't have permission to access this page.",
-              variant: "destructive",
-            });
-            navigate('/');
-          }
-          return;
-        }
-        
-        if (adminEmails.includes(profile?.email)) {
-          setIsAdmin(true);
-          fetchRequest();
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/');
-        }
-      } catch (error: any) {
-        console.error('Error checking admin status:', error);
-        // Fallback to checking user email directly
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
-          fetchRequest();
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/');
-        }
+      } else {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access this page.",
+          variant: "destructive",
+        });
+        navigate('/');
       }
     };
     
