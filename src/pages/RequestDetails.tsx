@@ -21,7 +21,9 @@ import {
   Headphones, 
   Target, 
   Key, 
-  Folder
+  Folder,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
 const RequestDetails = () => {
@@ -31,6 +33,7 @@ const RequestDetails = () => {
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -125,6 +128,75 @@ const RequestDetails = () => {
       navigate('/admin');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const triggerDropboxAutomation = async () => {
+    setIsTriggeringDropbox(true);
+    
+    try {
+      // Get the session from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to trigger this function');
+      }
+      
+      // Prepare the form data to match what the function expects
+      const formData = {
+        email: request.email,
+        name: request.name,
+        songTitle: request.song_title,
+        musicalOrArtist: request.musical_or_artist,
+        songKey: request.song_key,
+        differentKey: request.different_key,
+        keyForTrack: request.key_for_track,
+        youtubeLink: request.youtube_link,
+        voiceMemo: request.voice_memo,
+        sheetMusicUrl: request.sheet_music_url,
+        trackPurpose: request.track_purpose,
+        backingType: request.backing_type,
+        deliveryDate: request.delivery_date,
+        additionalServices: request.additional_services,
+        specialRequests: request.special_requests,
+        category: request.category,
+        trackType: request.track_type
+      };
+      
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ formData })
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Dropbox automation triggered successfully.",
+        });
+        
+        // Refresh the request data to show updated information
+        fetchRequest();
+      } else {
+        throw new Error(result.error || 'Failed to trigger Dropbox automation');
+      }
+    } catch (error: any) {
+      console.error('Error triggering Dropbox automation:', error);
+      toast({
+        title: "Error",
+        description: `Failed to trigger Dropbox automation: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTriggeringDropbox(false);
     }
   };
 
@@ -419,6 +491,47 @@ const RequestDetails = () => {
                 <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
                   {request.special_requests || 'No special requests provided'}
                 </p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  Dropbox Automation
+                </h3>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="mb-3">
+                    If the Dropbox folder was not created during the initial request, you can manually trigger the automation process here.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={triggerDropboxAutomation}
+                      disabled={isTriggeringDropbox}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                    >
+                      {isTriggeringDropbox ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Triggering...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Trigger Dropbox Automation
+                        </>
+                      )}
+                    </Button>
+                    {request.dropbox_folder_id && (
+                      <Badge variant="default" className="bg-green-500">
+                        Folder Created
+                      </Badge>
+                    )}
+                  </div>
+                  {request.dropbox_folder_id && (
+                    <p className="mt-3 text-sm text-gray-600">
+                      <span className="font-medium">Folder ID:</span> {request.dropbox_folder_id}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
