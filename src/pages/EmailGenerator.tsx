@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { generateEmailCopy, BackingRequest } from "@/utils/emailGenerator";
+import { supabase } from '@/integrations/supabase/client';
+import { useParams, useLocation } from 'react-router-dom';
 
 const EmailGenerator = () => {
   const { toast } = useToast();
+  const { id } = useParams();
+  const location = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', body: '' });
   const [formData, setFormData] = useState({
@@ -29,6 +33,67 @@ const EmailGenerator = () => {
     youtube_link: '',
     voice_memo: ''
   });
+
+  // Prefill form data from request ID or passed state
+  useEffect(() => {
+    const fetchRequestDetails = async () => {
+      // If we have an ID in the URL, fetch the request details
+      if (id) {
+        try {
+          const { data, error } = await supabase
+            .from('backing_requests')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (error) throw error;
+          
+          setFormData({
+            name: data.name || '',
+            email: data.email || '',
+            song_title: data.song_title || '',
+            musical_or_artist: data.musical_or_artist || '',
+            track_purpose: data.track_purpose || 'personal-practise',
+            backing_type: data.backing_type || 'full-song',
+            delivery_date: data.delivery_date || '',
+            special_requests: data.special_requests || '',
+            song_key: data.song_key || 'C Major (0)',
+            additional_services: data.additional_services || [],
+            track_type: data.track_type || 'polished',
+            youtube_link: data.youtube_link || '',
+            voice_memo: data.voice_memo || ''
+          });
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: `Failed to fetch request details: ${error.message}`,
+            variant: "destructive",
+          });
+        }
+      } 
+      // Otherwise, check if we have state passed from navigation
+      else if (location.state?.request) {
+        const request = location.state.request;
+        setFormData({
+          name: request.name || '',
+          email: request.email || '',
+          song_title: request.song_title || '',
+          musical_or_artist: request.musical_or_artist || '',
+          track_purpose: request.track_purpose || 'personal-practise',
+          backing_type: request.backing_type || 'full-song',
+          delivery_date: request.delivery_date || '',
+          special_requests: request.special_requests || '',
+          song_key: request.song_key || 'C Major (0)',
+          additional_services: request.additional_services || [],
+          track_type: request.track_type || 'polished',
+          youtube_link: request.youtube_link || '',
+          voice_memo: request.voice_memo || ''
+        });
+      }
+    };
+    
+    fetchRequestDetails();
+  }, [id, location.state, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -254,8 +319,8 @@ const EmailGenerator = () => {
                         type="checkbox"
                         id="rush-order"
                         className="mr-2"
-                        checked={formData.additional_services.includes('Rush Order')}
-                        onChange={() => handleCheckboxChange('Rush Order')}
+                        checked={formData.additional_services.includes('rush-order')}
+                        onChange={() => handleCheckboxChange('rush-order')}
                       />
                       <Label htmlFor="rush-order">Rush Order (+$10)</Label>
                     </div>
@@ -264,8 +329,8 @@ const EmailGenerator = () => {
                         type="checkbox"
                         id="complex-songs"
                         className="mr-2"
-                        checked={formData.additional_services.includes('Complex Songs')}
-                        onChange={() => handleCheckboxChange('Complex Songs')}
+                        checked={formData.additional_services.includes('complex-songs')}
+                        onChange={() => handleCheckboxChange('complex-songs')}
                       />
                       <Label htmlFor="complex-songs">Complex Songs (+$7)</Label>
                     </div>
@@ -274,8 +339,8 @@ const EmailGenerator = () => {
                         type="checkbox"
                         id="additional-edits"
                         className="mr-2"
-                        checked={formData.additional_services.includes('Additional Edits')}
-                        onChange={() => handleCheckboxChange('Additional Edits')}
+                        checked={formData.additional_services.includes('additional-edits')}
+                        onChange={() => handleCheckboxChange('additional-edits')}
                       />
                       <Label htmlFor="additional-edits">Additional Edits (+$5)</Label>
                     </div>
@@ -284,8 +349,8 @@ const EmailGenerator = () => {
                         type="checkbox"
                         id="exclusive-ownership"
                         className="mr-2"
-                        checked={formData.additional_services.includes('Exclusive Ownership')}
-                        onChange={() => handleCheckboxChange('Exclusive Ownership')}
+                        checked={formData.additional_services.includes('exclusive-ownership')}
+                        onChange={() => handleCheckboxChange('exclusive-ownership')}
                       />
                       <Label htmlFor="exclusive-ownership">Exclusive Ownership (+$40)</Label>
                     </div>

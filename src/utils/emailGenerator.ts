@@ -24,13 +24,15 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     // Get the generative model
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
-    // Create a prompt based on the request data
+    // Create a more sophisticated prompt based on the request data
     const prompt = `
-    You are Daniele, a piano backing track creator. Generate a friendly, professional email for a completed backing track request.
+    You are Daniele, a professional piano backing track creator who provides custom accompaniment for musical theatre performers. 
+    Generate a personalized, warm, and professional email for a completed backing track request.
     
     Request details:
     - Client name: ${request.name}
-    - Song title: ${request.song_title}
+    - Client email: ${request.email}
+    - Song title: "${request.song_title}"
     - Musical/Artist: ${request.musical_or_artist}
     - Track purpose: ${request.track_purpose}
     - Backing type: ${request.backing_type}
@@ -39,21 +41,61 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     - Song key: ${request.song_key}
     - Additional services: ${request.additional_services.join(', ') || 'None'}
     - Track type: ${request.track_type}
+    - YouTube reference: ${request.youtube_link || 'Not provided'}
+    - Voice memo reference: ${request.voice_memo || 'Not provided'}
     
-    Instructions:
-    1. Create a subject line
-    2. Write a warm, professional email body
-    3. Mention the track details
-    4. Include pricing information based on track type and additional services
-    5. Provide payment options (Buy Me a Coffee link: https://www.buymeacoffee.com/Danielebuatti)
-    6. Offer adjustments if needed
-    7. End with a friendly sign-off
+    Instructions for crafting the email:
+    1. Create a compelling subject line that immediately tells the client their track is ready
+    2. Open with a warm, personalized greeting using the client's name
+    3. Express genuine enthusiasm for working on their specific song
+    4. Provide specific details about how you've addressed their special requests
+    5. Include a detailed pricing breakdown with transparent costs
+    6. Offer multiple payment options with clear instructions
+    7. Proactively offer adjustments or revisions to ensure satisfaction
+    8. Include a personalized sign-off that reflects your professional relationship
+    9. Add your signature with contact information
+    10. Keep the tone professional yet friendly, showing genuine care for their success
+    
+    Additional context for tone:
+    - Many clients are preparing for auditions or performances, so be encouraging
+    - Some clients may be students or emerging artists, so be supportive
+    - Clients have already paid or will pay, so express gratitude for their business
+    - Your reputation depends on client satisfaction, so be thorough and helpful
     
     Format the response as JSON with two fields:
     {
-      "subject": "Email subject line",
-      "body": "Full email body content"
+      "subject": "Email subject line that creates excitement",
+      "body": "Full email body content with proper line breaks"
     }
+    
+    Example structure to follow:
+    "subject": "Your [Song Title] backing track is ready for [Client Name]!",
+    "body": "Hi [Client Name],
+
+I hope you're having a wonderful day!
+
+I'm thrilled to let you know that your custom piano backing track for "[Song Title]" from [Musical/Artist] is now complete and ready for your audition/performance/practice.
+
+[Personalized details about how you addressed their specific requests]
+
+Here's a breakdown of the work completed:
+• [Track type] in [key]: [Price]
+${request.additional_services.map(service => `• ${service}: $${getServicePrice(service)}`).join('\n')}
+
+Total amount: $[Total]
+
+You can complete your payment via:
+1. Buy Me a Coffee: [link]
+2. Direct bank transfer: [details]
+
+[Offer adjustments or revisions]
+
+Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your [audition/performance] goes!
+
+Break a leg,
+Daniele
+🎹 Piano Backings by Daniele
+📧 pianobackingsbydaniele@gmail.com"
     `;
     
     // Generate content
@@ -72,7 +114,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
       
       // Fallback to a basic email structure
       return {
-        subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist}`,
+        subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist} is ready!`,
         body: `Hi ${request.name},
 
 I hope you're doing well!
@@ -102,7 +144,7 @@ Daniele
     
     // Fallback email template
     return {
-      subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist}`,
+      subject: `Your piano backing – ${request.song_title} from ${request.musical_or_artist} is ready!`,
       body: `Hi ${request.name},
 
 Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now ready.
@@ -134,10 +176,10 @@ const getBasePrice = (trackType: string) => {
 
 const getServicePrice = (service: string) => {
   switch (service) {
-    case 'Rush Order': return '10';
-    case 'Complex Songs': return '7';
-    case 'Additional Edits': return '5';
-    case 'Exclusive Ownership': return '40';
+    case 'rush-order': return '10';
+    case 'complex-songs': return '7';
+    case 'additional-edits': return '5';
+    case 'exclusive-ownership': return '40';
     default: return '0';
   }
 };
