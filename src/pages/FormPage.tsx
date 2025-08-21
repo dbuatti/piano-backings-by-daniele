@@ -39,6 +39,7 @@ const FormPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false); // New state for admin status
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
   const [loadingTrackCount, setLoadingTrackCount] = useState(true);
   const [formData, setFormData] = useState({
@@ -73,6 +74,11 @@ const FormPage = () => {
           email: session.user.email || '',
           name: session.user.user_metadata?.full_name || ''
         }));
+        // Check if user is admin
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        setIsAdmin(adminEmails.includes(session.user.email));
+      } else {
+        setIsAdmin(false); // Ensure isAdmin is false if no session
       }
     };
     checkUser();
@@ -488,16 +494,18 @@ const FormPage = () => {
               <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
             </ul>
             
-            <div className="mt-4">
-              <Button 
-                type="button" 
-                onClick={fillDummyData}
-                className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-sm w-full"
-                size="sm"
-              >
-                Fill with Sample Data
-              </Button>
-            </div>
+            {isAdmin && ( // Conditionally render the button
+              <div className="mt-4">
+                <Button 
+                  type="button" 
+                  onClick={fillDummyData}
+                  className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-sm w-full"
+                  size="sm"
+                >
+                  Fill with Sample Data
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
