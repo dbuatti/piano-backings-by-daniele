@@ -59,16 +59,35 @@ const CompletionEmailDialog = ({
 
   <p>Thank you so much for choosing Piano Backings by Daniele.</p>
 
+  <p style="margin-top: 20px;">Warmly,</p>
+  <p style="margin: 0; font-weight: bold;">Daniele Buatti</p>
+
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-    <p style="margin: 0; font-weight: bold;">Warmly,</p>
-    <p style="margin: 0; font-weight: bold;">Daniele Buatti</p>
-    <p style="margin: 5px 0 0 0; color: #1C0357; font-weight: bold;">Piano Backings by Daniele</p>
-    <p style="margin: 5px 0 0 0;">
-      <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a><br>
-      <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none;">YouTube</a> | 
-      <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none;">Instagram</a> | 
-      <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none;">Facebook</a>
-    </p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+      <tr>
+        <td valign="top" style="padding-right: 20px; width: 150px;">
+          <p style="margin: 0; font-weight: bold; color: #F538BC; font-size: 18px;">Daniele Buatti</p>
+          <p style="margin: 5px 0 0 0; color: #1C0357; font-size: 14px;">Piano Backings by Daniele</p>
+        </td>
+        <td valign="top" style="border-left: 2px solid #F538BC; padding-left: 20px;">
+          <p style="margin: 0; color: #333;"><strong style="color: #1C0357;">M</strong> 0424 174 067</p>
+          <p style="margin: 5px 0; color: #333;"><strong style="color: #1C0357;">E</strong> <a href="mailto:pianobackingsbydaniele@gmail.com" style="color: #007bff; text-decoration: none;">pianobackingsbydaniele@gmail.com</a></p>
+          <p style="margin: 10px 0 5px 0; font-weight: bold; color: #1C0357;">Piano Backings By Daniele</p>
+          <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
+          <div style="margin-top: 15px;">
+            <a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="display: inline-block; margin-right: 5px;">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/1200px-2021_Facebook_icon.svg.png" alt="Facebook" width="24" height="24" style="vertical-align: middle;">
+            </a>
+            <a href="https://www.youtube.com/@pianobackingsbydaniele" target="_blank" style="display: inline-block; margin-right: 5px;">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1200px-YouTube_full-color_icon_%282017%29.svg.png" alt="YouTube" width="24" height="24" style="vertical-align: middle;">
+            </a>
+            <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" style="display: inline-block;">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/1200px-Instagram_logo_2016.svg.png" alt="Instagram" width="24" height="24" style="vertical-align: middle;">
+            </a>
+          </div>
+        </td>
+      </tr>
+    </table>
   </div>
 </div>`;
   };
