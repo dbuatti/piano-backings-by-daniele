@@ -50,27 +50,20 @@ const CompletionEmailDialog = ({
     }
   };
 
+  // Helper function to get base price range for backing types
+  const getBasePriceRange = (type: string) => {
+    switch (type) {
+      case 'full-song': return '$30-$40';
+      case 'audition-cut': return '$15-$25';
+      case 'note-bash': return '$10-$15';
+      default: return 'Price Varies';
+    }
+  };
+
   // Generate the default email content
   const generateDefaultEmailContent = () => {
-    let basePrice = 0;
-    let backingTypeName = '';
-    switch (backingType) {
-      case 'full-song':
-        basePrice = 30;
-        backingTypeName = 'Full Song Backing';
-        break;
-      case 'audition-cut':
-        basePrice = 15;
-        backingTypeName = 'Audition Cut Backing';
-        break;
-      case 'note-bash':
-        basePrice = 10;
-        backingTypeName = 'Note/Melody Bash';
-        break;
-      default:
-        basePrice = 0;
-        backingTypeName = 'Backing Track';
-    }
+    const basePriceRange = getBasePriceRange(backingType);
+    const backingTypeName = backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
     const servicesList = additionalServices.map(serviceId => {
       const detail = getServiceDetails(serviceId);
@@ -82,7 +75,7 @@ const CompletionEmailDialog = ({
 Great news! Your custom piano backing track for "${songTitle}" from ${musicalOrArtist} is now complete and ready for your use.
 
 Here's a breakdown of the work completed:
-• ${backingTypeName}: $${basePrice}
+• ${backingTypeName}: ${basePriceRange}
 ${servicesList ? servicesList + '\n' : ''}
 Total amount: $${cost.toFixed(2)}
 
@@ -133,60 +126,65 @@ https://www.facebook.com/PianoBackingsbyDaniele
 
       // Combine content with signature
       const finalEmailContent = `${emailContent}\n\n${emailSignature}`;
+      const basePriceRange = getBasePriceRange(backingType);
+      const backingTypeName = backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
       // Generate HTML for the email body
       const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-          <p>Hi ${clientName},</p>
+        <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://kyfofikkswxtwgtqutdu.supabase.co/storage/v1/object/public/assets/logo.jpeg" alt="Piano Backings by Daniele Logo" style="height: 80px; border-radius: 8px; border: 2px solid #FF00B3;">
+          </div>
+          <h2 style="color: #1C0357; text-align: center; margin-bottom: 25px; font-size: 24px;">Your Backing Track is Ready!</h2>
+          
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Hi ${clientName},</p>
 
-          <p>Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> from <strong>${musicalOrArtist}</strong> is now complete and ready for your use.</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> from <strong>${musicalOrArtist}</strong> is now complete and ready for your use.</p>
 
-          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #1C0357;">Pricing Breakdown</h3>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-              <li><strong>${backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}:</strong> $${backingType === 'full-song' ? 30 : backingType === 'audition-cut' ? 15 : backingType === 'note-bash' ? 10 : 0}</li>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #eee;">
+            <h3 style="margin-top: 0; color: #1C0357; font-size: 18px; margin-bottom: 15px;">Pricing Breakdown</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 15px; color: #555;">
+              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${basePriceRange}</li>
               ${additionalServices.map(serviceId => {
                 const detail = getServiceDetails(serviceId);
-                return `<li><strong>${detail.name}:</strong> $${detail.price}</li>`;
+                return `<li style="margin-bottom: 8px;"><strong>${detail.name}:</strong> $${detail.price}</li>`;
               }).join('')}
-              <li style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;"><strong>Total Amount:</strong> $${cost.toFixed(2)}</li>
+              <li style="border-top: 1px solid #ddd; padding-top: 12px; margin-top: 12px; font-size: 18px; font-weight: bold; color: #1C0357;"><strong>Total Amount:</strong> $${cost.toFixed(2)}</li>
             </ul>
           </div>
 
           ${trackUrl ? 
-            `<p>You can download your track using the button below:</p>
-            <p style="text-align: center; margin: 30px 0;">
+            `<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 30px;">You can download your track using the button below:</p>
+            <p style="text-align: center; margin: 25px 0;">
               <a href="${trackUrl}" 
-                 style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                 style="background-color: #1C0357; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 16px;">
                 Download Your Track
               </a>
             </p>` : 
-            '<p>Your track is ready! Please contact Daniele if you do not see a download link.</p>'}
+            '<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 30px;">Your track is ready! Please contact Daniele if you do not see a download link.</p>'}
 
           ${sharedLink ? 
-            `<p>You can also view all your request details and tracks on your personal dashboard here:</p>
+            `<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 20px;">You can also view all your request details and tracks on your personal dashboard here:</p>
             <p style="text-align: center; margin: 20px 0;">
               <a href="${sharedLink}" 
-                 style="background-color: #F538BC; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                 style="background-color: #F538BC; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 15px;">
                 View My Dashboard
               </a>
             </p>` : ''}
 
-          <p>If you have any questions or need any adjustments—tempo, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333; margin-top: 30px;">If you have any questions or need any adjustments—tempo, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.</p>
 
-          <p>Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your audition/performance goes!</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your audition/performance goes!</p>
 
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="margin: 0;"><strong>Warmly,</strong></p>
-            <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
-            <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
-            <p style="margin: 5px 0 0 0;">
-              <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
-            </p>
-            <p style="margin: 5px 0 0 0;">
-              <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none;">YouTube</a> | 
-              <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none;">Instagram</a> | 
-              <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none;">Facebook</a>
+          <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #eee; text-align: center;">
+            <p style="margin: 0; font-size: 16px; color: #1C0357;"><strong>Warmly,</strong></p>
+            <p style="margin: 5px 0 0 0; font-size: 18px; color: #1C0357;"><strong>Daniele Buatti</strong></p>
+            <p style="margin: 5px 0 0 0; font-size: 15px; color: #555;">Piano Backings by Daniele</p>
+            <p style="margin: 15px 0 0 0; font-size: 14px;">
+              <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none; margin: 0 8px;">pianobackings.com</a> | 
+              <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none; margin: 0 8px;">YouTube</a> | 
+              <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none; margin: 0 8px;">Instagram</a> | 
+              <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none; margin: 0 8px;">Facebook</a>
             </p>
           </div>
         </div>`;
@@ -310,57 +308,60 @@ https://www.facebook.com/PianoBackingsbyDaniele
                 <div 
                   className="prose max-w-none"
                   dangerouslySetInnerHTML={{ 
-                    __html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-          <p>Hi ${clientName},</p>
+                    __html: `<div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://kyfofikkswxtwgtqutdu.supabase.co/storage/v1/object/public/assets/logo.jpeg" alt="Piano Backings by Daniele Logo" style="height: 80px; border-radius: 8px; border: 2px solid #FF00B3;">
+          </div>
+          <h2 style="color: #1C0357; text-align: center; margin-bottom: 25px; font-size: 24px;">Your Backing Track is Ready!</h2>
+          
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Hi ${clientName},</p>
 
-          <p>Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> from <strong>${musicalOrArtist}</strong> is now complete and ready for your use.</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Great news! Your custom piano backing track for <strong>"${songTitle}"</strong> from <strong>${musicalOrArtist}</strong> is now complete and ready for your use.</p>
 
-          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #1C0357;">Pricing Breakdown</h3>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-              <li><strong>${backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}:</strong> $${backingType === 'full-song' ? 30 : backingType === 'audition-cut' ? 15 : backingType === 'note-bash' ? 10 : 0}</li>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #eee;">
+            <h3 style="margin-top: 0; color: #1C0357; font-size: 18px; margin-bottom: 15px;">Pricing Breakdown</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 15px; color: #555;">
+              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${basePriceRange}</li>
               ${additionalServices.map(serviceId => {
                 const detail = getServiceDetails(serviceId);
-                return `<li><strong>${detail.name}:</strong> $${detail.price}</li>`;
+                return `<li style="margin-bottom: 8px;"><strong>${detail.name}:</strong> $${detail.price}</li>`;
               }).join('')}
-              <li style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;"><strong>Total Amount:</strong> $${cost.toFixed(2)}</li>
+              <li style="border-top: 1px solid #ddd; padding-top: 12px; margin-top: 12px; font-size: 18px; font-weight: bold; color: #1C0357;"><strong>Total Amount:</strong> $${cost.toFixed(2)}</li>
             </ul>
           </div>
 
           ${trackUrl ? 
-            `<p>You can download your track using the button below:</p>
-            <p style="text-align: center; margin: 30px 0;">
+            `<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 30px;">You can download your track using the button below:</p>
+            <p style="text-align: center; margin: 25px 0;">
               <a href="${trackUrl}" 
-                 style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                 style="background-color: #1C0357; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 16px;">
                 Download Your Track
               </a>
             </p>` : 
-            '<p>Your track is ready! Please contact Daniele if you do not see a download link.</p>'}
+            '<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 30px;">Your track is ready! Please contact Daniele if you do not see a download link.</p>'}
 
           ${sharedLink ? 
-            `<p>You can also view all your request details and tracks on your personal dashboard here:</p>
+            `<p style="font-size: 16px; line-height: 1.6; color: #333; text-align: center; margin-top: 20px;">You can also view all your request details and tracks on your personal dashboard here:</p>
             <p style="text-align: center; margin: 20px 0;">
               <a href="${sharedLink}" 
-                 style="background-color: #F538BC; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                 style="background-color: #F538BC; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 15px;">
                 View My Dashboard
               </a>
             </p>` : ''}
 
-          <p>If you have any questions or need any adjustments—tempo, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333; margin-top: 30px;">If you have any questions or need any adjustments—tempo, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.</p>
 
-          <p>Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your audition/performance goes!</p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your audition/performance goes!</p>
 
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="margin: 0;"><strong>Warmly,</strong></p>
-            <p style="margin: 0;"><strong>Daniele Buatti</strong></p>
-            <p style="margin: 5px 0 0 0; color: #1C0357;"><strong>Piano Backings by Daniele</strong></p>
-            <p style="margin: 5px 0 0 0;">
-              <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none;">pianobackings.com</a>
-            </p>
-            <p style="margin: 5px 0 0 0;">
-              <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none;">YouTube</a> | 
-              <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none;">Instagram</a> | 
-              <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none;">Facebook</a>
+          <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #eee; text-align: center;">
+            <p style="margin: 0; font-size: 16px; color: #1C0357;"><strong>Warmly,</strong></p>
+            <p style="margin: 5px 0 0 0; font-size: 18px; color: #1C0357;"><strong>Daniele Buatti</strong></p>
+            <p style="margin: 5px 0 0 0; font-size: 15px; color: #555;">Piano Backings by Daniele</p>
+            <p style="margin: 15px 0 0 0; font-size: 14px;">
+              <a href="https://pianobackings.com" style="color: #1C0357; text-decoration: none; margin: 0 8px;">pianobackings.com</a> | 
+              <a href="https://www.youtube.com/@pianobackingsbydaniele" style="color: #1C0357; text-decoration: none; margin: 0 8px;">YouTube</a> | 
+              <a href="https://www.instagram.com/pianobackingsbydaniele/" style="color: #1C0357; text-decoration: none; margin: 0 8px;">Instagram</a> | 
+              <a href="https://www.facebook.com/PianoBackingsbyDaniele" style="color: #1C0357; text-decoration: none; margin: 0 8px;">Facebook</a>
             </p>
           </div>
         </div>` 
