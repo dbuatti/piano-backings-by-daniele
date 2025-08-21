@@ -104,12 +104,12 @@ const FormPage = () => {
       voiceMemo: '',
       voiceMemoFile: null,
       sheetMusic: null,
-      youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY',
+      youtubeLink: '', // Keeping this empty to show it's optional
       trackPurpose: 'personal-practise',
       backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
-      specialRequests: 'Please make sure the tempo matches the YouTube reference exactly.',
+      specialRequests: 'Please make sure the tempo matches the reference exactly.',
       category: 'Practice Tracks',
       trackType: 'polished'
     });
@@ -428,7 +428,7 @@ const FormPage = () => {
             <p className="mt-2 font-medium text-sm">Before submitting, please make sure to include:</p>
             <ul className="list-disc pl-4 mt-1 space-y-1 text-sm">
               <li>✔️ Your sheet music in PDF format (required)</li>
-              <li>✔️ A YouTube link to the song (for tempo reference) (required)</li>
+              <li>✔️ A YouTube link to the song (for tempo reference) (optional but recommended)</li>
               <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
             </ul>
             
@@ -697,7 +697,7 @@ const FormPage = () => {
                   <div>
                     <Label htmlFor="youtubeLink" className="flex items-center text-sm">
                       <LinkIcon className="mr-1" size={14} />
-                      YouTube URL for tempo reference <span className="text-red-500 ml-1">*</span>
+                      YouTube URL for tempo reference (optional)
                     </Label>
                     <div className="mt-1 relative">
                       <Input 
@@ -706,7 +706,6 @@ const FormPage = () => {
                         value={formData.youtubeLink} 
                         onChange={handleInputChange} 
                         placeholder="https://www.youtube.com/watch?v=..."
-                        required
                         className="pl-8 py-2 text-sm"
                       />
                       <Youtube className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
