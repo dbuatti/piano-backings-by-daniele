@@ -19,6 +19,7 @@ const EmailGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', body: '' });
   const [formData, setFormData] = useState({
+    id: '',
     name: '',
     email: '',
     song_title: '',
@@ -49,6 +50,7 @@ const EmailGenerator = () => {
           if (error) throw error;
           
           setFormData({
+            id: data.id || '',
             name: data.name || '',
             email: data.email || '',
             song_title: data.song_title || '',
@@ -75,6 +77,7 @@ const EmailGenerator = () => {
       else if (location.state?.request) {
         const request = location.state.request;
         setFormData({
+          id: request.id || '',
           name: request.name || '',
           email: request.email || '',
           song_title: request.song_title || '',
@@ -117,6 +120,7 @@ const EmailGenerator = () => {
     setIsGenerating(true);
     try {
       const request: BackingRequest = {
+        id: formData.id,
         name: formData.name,
         email: formData.email,
         song_title: formData.song_title,

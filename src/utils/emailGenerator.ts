@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
 
 export interface BackingRequest {
+  id?: string;
   name: string;
   email: string;
   song_title: string;
@@ -30,6 +31,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     Generate a personalized, warm, and professional email for a completed backing track request.
     
     Request details:
+    - Request ID: ${request.id || 'N/A'}
     - Client name: ${request.name}
     - Client email: ${request.email}
     - Song title: "${request.song_title}"
@@ -54,7 +56,8 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     7. Proactively offer adjustments or revisions to ensure satisfaction
     8. Include a personalized sign-off that reflects your professional relationship
     9. Add your signature with contact information
-    10. Keep the tone professional yet friendly, showing genuine care for their success
+    10. Include a link to their customer portal where they can view their request details and download their track
+    11. Keep the tone professional yet friendly, showing genuine care for their success
     
     Additional context for tone:
     - Many clients are preparing for auditions or performances, so be encouraging
@@ -87,6 +90,9 @@ Total amount: $[Total]
 You can complete your payment via:
 1. Buy Me a Coffee: [link]
 2. Direct bank transfer: [details]
+
+You can view your request details and download your track at any time using this link:
+[Customer Portal Link]
 
 [Offer adjustments or revisions]
 
@@ -130,13 +136,17 @@ ${request.additional_services.map(service => `- ${service}: $${getServicePrice(s
 You can pay easily via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
 Or let me know if you'd prefer a direct bank transfer.
 
+You can view your request details and download your track at any time using this link:
+https://pianobackings.com/track/${request.id}
+
 If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just let me know, and I'll happily adjust it.
 
 Thanks so much, and best of luck with your performance!
 
 Warm regards,
 Daniele
-🎹 Piano Backings by Daniele`
+🎹 Piano Backings by Daniele
+📧 pianobackingsbydaniele@gmail.com`
       };
     }
   } catch (error) {
@@ -154,6 +164,9 @@ Pricing summary:
 ${request.additional_services.map(service => `- ${service}: $${getServicePrice(service)}`).join('\n')}
 
 You can pay via Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
+
+You can view your request details and download your track at any time using this link:
+https://pianobackings.com/track/${request.id}
 
 Let me know if you need any adjustments!
 
