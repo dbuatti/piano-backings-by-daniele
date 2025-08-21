@@ -57,6 +57,12 @@ const GmailOAuthCallback = () => {
           throw new Error('You must be logged in to complete OAuth');
         }
         
+        // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        if (!adminEmails.includes(session.user.email)) {
+          throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
+        }
+        
         // Call our Edge Function to exchange the code for tokens
         const response = await fetch(
           `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/gmail-oauth-callback`,

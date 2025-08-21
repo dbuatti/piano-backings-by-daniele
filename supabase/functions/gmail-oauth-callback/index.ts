@@ -63,8 +63,9 @@ serve(async (req) => {
     
     console.log("Authenticated user:", user.email);
     
-    // Check if user is admin (daniele.buatti@gmail.com)
-    if (user.email !== 'daniele.buatti@gmail.com') {
+    // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+    const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+    if (!adminEmails.includes(user.email)) {
       throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
     }
     
