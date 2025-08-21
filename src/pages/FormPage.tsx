@@ -243,7 +243,7 @@ const FormPage = () => {
       
       console.log('Submitting form data:', submissionData);
       
-      // Prepare headers
+      // Prepare headers - only include Authorization if user is logged in
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
