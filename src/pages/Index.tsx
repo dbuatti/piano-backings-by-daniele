@@ -1,11 +1,27 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, Chrome } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/form-page`,
+        },
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -15,11 +31,20 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-[#1C0357]">Professional Piano Backing Tracks</h1>
           <p className="text-xl md:text-2xl font-light text-[#1C0357]/90 mb-8">For Musicals, Auditions & Performances</p>
-          <Link to="/form-page">
-            <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3">
-              Order Custom Track
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/form-page">
+              <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3">
+                Order Custom Track
+              </Button>
+            </Link>
+            <Button 
+              onClick={handleGoogleSignIn}
+              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-lg px-8 py-3 flex items-center justify-center"
+            >
+              <Chrome className="mr-2 h-5 w-5 text-blue-500" />
+              Sign in with Google
             </Button>
-          </Link>
+          </div>
         </div>
       </section>
 

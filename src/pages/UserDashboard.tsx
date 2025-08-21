@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye } from 'lucide-react';
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const UserDashboard = () => {
@@ -127,6 +127,29 @@ const UserDashboard = () => {
           <h1 className="text-3xl font-bold text-[#1C0357]">Your Tracks Dashboard</h1>
           <p className="text-lg text-[#1C0357]/90">Access your backing tracks and request history</p>
         </div>
+        
+        {user && (
+          <Card className="mb-6 bg-white shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />
+                </div>
+                <div className="ml-4">
+                  <h2 className="text-xl font-bold text-[#1C0357]">
+                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
+                  </h2>
+                  <p className="text-gray-600">{user.email}</p>
+                  <p className="text-sm text-gray-500">
+                    {user.app_metadata?.provider 
+                      ? `Signed in with ${user.app_metadata.provider.charAt(0).toUpperCase() + user.app_metadata.provider.slice(1)}` 
+                      : 'Signed in with email'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         {showAccountPrompt && (
           <Alert className="mb-6 bg-[#1C0357] text-white border-[#1C0357]">
