@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
+import FileInput from "@/components/FileInput"; // Import the new FileInput component
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -140,10 +141,9 @@ const FormPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, [fieldName]: e.target.files![0] }));
-    }
+  // Updated handler for the new FileInput component
+  const handleFileInputChange = (file: File | null, fieldName: string) => {
+    setFormData(prev => ({ ...prev, [fieldName]: file }));
   };
 
   const handleCheckboxChange = (service: string) => {
@@ -785,44 +785,29 @@ const FormPage = () => {
                           <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
                       </div>
-                      <div>
-                        <Label htmlFor="voiceMemoFile" className="text-xs text-gray-600 mb-1">Upload voice memo file</Label>
-                        <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm">
-                          <MicIcon className="text-gray-400 mr-2" size={14} />
-                          <Input 
-                            id="voiceMemoFile" 
-                            name="voiceMemoFile" 
-                            type="file" 
-                            accept="audio/*" 
-                            onChange={(e) => handleFileChange(e, 'voiceMemoFile')} 
-                            className="w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Note: Voice memo uploads may not be available at this time</p>
-                      </div>
+                      {/* Using the new FileInput component */}
+                      <FileInput
+                        id="voiceMemoFile"
+                        label="Upload voice memo file"
+                        icon={MicIcon}
+                        accept="audio/*"
+                        onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                        note="Note: Voice memo uploads may not be available at this time"
+                      />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="sheetMusic" className="flex items-center text-sm mb-1">
-                      <FileTextIcon className="mr-1" size={14} />
-                      Please upload your sheet music as a PDF <span className="text-red-500 ml-1">*</span>
-                    </Label>
-                    <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm">
-                      <FileTextIcon className="text-gray-400 mr-2" size={14} />
-                      <Input 
-                        id="sheetMusic" 
-                        name="sheetMusic" 
-                        type="file" 
-                        accept=".pdf" 
-                        onChange={(e) => handleFileChange(e, 'sheetMusic')} 
-                        required 
-                        className="w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Make sure it's clear and in the right key</p>
-                  </div>
+                  {/* Using the new FileInput component */}
+                  <FileInput
+                    id="sheetMusic"
+                    label="Please upload your sheet music as a PDF"
+                    icon={FileTextIcon}
+                    accept=".pdf"
+                    onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
+                    required
+                    note="Make sure it's clear and in the right key"
+                  />
                   
                   <div className="space-y-4">
                     <div>
