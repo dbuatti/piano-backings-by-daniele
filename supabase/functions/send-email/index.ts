@@ -29,8 +29,6 @@ serve(async (req) => {
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
-    // ADMIN_EMAIL is no longer directly used for token retrieval here, but kept for reference if needed elsewhere
-    // const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; 
 
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
@@ -95,23 +93,36 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Refreshing access token for ${emailToFetchTokenFor} using service role`);
       
-      // First, get the user ID from auth.users table for the specified email
-      const { data: userToFetchTokenFor, error: userToFetchTokenForError } = await supabaseAdmin
-        .from('auth.users')
-        .select('id')
-        .eq('email', emailToFetchTokenFor)
-        .single();
-
-      if (userToFetchTokenForError) {
-        console.error(`Supabase query error for user ID (${emailToFetchTokenFor}):`, userToFetchTokenForError);
-        throw new Error(`Failed to fetch user ID for ${emailToFetchTokenFor}: ${userToFetchTokenForError.message}`);
+      // Use the Supabase Admin client's auth.admin.getUserByEmail method to get user details
+      // This avoids direct table access issues with auth schema in Edge Functions
+      let userIdToFetchTokenFor: string | null = null;
+      try {
+        console.log(`Attempting to get user by email: ${emailToFetchTokenFor}`);
+        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
+        
+        if (userError) {
+          console.error(`Supabase auth.admin.getUserByEmail error for ${emailToFetchTokenFor}:`, userError);
+          // Check if it's a "User not found" error
+          if (userError.message && userError.message.includes('User not found')) {
+             throw new Error(`User with email ${emailToFetchTokenFor} not found via auth.admin.getUserByEmail. Please ensure this user exists and has completed Gmail OAuth.`);
+          } else {
+             // Re-throw other errors
+             throw new Error(`Error fetching user ${emailToFetchTokenFor} via auth.admin.getUserByEmail: ${userError.message}`);
+          }
+        }
+        
+        if (!userData || !userData.user) {
+          throw new Error(`User data not returned for ${emailToFetchTokenFor} via auth.admin.getUserByEmail.`);
+        }
+        
+        userIdToFetchTokenFor = userData.user.id;
+        console.log(`User ID for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
+        
+      } catch (getUserError: any) {
+        // Catch any errors from the try block above
+        console.error(`Error in getUserByEmail block for ${emailToFetchTokenFor}:`, getUserError);
+        throw new Error(`Failed to fetch user ID for ${emailToFetchTokenFor}: ${getUserError.message}`);
       }
-      if (!userToFetchTokenFor) {
-        throw new Error(`User with email ${emailToFetchTokenFor} not found in auth.users. Please ensure this user exists and has completed Gmail OAuth.`);
-      }
-
-      const userIdToFetchTokenFor = userToFetchTokenFor.id;
-      console.log(`User ID for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
 
       // Get the stored refresh token for this user
       const { data: tokenData, error: tokenError } = await supabaseAdmin
@@ -121,8 +132,8 @@ serve(async (req) => {
         .single();
       
       if (tokenError || !tokenData) {
-        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor}:`, tokenError);
-        throw new Error(`No Gmail tokens found for user ${emailToFetchTokenFor} in database. Please ensure this user has completed Gmail OAuth.`);
+        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}):`, tokenError);
+        throw new Error(`No Gmail tokens found for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}) in database. Please ensure this user has completed Gmail OAuth.`);
       }
       
       // Check if we have a refresh token
