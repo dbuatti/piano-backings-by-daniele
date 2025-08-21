@@ -80,7 +80,7 @@ const DropboxMonitor = () => {
             <div className="mb-6">
               <p className="mb-4">
                 This page tests if your Dropbox connection is properly configured and working.
-                Run this test periodically to ensure your access token is still valid.
+                Run this test periodically to ensure your refresh token is still valid.
               </p>
               
               <Button 
@@ -138,7 +138,7 @@ const DropboxMonitor = () => {
                     <h4 className="font-semibold text-[#1C0357] mb-3">Connection Status Summary:</h4>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span>Dropbox Access Token:</span>
+                        <span>Dropbox Credentials:</span>
                         <span className={`font-semibold ${testResult.dropboxError && testResult.dropboxError.includes('not configured') ? 'text-red-600' : 'text-green-600'}`}>
                           {testResult.dropboxError && testResult.dropboxError.includes('not configured') 
                             ? 'NOT CONFIGURED' 
@@ -178,8 +178,8 @@ const DropboxMonitor = () => {
                     </h4>
                     <ol className="list-decimal pl-5 space-y-2 text-sm">
                       <li>Go to the Dropbox App Console</li>
-                      <li>Generate a new access token for your app</li>
-                      <li>Update the DROPBOX_ACCESS_TOKEN secret in Supabase</li>
+                      <li>Generate a new refresh token for your app</li>
+                      <li>Update the DROPBOX_REFRESH_TOKEN secret in Supabase</li>
                       <li>Run this test again to confirm the connection</li>
                     </ol>
                   </div>
@@ -232,7 +232,7 @@ const DropboxMonitor = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex items-start">
                   <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span>Token expires after app permission changes</span>
+                  <span>Refresh token expires after app permission changes</span>
                 </li>
                 <li className="flex items-start">
                   <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />

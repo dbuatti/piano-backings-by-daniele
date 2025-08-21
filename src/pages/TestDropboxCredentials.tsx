@@ -110,7 +110,7 @@ const TestDropboxCredentials = () => {
                 <div className="mt-4 p-4 rounded-lg bg-blue-50">
                   <h4 className="font-semibold text-[#1C0357] mb-2">Result Summary:</h4>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>Dropbox access token configured: {
+                    <li>Dropbox credentials configured: {
                       result.dropboxError && result.dropboxError.includes('not configured') 
                         ? <span className="font-semibold text-red-600">NO</span> 
                         : <span className="font-semibold text-green-600">YES</span>
