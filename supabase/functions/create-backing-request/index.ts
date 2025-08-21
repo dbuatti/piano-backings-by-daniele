@@ -696,6 +696,31 @@ serve(async (req) => {
     try {
       console.log("Attempting to send email notification");
       
+      // Get the admin user ID for the email sender
+      const { data: adminUser, error: adminUserError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', adminEmail)
+        .single();
+
+      let adminUserIdForEmail: string | null = null;
+      if (adminUserError || !adminUser) {
+        console.error(`Could not find admin user with email ${adminEmail} in profiles table. Attempting to get from auth.users.`);
+        const { data: authAdminUser, error: authAdminUserError } = await supabase.auth.admin.getUserByEmail(adminEmail);
+        if (authAdminUserError || !authAdminUser) {
+          console.error(`Could not find admin user with email ${adminEmail} in auth.users table. Email notification will likely fail.`);
+        } else {
+          adminUserIdForEmail = authAdminUser.user.id;
+        }
+      } else {
+        adminUserIdForEmail = adminUser.id;
+      }
+
+      if (!adminUserIdForEmail) {
+        console.error("Admin user ID for email notification is null. Skipping email sending.");
+        throw new Error("Admin user ID for email notification is null. Cannot send email.");
+      }
+
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
       const emailHtml = `
@@ -764,12 +789,13 @@ serve(async (req) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for internal calls
+                // No Authorization header needed here, as adminUserId is passed in body
               },
               body: JSON.stringify({
                 to: email,
                 subject: emailSubject,
-                html: emailHtml
+                html: emailHtml,
+                adminUserId: adminUserIdForEmail // Pass the admin user ID here
               })
             }
           );
