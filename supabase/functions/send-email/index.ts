@@ -93,34 +93,34 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Refreshing access token for ${emailToFetchTokenFor} using service role`);
       
-      // Use the Supabase Admin client's auth.admin.getUserByEmail method to get user details
-      // This avoids direct table access issues with auth schema in Edge Functions
+      // Directly query the auth.users table to get the user ID
+      // This is a more reliable method in Edge Functions
       let userIdToFetchTokenFor: string | null = null;
       try {
-        console.log(`Attempting to get user by email: ${emailToFetchTokenFor}`);
-        const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
+        console.log(`Attempting to get user ID for email: ${emailToFetchTokenFor} by querying auth.users`);
         
-        if (userError) {
-          console.error(`Supabase auth.admin.getUserByEmail error for ${emailToFetchTokenFor}:`, userError);
-          // Check if it's a "User not found" error
-          if (userError.message && userError.message.includes('User not found')) {
-             throw new Error(`User with email ${emailToFetchTokenFor} not found via auth.admin.getUserByEmail. Please ensure this user exists and has completed Gmail OAuth.`);
-          } else {
-             // Re-throw other errors
-             throw new Error(`Error fetching user ${emailToFetchTokenFor} via auth.admin.getUserByEmail: ${userError.message}`);
-          }
+        // Use the service role client to query the auth.users table
+        const { data: users, error: userQueryError } = await supabaseAdmin
+          .from('users') // This refers to auth.users when using service role
+          .select('id')
+          .eq('email', emailToFetchTokenFor)
+          .single(); // We expect a single user
+        
+        if (userQueryError) {
+          console.error(`Error querying auth.users for ${emailToFetchTokenFor}:`, userQueryError);
+          throw new Error(`Error finding user ${emailToFetchTokenFor} in auth.users: ${userQueryError.message}`);
         }
         
-        if (!userData || !userData.user) {
-          throw new Error(`User data not returned for ${emailToFetchTokenFor} via auth.admin.getUserByEmail.`);
+        if (!users) {
+          throw new Error(`User with email ${emailToFetchTokenFor} not found in auth.users. Please ensure this user exists and has completed Gmail OAuth.`);
         }
         
-        userIdToFetchTokenFor = userData.user.id;
+        userIdToFetchTokenFor = users.id;
         console.log(`User ID for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
         
       } catch (getUserError: any) {
         // Catch any errors from the try block above
-        console.error(`Error in getUserByEmail block for ${emailToFetchTokenFor}:`, getUserError);
+        console.error(`Error in getUser ID block for ${emailToFetchTokenFor}:`, getUserError);
         throw new Error(`Failed to fetch user ID for ${emailToFetchTokenFor}: ${getUserError.message}`);
       }
 
