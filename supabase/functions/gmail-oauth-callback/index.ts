@@ -50,7 +50,7 @@ serve(async (req) => {
     console.log("Auth header present:", !!authHeader);
     
     if (!authHeader) {
-      throw new Error('Missing Authorization header - you must be logged into the application as an admin');
+      throw new Error('Missing Authorization header - you must be logged into the application as an admin to complete this OAuth flow');
     }
     
     const token = authHeader.replace('Bearer ', '');
@@ -63,10 +63,26 @@ serve(async (req) => {
     
     console.log("Authenticated Supabase user:", user.email);
     
+    // Log the user ID immediately after authentication
+    console.log("Authenticated Supabase user ID:", user.id);
+    
     // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
     const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
     if (!adminEmails.includes(user.email)) {
       throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
+    }
+    
+    // Double-check that the user ID matches the profile (if one exists)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means "no data found" which is fine
+      console.warn("Error fetching profile, but continuing:", profileError);
+    } else if (profile && profile.id !== user.id) {
+      throw new Error(`User ID mismatch: auth.users.id=${user.id} but profiles.id=${profile.id}. This should not happen!`);
     }
     
     let requestBody;
