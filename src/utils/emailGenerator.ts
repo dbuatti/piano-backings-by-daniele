@@ -32,6 +32,13 @@ Piano Backings by Daniele<br>
 `;
 
 export const generateEmailCopy = async (request: BackingRequest) => {
+  // Check if API key is valid
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
+    console.log("Gemini API key not configured, using fallback template");
+    return generateFallbackEmail(request);
+  }
+
   try {
     // Get the generative model
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -101,24 +108,34 @@ export const generateEmailCopy = async (request: BackingRequest) => {
       emailData.body += `\n\n${EMAIL_SIGNATURE}`;
       return emailData;
     } catch (parseError) {
-      // If parsing fails, create a warm, personalized email with proper HTML links
+      // If parsing fails, use fallback
       console.error('Error parsing Gemini response:', parseError);
-      
-      // Process special requests more intelligently
-      let specialRequestSummary = '';
-      if (request.special_requests) {
-        if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
-          specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
-        } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
-          specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
-        } else {
-          specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
-        }
-      }
-      
-      return {
-        subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
-        body: `Hi ${request.name},
+      return generateFallbackEmail(request);
+    }
+  } catch (error) {
+    console.error('Error generating email copy:', error);
+    // Use fallback email template
+    return generateFallbackEmail(request);
+  }
+};
+
+// Fallback email template
+const generateFallbackEmail = (request: BackingRequest) => {
+  // Process special requests more intelligently
+  let specialRequestSummary = '';
+  if (request.special_requests) {
+    if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
+      specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
+    } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
+      specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
+    } else {
+      specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
+    }
+  }
+  
+  return {
+    subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
+    body: `Hi ${request.name},
 
 I hope you're doing well!
 
@@ -144,54 +161,7 @@ If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just 
 Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
 
 ${EMAIL_SIGNATURE}`
-      };
-    }
-  } catch (error) {
-    console.error('Error generating email copy:', error);
-    
-    // Process special requests more intelligently
-    let specialRequestSummary = '';
-    if (request.special_requests) {
-      if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
-        specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
-      } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
-        specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
-      } else {
-        specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
-      }
-    }
-    
-    // Fallback email template with warm tone and plain text links for better email compatibility
-    return {
-      subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
-      body: `Hi ${request.name},
-
-I hope you're doing well!
-
-Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
-
-${request.special_requests ? specialRequestSummary : 'I\'ve prepared this track with great care to match your needs.'}
-
-Here's a breakdown of the work completed:
-• ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
-${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
-
-Total amount: $${calculateTotal(request.track_purpose, request.additional_services)}
-
-You can complete your payment via:
-1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
-2. Direct bank transfer: BSB: 923100 | Account: 301110875
-
-View your request details and download your track here:
-https://pianobackingsbydaniele.vercel.app/track/${request.id}
-
-If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
-
-Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
-
-${EMAIL_SIGNATURE}`
-    };
-  }
+  };
 };
 
 // Helper functions for pricing
