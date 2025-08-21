@@ -102,8 +102,11 @@ serve(async (req) => {
         .eq('email', emailToFetchTokenFor)
         .single();
 
-      if (userToFetchTokenForError || !userToFetchTokenFor) {
-        console.error(`Error fetching user ID for ${emailToFetchTokenFor}:`, userToFetchTokenForError);
+      if (userToFetchTokenForError) {
+        console.error(`Supabase query error for user ID (${emailToFetchTokenFor}):`, userToFetchTokenForError);
+        throw new Error(`Failed to fetch user ID for ${emailToFetchTokenFor}: ${userToFetchTokenForError.message}`);
+      }
+      if (!userToFetchTokenFor) {
         throw new Error(`User with email ${emailToFetchTokenFor} not found in auth.users. Please ensure this user exists and has completed Gmail OAuth.`);
       }
 
