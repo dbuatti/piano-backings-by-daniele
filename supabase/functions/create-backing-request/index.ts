@@ -64,8 +64,22 @@ serve(async (req) => {
       throw new Error('Invalid or expired token');
     }
     
-    // Get the request data
-    const { formData } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Parsed request body:', requestBody);
+    } catch (parseError) {
+      const rawBody = await req.text(); // Read raw body for better error message
+      console.error('Error parsing request body:', parseError);
+      console.error('Raw request body:', rawBody);
+      throw new Error(`Invalid JSON in request body: ${parseError.message}. Raw body: ${rawBody.substring(0, 200)}...`);
+    }
+
+    // Ensure formData exists in the request body
+    const { formData } = requestBody;
+    if (!formData) {
+      throw new Error('Missing formData in request body. Please ensure the request body contains a "formData" object.');
+    }
     
     // Extract first name from the full name
     const firstName = formData.name ? formData.name.split(' ')[0] : 'anonymous';
@@ -663,7 +677,7 @@ serve(async (req) => {
     }
     
     // Save to the database
-    const { data, error } = await supabase
+    const { data: insertedRecords, error: insertError } = await supabase
       .from('backing_requests')
       .insert([
         {
@@ -688,8 +702,15 @@ serve(async (req) => {
       ])
       .select();
 
-    if (error) {
-      throw error;
+    if (insertError) {
+      console.error('Supabase insert error:', insertError);
+      throw insertError;
+    }
+
+    // Ensure insertedRecords is an array and get the first element
+    const newRequestData = insertedRecords && insertedRecords.length > 0 ? insertedRecords[0] : null;
+    if (!newRequestData) {
+        throw new Error('Failed to insert backing request into database: No data returned after insert.');
     }
 
     // Send email notification to admins with improved error handling
@@ -761,7 +782,7 @@ serve(async (req) => {
           </div>
           
           <div style="margin: 20px 0;">
-            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${data[0].id}" 
+            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${newRequestData.id}" 
                style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Request Details
             </a>
@@ -891,7 +912,7 @@ serve(async (req) => {
     
     const responsePayload: any = { 
       message: 'Request submitted successfully',
-      data,
+      insertedRequest: newRequestData, // Use the explicitly checked newRequestData
       dropboxFolderId,
       parentFolderUsed: parentFolder,
       folderNameUsed: folderName,
@@ -952,7 +973,7 @@ serve(async (req) => {
           ...corsHeaders,
           'Content-Type': 'application/json' 
         },
-        status: 400
+        status: 500
       }
     );
   }
