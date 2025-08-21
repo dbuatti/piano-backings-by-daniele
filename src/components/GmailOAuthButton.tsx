@@ -3,10 +3,16 @@ import { Button } from "@/components/ui/button";
 
 const GmailOAuthButton: React.FC = () => {
   const initiateOAuth = () => {
-    // Use environment variables directly or fallback to a default
-    // In a production app, these should be properly configured in your environment
-    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID || "YOUR_GMAIL_CLIENT_ID";
+    // Use environment variables directly
+    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
     const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
+    
+    // Check if client ID is available
+    if (!clientId) {
+      console.error('GMAIL_CLIENT_ID is not set in environment variables');
+      alert('Gmail OAuth is not properly configured. Please check environment variables.');
+      return;
+    }
     
     // Scopes required for sending emails
     const scopes = 'https://www.googleapis.com/auth/gmail.send';

@@ -5,6 +5,13 @@ export const initiateOAuth = () => {
   const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
   const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
   
+  // Check if client ID is available
+  if (!clientId) {
+    console.error('GMAIL_CLIENT_ID is not set in environment variables');
+    alert('Gmail OAuth is not properly configured. Please check environment variables.');
+    return;
+  }
+  
   // Scopes required for sending emails
   const scopes = 'https://www.googleapis.com/auth/gmail.send';
   
