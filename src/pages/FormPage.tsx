@@ -779,15 +779,15 @@ const FormPage = () => {
                       </div>
                       <div>
                         <Label htmlFor="voiceMemoFile" className="text-xs text-gray-600 mb-1">Upload voice memo file</Label>
-                        <div className="relative flex items-center border border-input rounded-md px-3 py-2 text-sm">
-                          <MicIcon className="absolute left-2 text-gray-400" size={14} />
-                          <input 
+                        <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm">
+                          <MicIcon className="text-gray-400 mr-2" size={14} />
+                          <Input 
                             id="voiceMemoFile" 
                             name="voiceMemoFile" 
                             type="file" 
                             accept="audio/*" 
                             onChange={(e) => handleFileChange(e, 'voiceMemoFile')} 
-                            className="pl-6 w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
+                            className="w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
                           />
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Note: Voice memo uploads may not be available at this time</p>
@@ -801,8 +801,8 @@ const FormPage = () => {
                       <FileTextIcon className="mr-1" size={14} />
                       Please upload your sheet music as a PDF <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <div className="relative flex items-center border border-input rounded-md px-3 py-2 text-sm">
-                      <FileTextIcon className="absolute left-2 text-gray-400" size={14} />
+                    <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm">
+                      <FileTextIcon className="text-gray-400 mr-2" size={14} />
                       <Input 
                         id="sheetMusic" 
                         name="sheetMusic" 
@@ -810,7 +810,7 @@ const FormPage = () => {
                         accept=".pdf" 
                         onChange={(e) => handleFileChange(e, 'sheetMusic')} 
                         required 
-                        className="pl-6 w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
+                        className="w-full file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#D1AAF2] file:text-[#1C0357] hover:file:bg-[#D1AAF2]/80 cursor-pointer"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Make sure it's clear and in the right key</p>
