@@ -86,6 +86,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import PricingMatrix from '@/components/PricingMatrix';
+import CompletionEmailDialog from '@/components/CompletionEmailDialog';
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -1471,6 +1472,20 @@ const AdminDashboard = () => {
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p>Generate Email</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <CompletionEmailDialog 
+                                        requestId={request.id}
+                                        clientEmail={request.email}
+                                        clientName={request.name || 'Client'}
+                                        songTitle={request.song_title}
+                                        trackUrl={request.track_url}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Email Client</p>
                                     </TooltipContent>
                                   </Tooltip>
                                   <Tooltip>
