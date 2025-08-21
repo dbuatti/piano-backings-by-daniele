@@ -567,6 +567,101 @@ serve(async (req) => {
       }
     }
     
+    // Upload voice memo to Dropbox folder if provided
+    let voiceMemoUploadSuccess = false;
+    let voiceMemoUploadError = null;
+    
+    if (dropboxFolderId && formData.voiceMemoFileUrl && dropboxAccessToken) {
+      try {
+        // Download the voice memo from Supabase storage
+        console.log('Attempting to download voice memo from:', formData.voiceMemoFileUrl);
+        const voiceMemoResponse = await fetch(formData.voiceMemoFileUrl);
+        if (!voiceMemoResponse.ok) {
+          throw new Error(`Failed to download voice memo from Supabase: ${voiceMemoResponse.status} ${voiceMemoResponse.statusText}`);
+        }
+        
+        const voiceMemoBuffer = await voiceMemoResponse.arrayBuffer();
+        const fileExt = getFileExtensionFromUrl(formData.voiceMemoFileUrl);
+        const voiceMemoFileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_voice_memo.${fileExt}`;
+        
+        // Upload to Dropbox
+        const uploadPath = `${dropboxFolderPath}/${voiceMemoFileName}`;
+        console.log('Uploading voice memo to Dropbox at path:', uploadPath);
+        
+        const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Dropbox-API-Arg': JSON.stringify({
+              path: uploadPath,
+              mode: 'add',
+              autorename: true,
+              mute: false
+            }),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: voiceMemoBuffer
+        });
+        
+        if (dropboxUploadResponse.ok) {
+          voiceMemoUploadSuccess = true;
+          console.log('Voice memo uploaded successfully to Dropbox');
+        } else {
+          const errorText = await dropboxUploadResponse.text();
+          console.error('Dropbox voice memo upload error:', dropboxUploadResponse.status, errorText);
+          voiceMemoUploadError = `Dropbox voice memo upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('Voice memo upload error:', error);
+        voiceMemoUploadError = `Voice memo upload error: ${error.message}`;
+      }
+    }
+    
+    // Create and upload order summary text file
+    let summaryUploadSuccess = false;
+    let summaryUploadError = null;
+    
+    if (dropboxFolderId && dropboxAccessToken) {
+      try {
+        // Create order summary content
+        const summaryContent = createOrderSummary(formData);
+        const textEncoder = new TextEncoder();
+        const summaryBuffer = textEncoder.encode(summaryContent);
+        
+        // Upload to Dropbox
+        const summaryFileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_order_summary.txt`;
+        const uploadPath = `${dropboxFolderPath}/${summaryFileName}`;
+        console.log('Uploading order summary to Dropbox at path:', uploadPath);
+        
+        const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dropboxAccessToken}`,
+            'Dropbox-API-Arg': JSON.stringify({
+              path: uploadPath,
+              mode: 'add',
+              autorename: true,
+              mute: false
+            }),
+            'Content-Type': 'application/octet-stream'
+          },
+          body: summaryBuffer
+        });
+        
+        if (dropboxUploadResponse.ok) {
+          summaryUploadSuccess = true;
+          console.log('Order summary uploaded successfully to Dropbox');
+        } else {
+          const errorText = await dropboxUploadResponse.text();
+          console.error('Dropbox order summary upload error:', dropboxUploadResponse.status, errorText);
+          summaryUploadError = `Dropbox order summary upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        }
+      } catch (error) {
+        console.error('Order summary upload error:', error);
+        summaryUploadError = `Order summary upload error: ${error.message}`;
+      }
+    }
+    
     // Save to the database
     const { data, error } = await supabase
       .from('backing_requests')
@@ -587,7 +682,7 @@ serve(async (req) => {
           backing_type: formData.backingType,
           delivery_date: formData.deliveryDate,
           additional_services: formData.additionalServices,
-          special_requests: formData.specialRequests,
+          special_requests: formData.specialServices,
           dropbox_folder_id: dropboxFolderId
         }
       ])
@@ -691,7 +786,9 @@ serve(async (req) => {
       youtubeMp3Success,
       dropboxFolderPath,
       logicFileNameUsed: logicFileName,
-      parentFolderCheck
+      parentFolderCheck,
+      voiceMemoUploadSuccess,
+      summaryUploadSuccess
     };
     
     if (dropboxError) {
@@ -708,6 +805,14 @@ serve(async (req) => {
     
     if (youtubeMp3Error) {
       responsePayload.youtubeMp3Error = youtubeMp3Error;
+    }
+    
+    if (voiceMemoUploadError) {
+      responsePayload.voiceMemoUploadError = voiceMemoUploadError;
+    }
+    
+    if (summaryUploadError) {
+      responsePayload.summaryUploadError = summaryUploadError;
     }
 
     return new Response(
@@ -780,5 +885,79 @@ async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFo
   } catch (error) {
     console.error('Fallback reference file creation failed:', error);
     throw error;
+  }
+}
+
+// Helper function to create order summary content
+function createOrderSummary(formData: any): string {
+  const summary = `
+PIANO BACKING TRACK REQUEST SUMMARY
+==================================
+
+ORDER DETAILS
+-------------
+Date: ${new Date().toLocaleString()}
+Request ID: ${Date.now()}
+
+CLIENT INFORMATION
+------------------
+Name: ${formData.name || 'Not provided'}
+Email: ${formData.email || 'Not provided'}
+
+TRACK INFORMATION
+-----------------
+Song Title: ${formData.songTitle}
+Musical/Artist: ${formData.musicalOrArtist}
+Song Key: ${formData.songKey || 'Not specified'}
+Different Key Required: ${formData.differentKey || 'No'}
+${formData.differentKey === 'Yes' ? `Requested Key: ${formData.keyForTrack || 'Not specified'}` : ''}
+
+REFERENCES
+----------
+YouTube Link: ${formData.youtubeLink || 'Not provided'}
+Voice Memo Link: ${formData.voiceMemo || 'Not provided'}
+
+ORDER DETAILS
+-------------
+Track Purpose: ${formData.trackPurpose?.replace('-', ' ') || 'Not specified'}
+Backing Type: ${formData.backingType?.replace('-', ' ') || 'Not specified'}
+Delivery Date: ${formData.deliveryDate || 'Not specified'}
+Category: ${formData.category || 'Not specified'}
+Track Type: ${formData.trackType || 'Not specified'}
+
+ADDITIONAL SERVICES
+------------------
+${formData.additionalServices && formData.additionalServices.length > 0 
+  ? formData.additionalServices.map((service: string) => `- ${service.replace('-', ' ')}`).join('\n') 
+  : 'None requested'}
+
+SPECIAL REQUESTS
+----------------
+${formData.specialRequests || 'None provided'}
+
+SHEET MUSIC
+------------
+${formData.sheetMusicUrl ? 'Sheet music has been uploaded and will be included in this folder.' : 'No sheet music provided.'}
+
+VOICE MEMO
+----------
+${formData.voiceMemoFileUrl ? 'Voice memo has been uploaded and will be included in this folder.' : 'No voice memo file provided.'}
+
+---
+This summary was automatically generated for Piano Backings by Daniele.
+  `.trim();
+  
+  return summary;
+}
+
+// Helper function to get file extension from URL
+function getFileExtensionFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const lastDotIndex = pathname.lastIndexOf('.');
+    return lastDotIndex !== -1 ? pathname.substring(lastDotIndex + 1) : 'audio';
+  } catch (error) {
+    return 'audio';
   }
 }
