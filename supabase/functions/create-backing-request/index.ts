@@ -831,6 +831,36 @@ serve(async (req) => {
       }
     } catch (emailError) {
       console.error('Error sending notification emails:', emailError);
+      // Even if email fails, we still want to store the notification attempt
+      try {
+        const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1C0357;">New Backing Track Request</h2>
+            <p>A new backing track request has been submitted but email notification failed.</p>
+            <p>Please check the system logs for more details.</p>
+          </div>
+        `;
+        
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        for (const email of adminEmails) {
+          await supabase
+            .from('notifications')
+            .insert([
+              {
+                recipient: email,
+                sender: 'system@pianobackings.com',
+                subject: emailSubject,
+                content: emailHtml,
+                status: 'failed',
+                type: 'email',
+                error_message: emailError.message
+              }
+            ]);
+        }
+      } catch (dbError) {
+        console.error('Failed to store notification in database:', dbError);
+      }
     }
     
     const responsePayload: any = { 
