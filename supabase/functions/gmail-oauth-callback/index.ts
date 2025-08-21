@@ -18,6 +18,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Redeploy trigger comment added on 2023-10-27
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
