@@ -45,12 +45,12 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the authenticated user
+    // Get the authenticated user (this will be the Supabase user, not the Gmail user)
     const authHeader = req.headers.get('Authorization');
     console.log("Auth header present:", !!authHeader);
     
     if (!authHeader) {
-      throw new Error('Missing Authorization header');
+      throw new Error('Missing Authorization header - you must be logged into the application as an admin');
     }
     
     const token = authHeader.replace('Bearer ', '');
@@ -58,10 +58,10 @@ serve(async (req) => {
     
     if (userError || !user) {
       console.error("User authentication error:", userError);
-      throw new Error('Invalid or expired token');
+      throw new Error('Invalid or expired token - you must be logged into the application as an admin');
     }
     
-    console.log("Authenticated user:", user.email);
+    console.log("Authenticated Supabase user:", user.email);
     
     // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
     const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
@@ -119,8 +119,8 @@ serve(async (req) => {
       // We might still have an access token, but it will expire soon
     }
     
-    // Store the tokens in Supabase
-    console.log("Storing tokens in Supabase");
+    // Store the tokens in Supabase, associated with the Supabase user
+    console.log("Storing tokens in Supabase for user:", user.id);
     const { error: insertError } = await supabase
       .from('gmail_tokens')
       .upsert({

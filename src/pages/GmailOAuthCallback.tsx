@@ -50,11 +50,11 @@ const GmailOAuthCallback = () => {
       try {
         setStatus('Exchanging authorization code for tokens...');
         
-        // Get current session for auth token
+        // Get current session for auth token (this is the Supabase user)
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          throw new Error('You must be logged in to complete OAuth');
+          throw new Error('You must be logged into the application as an admin to complete this OAuth flow');
         }
         
         // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
