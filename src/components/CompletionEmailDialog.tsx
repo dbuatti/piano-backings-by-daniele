@@ -31,8 +31,9 @@ const CompletionEmailDialog = ({
 
   // Generate the default email content as full HTML
   const generateDefaultEmailHtml = (name: string, title: string, url?: string) => {
+    const firstName = name.split(' ')[0]; // Extract the first name
     return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
-  <p>Hi ${name},</p>
+  <p>Hi ${firstName},</p>
 
   <p>I hope this email finds you well!</p>
 
