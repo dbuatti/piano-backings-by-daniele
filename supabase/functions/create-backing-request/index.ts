@@ -692,7 +692,7 @@ serve(async (req) => {
       throw error;
     }
 
-    // Send email notification to admin
+    // Send email notification to admins
     try {
       // Create email content
       const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
@@ -746,31 +746,39 @@ serve(async (req) => {
         </div>
       `;
       
-      // Send email via our send-email function
-      const emailResponse = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for internal calls
-          },
-          body: JSON.stringify({
-            to: adminEmail,
-            subject: emailSubject,
-            html: emailHtml
-          })
-        }
-      );
+      // Send email to both admin emails
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       
-      if (!emailResponse.ok) {
-        const emailError = await emailResponse.json();
-        console.error('Failed to send notification email:', emailError);
-      } else {
-        console.log('Notification email sent successfully');
+      for (const email of adminEmails) {
+        try {
+          const emailResponse = await fetch(
+            `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for internal calls
+              },
+              body: JSON.stringify({
+                to: email,
+                subject: emailSubject,
+                html: emailHtml
+              })
+            }
+          );
+          
+          if (!emailResponse.ok) {
+            const emailError = await emailResponse.json();
+            console.error(`Failed to send notification email to ${email}:`, emailError);
+          } else {
+            console.log(`Notification email sent successfully to ${email}`);
+          }
+        } catch (emailError) {
+          console.error(`Error sending notification email to ${email}:`, emailError);
+        }
       }
     } catch (emailError) {
-      console.error('Error sending notification email:', emailError);
+      console.error('Error sending notification emails:', emailError);
     }
     
     const responsePayload: any = { 
