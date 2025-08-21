@@ -47,11 +47,11 @@ const CompletionEmailDialog = ({
       </a>
     </p>
     <p>Please let me know if you have any trouble accessing it.</p>` : 
-    `<p style="margin-top: 20px;">Your track is now available in your client dashboard. You can log in to view your request details and download your track.</p>
+    `<p style="margin-top: 20px;">Your track details are now available. You can view your request and access your track (once uploaded) using the button below:</p>
     <p style="text-align: center; margin: 30px 0;">
-      <a href="${window.location.origin}/user-dashboard?email=${encodeURIComponent(clientEmail)}" 
+      <a href="${window.location.origin}/track/${requestId}?email=${encodeURIComponent(clientEmail)}" 
          style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-        Go to Your Dashboard
+        View Your Track Details
       </a>
     </p>`}
 
