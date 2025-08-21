@@ -31,24 +31,33 @@ const CompletionEmailDialog = ({
 
   // Generate the default email content as full HTML
   const generateDefaultEmailHtml = (name: string, title: string, url?: string) => {
-    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
   <p>Hi ${name},</p>
 
-  <p>Great news! Your custom piano backing track for <strong>"${title}"</strong> is now complete and ready for your use.</p>
+  <p>I hope this email finds you well!</p>
+
+  <p>I'm excited to let you know that your custom piano backing track for <strong>"${title}"</strong> is now complete and ready for you.</p>
 
   ${url ? 
-    `<p style="margin-top: 20px;">You can download your track using the button below:</p>
+    `<p style="margin-top: 20px;">You can download your track directly using the button below:</p>
     <p style="text-align: center; margin: 30px 0;">
       <a href="${url}" 
          style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
         Download Your Track
       </a>
-    </p>` : 
-    '<p style="margin-top: 20px;">You can access your track through your dashboard.</p>'}
+    </p>
+    <p>Please let me know if you have any trouble accessing it.</p>` : 
+    `<p style="margin-top: 20px;">Your track is now available in your client dashboard. You can log in to view your request details and download your track.</p>
+    <p style="text-align: center; margin: 30px 0;">
+      <a href="${window.location.origin}/user-dashboard?email=${encodeURIComponent(clientEmail)}" 
+         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+        Go to Your Dashboard
+      </a>
+    </p>`}
 
-  <p style="margin-top: 20px;">If you have any questions or need any adjustments, please don't hesitate to reach out.</p>
+  <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
 
-  <p>Thank you for choosing Piano Backings by Daniele!</p>
+  <p>Thank you so much for choosing Piano Backings by Daniele. I truly appreciate your business and wish you all the best with your ${songTitle}!</p>
 
   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
     <p style="margin: 0;"><strong>Warmly,</strong></p>
