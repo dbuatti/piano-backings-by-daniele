@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { generateEmailCopy, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -392,13 +392,20 @@ const EmailGenerator = () => {
                   </div>
                 </div>
                 
-                <Button 
-                  onClick={(e) => { e.preventDefault(); generateEmail(); }}
-                  disabled={isGenerating}
-                  className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  {isGenerating ? 'Generating Email...' : 'Generate Email Copy'}
-                </Button>
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={(e) => { e.preventDefault(); generateEmail(); }}
+                    disabled={isGenerating}
+                    className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  >
+                    {isGenerating ? 'Generating Email...' : 'Generate Email Copy'}
+                  </Button>
+                  <Link to="/admin">
+                    <Button variant="outline">
+                      Back to Dashboard
+                    </Button>
+                  </Link>
+                </div>
               </form>
             </CardContent>
           </Card>

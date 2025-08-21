@@ -115,8 +115,6 @@ const AdminDashboard = () => {
     gumroad: false
   });
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
-  const [emailGeneratorDialogOpen, setEmailGeneratorDialogOpen] = useState(false);
-  const [selectedRequestForEmail, setSelectedRequestForEmail] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -763,8 +761,8 @@ const AdminDashboard = () => {
   };
 
   const openEmailGenerator = (request: any) => {
-    setSelectedRequestForEmail(request);
-    setEmailGeneratorDialogOpen(true);
+    // Navigate to email generator with request ID in URL
+    navigate(`/email-generator/${request.id}`);
   };
 
   if (!isAdmin) {
@@ -1638,58 +1636,6 @@ const AdminDashboard = () => {
                   >
                     Save Platforms
                   </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-          
-          {/* Email Generator Dialog */}
-          <Dialog open={emailGeneratorDialogOpen} onOpenChange={setEmailGeneratorDialogOpen}>
-            <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center">
-                  <MailIcon className="mr-2 h-5 w-5" />
-                  Generate Email for {selectedRequestForEmail?.name}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Song Title</Label>
-                    <p className="font-medium">{selectedRequestForEmail?.song_title}</p>
-                  </div>
-                  <div>
-                    <Label>Musical/Artist</Label>
-                    <p className="font-medium">{selectedRequestForEmail?.musical_or_artist}</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Track Type</Label>
-                    <p className="font-medium">{selectedRequestForEmail?.track_type}</p>
-                  </div>
-                  <div>
-                    <Label>Delivery Date</Label>
-                    <p className="font-medium">
-                      {selectedRequestForEmail?.delivery_date 
-                        ? format(new Date(selectedRequestForEmail.delivery_date), 'MMMM dd, yyyy') 
-                        : 'Not specified'}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label>Special Requests</Label>
-                  <p className="font-medium">{selectedRequestForEmail?.special_requests || 'None'}</p>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Link to="/email-generator">
-                    <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-                      Generate Email Copy
-                    </Button>
-                  </Link>
                 </div>
               </div>
             </DialogContent>
