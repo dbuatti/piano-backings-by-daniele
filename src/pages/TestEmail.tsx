@@ -52,6 +52,9 @@ Piano Backings by Daniele</p>`
       finalHtmlContent = finalHtmlContent.replace(/\{\{name\}\}/g, 'Test User');
       finalHtmlContent = finalHtmlContent.replace(/\{\{songTitle\}\}/g, 'Test Song');
       
+      // Define the sender email (this should be the email that has been OAuth'd)
+      const senderEmail = 'pianobackingsbydaniele@gmail.com';
+      
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
         {
@@ -64,6 +67,7 @@ Piano Backings by Daniele</p>`
             to: emailData.to,
             subject: emailData.subject,
             html: finalHtmlContent,
+            senderEmail: senderEmail // Explicitly pass the senderEmail
           }),
         }
       );
