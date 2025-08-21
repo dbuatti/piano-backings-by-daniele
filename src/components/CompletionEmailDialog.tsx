@@ -51,18 +51,18 @@ const CompletionEmailDialog = ({
   };
 
   // Helper function to get base price range for backing types
-  const getDisplayPriceRange = (type: string) => {
+  const getBasePriceRange = (type: string) => {
     switch (type) {
-      case 'full-song': return '$30 - $40';
-      case 'audition-cut': return '$15 - $25';
-      case 'note-bash': return '$10 - $15';
+      case 'full-song': return '$30-$40';
+      case 'audition-cut': return '$15-$25';
+      case 'note-bash': return '$10-$15';
       default: return 'Price Varies';
     }
   };
 
   // Generate the default email content
   const generateDefaultEmailContent = () => {
-    const displayPriceRange = getDisplayPriceRange(backingType);
+    const basePriceRange = getBasePriceRange(backingType);
     const backingTypeName = backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
     const servicesList = additionalServices.map(serviceId => {
@@ -75,7 +75,7 @@ const CompletionEmailDialog = ({
 Great news! Your custom piano backing track for "${songTitle}" from ${musicalOrArtist} is now complete and ready for your use.
 
 Here's a breakdown of the work completed:
-• ${backingTypeName}: ${displayPriceRange}
+• ${backingTypeName}: ${basePriceRange}
 ${servicesList ? servicesList + '\n' : ''}
 Total amount: $${cost.toFixed(2)}
 
@@ -126,10 +126,8 @@ https://www.facebook.com/PianoBackingsbyDaniele
 
       // Combine content with signature
       const finalEmailContent = `${emailContent}\n\n${emailSignature}`;
-      
-      // Define variables for HTML template
+      const basePriceRange = getBasePriceRange(backingType);
       const backingTypeName = backingType.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-      const displayPriceRange = getDisplayPriceRange(backingType);
 
       // Generate HTML for the email body
       const emailHtml = `
@@ -146,7 +144,7 @@ https://www.facebook.com/PianoBackingsbyDaniele
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #eee;">
             <h3 style="margin-top: 0; color: #1C0357; font-size: 18px; margin-bottom: 15px;">Pricing Breakdown</h3>
             <ul style="list-style: none; padding: 0; margin: 0; font-size: 15px; color: #555;">
-              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${displayPriceRange}</li>
+              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${basePriceRange}</li>
               ${additionalServices.map(serviceId => {
                 const detail = getServiceDetails(serviceId);
                 return `<li style="margin-bottom: 8px;"><strong>${detail.name}:</strong> $${detail.price}</li>`;
@@ -192,7 +190,7 @@ https://www.facebook.com/PianoBackingsbyDaniele
         </div>`;
 
       const response = await fetch(
-        `https://kyfofikkswxtwgtwgtqutdu.supabase.co/functions/v1/send-email`,
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
         {
           method: 'POST',
           headers: {
@@ -323,7 +321,7 @@ https://www.facebook.com/PianoBackingsbyDaniele
           <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #eee;">
             <h3 style="margin-top: 0; color: #1C0357; font-size: 18px; margin-bottom: 15px;">Pricing Breakdown</h3>
             <ul style="list-style: none; padding: 0; margin: 0; font-size: 15px; color: #555;">
-              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${displayPriceRange}</li>
+              <li style="margin-bottom: 8px;"><strong>${backingTypeName}:</strong> ${basePriceRange}</li>
               ${additionalServices.map(serviceId => {
                 const detail = getServiceDetails(serviceId);
                 return `<li style="margin-bottom: 8px;"><strong>${detail.name}:</strong> $${detail.price}</li>`;
