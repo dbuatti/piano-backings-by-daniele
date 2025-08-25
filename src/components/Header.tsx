@@ -1,3 +1,4 @@
+// This file has been regenerated to resolve a persistent syntax error.
 "use client";
 
 import * as React from "react";
@@ -109,7 +110,7 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-0.5"> {/* Reduced space-x */}
+          <nav className="hidden md:flex items-center space-x-0.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -118,7 +119,7 @@ const Header = () => {
                   href={item.href}
                   onClick={(e) => handleAnchorLink(item.href, e)}
                   className={cn(
-                    "px-2 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center", {/* Reduced px */}
+                    "px-2 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center",
                     "hover:bg-white/20 hover:text-white",
                     location.pathname === item.href.split('#')[0] && 
                     (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
@@ -126,7 +127,7 @@ const Header = () => {
                       : "text-white"
                   )}
                 >
-                  <Icon className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                  <Icon className="mr-1 h-4 w-4" />
                   {item.name}
                 </a>
               );
@@ -135,13 +136,13 @@ const Header = () => {
             <Link to="/form-page">
               <Button 
                 className={cn(
-                  "ml-1 px-3 py-2 rounded-full text-sm font-bold transition-all duration-300", {/* Reduced ml and px */}
+                  "ml-1 px-3 py-2 rounded-full text-sm font-bold transition-all duration-300",
                   "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
                   "border-2 border-white shadow-lg hover:shadow-xl",
                   "transform hover:scale-105"
                 )}
               >
-                <Music className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                <Music className="mr-1 h-4 w-4" />
                 Order Track
               </Button>
             </Link>
@@ -150,9 +151,9 @@ const Header = () => {
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                 >
-                  <User className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                  <User className="mr-1 h-4 w-4" />
                   My Tracks
                 </Button>
               </Link>
@@ -163,27 +164,27 @@ const Header = () => {
                 <Link to="/admin">
                   <Button 
                     variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                   >
-                    <Shield className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                    <Shield className="mr-1 h-4 w-4" />
                     Admin
                   </Button>
                 </Link>
                 <Link to="/test-email-notification">
                   <Button 
                     variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                   >
-                    <TestTube className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                    <TestTube className="mr-1 h-4 w-4" />
                     Test Email
                   </Button>
                 </Link>
                 <Link to="/data-importer">
                   <Button 
                     variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                   >
-                    <Upload className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                    <Upload className="mr-1 h-4 w-4" />
                     Import Data
                   </Button>
                 </Link>
@@ -194,18 +195,18 @@ const Header = () => {
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
-                className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
               >
-                <LogIn className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                <LogIn className="mr-1 h-4 w-4" />
                 Logout
               </Button>
             ) : (
               <Link to="/login">
                 <Button 
                   variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                 >
-                  <LogIn className="mr-1 h-4 w-4" /> {/* Reduced mr */}
+                  <LogIn className="mr-1 h-4 w-4" />
                   Login
                 </Button>
               </Link>
