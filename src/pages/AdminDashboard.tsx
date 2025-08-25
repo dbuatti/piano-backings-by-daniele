@@ -959,66 +959,73 @@ const AdminDashboard = () => {
                             {selectedDate ? (
                               <div className="space-y-4 max-h-96 overflow-y-auto">
                                 {filteredRequests.length > 0 ? (
-                                  filteredRequests.map((request) => (
-                                    <div 
-                                      key={request.id} 
-                                      className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
-                                    >
-                                      <div className="flex justify-between items-start">
-                                        <div>
-                                          <h3 className="font-bold">{request.song_title}</h3>
-                                          <p className="text-sm text-gray-600 flex items-center mt-1">
-                                            <User className="w-3 h-3 mr-1" />
-                                            {request.name || request.email}
-                                          </p>
-                                          <p className="text-sm text-gray-600 flex items-center">
-                                            <Music className="w-3 h-3 mr-1" />
-                                            {request.musical_or_artist}
-                                          </p>
+                                  filteredRequests.map((request) => {
+                                    // Normalize backing_type to always be an array of strings
+                                    const normalizedBackingTypes = Array.isArray(request.backing_type)
+                                      ? request.backing_type.filter((type: any) => typeof type === 'string')
+                                      : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+
+                                    return (
+                                      <div 
+                                        key={request.id} 
+                                        className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
+                                      >
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <h3 className="font-bold">{request.song_title}</h3>
+                                            <p className="text-sm text-gray-600 flex items-center mt-1">
+                                              <User className="w-3 h-3 mr-1" />
+                                              {request.name || request.email}
+                                            </p>
+                                            <p className="text-sm text-gray-600 flex items-center">
+                                              <Music className="w-3 h-3 mr-1" />
+                                              {request.musical_or_artist}
+                                            </p>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                              <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+                                                {type.replace('-', ' ')}
+                                              </Badge>
+                                            )) : <Badge variant="outline">Not specified</Badge>}
+                                          </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
-                                          {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
-                                            <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
-                                              {type.replace('-', ' ')}
-                                            </Badge>
-                                          )) : (request.backing_type ? <Badge variant={getBadgeVariant(request.backing_type)} className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : null)}
+                                        <div className="mt-3 flex justify-between items-center">
+                                          <div className="flex items-center text-sm">
+                                            <Calendar className="w-3 h-3 mr-1 text-gray-500" />
+                                            <span>
+                                              {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                            </span>
+                                          </div>
+                                          {getStatusBadge(request.status || 'pending')}
                                         </div>
-                                      </div>
-                                      <div className="mt-3 flex justify-between items-center">
-                                        <div className="flex items-center text-sm">
-                                          <Calendar className="w-3 h-3 mr-1 text-gray-500" />
-                                          <span>
-                                            {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                                          </span>
-                                        </div>
-                                        {getStatusBadge(request.status || 'pending')}
-                                      </div>
-                                      <div className="mt-3 flex justify-end space-x-1">
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                              <Upload className="w-4 h-4" />
-                                            </Button>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Upload Track</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Link to={`/track/${request.id}`}>
-                                              <Button variant="outline" size="sm">
-                                                <Eye className="w-4 h-4" />
+                                        <div className="mt-3 flex justify-end space-x-1">
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                                <Upload className="w-4 h-4" />
                                               </Button>
-                                            </Link>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Client Page</p>
-                                          </TooltipContent>
-                                        </Tooltip>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Upload Track</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Link to={`/track/${request.id}`}>
+                                                <Button variant="outline" size="sm">
+                                                  <Eye className="w-4 h-4" />
+                                                </Button>
+                                              </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Client Page</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))
+                                    );
+                                  })
                                 ) : (
                                   <p className="text-center text-gray-500 py-4">
                                     No requests scheduled for this date
@@ -1217,195 +1224,202 @@ const AdminDashboard = () => {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              filteredRequests.map((request) => (
-                                <TableRow 
-                                  key={request.id} 
-                                  className={`hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`}
-                                >
-                                  <TableCell>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedRequests.includes(request.id)}
-                                      onChange={() => handleSelectRequest(request.id)}
-                                      className="h-4 w-4"
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="text-sm font-medium">
-                                      {format(new Date(request.created_at), 'MMM dd')}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {format(new Date(request.created_at), 'HH:mm')}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="font-medium">{request.name || 'N/A'}</div>
-                                    <div className="text-sm text-gray-500 flex items-center">
-                                      <Mail className="w-3 h-3 mr-1" />
-                                      {request.email}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="font-medium">{request.song_title}</div>
-                                    <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex flex-wrap gap-1">
-                                      {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
-                                        <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
-                                          {type.replace('-', ' ')}
-                                        </Badge>
-                                      )) : (request.backing_type ? <Badge variant={getBadgeVariant(request.backing_type)} className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : null)}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Select 
-                                      value={request.status || 'pending'} 
-                                      onValueChange={(value) => updateStatus(request.id, value)}
-                                    >
-                                      <SelectTrigger className="w-[140px]">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="in-progress">In Progress</SelectItem>
-                                        <SelectItem value="completed">Completed</SelectItem>
-                                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Select 
-                                      value={request.is_paid ? 'paid' : 'unpaid'} 
-                                      onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
-                                    >
-                                      <SelectTrigger className="w-[120px]">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="unpaid">Unpaid</SelectItem>
-                                        <SelectItem value="paid">Paid</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center font-medium">
-                                      <DollarSign className="w-4 h-4 mr-1" />
-                                      <span>{calculateRequestCost(request).toFixed(2)}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex flex-col gap-1">
-                                      {getPlatformIcons(request.uploaded_platforms)}
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        onClick={() => openUploadPlatformsDialog(request.id)}
-                                        className="mt-1 text-xs"
+                              filteredRequests.map((request) => {
+                                // Normalize backing_type to always be an array of strings
+                                const normalizedBackingTypes = Array.isArray(request.backing_type)
+                                  ? request.backing_type.filter((type: any) => typeof type === 'string')
+                                  : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+
+                                return (
+                                  <TableRow 
+                                    key={request.id} 
+                                    className={`hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`}
+                                  >
+                                    <TableCell>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedRequests.includes(request.id)}
+                                        onChange={() => handleSelectRequest(request.id)}
+                                        className="h-4 w-4"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="text-sm font-medium">
+                                        {format(new Date(request.created_at), 'MMM dd')}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {format(new Date(request.created_at), 'HH:mm')}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="font-medium">{request.name || 'N/A'}</div>
+                                      <div className="text-sm text-gray-500 flex items-center">
+                                        <Mail className="w-3 h-3 mr-1" />
+                                        {request.email}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="font-medium">{request.song_title}</div>
+                                      <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex flex-wrap gap-1">
+                                        {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                          <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+                                            {type.replace('-', ' ')}
+                                          </Badge>
+                                        )) : <Badge variant="outline">Not specified</Badge>}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select 
+                                        value={request.status || 'pending'} 
+                                        onValueChange={(value) => updateStatus(request.id, value)}
                                       >
-                                        Edit
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex justify-end space-x-1">
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                            <Upload className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Upload Track</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                                            <Share2 className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Share Track</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Link to={`/admin/request/${request.id}`}>
-                                            <Button variant="outline" size="sm">
-                                              <Eye className="w-4 h-4" />
+                                        <SelectTrigger className="w-[140px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="pending">Pending</SelectItem>
+                                          <SelectItem value="in-progress">In Progress</SelectItem>
+                                          <SelectItem value="completed">Completed</SelectItem>
+                                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select 
+                                        value={request.is_paid ? 'paid' : 'unpaid'} 
+                                        onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
+                                      >
+                                        <SelectTrigger className="w-[120px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                                          <SelectItem value="paid">Paid</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center font-medium">
+                                        <DollarSign className="w-4 h-4 mr-1" />
+                                        <span>{calculateRequestCost(request).toFixed(2)}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex flex-col gap-1">
+                                        {getPlatformIcons(request.uploaded_platforms)}
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          onClick={() => openUploadPlatformsDialog(request.id)}
+                                          className="mt-1 text-xs"
+                                        >
+                                          Edit
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end space-x-1">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                              <Upload className="w-4 h-4" />
                                             </Button>
-                                          </Link>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>View Details</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Link to={`/track/${request.id}`}>
-                                            <Button variant="outline" size="sm">
-                                              <User className="w-4 h-4" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Upload Track</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
+                                              <Share2 className="w-4 h-4" />
                                             </Button>
-                                          </Link>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Client View</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      {/* Temporarily hide the Email Generator button */}
-                                      {/*
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => openEmailGenerator(request)}
-                                          >
-                                            <MailIcon className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Generate Email</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      */}
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <CompletionEmailDialog 
-                                            requestId={request.id}
-                                            clientEmail={request.email}
-                                            clientName={request.name || 'Client'}
-                                            songTitle={request.song_title}
-                                            trackUrl={request.track_url}
-                                          />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Email Client</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => openDeleteDialog(request.id)}
-                                            className="text-red-600 hover:text-red-800"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Delete Request</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Share Track</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Link to={`/admin/request/${request.id}`}>
+                                              <Button variant="outline" size="sm">
+                                                <Eye className="w-4 h-4" />
+                                              </Button>
+                                            </Link>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>View Details</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Link to={`/track/${request.id}`}>
+                                              <Button variant="outline" size="sm">
+                                                <User className="w-4 h-4" />
+                                              </Button>
+                                            </Link>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Client View</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        {/* Temporarily hide the Email Generator button */}
+                                        {/*
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button 
+                                              size="sm" 
+                                              variant="outline" 
+                                              onClick={() => openEmailGenerator(request)}
+                                            >
+                                              <MailIcon className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Generate Email</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        */}
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <CompletionEmailDialog 
+                                              requestId={request.id}
+                                              clientEmail={request.email}
+                                              clientName={request.name || 'Client'}
+                                              songTitle={request.song_title}
+                                              trackUrl={request.track_url}
+                                            />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Email Client</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button 
+                                              size="sm" 
+                                              variant="outline" 
+                                              onClick={() => openDeleteDialog(request.id)}
+                                              className="text-red-600 hover:text-red-800"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Delete Request</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
                             )}
                           </TableBody>
                         </Table>

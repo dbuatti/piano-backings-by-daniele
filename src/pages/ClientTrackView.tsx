@@ -147,6 +147,11 @@ const ClientTrackView = () => {
   const minCost = estimatedCost - 2;
   const maxCost = estimatedCost + 5;
 
+  // Normalize backing_type to always be an array of strings
+  const normalizedBackingTypes = Array.isArray(request.backing_type)
+    ? request.backing_type.filter((type: any) => typeof type === 'string')
+    : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -224,9 +229,9 @@ const ClientTrackView = () => {
                       <Headphones className="mr-1 h-4 w-4" /> Backing Type(s)
                     </p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
+                      {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
                         <Badge key={index} className="capitalize">{type.replace('-', ' ')}</Badge>
-                      )) : (request.backing_type ? <Badge className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : 'Not specified')}
+                      )) : <Badge className="capitalize">Not specified</Badge>}
                     </div>
                   </div>
                   <div>

@@ -243,56 +243,63 @@ const UserDashboard = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      requests.map((request) => (
-                        <TableRow key={request.id}>
-                          <TableCell>
-                            <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
-                            <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            <div>{request.song_title}</div>
-                            <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
-                                <Badge key={index} variant="outline" className="capitalize">
-                                  {type.replace('-', ' ')}
-                                </Badge>
-                              )) : (request.backing_type ? <Badge variant="outline" className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : 'Not specified')}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                              {request.delivery_date 
-                                ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
-                                : 'Not specified'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(request.status)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-2">
-                              {request.status === 'completed' && request.track_url && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => downloadTrack(request.track_url)}
-                                >
-                                  <Download className="w-4 h-4 mr-1" /> Download
-                                </Button>
-                              )}
-                              <Link to={`/track/${request.id}`}>
-                                <Button variant="outline" size="sm">
-                                  <Eye className="w-4 h-4 mr-1" /> View Details
-                                </Button>
-                              </Link>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      requests.map((request) => {
+                        // Normalize backing_type to always be an array of strings
+                        const normalizedBackingTypes = Array.isArray(request.backing_type)
+                          ? request.backing_type.filter((type: any) => typeof type === 'string')
+                          : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+
+                        return (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
+                              <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div>{request.song_title}</div>
+                              <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                  <Badge key={index} variant="outline" className="capitalize">
+                                    {type.replace('-', ' ')}
+                                  </Badge>
+                                )) : <Badge variant="outline">Not specified</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                                {request.delivery_date 
+                                  ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
+                                  : 'Not specified'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(request.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {request.status === 'completed' && request.track_url && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => downloadTrack(request.track_url)}
+                                  >
+                                    <Download className="w-4 h-4 mr-1" /> Download
+                                  </Button>
+                                )}
+                                <Link to={`/track/${request.id}`}>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="w-4 h-4 mr-1" /> View Details
+                                  </Button>
+                                </Link>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
