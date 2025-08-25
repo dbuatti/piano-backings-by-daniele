@@ -3,11 +3,19 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -160,35 +168,39 @@ const Header = () => {
             )}
             
             {isAdmin && (
-              <>
-                <Link to="/admin">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
                   >
                     <Shield className="mr-1 h-4 w-4" />
-                    Admin
+                    Admin <Settings className="ml-1 h-3 w-3" />
                   </Button>
-                </Link>
-                <Link to="/test-email-notification">
-                  <Button 
-                    variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
-                  >
-                    <TestTube className="mr-1 h-4 w-4" />
-                    Test Email
-                  </Button>
-                </Link>
-                <Link to="/data-importer">
-                  <Button 
-                    variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
-                  >
-                    <Upload className="mr-1 h-4 w-4" />
-                    Import Data
-                  </Button>
-                </Link>
-              </>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/test-email-notification" onClick={() => setMobileMenuOpen(false)}>
+                      <TestTube className="mr-2 h-4 w-4" />
+                      Test Email
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/data-importer" onClick={() => setMobileMenuOpen(false)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import Data
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             
             {session ? (
@@ -309,6 +321,7 @@ const Header = () => {
                     
                     {isAdmin && (
                       <>
+                        <h3 className="text-white font-bold text-lg mt-4 mb-2 px-4">Admin Tools</h3>
                         <Link 
                           to="/admin"
                           className={cn(
