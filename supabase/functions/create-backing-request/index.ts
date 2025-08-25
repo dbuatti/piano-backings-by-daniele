@@ -724,7 +724,8 @@ serve(async (req) => {
           delivery_date: formData.deliveryDate,
           additional_services: formData.additionalServices,
           special_requests: formData.specialRequests,
-          dropbox_folder_id: dropboxFolderId
+          dropbox_folder_id: dropboxFolderId,
+          track_type: formData.trackType
         }
       ])
       .select();
