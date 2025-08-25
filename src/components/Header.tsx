@@ -187,18 +187,7 @@ const Header = () => {
                       Admin Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/test-email-notification" onClick={() => setMobileMenuOpen(false)}>
-                      <TestTube className="mr-2 h-4 w-4" />
-                      Test Email
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/data-importer" onClick={() => setMobileMenuOpen(false)}>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import Data
-                    </Link>
-                  </DropdownMenuItem>
+                  {/* Removed direct links to Test Email and Import Data */}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -333,28 +322,7 @@ const Header = () => {
                           <Shield className="mr-3 h-5 w-5" />
                           Admin Dashboard
                         </Link>
-                        <Link 
-                          to="/test-email-notification"
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <TestTube className="mr-3 h-5 w-5" />
-                          Test Email
-                        </Link>
-                        <Link 
-                          to="/data-importer"
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Upload className="mr-3 h-5 w-5" />
-                          Import Data
-                        </Link>
+                        {/* Removed direct links to Test Email and Import Data */}
                       </>
                     )}
                     

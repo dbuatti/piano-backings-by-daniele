@@ -48,7 +48,9 @@ import {
   ToggleLeft,
   ToggleRight,
   MailIcon,
-  Settings
+  Settings,
+  Database,
+  TestTube
 } from 'lucide-react';
 import {
   Select,
@@ -89,7 +91,14 @@ import {
 import PricingMatrix from '@/components/PricingMatrix';
 import CompletionEmailDialog from '@/components/CompletionEmailDialog';
 import { calculateRequestCost } from '@/utils/pricing';
-import NotificationRecipientsManager from '@/components/NotificationRecipientsManager'; // Import the new component
+import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Import content from other admin pages to be integrated
+import DataImporter from './DataImporter'; // We'll reuse the component directly
+import TestEmail from './TestEmail'; // We'll reuse the component directly
+import TestEmailNotification from './TestEmailNotification'; // We'll reuse the component directly
+import DropboxMonitor from './DropboxMonitor'; // We'll reuse the component directly
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -124,14 +133,13 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const { data: { session } = { session: null } } = await supabase.auth.getSession(); // Destructure with default value
+      const { data: { session } = { session: null } } = await supabase.auth.getSession();
       
       if (!session) {
         navigate('/login');
         return;
       }
       
-      // Check if user is admin (daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
@@ -139,7 +147,6 @@ const AdminDashboard = () => {
         return;
       }
       
-      // Fallback to checking profiles table
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -215,11 +222,9 @@ const AdminDashboard = () => {
     }
   };
 
-  // Filter requests based on search term and filters
   useEffect(() => {
     let result = [...requests];
     
-    // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(request => 
@@ -230,17 +235,14 @@ const AdminDashboard = () => {
       );
     }
     
-    // Apply status filter
     if (statusFilter !== 'all') {
       result = result.filter(request => request.status === statusFilter);
     }
     
-    // Apply backing type filter
     if (backingTypeFilter !== 'all') {
       result = result.filter(request => request.backing_type === backingTypeFilter);
     }
     
-    // Apply date filter for calendar view
     if (viewMode === 'calendar' && selectedDate) {
       result = result.filter(request => 
         request.delivery_date && isSameDay(new Date(request.delivery_date), selectedDate)
@@ -341,12 +343,10 @@ const AdminDashboard = () => {
   };
 
   const calculateTotalCostForSelected = () => {
-    // Calculate total cost based on selected requests
     const selected = filteredRequests.filter(req => selectedRequests.includes(req.id));
     let total = 0;
     
     selected.forEach(req => {
-      // Pricing logic based on backing type and additional services
       let baseCost = 0;
       switch (req.backing_type) {
         case 'full-song':
@@ -362,7 +362,6 @@ const AdminDashboard = () => {
           baseCost = 20;
       }
       
-      // Add additional service costs
       if (req.additional_services) {
         req.additional_services.forEach((service: string) => {
           switch (service) {
@@ -394,7 +393,7 @@ const AdminDashboard = () => {
     } else {
       setTotalCost(0);
     }
-  }, [selectedRequests, filteredRequests]); // Added filteredRequests to dependency array
+  }, [selectedRequests, filteredRequests]);
 
   const uploadTrack = async (id: string) => {
     setUploadTrackId(id);
@@ -404,7 +403,6 @@ const AdminDashboard = () => {
     if (!uploadTrackId || !uploadFile) return;
     
     try {
-      // Upload file to Supabase storage
       const fileExt = uploadFile.name.split('.').pop();
       const fileName = `tracks/${uploadTrackId}.${fileExt}`;
       
@@ -425,7 +423,6 @@ const AdminDashboard = () => {
       
       console.log('Upload successful:', uploadData);
       
-      // Get public URL
       const { data: { publicUrl } } = supabase
         .storage
         .from('tracks')
@@ -433,7 +430,6 @@ const AdminDashboard = () => {
       
       console.log('Public URL:', publicUrl);
       
-      // Update request with track URL
       const { error: updateError } = await supabase
         .from('backing_requests')
         .update({ 
@@ -447,7 +443,6 @@ const AdminDashboard = () => {
         throw updateError;
       }
       
-      // Update local state
       setRequests(requests.map(req => 
         req.id === uploadTrackId ? { 
           ...req, 
@@ -475,14 +470,11 @@ const AdminDashboard = () => {
 
   const shareTrack = async (id: string) => {
     try {
-      // Get request details
       const request = filteredRequests.find(req => req.id === id);
       if (!request) throw new Error('Request not found');
       
-      // Generate a shareable link
       const shareLink = `${window.location.origin}/user-dashboard?email=${encodeURIComponent(request.email)}`;
       
-      // Update request with shared link
       const { error } = await supabase
         .from('backing_requests')
         .update({ shared_link: shareLink })
@@ -490,7 +482,6 @@ const AdminDashboard = () => {
       
       if (error) throw error;
       
-      // Update local state
       setRequests(requests.map(req => 
         req.id === id ? { ...req, shared_link: shareLink } : req
       ));
@@ -524,7 +515,6 @@ const AdminDashboard = () => {
       
       if (error) throw error;
       
-      // Update local state
       setRequests(requests.filter(req => req.id !== id));
       setSelectedRequests(selectedRequests.filter(reqId => reqId !== id));
       
@@ -550,7 +540,6 @@ const AdminDashboard = () => {
       
       if (error) throw error;
       
-      // Update local state
       setRequests(requests.filter(req => !selectedRequests.includes(req.id)));
       setSelectedRequests([]);
       
@@ -581,7 +570,6 @@ const AdminDashboard = () => {
   const openUploadPlatformsDialog = (id: string) => {
     const request = requests.find(req => req.id === id);
     if (request && request.uploaded_platforms) {
-      // Parse JSON string if it's a string, otherwise use as is
       if (typeof request.uploaded_platforms === 'string') {
         try {
           setPlatforms(JSON.parse(request.uploaded_platforms));
@@ -621,7 +609,6 @@ const AdminDashboard = () => {
       
       if (error) throw error;
       
-      // Update local state
       setRequests(requests.map(req => 
         req.id === selectedRequestForPlatforms ? { ...req, uploaded_platforms: JSON.stringify(platforms) } : req
       ));
@@ -687,14 +674,12 @@ const AdminDashboard = () => {
     
     if (requestsForDate.length === 0) return '';
     
-    // Highlight dates with requests
     return 'bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50';
   };
 
   const getPlatformIcons = (platforms: any) => {
     if (!platforms) return null;
     
-    // Handle both string and object formats
     let platformsObj = platforms;
     if (typeof platforms === 'string') {
       try {
@@ -727,7 +712,6 @@ const AdminDashboard = () => {
   };
 
   const openEmailGenerator = (request: any) => {
-    // Navigate to email generator with request ID in URL
     navigate(`/email-generator/${request.id}`);
   };
 
@@ -750,759 +734,712 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-[#1C0357]">Admin Dashboard</h1>
-            <p className="text-lg text-[#1C0357]/90">Manage all backing track requests</p>
+            <p className="text-lg text-[#1C0357]/90">Manage all backing track requests and system settings</p>
           </div>
           
-          {/* Overview Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card className="shadow-lg bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 flex items-center">
-                      <FileAudio className="w-4 h-4 mr-2" />
-                      Total Requests
-                    </p>
-                    <p className="text-2xl font-bold text-[#1C0357] mt-2">{requests.length}</p>
-                  </div>
-                  <div className="p-3 bg-[#D1AAF2]/20 rounded-full">
-                    <FileAudio className="h-8 w-8 text-[#1C0357]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-lg bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
-                      In Progress
-                    </p>
-                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
-                      {requests.filter(r => r.status === 'in-progress').length}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-yellow-100 rounded-full">
-                    <Clock className="h-8 w-8 text-yellow-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-lg bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 flex items-center">
-                      <DollarSign className="w-4 h-4 mr-2" />
-                      Pending Revenue
-                    </p>
-                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
-                      ${requests
-                        .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
-                        .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
-                        .toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-[#1C0357]/10 rounded-full">
-                    <DollarSign className="h-8 w-8 text-[#1C0357]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-lg bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 flex items-center">
-                      <Check className="w-4 h-4 mr-2" />
-                      Completed
-                    </p>
-                    <p className="text-2xl font-bold text-[#1C0357] mt-2">
-                      {requests.filter(r => r.status === 'completed').length}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-green-100 rounded-full">
-                    <Check className="h-8 w-8 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* System & Configuration Card */}
-          <Card className="shadow-lg mb-6 bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#1C0357] flex items-center">
-                <Settings className="mr-2 h-5 w-5" />
-                System & Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Dropbox Connection Status */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-[#1C0357] flex items-center">
-                    <HardDrive className="mr-2 h-5 w-5" />
-                    Dropbox Integration
-                  </h3>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center">
+                <List className="mr-2 h-4 w-4" /> Overview
+              </TabsTrigger>
+              <TabsTrigger value="system-health" className="flex items-center">
+                <HardDrive className="mr-2 h-4 w-4" /> System Health
+              </TabsTrigger>
+              <TabsTrigger value="data-management" className="flex items-center">
+                <Database className="mr-2 h-4 w-4" /> Data Management
+              </TabsTrigger>
+              <TabsTrigger value="email-tools" className="flex items-center">
+                <MailIcon className="mr-2 h-4 w-4" /> Email Tools
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab Content */}
+            <TabsContent value="overview">
+              {/* Overview Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 mt-6">
+                <Card className="shadow-lg bg-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">Status: Connected</p>
-                        <p className="text-sm text-gray-500">Active and operational</p>
+                        <p className="text-sm font-medium text-gray-500 flex items-center">
+                          <FileAudio className="w-4 h-4 mr-2" />
+                          Total Requests
+                        </p>
+                        <p className="text-2xl font-bold text-[#1C0357] mt-2">{requests.length}</p>
+                      </div>
+                      <div className="p-3 bg-[#D1AAF2]/20 rounded-full">
+                        <FileAudio className="h-8 w-8 text-[#1C0357]" />
                       </div>
                     </div>
-                    <Link to="/dropbox-monitor">
-                      <Button variant="outline" className="flex items-center text-sm">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Monitor
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Email Notifications Toggle */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-[#1C0357] flex items-center">
-                    <MailIcon className="mr-2 h-5 w-5" />
-                    Email Notifications
-                  </h3>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                    <div className="flex items-center">
-                      {emailNotificationsEnabled ? (
-                        <ToggleRight className="mr-2 h-5 w-5 text-green-500" />
-                      ) : (
-                        <ToggleLeft className="mr-2 h-5 w-5 text-gray-400" />
-                      )}
-                      <p className="font-medium">Client Notifications</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-lg bg-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 flex items-center">
+                          <Clock className="w-4 h-4 mr-2" />
+                          In Progress
+                        </p>
+                        <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                          {requests.filter(r => r.status === 'in-progress').length}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-yellow-100 rounded-full">
+                        <Clock className="h-8 w-8 text-yellow-600" />
+                      </div>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)}
-                      className="flex items-center text-sm"
-                    >
-                      {emailNotificationsEnabled ? "Disable" : "Enable"}
-                    </Button>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-lg bg-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 flex items-center">
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Pending Revenue
+                        </p>
+                        <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                          ${requests
+                            .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
+                            .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
+                            .toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-[#1C0357]/10 rounded-full">
+                        <DollarSign className="h-8 w-8 text-[#1C0357]" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-lg bg-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 flex items-center">
+                          <Check className="w-4 h-4 mr-2" />
+                          Completed
+                        </p>
+                        <p className="text-2xl font-bold text-[#1C0357] mt-2">
+                          {requests.filter(r => r.status === 'completed').length}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-green-100 rounded-full">
+                        <Check className="h-8 w-8 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
               
-              {/* Notification Recipients Manager */}
-              <div className="mt-6">
-                <NotificationRecipientsManager />
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Filters & View Options Section */}
-          <Card className="shadow-lg mb-6 bg-white">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
-                <span className="flex items-center">
-                  <Filter className="mr-2 h-5 w-5" />
-                  Filters & View Options
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant={viewMode === 'list' ? 'default' : 'outline'}
-                    onClick={() => setViewMode('list')}
-                    className={`flex items-center ${viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
-                    size="sm"
-                  >
-                    <List className="w-4 h-4 mr-2" />
-                    List View
-                  </Button>
-                  <Button 
-                    variant={viewMode === 'calendar' ? 'default' : 'outline'}
-                    onClick={() => setViewMode('calendar')}
-                    className={`flex items-center ${viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
-                    size="sm"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Calendar View
-                  </Button>
-                  <Button 
-                    variant={viewMode === 'pricing' ? 'default' : 'outline'}
-                    onClick={() => setViewMode('pricing')}
-                    className={`flex items-center ${viewMode === 'pricing' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
-                    size="sm"
-                  >
-                    <Calculator className="w-4 h-4 mr-2" />
-                    Pricing Matrix
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={clearFilters}
-                    className="text-sm"
-                    size="sm"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {viewMode !== 'pricing' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search by name, email, song..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  
-                  <div>
-                    <div className="relative">
-                      <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="pl-10">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {/* Filters & View Options Section */}
+              <Card className="shadow-lg mb-6 bg-white">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
+                    <span className="flex items-center">
+                      <Filter className="mr-2 h-5 w-5" />
+                      Filters & View Options
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant={viewMode === 'list' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center ${viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                        size="sm"
+                      >
+                        <List className="w-4 h-4 mr-2" />
+                        List View
+                      </Button>
+                      <Button 
+                        variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('calendar')}
+                        className={`flex items-center ${viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                        size="sm"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Calendar View
+                      </Button>
+                      <Button 
+                        variant={viewMode === 'pricing' ? 'default' : 'outline'}
+                        onClick={() => setViewMode('pricing')}
+                        className={`flex items-center ${viewMode === 'pricing' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : ''}`}
+                        size="sm"
+                      >
+                        <Calculator className="w-4 h-4 mr-2" />
+                        Pricing Matrix
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={clearFilters}
+                        className="text-sm"
+                        size="sm"
+                      >
+                        Clear Filters
+                      </Button>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <div className="relative">
-                      <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
-                        <SelectTrigger className="pl-10">
-                          <SelectValue placeholder="Backing Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="full-song">Full Song</SelectItem>
-                          <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                          <SelectItem value="note-bash">Note Bash</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {viewMode !== 'pricing' && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          placeholder="Search by name, email, song..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="relative">
+                          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="pl-10">
+                              <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="relative">
+                          <MusicIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Select value={backingTypeFilter} onValueChange={setBackingTypeFilter}>
+                            <SelectTrigger className="pl-10">
+                              <SelectValue placeholder="Backing Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Types</SelectItem>
+                              <SelectItem value="full-song">Full Song</SelectItem>
+                              <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                              <SelectItem value="note-bash">Note Bash</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-end">
+                        <p className="text-sm text-gray-500">
+                          Showing {filteredRequests.length} of {requests.length} requests
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <p className="text-sm text-gray-500">
-                      Showing {filteredRequests.length} of {requests.length} requests
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Main Content Area based on View Mode */}
-          {viewMode === 'pricing' && (
-            <PricingMatrix />
-          )}
-          
-          {viewMode === 'calendar' && (
-            <Card className="shadow-lg mb-6 bg-white">
-              <CardHeader>
-                <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-                  <span className="flex items-center">
-                    <Calendar className="mr-2 h-5 w-5" />
-                    Delivery Calendar
-                  </span>
-                  {selectedDate && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setSelectedDate(null)}
-                      className="text-sm"
-                      size="sm"
-                    >
-                      Clear Date Selection
-                    </Button>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col lg:flex-row gap-6">
-                  <div className="lg:w-2/3">
-                    <CalendarComponent
-                      onChange={handleDateChange}
-                      value={selectedDate}
-                      tileContent={tileContent}
-                      tileClassName={tileClassName}
-                      className="border rounded-lg p-4 w-full"
-                    />
-                  </div>
-                  <div className="lg:w-1/3">
-                    <Card className="bg-white">
-                      <CardHeader>
-                        <CardTitle className="text-lg text-[#1C0357]">
-                          {selectedDate 
-                            ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
-                            : 'Select a date to view requests'}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {selectedDate ? (
-                          <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {filteredRequests.length > 0 ? (
-                              filteredRequests.map((request) => (
-                                <div 
-                                  key={request.id} 
-                                  className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
-                                >
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <h3 className="font-bold">{request.song_title}</h3>
-                                      <p className="text-sm text-gray-600 flex items-center mt-1">
-                                        <User className="w-3 h-3 mr-1" />
-                                        {request.name || request.email}
-                                      </p>
-                                      <p className="text-sm text-gray-600 flex items-center">
-                                        <Music className="w-3 h-3 mr-1" />
-                                        {request.musical_or_artist}
-                                      </p>
+                </CardContent>
+              </Card>
+              
+              {/* Main Content Area based on View Mode */}
+              {viewMode === 'pricing' && (
+                <PricingMatrix />
+              )}
+              
+              {viewMode === 'calendar' && (
+                <Card className="shadow-lg mb-6 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+                      <span className="flex items-center">
+                        <Calendar className="mr-2 h-5 w-5" />
+                        Delivery Calendar
+                      </span>
+                      {selectedDate && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setSelectedDate(null)}
+                          className="text-sm"
+                          size="sm"
+                        >
+                          Clear Date Selection
+                        </Button>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      <div className="lg:w-2/3">
+                        <CalendarComponent
+                          onChange={handleDateChange}
+                          value={selectedDate}
+                          tileContent={tileContent}
+                          tileClassName={tileClassName}
+                          className="border rounded-lg p-4 w-full"
+                        />
+                      </div>
+                      <div className="lg:w-1/3">
+                        <Card className="bg-white">
+                          <CardHeader>
+                            <CardTitle className="text-lg text-[#1C0357]">
+                              {selectedDate 
+                                ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
+                                : 'Select a date to view requests'}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {selectedDate ? (
+                              <div className="space-y-4 max-h-96 overflow-y-auto">
+                                {filteredRequests.length > 0 ? (
+                                  filteredRequests.map((request) => (
+                                    <div 
+                                      key={request.id} 
+                                      className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <h3 className="font-bold">{request.song_title}</h3>
+                                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                                            <User className="w-3 h-3 mr-1" />
+                                            {request.name || request.email}
+                                          </p>
+                                          <p className="text-sm text-gray-600 flex items-center">
+                                            <Music className="w-3 h-3 mr-1" />
+                                            {request.musical_or_artist}
+                                          </p>
+                                        </div>
+                                        <Badge variant={getBadgeVariant(request.backing_type)}>
+                                          {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                        </Badge>
+                                      </div>
+                                      <div className="mt-3 flex justify-between items-center">
+                                        <div className="flex items-center text-sm">
+                                          <Calendar className="w-3 h-3 mr-1 text-gray-500" />
+                                          <span>
+                                            {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                          </span>
+                                        </div>
+                                        {getStatusBadge(request.status || 'pending')}
+                                      </div>
+                                      <div className="mt-3 flex justify-end space-x-1">
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                              <Upload className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Upload Track</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Link to={`/track/${request.id}`}>
+                                              <Button variant="outline" size="sm">
+                                                <Eye className="w-4 h-4" />
+                                              </Button>
+                                            </Link>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Client Page</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </div>
                                     </div>
+                                  ))
+                                ) : (
+                                  <p className="text-center text-gray-500 py-4">
+                                    No requests scheduled for this date
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-center text-gray-500 py-4">
+                                Select a date on the calendar to view requests
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {viewMode === 'list' && (
+                <Card className="shadow-lg mb-6 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
+                      <span className="flex items-center">
+                        <FileAudio className="mr-2 h-5 w-5" />
+                        Backing Requests
+                      </span>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <Button 
+                          onClick={handleSelectAll}
+                          variant="outline"
+                          className="flex items-center"
+                          size="sm"
+                        >
+                          {selectedRequests.length === filteredRequests.length && filteredRequests.length > 0 ? 'Deselect All' : 'Select All'}
+                        </Button>
+                        {selectedRequests.length > 0 && (
+                          <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
+                            <span className="font-medium">Selected: {selectedRequests.length}</span>
+                            <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="default" 
+                                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                                  size="sm"
+                                >
+                                  <MoreHorizontal className="w-4 h-4 mr-2" />
+                                  Batch Actions
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
+                                    toast({
+                                      title: "Batch Update",
+                                      description: `${selectedRequests.length} requests marked as In Progress`,
+                                    });
+                                  }}
+                                >
+                                  <Clock className="w-4 h-4 mr-2" /> Mark In Progress
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    selectedRequests.forEach(id => updateStatus(id, 'completed'));
+                                    toast({
+                                      title: "Batch Update",
+                                      description: `${selectedRequests.length} requests marked as Completed`,
+                                    });
+                                  }}
+                                >
+                                  <Check className="w-4 h-4 mr-2" /> Mark Completed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
+                                    toast({
+                                      title: "Batch Update",
+                                      description: `${selectedRequests.length} requests marked as Cancelled`,
+                                    });
+                                  }}
+                                >
+                                  <X className="w-4 h-4 mr-2" /> Mark Cancelled
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={openBatchDeleteDialog}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="flex items-center justify-center h-64">
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1C0357] mb-4"></div>
+                          <p>Loading requests...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-[#D1AAF2]/20">
+                            <TableRow>
+                              <TableHead className="w-[50px]">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                                  onChange={handleSelectAll}
+                                  className="h-4 w-4"
+                                />
+                              </TableHead>
+                              <TableHead className="w-[120px]">
+                                <div className="flex items-center">
+                                  <CalendarDays className="w-4 h-4 mr-2" />
+                                  Date
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <User className="w-4 h-4 mr-2" />
+                                  Client
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <Music className="w-4 h-4 mr-2" />
+                                  Song
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <Tag className="w-4 h-4 mr-2" />
+                                  Type
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <Calendar className="w-4 h-4 mr-2" />
+                                  Delivery
+                                </div >
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <Hash className="w-4 h-4 mr-2" />
+                                  Status
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Payment
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <DollarSign className="w-4 h-4 mr-2" />
+                                  Cost
+                                </div>
+                              </TableHead>
+                              <TableHead>
+                                <div className="flex items-center">
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Platforms
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredRequests.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={11} className="text-center py-12">
+                                  <div className="text-center">
+                                    <FileAudio className="mx-auto h-16 w-16 text-gray-300" />
+                                    <h3 className="mt-4 text-lg font-medium text-gray-900">No requests found</h3>
+                                    <p className="mt-1 text-gray-500">
+                                      Try adjusting your search or filter criteria
+                                    </p>
+                                    <div className="mt-6">
+                                      <Button onClick={clearFilters} variant="outline">
+                                        Clear Filters
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredRequests.map((request) => (
+                                <TableRow 
+                                  key={request.id} 
+                                  className={`hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`}
+                                >
+                                  <TableCell>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRequests.includes(request.id)}
+                                      onChange={() => handleSelectRequest(request.id)}
+                                      className="h-4 w-4"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="text-sm font-medium">
+                                      {format(new Date(request.created_at), 'MMM dd')}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {format(new Date(request.created_at), 'HH:mm')}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="font-medium">{request.name || 'N/A'}</div>
+                                    <div className="text-sm text-gray-500 flex items-center">
+                                      <Mail className="w-3 h-3 mr-1" />
+                                      {request.email}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="font-medium">{request.song_title}</div>
+                                    <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                                  </TableCell>
+                                  <TableCell>
                                     <Badge variant={getBadgeVariant(request.backing_type)}>
                                       {request.backing_type?.replace('-', ' ') || 'N/A'}
                                     </Badge>
-                                  </div>
-                                  <div className="mt-3 flex justify-between items-center">
-                                    <div className="flex items-center text-sm">
-                                      <Calendar className="w-3 h-3 mr-1 text-gray-500" />
-                                      <span>
-                                        {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                                      </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select 
+                                      value={request.status || 'pending'} 
+                                      onValueChange={(value) => updateStatus(request.id, value)}
+                                    >
+                                      <SelectTrigger className="w-[140px]">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                        <SelectItem value="in-progress">In Progress</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select 
+                                      value={request.is_paid ? 'paid' : 'unpaid'} 
+                                      onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
+                                    >
+                                      <SelectTrigger className="w-[120px]">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                                        <SelectItem value="paid">Paid</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center font-medium">
+                                      <DollarSign className="w-4 h-4 mr-1" />
+                                      <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
                                     </div>
-                                    {getStatusBadge(request.status || 'pending')}
-                                  </div>
-                                  <div className="mt-3 flex justify-end space-x-1">
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                          <Upload className="w-4 h-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Upload Track</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Link to={`/track/${request.id}`}>
-                                          <Button variant="outline" size="sm">
-                                            <Eye className="w-4 h-4" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                      {getPlatformIcons(request.uploaded_platforms)}
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        onClick={() => openUploadPlatformsDialog(request.id)}
+                                        className="mt-1 text-xs"
+                                      >
+                                        Edit
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end space-x-1">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                            <Upload className="w-4 h-4" />
                                           </Button>
-                                        </Link>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Client Page</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </div>
-                                </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Upload Track</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
+                                            <Share2 className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Share Track</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Link to={`/admin/request/${request.id}`}>
+                                            <Button variant="outline" size="sm">
+                                              <Eye className="w-4 h-4" />
+                                            </Button>
+                                          </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>View Details</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Link to={`/track/${request.id}`}>
+                                            <Button variant="outline" size="sm">
+                                              <User className="w-4 h-4" />
+                                            </Button>
+                                          </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Client View</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <CompletionEmailDialog 
+                                            requestId={request.id}
+                                            clientEmail={request.email}
+                                            clientName={request.name || 'Client'}
+                                            songTitle={request.song_title}
+                                            trackUrl={request.track_url}
+                                          />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Email Client</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => openDeleteDialog(request.id)}
+                                            className="text-red-600 hover:text-red-800"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Delete Request</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
                               ))
-                            ) : (
-                              <p className="text-center text-gray-500 py-4">
-                                No requests scheduled for this date
-                              </p>
                             )}
-                          </div>
-                        ) : (
-                          <p className="text-center text-gray-500 py-4">
-                            Select a date on the calendar to view requests
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {viewMode === 'list' && (
-            <Card className="shadow-lg mb-6 bg-white">
-              <CardHeader>
-                <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
-                  <span className="flex items-center">
-                    <FileAudio className="mr-2 h-5 w-5" />
-                    Backing Requests
-                  </span>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <Button 
-                      onClick={handleSelectAll}
-                      variant="outline"
-                      className="flex items-center"
-                      size="sm"
-                    >
-                      {selectedRequests.length === filteredRequests.length && filteredRequests.length > 0 ? 'Deselect All' : 'Select All'}
-                    </Button>
-                    {selectedRequests.length > 0 && (
-                      <div className="flex items-center gap-2 bg-[#D1AAF2] px-4 py-2 rounded-lg">
-                        <span className="font-medium">Selected: {selectedRequests.length}</span>
-                        <span className="font-bold">Total: ${totalCost.toFixed(2)}</span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="default" 
-                              className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-                              size="sm"
-                            >
-                              <MoreHorizontal className="w-4 h-4 mr-2" />
-                              Batch Actions
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                // Batch update selected requests to "in-progress"
-                                selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
-                                toast({
-                                  title: "Batch Update",
-                                  description: `${selectedRequests.length} requests marked as In Progress`,
-                                });
-                              }}
-                            >
-                              <Clock className="w-4 h-4 mr-2" /> Mark In Progress
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                // Batch update selected requests to "completed"
-                                selectedRequests.forEach(id => updateStatus(id, 'completed'));
-                                toast({
-                                  title: "Batch Update",
-                                  description: `${selectedRequests.length} requests marked as Completed`,
-                                });
-                              }}
-                            >
-                              <Check className="w-4 h-4 mr-2" /> Mark Completed
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                // Batch update selected requests to "cancelled"
-                                selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
-                                toast({
-                                  title: "Batch Update",
-                                  description: `${selectedRequests.length} requests marked as Cancelled`,
-                                });
-                              }}
-                            >
-                              <X className="w-4 h-4 mr-2" /> Mark Cancelled
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={openBatchDeleteDialog}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          </TableBody>
+                        </Table>
                       </div>
                     )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1C0357] mb-4"></div>
-                      <p>Loading requests...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-[#D1AAF2]/20">
-                        <TableRow>
-                          <TableHead className="w-[50px]">
-                            <input
-                              type="checkbox"
-                              checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
-                              onChange={handleSelectAll}
-                              className="h-4 w-4"
-                            />
-                          </TableHead>
-                          <TableHead className="w-[120px]">
-                            <div className="flex items-center">
-                              <CalendarDays className="w-4 h-4 mr-2" />
-                              Date
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <User className="w-4 h-4 mr-2" />
-                              Client
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <Music className="w-4 h-4 mr-2" />
-                              Song
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <Tag className="w-4 h-4 mr-2" />
-                              Type
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              Delivery
-                            </div >
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <Hash className="w-4 h-4 mr-2" />
-                              Status
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <CreditCard className="w-4 h-4 mr-2" />
-                              Payment
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <DollarSign className="w-4 h-4 mr-2" />
-                              Cost
-                            </div>
-                          </TableHead>
-                          <TableHead>
-                            <div className="flex items-center">
-                              <Upload className="w-4 h-4 mr-2" />
-                              Platforms
-                            </div>
-                          </TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredRequests.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={11} className="text-center py-12">
-                              <div className="text-center">
-                                <FileAudio className="mx-auto h-16 w-16 text-gray-300" />
-                                <h3 className="mt-4 text-lg font-medium text-gray-900">No requests found</h3>
-                                <p className="mt-1 text-gray-500">
-                                  Try adjusting your search or filter criteria
-                                </p>
-                                <div className="mt-6">
-                                  <Button onClick={clearFilters} variant="outline">
-                                    Clear Filters
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredRequests.map((request) => (
-                            <TableRow 
-                              key={request.id} 
-                              className={`hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`}
-                            >
-                              <TableCell>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedRequests.includes(request.id)}
-                                  onChange={() => handleSelectRequest(request.id)}
-                                  className="h-4 w-4"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm font-medium">
-                                  {format(new Date(request.created_at), 'MMM dd')}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {format(new Date(request.created_at), 'HH:mm')}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium">{request.name || 'N/A'}</div>
-                                <div className="text-sm text-gray-500 flex items-center">
-                                  <Mail className="w-3 h-3 mr-1" />
-                                  {request.email}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium">{request.song_title}</div>
-                                <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={getBadgeVariant(request.backing_type)}>
-                                  {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-                              </TableCell>
-                              <TableCell>
-                                <Select 
-                                  value={request.status || 'pending'} 
-                                  onValueChange={(value) => updateStatus(request.id, value)}
-                                >
-                                  <SelectTrigger className="w-[140px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="in-progress">In Progress</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select 
-                                  value={request.is_paid ? 'paid' : 'unpaid'} 
-                                  onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
-                                >
-                                  <SelectTrigger className="w-[120px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="unpaid">Unpaid</SelectItem>
-                                    <SelectItem value="paid">Paid</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center font-medium">
-                                  <DollarSign className="w-4 h-4 mr-1" />
-                                  <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  {getPlatformIcons(request.uploaded_platforms)}
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => openUploadPlatformsDialog(request.id)}
-                                    className="mt-1 text-xs"
-                                  >
-                                    Edit
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end space-x-1">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                        <Upload className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Upload Track</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                                        <Share2 className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Share Track</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Link to={`/admin/request/${request.id}`}>
-                                        <Button variant="outline" size="sm">
-                                          <Eye className="w-4 h-4" />
-                                        </Button>
-                                      </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>View Details</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Link to={`/track/${request.id}`}>
-                                        <Button variant="outline" size="sm">
-                                          <User className="w-4 h-4" />
-                                        </Button>
-                                      </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Client View</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  {/* Temporarily hide the Email Generator button */}
-                                  {/*
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        onClick={() => openEmailGenerator(request)}
-                                      >
-                                        <MailIcon className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Generate Email</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  */}
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <CompletionEmailDialog 
-                                        requestId={request.id}
-                                        clientEmail={request.email}
-                                        clientName={request.name || 'Client'}
-                                        songTitle={request.song_title}
-                                        trackUrl={request.track_url}
-                                      />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Email Client</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        onClick={() => openDeleteDialog(request.id)}
-                                        className="text-red-600 hover:text-red-800"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Delete Request</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* System Health Tab Content */}
+            <TabsContent value="system-health" className="mt-6">
+              <DropboxMonitor /> {/* Integrate DropboxMonitor directly */}
+            </TabsContent>
+
+            {/* Data Management Tab Content */}
+            <TabsContent value="data-management" className="mt-6">
+              <DataImporter /> {/* Integrate DataImporter directly */}
+            </TabsContent>
+
+            {/* Email Tools Tab Content */}
+            <TabsContent value="email-tools" className="mt-6">
+              <div className="grid grid-cols-1 gap-6">
+                <TestEmail /> {/* Integrate TestEmail directly */}
+                <TestEmailNotification /> {/* Integrate TestEmailNotification directly */}
+                <NotificationRecipientsManager /> {/* Integrate NotificationRecipientsManager directly */}
+              </div>
+            </TabsContent>
+          </Tabs>
           
           {/* Upload Track Dialog */}
           {uploadTrackId && (
@@ -1694,7 +1631,7 @@ const AdminDashboard = () => {
                 >
                   Delete All
                 </AlertDialogAction>
-              </AlertDialogFooter>
+              </AlertDialogAction>
             </AlertDialogContent>
           </AlertDialog>
           
