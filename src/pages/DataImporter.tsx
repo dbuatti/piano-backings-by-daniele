@@ -45,7 +45,8 @@ const DataImporter = () => {
       throw new Error('No data found. Please paste header and at least one row.');
     }
 
-    const rawHeaders = lines[0].split('\t').map(h => h.trim());
+    // Use comma as delimiter for CSV data
+    const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
     const headersMap: { [key: string]: string } = {
       'Email Address': 'email',
       'Name': 'name',
@@ -72,7 +73,8 @@ const DataImporter = () => {
     const records: ParsedRequest[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split('\t').map(v => v.trim());
+      // Split by comma and remove quotes from each value
+      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
       const record: Record<string, string> = {};
 
       // Ensure all mappedHeaders are considered, even if values array is shorter
@@ -289,7 +291,7 @@ const DataImporter = () => {
             <div className="mb-6">
               <p className="mb-4">
                 Paste the raw data from your Google Sheet below. Make sure to include the header row.
-                The data should be tab-separated (which is usually the default when copying from Google Sheets).
+                The data should be comma-separated (CSV).
               </p>
               <p className="text-sm text-gray-600 mb-4">
                 <strong>Important:</strong> This tool will attempt to map your sheet columns to the app's database fields.
@@ -302,7 +304,7 @@ const DataImporter = () => {
                 value={rawData}
                 onChange={(e) => setRawData(e.target.value)}
                 rows={15}
-                placeholder="Paste your tab-separated Google Sheet data here, including headers..."
+                placeholder="Paste your comma-separated Google Sheet data here, including headers..."
                 className="mt-2 font-mono text-sm"
                 disabled={isImporting}
               />
