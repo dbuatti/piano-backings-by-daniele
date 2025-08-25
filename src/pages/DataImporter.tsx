@@ -39,14 +39,42 @@ const DataImporter = () => {
   const [importErrors, setImportErrors] = useState<any[]>([]);
   const [error, setError] = useState<any>(null);
 
+  // Robust CSV line parser
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let inQuote = false;
+    let currentField = '';
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuote && nextChar === '"') { // Handle escaped double quote ("")
+          currentField += '"';
+          i++; // Skip the next quote
+        } else {
+          inQuote = !inQuote;
+        }
+      } else if (char === ',' && !inQuote) {
+        result.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    result.push(currentField.trim()); // Add the last field
+    return result;
+  };
+
   const parseSheetData = (data: string): ParsedRequest[] => {
     const lines = data.trim().split('\n');
     if (lines.length < 2) {
       throw new Error('No data found. Please paste header and at least one row.');
     }
 
-    // Use comma as delimiter for CSV data
-    const rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    // Use the robust parser for headers
+    const rawHeaders = parseCSVLine(lines[0]);
     const headersMap: { [key: string]: string } = {
       'Email Address': 'email',
       'Name': 'name',
@@ -73,8 +101,7 @@ const DataImporter = () => {
     const records: ParsedRequest[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      // Split by comma and remove quotes from each value
-      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      const values = parseCSVLine(lines[i]); // Use the robust parser for values
       const record: Record<string, string> = {};
 
       // Ensure all mappedHeaders are considered, even if values array is shorter
