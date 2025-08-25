@@ -10,7 +10,7 @@ export interface BackingRequest {
   song_title: string;
   musical_or_artist: string;
   track_purpose: string;
-  backing_type: string[]; // Changed to array
+  backing_type: string;
   delivery_date: string;
   special_requests: string;
   song_key: string;
@@ -56,7 +56,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     - Song title: "${request.song_title}"
     - Musical/Artist: ${request.musical_or_artist}
     - Track purpose: ${request.track_purpose}
-    - Backing type: ${request.backing_type.join(', ') || 'None'}
+    - Backing type: ${request.backing_type}
     - Delivery date: ${request.delivery_date}
     - Special requests: ${request.special_requests || 'None'}
     - Song key: ${request.song_key}
@@ -135,8 +135,6 @@ const generateFallbackEmail = (request: BackingRequest) => {
     }
   }
   
-  const backingTypeDisplay = request.backing_type.map(type => type.replace('-', ' ')).join(', ');
-
   return {
     subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
     body: `Hi ${request.name},
@@ -148,10 +146,10 @@ Your custom piano backing track for "${request.song_title}" from ${request.music
 ${request.special_requests ? specialRequestSummary : 'I\'ve prepared this track with great care to match your needs.'}
 
 Here's a breakdown of the work completed:
-• ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type, request.backing_type)}
+• ${request.track_type.replace('-', ' ')} track in ${request.song_key}: $${getBasePrice(request.track_type)}
 ${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
 
-Total amount: $${calculateTotal(request.track_type, request.backing_type, request.additional_services)}
+Total amount: $${calculateTotal(request.track_type, request.additional_services)}
 
 You can complete your payment via:
 1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
@@ -174,26 +172,13 @@ ${EMAIL_SIGNATURE}`
 };
 
 // Helper functions for pricing
-const getBasePrice = (trackType: string, backingTypes: string[]) => {
-  let price = 0;
-  backingTypes.forEach(type => {
-    switch (type) {
-      case 'full-song': price += 30; break;
-      case 'audition-cut': price += 15; break;
-      case 'note-bash': price += 10; break;
-    }
-  });
-
-  // If no specific backing types were selected, use trackType for base price
-  if (backingTypes.length === 0) {
-    switch (trackType) {
-      case 'quick': price = 7.5; break; // Average of 5-10
-      case 'one-take': price = 15; break; // Average of 10-20
-      case 'polished': price = 25; break; // Average of 15-35
-      default: price = 20; // Default if track_type is unknown
-    }
+const getBasePrice = (trackType: string) => {
+  switch (trackType) {
+    case 'quick': return '5-10';
+    case 'one-take': return '10-20';
+    case 'polished': return '15-35';
+    default: return '15-35';
   }
-  return price.toFixed(2);
 };
 
 const getServicePrice = (service: string) => {
@@ -206,33 +191,22 @@ const getServicePrice = (service: string) => {
   }
 };
 
-const calculateTotal = (trackType: string, backingTypes: string[], additionalServices: string[]) => {
+const calculateTotal = (trackType: string, additionalServices: string[]) => {
   let total = 0;
   
-  // Add base price for each selected backing type
-  backingTypes.forEach(type => {
-    switch (type) {
-      case 'full-song': total += 30; break;
-      case 'audition-cut': total += 15; break;
-      case 'note-bash': total += 10; break;
-    }
-  });
-
-  // If no specific backing types were selected, use trackType for base cost
-  if (backingTypes.length === 0) {
-    switch (trackType) {
-      case 'quick': 
-        total = 7.5; // Average of 5-10
-        break;
-      case 'one-take': 
-        total = 15; // Average of 10-20
-        break;
-      case 'polished': 
-        total = 25; // Average of 15-35
-        break;
-      default: 
-        total = 20;
-    }
+  // Add base price
+  switch (trackType) {
+    case 'quick': 
+      total += 7.5; // Average of 5-10
+      break;
+    case 'one-take': 
+      total += 15; // Average of 10-20
+      break;
+    case 'polished': 
+      total += 25; // Average of 15-35
+      break;
+    default: 
+      total += 25;
   }
   
   // Add additional service costs

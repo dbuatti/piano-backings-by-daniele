@@ -254,19 +254,9 @@ const UserDashboard = () => {
                             <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {Array.isArray(request.backing_type) ? (
-                                request.backing_type.map((type: string) => (
-                                  <Badge key={type} variant="outline" className="capitalize">
-                                    {type.replace('-', ' ')}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <Badge variant="outline" className="capitalize">
-                                  {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                </Badge>
-                              )}
-                            </div>
+                            <Badge variant="outline">
+                              {request.backing_type?.replace('-', ' ') || 'Not specified'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center">

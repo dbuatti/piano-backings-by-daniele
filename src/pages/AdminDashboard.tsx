@@ -239,11 +239,7 @@ const AdminDashboard = () => {
     }
     
     if (backingTypeFilter !== 'all') {
-      result = result.filter(request => 
-        Array.isArray(request.backing_type) 
-          ? request.backing_type.includes(backingTypeFilter) 
-          : request.backing_type === backingTypeFilter
-      );
+      result = result.filter(request => request.backing_type === backingTypeFilter);
     }
     
     if (viewMode === 'calendar' && selectedDate) {
@@ -350,7 +346,41 @@ const AdminDashboard = () => {
     let total = 0;
     
     selected.forEach(req => {
-      total += calculateRequestCost(req);
+      let baseCost = 0;
+      switch (req.backing_type) {
+        case 'full-song':
+          baseCost = 30;
+          break;
+        case 'audition-cut':
+          baseCost = 15;
+          break;
+        case 'note-bash':
+          baseCost = 10;
+          break;
+        default:
+          baseCost = 20;
+      }
+      
+      if (req.additional_services) {
+        req.additional_services.forEach((service: string) => {
+          switch (service) {
+            case 'rush-order':
+              baseCost += 10;
+              break;
+            case 'complex-songs':
+              baseCost += 7;
+              break;
+            case 'additional-edits':
+              baseCost += 5;
+              break;
+            case 'exclusive-ownership':
+              baseCost += 40;
+              break;
+          }
+        });
+      }
+      
+      total += baseCost;
     });
     
     return total;
@@ -894,7 +924,6 @@ const AdminDashboard = () => {
                               <SelectItem value="full-song">Full Song</SelectItem>
                               <SelectItem value="audition-cut">Audition Cut</SelectItem>
                               <SelectItem value="note-bash">Note Bash</SelectItem>
-                              <SelectItem value="mixed">Mixed Backings</SelectItem> {/* Added for multiple selections */}
                             </SelectContent>
                           </Select>
                         </div>
@@ -976,19 +1005,9 @@ const AdminDashboard = () => {
                                             {request.musical_or_artist}
                                           </p>
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
-                                          {Array.isArray(request.backing_type) ? (
-                                            request.backing_type.map((type: string) => (
-                                              <Badge key={type} variant={getBadgeVariant(type)}>
-                                                {type.replace('-', ' ')}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <Badge variant={getBadgeVariant(request.backing_type)}>
-                                              {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                            </Badge>
-                                          )}
-                                        </div>
+                                        <Badge variant={getBadgeVariant(request.backing_type)}>
+                                          {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                        </Badge>
                                       </div>
                                       <div className="mt-3 flex justify-between items-center">
                                         <div className="flex items-center text-sm">
@@ -1256,19 +1275,9 @@ const AdminDashboard = () => {
                                     <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex flex-wrap gap-1">
-                                      {Array.isArray(request.backing_type) ? (
-                                        request.backing_type.map((type: string) => (
-                                          <Badge key={type} variant={getBadgeVariant(type)}>
-                                            {type.replace('-', ' ')}
-                                          </Badge>
-                                        ))
-                                      ) : (
-                                        <Badge variant={getBadgeVariant(request.backing_type)}>
-                                          {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                        </Badge>
-                                      )}
-                                    </div>
+                                    <Badge variant={getBadgeVariant(request.backing_type)}>
+                                      {request.backing_type?.replace('-', ' ') || 'N/A'}
+                                    </Badge>
                                   </TableCell>
                                   <TableCell>
                                     {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}

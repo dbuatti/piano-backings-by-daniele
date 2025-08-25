@@ -57,7 +57,7 @@ const FormPage = () => {
     youtubeLink: '',
     additionalLinks: '', // New field for additional links
     trackPurpose: '',
-    backingType: [] as string[], // Changed to array for multiple selections
+    backingType: '',
     deliveryDate: '',
     additionalServices: [] as string[],
     specialRequests: '',
@@ -147,21 +147,12 @@ const FormPage = () => {
     setFormData(prev => ({ ...prev, [fieldName]: file }));
   };
 
-  const handleServiceCheckboxChange = (service: string) => {
+  const handleCheckboxChange = (service: string) => {
     setFormData(prev => {
       const newServices = prev.additionalServices.includes(service)
         ? prev.additionalServices.filter(s => s !== service)
         : [...prev.additionalServices, service];
       return { ...prev, additionalServices: newServices };
-    });
-  };
-
-  const handleBackingTypeCheckboxChange = (type: string) => {
-    setFormData(prev => {
-      const newBackingTypes = prev.backingType.includes(type)
-        ? prev.backingType.filter(t => t !== type)
-        : [...prev.backingType, type];
-      return { ...prev, backingType: newBackingTypes };
     });
   };
 
@@ -180,7 +171,7 @@ const FormPage = () => {
       youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY', // Added a dummy YouTube link
       additionalLinks: 'https://example.com/extra-reference', // Dummy additional link
       trackPurpose: 'personal-practise',
-      backingType: ['full-song', 'audition-cut'], // Dummy multiple selections
+      backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
       specialRequests: 'Please make sure the tempo matches the reference exactly.',
@@ -307,7 +298,7 @@ const FormPage = () => {
           voiceMemoFileUrl: voiceMemoFileUrl,
           sheetMusicUrl: sheetMusicUrl,
           trackPurpose: formData.trackPurpose,
-          backingType: formData.backingType, // Now an array
+          backingType: formData.backingType,
           deliveryDate: formData.deliveryDate,
           additionalServices: formData.additionalServices,
           specialRequests: formData.specialRequests,
@@ -378,7 +369,7 @@ const FormPage = () => {
         youtubeLink: '',
         additionalLinks: '', // Clear the new field
         trackPurpose: '',
-        backingType: [], // Clear as array
+        backingType: '',
         deliveryDate: '',
         additionalServices: [],
         specialRequests: '',
@@ -433,12 +424,6 @@ const FormPage = () => {
     { value: 'Melody Bash Tracks', label: 'Melody Bash Tracks' },
     { value: 'Performance Tracks', label: 'Performance Tracks' },
     { value: 'General', label: 'General' }
-  ];
-
-  const backingTypeOptions = [
-    { value: 'full-song', label: 'Full song backing' },
-    { value: 'audition-cut', label: 'Audition cut backing' },
-    { value: 'note-bash', label: 'Note/melody bash' },
   ];
 
   return (
@@ -867,30 +852,19 @@ const FormPage = () => {
                     </div>
                     
                     <div>
-                      <h3 className="font-semibold mb-2 flex items-center text-sm">
-                        <MusicIcon className="mr-1" size={14} />
-                        What do you need?
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {backingTypeOptions.map((option) => (
-                          <Label key={option.value} htmlFor={option.value} className="flex flex-col items-center justify-center cursor-pointer w-full">
-                            <div className={cn(
-                              "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                              "hover:border-[#F538BC] hover:shadow-md",
-                              formData.backingType.includes(option.value) ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
-                            )}>
-                              <Checkbox
-                                id={option.value}
-                                checked={formData.backingType.includes(option.value)}
-                                onCheckedChange={() => handleBackingTypeCheckboxChange(option.value)}
-                                className="mt-1 mr-3"
-                              />
-                              <div className="flex flex-col flex-1">
-                                <span className="font-bold text-sm text-[#1C0357]">{option.label}</span>
-                              </div>
-                            </div>
-                          </Label>
-                        ))}
+                      <Label htmlFor="backingType" className="text-sm mb-1">What do you need?</Label>
+                      <div className="relative">
+                        <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
+                          <SelectTrigger className="pl-8 py-2 text-sm">
+                            <SelectValue placeholder="Select backing type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="full-song" className="text-sm">Full song backing</SelectItem>
+                            <SelectItem value="audition-cut" className="text-sm">Audition cut backing</SelectItem>
+                            <SelectItem value="note-bash" className="text-sm">Note/melody bash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
                     </div>
                   </div>
@@ -938,7 +912,7 @@ const FormPage = () => {
                           <Checkbox
                             id="rush-order"
                             checked={formData.additionalServices.includes('rush-order')}
-                            onCheckedChange={(checked) => handleServiceCheckboxChange('rush-order')}
+                            onCheckedChange={(checked) => handleCheckboxChange('rush-order')}
                             className="mt-1 mr-3"
                           />
                           <div className="flex flex-col flex-1">
@@ -958,7 +932,7 @@ const FormPage = () => {
                           <Checkbox
                             id="complex-songs"
                             checked={formData.additionalServices.includes('complex-songs')}
-                            onCheckedChange={(checked) => handleServiceCheckboxChange('complex-songs')}
+                            onCheckedChange={(checked) => handleCheckboxChange('complex-songs')}
                             className="mt-1 mr-3"
                           />
                           <div className="flex flex-col flex-1">
@@ -980,7 +954,7 @@ const FormPage = () => {
                           <Checkbox
                             id="additional-edits"
                             checked={formData.additionalServices.includes('additional-edits')}
-                            onCheckedChange={(checked) => handleServiceCheckboxChange('additional-edits')}
+                            onCheckedChange={(checked) => handleCheckboxChange('additional-edits')}
                             className="mt-1 mr-3"
                           />
                           <div className="flex flex-col flex-1">
@@ -1002,7 +976,7 @@ const FormPage = () => {
                           <Checkbox
                             id="exclusive-ownership"
                             checked={formData.additionalServices.includes('exclusive-ownership')}
-                            onCheckedChange={(checked) => handleServiceCheckboxChange('exclusive-ownership')}
+                            onCheckedChange={(checked) => handleCheckboxChange('exclusive-ownership')}
                             className="mt-1 mr-3"
                           />
                           <div className="flex flex-col flex-1">
