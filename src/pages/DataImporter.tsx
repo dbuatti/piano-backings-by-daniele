@@ -67,15 +67,17 @@ const DataImporter = () => {
       'Which type of backing track do you need? (Rough Cut)': 'track_type', // Assuming this is the header for track_type
     };
 
-    const mappedHeaders = rawHeaders.map(h => headersMap[h] || h); // Map known headers to internal names
+    const mappedHeaders = rawHeaders.map(h => headersMap[h] || h);
 
     const records: ParsedRequest[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split('\t').map(v => v.trim());
       const record: Record<string, string> = {};
+
+      // Ensure all mappedHeaders are considered, even if values array is shorter
       mappedHeaders.forEach((header, index) => {
-        record[header] = values[index] || '';
+        record[header] = values[index] !== undefined ? values[index] : ''; // Assign empty string if value is missing
       });
 
       // Helper to extract first URL from a comma-separated string
