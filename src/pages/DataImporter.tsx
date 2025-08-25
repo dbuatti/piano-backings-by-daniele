@@ -22,7 +22,7 @@ interface ParsedRequest {
   track_purpose?: string;
   delivery_date?: string;
   special_requests?: string;
-  backing_type?: string;
+  backing_type?: string[]; // Changed to array
   additional_services?: string[];
   track_type?: string;
   song_key?: string;
@@ -126,13 +126,14 @@ const DataImporter = () => {
         return undefined;
       };
 
-      const mapBackingType = (text: string) => {
-        if (!text) return undefined;
+      const mapBackingType = (text: string): string[] => {
+        if (!text) return [];
+        const types: string[] = [];
         const lowerText = text.toLowerCase();
-        if (lowerText.includes('full song')) return 'full-song';
-        if (lowerText.includes('audition cut')) return 'audition-cut';
-        if (lowerText.includes('note/melody bash')) return 'note-bash';
-        return undefined;
+        if (lowerText.includes('full song')) types.push('full-song');
+        if (lowerText.includes('audition cut')) types.push('audition-cut');
+        if (lowerText.includes('note/melody bash')) types.push('note-bash');
+        return types;
       };
 
       const mapTrackType = (text: string) => {
