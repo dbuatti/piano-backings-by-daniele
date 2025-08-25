@@ -106,6 +106,19 @@ const DataImporter = () => {
         specialRequests = specialRequests ? `${specialRequests}\nAdditional Links: ${additionalLinks}` : `Additional Links: ${additionalLinks}`;
       }
 
+      // Robust date parsing
+      let deliveryDate: string | undefined;
+      const rawDeliveryDate = record['When do you need your track for?'];
+      if (rawDeliveryDate) {
+        const parsedDate = new Date(rawDeliveryDate);
+        if (!isNaN(parsedDate.getTime())) { // Check if date is valid
+          deliveryDate = parsedDate.toISOString().split('T')[0];
+        } else {
+          console.warn(`Invalid delivery date found: "${rawDeliveryDate}". Setting to undefined.`);
+          // You could also add this to a specific error list for the user if needed
+        }
+      }
+
       const parsedRequest: ParsedRequest = {
         email: record['Email Address'],
         name: record['Name'] || undefined,
@@ -115,7 +128,7 @@ const DataImporter = () => {
         voice_memo: getFirstUrl('Voice Memo (optional)'),
         youtube_link: record['YouTube URL for tempo reference'] || undefined,
         track_purpose: mapTrackPurpose(record['This track is for...']),
-        delivery_date: record['When do you need your track for?'] ? new Date(record['When do you need your track for?']).toISOString().split('T')[0] : undefined,
+        delivery_date: deliveryDate, // Use the validated date
         special_requests: specialRequests || undefined,
         backing_type: mapBackingType(record['What do you need?'] || record['Which type of backing track do you need?']),
         additional_services: mapAdditionalServices(record['Additional Services']),
@@ -162,7 +175,7 @@ const DataImporter = () => {
                 voice_memo: req.voice_memo,
                 youtube_link: req.youtube_link,
                 track_purpose: req.track_purpose,
-                delivery_date: req.delivery_date,
+                delivery_date: req.delivery_date, // This is already validated to be ISO string or undefined
                 special_requests: req.special_requests,
                 backing_type: req.backing_type,
                 additional_services: req.additional_services,
@@ -172,7 +185,8 @@ const DataImporter = () => {
                 cost: req.cost,
                 status: 'completed', // Assuming past orders are completed
                 is_paid: true, // Assuming past orders are paid
-                created_at: req.delivery_date ? new Date(req.delivery_date).toISOString() : new Date().toISOString(), // Use delivery date as created_at if available
+                // Use delivery_date for created_at if valid, otherwise current date
+                created_at: req.delivery_date ? new Date(req.delivery_date).toISOString() : new Date().toISOString(),
               }
             ])
             .select();
