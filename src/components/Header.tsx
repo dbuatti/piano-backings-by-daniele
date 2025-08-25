@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -183,6 +183,15 @@ const Header = () => {
                     Test Email
                   </Button>
                 </Link>
+                <Link to="/data-importer"> {/* New link for Data Importer */}
+                  <Button 
+                    variant="ghost" 
+                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import Data
+                  </Button>
+                </Link>
               </>
             )}
             
@@ -325,6 +334,17 @@ const Header = () => {
                         >
                           <TestTube className="mr-3 h-5 w-5" />
                           Test Email
+                        </Link>
+                        <Link 
+                          to="/data-importer" {/* New link for Data Importer */}
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Upload className="mr-3 h-5 w-5" />
+                          Import Data
                         </Link>
                       </>
                     )}

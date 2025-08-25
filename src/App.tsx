@@ -20,6 +20,7 @@ import DropboxMonitor from "./pages/DropboxMonitor";
 import ClientTrackView from "./pages/ClientTrackView";
 import EmailGenerator from "./pages/EmailGenerator";
 import TestEmailNotification from "./pages/TestEmailNotification";
+import DataImporter from "./pages/DataImporter"; // Import the new DataImporter component
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
           <Route path="/email-generator" element={<EmailGenerator />} />
           <Route path="/email-generator/:id" element={<EmailGenerator />} />
           <Route path="/test-email-notification" element={<TestEmailNotification />} />
+          <Route path="/data-importer" element={<DataImporter />} /> {/* Add the new route */}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
