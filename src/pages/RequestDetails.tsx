@@ -110,7 +110,7 @@ const RequestDetails = () => {
         voiceMemo: request.voice_memo,
         sheetMusicUrl: request.sheet_music_url,
         trackPurpose: request.track_purpose,
-        backingType: request.backing_type,
+        backingType: request.backing_type, // Now an array
         deliveryDate: request.delivery_date,
         additionalServices: request.additional_services,
         specialRequests: request.special_requests,
@@ -288,9 +288,19 @@ const RequestDetails = () => {
                     <p className="text-sm text-gray-500 flex items-center">
                       <Headphones className="mr-1 h-4 w-4" /> Backing Type
                     </p>
-                    <Badge className="capitalize">
-                      {request.backing_type?.replace('-', ' ') || 'Not specified'}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {Array.isArray(request.backing_type) ? (
+                        request.backing_type.map((type: string) => (
+                          <Badge key={type} className="capitalize">
+                            {type.replace('-', ' ')}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge className="capitalize">
+                          {request.backing_type?.replace('-', ' ') || 'Not specified'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 flex items-center">

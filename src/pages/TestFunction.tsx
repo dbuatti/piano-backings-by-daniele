@@ -26,7 +26,7 @@ const TestFunction = () => {
     checkAuth();
   }, []);
 
-  const testFunction = async (backingType: string) => {
+  const testFunction = async (backingType: string[]) => { // Changed to array
     setIsTesting(true);
     setResult(null);
     setError(null);
@@ -82,7 +82,7 @@ const TestFunction = () => {
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL
           trackPurpose: "personal-practise",
-          backingType: backingType,
+          backingType: backingType, // Now an array
           deliveryDate: new Date().toISOString().split('T')[0], // Today's date
           additionalServices: ["rush-order"],
           specialRequests: "This is a test request for Dropbox folder creation",
@@ -117,12 +117,12 @@ const TestFunction = () => {
         if (data.dropboxFolderId) {
           toast({
             title: "Success!",
-            description: `Function executed successfully for ${backingType}. A new folder was created in Dropbox.`,
+            description: `Function executed successfully for ${backingType.join(', ')}. A new folder was created in Dropbox.`,
           });
         } else {
           toast({
             title: "Partial Success",
-            description: `Request submitted successfully for ${backingType}, but Dropbox folder creation failed. Check the logs for details.`,
+            description: `Request submitted successfully for ${backingType.join(', ')}, but Dropbox folder creation failed. Check the logs for details.`,
             variant: "destructive",
           });
         }
@@ -190,7 +190,7 @@ const TestFunction = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <Button 
-                      onClick={() => testFunction('full-song')}
+                      onClick={() => testFunction(['full-song'])}
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
@@ -200,7 +200,7 @@ const TestFunction = () => {
                     </Button>
                     
                     <Button 
-                      onClick={() => testFunction('audition-cut')}
+                      onClick={() => testFunction(['audition-cut'])}
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
@@ -210,13 +210,34 @@ const TestFunction = () => {
                     </Button>
                     
                     <Button 
-                      onClick={() => testFunction('note-bash')}
+                      onClick={() => testFunction(['note-bash'])}
                       disabled={isTesting}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-20 flex flex-col items-center justify-center"
                     >
                       <FileText className="mr-2 h-5 w-5" />
                       <span className="font-bold">Note Bash</span>
                       <span className="text-sm">00. NOTE BASH</span>
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <Button 
+                      onClick={() => testFunction(['full-song', 'audition-cut'])}
+                      disabled={isTesting}
+                      className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white h-20 flex flex-col items-center justify-center"
+                    >
+                      <Music className="mr-2 h-5 w-5" />
+                      <span className="font-bold">Mixed Backings</span>
+                      <span className="text-sm">00. MIXED BACKINGS</span>
+                    </Button>
+                    <Button 
+                      onClick={() => testFunction(['full-song'])} // This will trigger rough cut logic if trackType is set
+                      disabled={isTesting}
+                      className="bg-[#F1E14F] hover:bg-[#F1E14F]/90 text-[#1C0357] h-20 flex flex-col items-center justify-center"
+                    >
+                      <Youtube className="mr-2 h-5 w-5" />
+                      <span className="font-bold">Rough Cut (YouTube)</span>
+                      <span className="text-sm">00. ROUGH CUTS</span>
                     </Button>
                   </div>
                   
@@ -229,6 +250,8 @@ const TestFunction = () => {
                       <li>00. FULL VERSIONS</li>
                       <li>00. AUDITION CUTS</li>
                       <li>00. NOTE BASH</li>
+                      <li>00. MIXED BACKINGS (for multiple selections)</li>
+                      <li>00. ROUGH CUTS (for Quick Reference and One-Take recordings)</li>
                     </ul>
                   </div>
                 </div>
