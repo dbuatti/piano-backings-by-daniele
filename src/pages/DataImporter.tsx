@@ -27,6 +27,7 @@ interface ParsedRequest {
   track_type?: string;
   song_key?: string;
   different_key?: string;
+  key_for_track?: string;
   cost?: number;
 }
 
@@ -44,13 +45,36 @@ const DataImporter = () => {
       throw new Error('No data found. Please paste header and at least one row.');
     }
 
-    const headers = lines[0].split('\t').map(h => h.trim());
+    const rawHeaders = lines[0].split('\t').map(h => h.trim());
+    const headersMap: { [key: string]: string } = {
+      'Email Address': 'email',
+      'Name': 'name',
+      'Song Title': 'song_title',
+      'Musical or artist': 'musical_or_artist',
+      'Please upload your sheet music as a PDF': 'sheet_music_url',
+      'Voice Memo (optional)': 'voice_memo',
+      'YouTube URL for tempo reference': 'youtube_link',
+      'Is there anything else you\'d like to add?': 'special_requests',
+      'Additional links?': 'additional_links', // Temporary field for combining
+      'When do you need your track for?': 'delivery_date',
+      'This track is for...': 'track_purpose',
+      'What do you need?': 'backing_type',
+      'Which type of backing track do you need?': 'backing_type_alt', // Alternative for backing_type
+      'Additional Services': 'additional_services',
+      'What key is your song in? (Don\'t worry if you\'re unsure)': 'song_key',
+      'Do you require it in a different key?': 'different_key',
+      'Which key?': 'key_for_track', // Added key_for_track
+      'Which type of backing track do you need? (Rough Cut)': 'track_type', // Assuming this is the header for track_type
+    };
+
+    const mappedHeaders = rawHeaders.map(h => headersMap[h] || h); // Map known headers to internal names
+
     const records: ParsedRequest[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split('\t').map(v => v.trim());
       const record: Record<string, string> = {};
-      headers.forEach((header, index) => {
+      mappedHeaders.forEach((header, index) => {
         record[header] = values[index] || '';
       });
 
@@ -100,41 +124,45 @@ const DataImporter = () => {
       };
 
       // Combine special requests and additional links
-      let specialRequests = record['Is there anything else you\'d like to add?'] || '';
-      const additionalLinks = record['Additional links?'] || '';
+      let specialRequests = record['special_requests'] || '';
+      const additionalLinks = record['additional_links'] || '';
       if (additionalLinks && !specialRequests.includes(additionalLinks)) {
         specialRequests = specialRequests ? `${specialRequests}\nAdditional Links: ${additionalLinks}` : `Additional Links: ${additionalLinks}`;
       }
 
       // Robust date parsing
       let deliveryDate: string | undefined;
-      const rawDeliveryDate = record['When do you need your track for?'];
+      const rawDeliveryDate = record['delivery_date'];
       if (rawDeliveryDate) {
         const parsedDate = new Date(rawDeliveryDate);
         if (!isNaN(parsedDate.getTime())) { // Check if date is valid
           deliveryDate = parsedDate.toISOString().split('T')[0];
         } else {
           console.warn(`Invalid delivery date found: "${rawDeliveryDate}". Setting to undefined.`);
-          // You could also add this to a specific error list for the user if needed
         }
       }
 
+      // Determine backing_type and track_type more robustly
+      const backingType = mapBackingType(record['backing_type'] || record['backing_type_alt']);
+      const trackType = mapTrackType(record['track_type']); // Use the specific track_type column if present
+
       const parsedRequest: ParsedRequest = {
-        email: record['Email Address'],
-        name: record['Name'] || undefined,
-        song_title: record['Song Title'],
-        musical_or_artist: record['Musical or artist'],
-        sheet_music_url: getFirstUrl('Please upload your sheet music as a PDF'),
-        voice_memo: getFirstUrl('Voice Memo (optional)'),
-        youtube_link: record['YouTube URL for tempo reference'] || undefined,
-        track_purpose: mapTrackPurpose(record['This track is for...']),
-        delivery_date: deliveryDate, // Use the validated date
+        email: record['email'] || 'unknown@example.com', // Default email
+        name: record['name'] || undefined,
+        song_title: record['song_title'] || 'Unknown Song', // Default song title
+        musical_or_artist: record['musical_or_artist'] || 'Unknown Artist', // Default artist
+        sheet_music_url: getFirstUrl('sheet_music_url'),
+        voice_memo: getFirstUrl('voice_memo'),
+        youtube_link: record['youtube_link'] || undefined,
+        track_purpose: mapTrackPurpose(record['track_purpose']),
+        delivery_date: deliveryDate,
         special_requests: specialRequests || undefined,
-        backing_type: mapBackingType(record['What do you need?'] || record['Which type of backing track do you need?']),
-        additional_services: mapAdditionalServices(record['Additional Services']),
-        track_type: mapTrackType(record['Which type of backing track do you need?']),
-        song_key: record['What key is your song in? (Don\'t worry if you\'re unsure)'] || undefined,
-        different_key: record['Do you require it in a different key?'] || undefined,
+        backing_type: backingType,
+        additional_services: mapAdditionalServices(record['additional_services']),
+        track_type: trackType,
+        song_key: record['song_key'] || undefined,
+        different_key: record['different_key'] || undefined,
+        key_for_track: record['key_for_track'] || undefined,
       };
       
       // Calculate cost using the utility function
@@ -158,8 +186,10 @@ const DataImporter = () => {
 
       for (const req of requestsToImport) {
         try {
-          // Ensure required fields are present
-          if (!req.email || !req.song_title || !req.musical_or_artist) {
+          // Ensure required fields are present and not default placeholders
+          if (!req.email || req.email === 'unknown@example.com' || 
+              !req.song_title || req.song_title === 'Unknown Song' || 
+              !req.musical_or_artist || req.musical_or_artist === 'Unknown Artist') {
             throw new Error('Missing required fields (email, song_title, musical_or_artist)');
           }
 
@@ -175,13 +205,14 @@ const DataImporter = () => {
                 voice_memo: req.voice_memo,
                 youtube_link: req.youtube_link,
                 track_purpose: req.track_purpose,
-                delivery_date: req.delivery_date, // This is already validated to be ISO string or undefined
+                delivery_date: req.delivery_date,
                 special_requests: req.special_requests,
                 backing_type: req.backing_type,
                 additional_services: req.additional_services,
                 track_type: req.track_type,
                 song_key: req.song_key,
                 different_key: req.different_key,
+                key_for_track: req.key_for_track,
                 cost: req.cost,
                 status: 'completed', // Assuming past orders are completed
                 is_paid: true, // Assuming past orders are paid
