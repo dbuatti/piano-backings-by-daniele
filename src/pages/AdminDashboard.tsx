@@ -85,7 +85,6 @@ import 'react-calendar/dist/Calendar.css';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import PricingMatrix from '@/components/PricingMatrix';
@@ -727,7 +726,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    <TooltipProvider>
+    <> {/* Removed TooltipProvider here */}
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         
@@ -1655,7 +1654,7 @@ const AdminDashboard = () => {
           <MadeWithDyad />
         </div>
       </div>
-    </TooltipProvider>
+    </>
   );
 };
 
