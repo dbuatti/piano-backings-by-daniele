@@ -725,8 +725,9 @@ const AdminDashboard = () => {
     );
   }
 
+  // Removed TooltipProvider here
   return (
-    <> {/* Removed TooltipProvider here */}
+    <> 
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         
