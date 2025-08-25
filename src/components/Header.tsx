@@ -109,7 +109,7 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-0.5"> {/* Reduced space-x */}
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -118,7 +118,7 @@ const Header = () => {
                   href={item.href}
                   onClick={(e) => handleAnchorLink(item.href, e)}
                   className={cn(
-                    "px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center",
+                    "px-2 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center", {/* Reduced px */}
                     "hover:bg-white/20 hover:text-white",
                     location.pathname === item.href.split('#')[0] && 
                     (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
@@ -126,7 +126,7 @@ const Header = () => {
                       : "text-white"
                   )}
                 >
-                  <Icon className="mr-2 h-4 w-4" />
+                  <Icon className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                   {item.name}
                 </a>
               );
@@ -135,13 +135,13 @@ const Header = () => {
             <Link to="/form-page">
               <Button 
                 className={cn(
-                  "ml-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300",
+                  "ml-1 px-3 py-2 rounded-full text-sm font-bold transition-all duration-300", {/* Reduced ml and px */}
                   "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
                   "border-2 border-white shadow-lg hover:shadow-xl",
                   "transform hover:scale-105"
                 )}
               >
-                <Music className="mr-2 h-4 w-4" />
+                <Music className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                 Order Track
               </Button>
             </Link>
@@ -150,9 +150,9 @@ const Header = () => {
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
                 >
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                   My Tracks
                 </Button>
               </Link>
@@ -163,27 +163,27 @@ const Header = () => {
                 <Link to="/admin">
                   <Button 
                     variant="ghost" 
-                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
                   >
-                    <Shield className="mr-2 h-4 w-4" />
+                    <Shield className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                     Admin
                   </Button>
                 </Link>
                 <Link to="/test-email-notification">
                   <Button 
                     variant="ghost" 
-                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
                   >
-                    <TestTube className="mr-2 h-4 w-4" />
+                    <TestTube className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                     Test Email
                   </Button>
                 </Link>
                 <Link to="/data-importer">
                   <Button 
                     variant="ghost" 
-                    className="ml-2 text-white hover:bg-white/20 flex items-center"
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
                   >
-                    <Upload className="mr-2 h-4 w-4" />
+                    <Upload className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                     Import Data
                   </Button>
                 </Link>
@@ -194,18 +194,18 @@ const Header = () => {
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
-                className="ml-2 text-white hover:bg-white/20 flex items-center"
+                className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
               >
-                <LogIn className="mr-2 h-4 w-4" />
+                <LogIn className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                 Logout
               </Button>
             ) : (
               <Link to="/login">
                 <Button 
                   variant="ghost" 
-                  className="ml-2 text-white hover:bg-white/20 flex items-center"
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2" {/* Reduced ml and added px */}
                 >
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <LogIn className="mr-1 h-4 w-4" /> {/* Reduced mr */}
                   Login
                 </Button>
               </Link>
