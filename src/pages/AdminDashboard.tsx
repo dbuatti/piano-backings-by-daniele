@@ -1378,6 +1378,23 @@ const AdminDashboard = () => {
                                           <p>Client View</p>
                                         </TooltipContent>
                                       </Tooltip>
+                                      {/* Temporarily hide the Email Generator button */}
+                                      {/*
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => openEmailGenerator(request)}
+                                          >
+                                            <MailIcon className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Generate Email</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                      */}
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <CompletionEmailDialog 
