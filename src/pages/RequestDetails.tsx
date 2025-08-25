@@ -106,6 +106,7 @@ const RequestDetails = () => {
         differentKey: request.different_key,
         keyForTrack: request.key_for_track,
         youtubeLink: request.youtube_link,
+        additionalLinks: request.additional_links, // Include the new field
         voiceMemo: request.voice_memo,
         sheetMusicUrl: request.sheet_music_url,
         trackPurpose: request.track_purpose,
@@ -399,6 +400,23 @@ const RequestDetails = () => {
                         className="font-medium text-blue-600 hover:underline"
                       >
                         View Sheet Music
+                      </a>
+                    ) : (
+                      <p className="font-medium">Not provided</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 flex items-center">
+                      <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
+                    </p>
+                    {request.additional_links ? (
+                      <a 
+                        href={request.additional_links} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {request.additional_links}
                       </a>
                     ) : (
                       <p className="font-medium">Not provided</p>

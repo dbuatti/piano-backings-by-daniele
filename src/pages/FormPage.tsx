@@ -55,6 +55,7 @@ const FormPage = () => {
     voiceMemoFile: null as File | null,
     sheetMusic: null as File | null,
     youtubeLink: '',
+    additionalLinks: '', // New field for additional links
     trackPurpose: '',
     backingType: '',
     deliveryDate: '',
@@ -168,6 +169,7 @@ const FormPage = () => {
       voiceMemoFile: null,
       sheetMusic: null,
       youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY', // Added a dummy YouTube link
+      additionalLinks: 'https://example.com/extra-reference', // Dummy additional link
       trackPurpose: 'personal-practise',
       backingType: 'full-song',
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -291,6 +293,7 @@ const FormPage = () => {
           differentKey: formData.differentKey,
           keyForTrack: formData.keyForTrack,
           youtubeLink: formData.youtubeLink,
+          additionalLinks: formData.additionalLinks, // Include the new field
           voiceMemo: formData.voiceMemo,
           voiceMemoFileUrl: voiceMemoFileUrl,
           sheetMusicUrl: sheetMusicUrl,
@@ -364,6 +367,7 @@ const FormPage = () => {
         voiceMemoFile: null,
         sheetMusic: null,
         youtubeLink: '',
+        additionalLinks: '', // Clear the new field
         trackPurpose: '',
         backingType: '',
         deliveryDate: '',
@@ -492,6 +496,7 @@ const FormPage = () => {
               <li>✔️ Your sheet music in PDF format (required)</li>
               <li>✔️ A YouTube link to the song (optional but recommended)</li>
               <li>✔️ A voice memo of you singing the song with accurate rests/beats (optional but helpful)</li>
+              <li>✔️ Any additional reference links (optional)</li>
             </ul>
             
             {isAdmin && ( // Conditionally render the button
@@ -765,6 +770,25 @@ const FormPage = () => {
                     </div>
                   </div>
                   
+                  <div>
+                    <Label htmlFor="additionalLinks" className="flex items-center text-sm mb-1">
+                      <LinkIcon className="mr-1" size={14} />
+                      Additional Reference Links (optional)
+                    </Label>
+                    <div className="relative">
+                      <Input 
+                        id="additionalLinks" 
+                        name="additionalLinks" 
+                        value={formData.additionalLinks} 
+                        onChange={handleInputChange} 
+                        placeholder="e.g., Dropbox link, Spotify link"
+                        className="pl-8 py-2 text-sm"
+                      />
+                      <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Provide any other relevant links here (e.g., Dropbox, Spotify, etc.)</p>
+                  </div>
+
                   <div>
                     <Label className="flex items-center text-sm mb-1">
                       <MicIcon className="mr-1" size={14} />

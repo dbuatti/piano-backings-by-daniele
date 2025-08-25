@@ -725,7 +725,8 @@ serve(async (req) => {
           additional_services: formData.additionalServices,
           special_requests: formData.specialRequests,
           dropbox_folder_id: dropboxFolderId,
-          track_type: formData.trackType
+          track_type: formData.trackType,
+          additional_links: formData.additionalLinks // Insert the new field
         }
       ])
       .select();
@@ -783,6 +784,13 @@ serve(async (req) => {
               <div style="margin-bottom: 10px;">
                 <strong>Special Requests:</strong><br>
                 <p style="margin: 5px 0; padding: 10px; background-color: white; border-radius: 3px;">${formData.specialRequests}</p>
+              </div>
+            ` : ''}
+
+            ${formData.additionalLinks ? `
+              <div style="margin-bottom: 10px;">
+                <strong>Additional Links:</strong><br>
+                <p style="margin: 5px 0; padding: 10px; background-color: white; border-radius: 3px;"><a href="${formData.additionalLinks}">${formData.additionalLinks}</a></p>
               </div>
             ` : ''}
           </div>
@@ -1129,6 +1137,7 @@ REFERENCES
 ----------
 YouTube Link: ${formData.youtubeLink || 'Not provided'}
 Voice Memo Link: ${formData.voiceMemo || 'Not provided'}
+Additional Links: ${formData.additionalLinks || 'Not provided'}
 
 ORDER DETAILS
 -------------

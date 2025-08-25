@@ -32,7 +32,8 @@ const EmailGenerator = () => {
     additional_services: [] as string[],
     track_type: 'polished',
     youtube_link: '',
-    voice_memo: ''
+    voice_memo: '',
+    additional_links: '' // New field
   });
 
   // Prefill form data from request ID or passed state
@@ -63,7 +64,8 @@ const EmailGenerator = () => {
             additional_services: data.additional_services || [],
             track_type: data.track_type || 'polished',
             youtube_link: data.youtube_link || '',
-            voice_memo: data.voice_memo || ''
+            voice_memo: data.voice_memo || '',
+            additional_links: data.additional_links || '' // Set new field
           });
         } catch (error: any) {
           toast({
@@ -90,7 +92,8 @@ const EmailGenerator = () => {
           additional_services: request.additional_services || [],
           track_type: request.track_type || 'polished',
           youtube_link: request.youtube_link || '',
-          voice_memo: request.voice_memo || ''
+          voice_memo: request.voice_memo || '',
+          additional_links: request.additional_links || '' // Set new field
         });
       }
     };
@@ -133,7 +136,8 @@ const EmailGenerator = () => {
         additional_services: formData.additional_services,
         track_type: formData.track_type,
         youtube_link: formData.youtube_link,
-        voice_memo: formData.voice_memo
+        voice_memo: formData.voice_memo,
+        additional_links: formData.additional_links // Include new field
       };
 
       const result = await generateEmailCopy(request);
@@ -394,6 +398,17 @@ const EmailGenerator = () => {
                       placeholder="https://example.com/voice-memo.mp3"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="additional_links">Additional Links</Label>
+                  <Input
+                    id="additional_links"
+                    name="additional_links"
+                    value={formData.additional_links}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Dropbox link, Spotify link"
+                  />
                 </div>
                 
                 <div className="flex gap-4">

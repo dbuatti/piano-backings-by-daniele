@@ -433,6 +433,22 @@ const ClientTrackView = () => {
                         </a>
                       </div>
                     ) : null}
+
+                    {request.additional_links ? (
+                      <div>
+                        <p className="text-sm text-gray-500 flex items-center">
+                          <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
+                        </p>
+                        <a 
+                          href={request.additional_links} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline text-sm"
+                        >
+                          {request.additional_links}
+                        </a>
+                      </div>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

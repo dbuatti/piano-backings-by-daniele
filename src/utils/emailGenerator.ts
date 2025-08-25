@@ -18,6 +18,7 @@ export interface BackingRequest {
   track_type: string;
   youtube_link?: string;
   voice_memo?: string;
+  additional_links?: string; // Added new field
 }
 
 // Email signature template
@@ -63,6 +64,7 @@ export const generateEmailCopy = async (request: BackingRequest) => {
     - Track type: ${request.track_type}
     - YouTube reference: ${request.youtube_link || 'Not provided'}
     - Voice memo reference: ${request.voice_memo || 'Not provided'}
+    - Additional links: ${request.additional_links || 'Not provided'}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that immediately tells the client their track is ready
@@ -155,6 +157,11 @@ You can complete your payment via:
 
 View your request details and download your track here:
 https://pianobackingsbydaniele.vercel.app/track/${request.id}
+
+${request.additional_links ? `
+Additional Links provided:
+${request.additional_links}
+` : ''}
 
 If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
 

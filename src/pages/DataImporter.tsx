@@ -29,6 +29,7 @@ interface ParsedRequest {
   different_key?: string;
   key_for_track?: string;
   cost?: number;
+  additional_links?: string; // Added new field
 }
 
 const DataImporter = () => {
@@ -84,7 +85,7 @@ const DataImporter = () => {
       'Voice Memo (optional)': 'voice_memo',
       'YouTube URL for tempo reference': 'youtube_link',
       'Is there anything else you\'d like to add?': 'special_requests',
-      'Additional links?': 'additional_links', // Temporary field for combining
+      'Additional links?': 'additional_links', // Mapped to the new field
       'When do you need your track for?': 'delivery_date',
       'This track is for...': 'track_purpose',
       'What do you need?': 'backing_type',
@@ -154,12 +155,9 @@ const DataImporter = () => {
         return services;
       };
 
-      // Combine special requests and additional links
-      let specialRequests = record['special_requests'] || '';
-      const additionalLinks = record['additional_links'] || '';
-      if (additionalLinks && !specialRequests.includes(additionalLinks)) {
-        specialRequests = specialRequests ? `${specialRequests}\nAdditional Links: ${additionalLinks}` : `Additional Links: ${additionalLinks}`;
-      }
+      // Special requests no longer combine additional links
+      const specialRequests = record['special_requests'] || undefined;
+      const additionalLinks = record['additional_links'] || undefined;
 
       // Robust date parsing
       let deliveryDate: string | undefined;
@@ -187,13 +185,14 @@ const DataImporter = () => {
         youtube_link: record['youtube_link'] || undefined,
         track_purpose: mapTrackPurpose(record['track_purpose']),
         delivery_date: deliveryDate,
-        special_requests: specialRequests || undefined,
+        special_requests: specialRequests,
         backing_type: backingType,
         additional_services: mapAdditionalServices(record['additional_services']),
         track_type: trackType,
         song_key: record['song_key'] || undefined,
         different_key: record['different_key'] || undefined,
         key_for_track: record['key_for_track'] || undefined,
+        additional_links: additionalLinks, // Assign the new field
       };
       
       // Calculate cost using the utility function
@@ -249,6 +248,7 @@ const DataImporter = () => {
                 is_paid: true, // Assuming past orders are paid
                 // Use delivery_date for created_at if valid, otherwise current date
                 created_at: req.delivery_date ? new Date(req.delivery_date).toISOString() : new Date().toISOString(),
+                additional_links: req.additional_links, // Insert the new field
               }
             ])
             .select();
