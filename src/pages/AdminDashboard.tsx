@@ -47,7 +47,8 @@ import {
   Calculator,
   ToggleLeft,
   ToggleRight,
-  MailIcon
+  MailIcon,
+  Settings
 } from 'lucide-react';
 import {
   Select,
@@ -752,6 +753,7 @@ const AdminDashboard = () => {
             <p className="text-lg text-[#1C0357]/90">Manage all backing track requests</p>
           </div>
           
+          {/* Overview Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <Card className="shadow-lg bg-white">
               <CardContent className="p-6">
@@ -831,56 +833,73 @@ const AdminDashboard = () => {
             </Card>
           </div>
           
-          {/* Dropbox Connection Card */}
+          {/* System & Configuration Card */}
           <Card className="shadow-lg mb-6 bg-white">
             <CardHeader>
-              <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
-                <span className="flex items-center">
-                  <HardDrive className="mr-2 h-5 w-5" />
-                  System Status
-                </span>
-                <div className="flex items-center gap-2">
-                  <Link to="/dropbox-monitor">
-                    <Button variant="outline" className="flex items-center text-sm">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Dropbox Monitor
-                    </Button>
-                  </Link>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)}
-                    className="flex items-center text-sm"
-                  >
-                    {emailNotificationsEnabled ? (
-                      <ToggleRight className="mr-2 h-4 w-4 text-green-500" />
-                    ) : (
-                      <ToggleLeft className="mr-2 h-4 w-4 text-gray-400" />
-                    )}
-                    Email Notifications
-                  </Button>
-                </div>
+              <CardTitle className="text-xl text-[#1C0357] flex items-center">
+                <Settings className="mr-2 h-5 w-5" />
+                System & Configuration
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                  <div>
-                    <p className="font-medium">Dropbox Integration</p>
-                    <p className="text-sm text-gray-500">Connected and active</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Dropbox Connection Status */}
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-[#1C0357] flex items-center">
+                    <HardDrive className="mr-2 h-5 w-5" />
+                    Dropbox Integration
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                      <div>
+                        <p className="font-medium">Status: Connected</p>
+                        <p className="text-sm text-gray-500">Active and operational</p>
+                      </div>
+                    </div>
+                    <Link to="/dropbox-monitor">
+                      <Button variant="outline" className="flex items-center text-sm">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Monitor
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <Badge variant="default" className="bg-green-500">Active</Badge>
+
+                {/* Email Notifications Toggle */}
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-[#1C0357] flex items-center">
+                    <MailIcon className="mr-2 h-5 w-5" />
+                    Email Notifications
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center">
+                      {emailNotificationsEnabled ? (
+                        <ToggleRight className="mr-2 h-5 w-5 text-green-500" />
+                      ) : (
+                        <ToggleLeft className="mr-2 h-5 w-5 text-gray-400" />
+                      )}
+                      <p className="font-medium">Client Notifications</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEmailNotificationsEnabled(!emailNotificationsEnabled)}
+                      className="flex items-center text-sm"
+                    >
+                      {emailNotificationsEnabled ? "Disable" : "Enable"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Notification Recipients Manager */}
+              <div className="mt-6">
+                <NotificationRecipientsManager />
               </div>
             </CardContent>
           </Card>
-
-          {/* Notification Recipients Manager */}
-          <div className="mb-6">
-            <NotificationRecipientsManager />
-          </div>
           
-          {/* Filters Section */}
+          {/* Filters & View Options Section */}
           <Card className="shadow-lg mb-6 bg-white">
             <CardHeader className="pb-4">
               <CardTitle className="text-xl text-[#1C0357] flex items-center justify-between">
@@ -985,12 +1004,11 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
           
-          {/* Pricing Matrix View */}
+          {/* Main Content Area based on View Mode */}
           {viewMode === 'pricing' && (
             <PricingMatrix />
           )}
           
-          {/* Calendar View */}
           {viewMode === 'calendar' && (
             <Card className="shadow-lg mb-6 bg-white">
               <CardHeader>
@@ -1085,7 +1103,7 @@ const AdminDashboard = () => {
                                         </Link>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>View Client Page</p>
+                                        <p>Client Page</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </div>
@@ -1110,7 +1128,6 @@ const AdminDashboard = () => {
             </Card>
           )}
           
-          {/* List View */}
           {viewMode === 'list' && (
             <Card className="shadow-lg mb-6 bg-white">
               <CardHeader>
@@ -1245,7 +1262,7 @@ const AdminDashboard = () => {
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-2" />
                               Delivery
-                            </div>
+                            </div >
                           </TableHead>
                           <TableHead>
                             <div className="flex items-center">
