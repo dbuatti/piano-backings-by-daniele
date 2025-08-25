@@ -205,6 +205,11 @@ const FormPage = () => {
         throw new Error('Please select at least one backing type.');
       }
 
+      // Custom validation for required sheet music
+      if (!formData.sheetMusic) {
+        throw new Error('Sheet music is required. Please upload a PDF file.');
+      }
+
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -844,7 +849,7 @@ const FormPage = () => {
                     icon={FileTextIcon}
                     accept=".pdf"
                     onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
-                    required
+                    required // This 'required' prop is for visual indication, actual validation is in handleSubmit
                     note="Make sure it's clear and in the right key"
                   />
                   

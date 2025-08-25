@@ -51,7 +51,7 @@ const FileInput: React.FC<FileInputProps> = ({
           accept={accept}
           onChange={handleFileChange}
           ref={fileInputRef}
-          required={required}
+          // Removed the 'required' attribute from here
           className="hidden"
         />
         <Button
