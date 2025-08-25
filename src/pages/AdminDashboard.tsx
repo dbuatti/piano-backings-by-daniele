@@ -725,7 +725,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // Removed TooltipProvider here
   return (
     <> 
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -1648,7 +1647,7 @@ const AdminDashboard = () => {
                 >
                   Delete All
                 </AlertDialogAction>
-              </AlertDialogAction>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           
