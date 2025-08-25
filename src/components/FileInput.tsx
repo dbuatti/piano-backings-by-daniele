@@ -46,6 +46,7 @@ const FileInput: React.FC<FileInputProps> = ({
       <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm bg-white">
         <input
           id={id}
+          name={id} {/* Added name attribute here */}
           type="file"
           accept={accept}
           onChange={handleFileChange}
