@@ -75,17 +75,12 @@ const Header = () => {
         <nav className="flex items-center space-x-4">
           {user ? (
             <>
-              <Link to="/request-backing" className="hover:text-[#D1AAF2] transition-colors flex items-center">
+              <Link to="/form-page" className="hover:text-[#D1AAF2] transition-colors flex items-center">
                 <FileAudio className="w-4 h-4 mr-1" /> Request Backing
               </Link>
               <Link to="/user-dashboard" className="hover:text-[#D1AAF2] transition-colors flex items-center">
                 <LayoutDashboard className="w-4 h-4 mr-1" /> My Dashboard
               </Link>
-              {isAdmin && (
-                <Link to="/admin-dashboard" className="hover:text-[#D1AAF2] transition-colors flex items-center">
-                  <Settings className="w-4 h-4 mr-1" /> Admin
-                </Link>
-              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -106,6 +101,12 @@ const Header = () => {
                     <UserCircle className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/admin-dashboard')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
