@@ -22,7 +22,6 @@ const Header = () => {
       setSession(session);
       
       if (session) {
-        // Check if user is admin using their email from the session
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
@@ -36,7 +35,6 @@ const Header = () => {
       setSession(session);
       
       if (session) {
-        // Check if user is admin using their email from the session
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
@@ -72,16 +70,13 @@ const Header = () => {
     }
   };
 
-  // Function to handle anchor link navigation
   const handleAnchorLink = (href: string, e: React.MouseEvent) => {
-    // If it's an anchor link on the same page
     if (href.startsWith('/#') && location.pathname === '/') {
       e.preventDefault();
       const anchor = href.split('#')[1];
       const element = document.getElementById(anchor);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
-        // Update URL without page reload
         window.history.replaceState(null, '', `#${anchor}`);
       }
     }
@@ -183,7 +178,7 @@ const Header = () => {
                     Test Email
                   </Button>
                 </Link>
-                <Link to="/data-importer"> {/* New link for Data Importer */}
+                <Link to="/data-importer">
                   <Button 
                     variant="ghost" 
                     className="ml-2 text-white hover:bg-white/20 flex items-center"
@@ -336,7 +331,7 @@ const Header = () => {
                           Test Email
                         </Link>
                         <Link 
-                          to="/data-importer" {/* New link for Data Importer */}
+                          to="/data-importer"
                           className={cn(
                             "block px-4 py-3 rounded-md text-base font-medium flex items-center",
                             "text-white hover:bg-white/20"
