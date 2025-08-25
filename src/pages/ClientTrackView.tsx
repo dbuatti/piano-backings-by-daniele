@@ -221,11 +221,13 @@ const ClientTrackView = () => {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500 flex items-center">
-                      <Headphones className="mr-1 h-4 w-4" /> Backing Type
+                      <Headphones className="mr-1 h-4 w-4" /> Backing Type(s)
                     </p>
-                    <Badge className="capitalize mt-1">
-                      {request.backing_type?.replace('-', ' ') || 'Not specified'}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
+                        <Badge key={index} className="capitalize">{type.replace('-', ' ')}</Badge>
+                      )) : (request.backing_type ? <Badge className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : 'Not specified')}
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 flex items-center">

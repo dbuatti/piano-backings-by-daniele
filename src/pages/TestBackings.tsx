@@ -84,7 +84,7 @@ const TestBackings = () => {
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl, // Include the sheet music URL if testing PDF
           trackPurpose: "personal-practise",
-          backingType: backingType,
+          backingType: [backingType], // Now an array
           trackType: trackType, // Include trackType in the test data
           deliveryDate: "2023-12-31",
           additionalServices: ["rush-order"],
@@ -201,7 +201,7 @@ const TestBackings = () => {
           voiceMemo: "",
           sheetMusicUrl: sheetMusicUrl,
           trackPurpose: "personal-practise",
-          backingType: "full-song",
+          backingType: ["full-song"], // Now an array
           trackType: null,
           deliveryDate: "2023-12-31",
           additionalServices: ["rush-order"],

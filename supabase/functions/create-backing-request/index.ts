@@ -133,11 +133,15 @@ serve(async (req) => {
         'note-bash': '00. NOTE BASH'
       };
       
-      // Set parent folder based on backing type
-      if (formData.backingType && backingTypeMap[formData.backingType]) {
-        parentFolder = `${defaultDropboxParentFolder}/${backingTypeMap[formData.backingType]}`;
+      // If multiple backing types are selected, use the first one for folder naming, or a general folder
+      const primaryBackingType = Array.isArray(formData.backingType) && formData.backingType.length > 0 
+        ? formData.backingType[0] 
+        : null;
+
+      if (primaryBackingType && backingTypeMap[primaryBackingType]) {
+        parentFolder = `${defaultDropboxParentFolder}/${backingTypeMap[primaryBackingType]}`;
       } else {
-        // Default to general folder if backing type is not recognized
+        // Default to general folder if backing type is not recognized or not provided
         parentFolder = `${defaultDropboxParentFolder}/00. GENERAL`;
       }
     }
@@ -720,7 +724,7 @@ serve(async (req) => {
           voice_memo: formData.voiceMemo,
           sheet_music_url: formData.sheetMusicUrl,
           track_purpose: formData.trackPurpose,
-          backing_type: formData.backingType,
+          backing_type: formData.backingType, // Now an array
           delivery_date: formData.deliveryDate,
           additional_services: formData.additionalServices,
           special_requests: formData.specialRequests,
@@ -766,7 +770,7 @@ serve(async (req) => {
             </div>
             
             <div style="margin-bottom: 10px;">
-              <strong>Backing Type:</strong> ${formData.backingType?.replace('-', ' ') || 'Not specified'}<br>
+              <strong>Backing Type(s):</strong> ${Array.isArray(formData.backingType) ? formData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') : (formData.backingType?.replace('-', ' ') || 'Not specified')}<br>
               <strong>Track Purpose:</strong> ${formData.trackPurpose?.replace('-', ' ') || 'Not specified'}<br>
               ${formData.deliveryDate ? `<strong>Delivery Date:</strong> ${new Date(formData.deliveryDate).toLocaleDateString()}<br>` : ''}
             </div>
@@ -870,81 +874,6 @@ serve(async (req) => {
             }
           } catch (emailError) {
             console.error(`Error sending notification email to ${email} (fallback):`, emailError);
-            await supabaseAdmin
-              .from('notifications')
-              .insert([
-                {
-                  recipient: email,
-                  sender: 'system@pianobackings.com',
-                  subject: emailSubject,
-                  content: emailHtml,
-                  status: 'failed',
-                  type: 'email',
-                  error_message: emailError.message
-                }
-              ]);
-          }
-        }
-      } else {
-        // Use fetched recipients
-        const adminEmails = recipients.map(r => r.email);
-        console.log('Sending notifications to fetched admin emails:', adminEmails);
-
-        if (adminEmails.length === 0) {
-          console.warn('No notification recipients configured in the database. No emails will be sent.');
-        }
-        
-        for (const email of adminEmails) {
-          try {
-            const payloadToSend = {
-              to: email,
-              subject: emailSubject,
-              html: emailHtml,
-              senderEmail: defaultSenderEmail
-            };
-            
-            const emailResponse = await fetch(sendEmailUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}`
-              },
-              body: JSON.stringify(payloadToSend)
-            });
-            
-            if (!emailResponse.ok) {
-              const emailErrorText = await emailResponse.text();
-              console.error(`Failed to send notification email to ${email}:`, emailErrorText);
-              await supabaseAdmin
-                .from('notifications')
-                .insert([
-                  {
-                    recipient: email,
-                    sender: 'system@pianobackings.com',
-                    subject: emailSubject,
-                    content: emailHtml,
-                    status: 'failed',
-                    type: 'email',
-                    error_message: emailErrorText
-                  }
-                ]);
-            } else {
-              console.log(`Notification email sent successfully to ${email}`);
-              await supabaseAdmin
-                .from('notifications')
-                .insert([
-                  {
-                    recipient: email,
-                    sender: 'system@pianobackings.com',
-                    subject: emailSubject,
-                    content: emailHtml,
-                    status: 'sent',
-                    type: 'email'
-                  }
-                ]);
-            }
-          } catch (emailError) {
-            console.error(`Error sending notification email to ${email}:`, emailError);
             await supabaseAdmin
               .from('notifications')
               .insert([
@@ -1142,7 +1071,7 @@ Additional Links: ${formData.additionalLinks || 'Not provided'}
 ORDER DETAILS
 -------------
 Track Purpose: ${formData.trackPurpose?.replace('-', ' ') || 'Not specified'}
-Backing Type: ${formData.backingType?.replace('-', ' ') || 'Not specified'}
+Backing Type(s): ${Array.isArray(formData.backingType) ? formData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') : (formData.backingType?.replace('-', ' ') || 'Not specified')}
 Delivery Date: ${formData.deliveryDate || 'Not specified'}
 Category: ${formData.category || 'Not specified'}
 Track Type: ${formData.trackType || 'Not specified'}

@@ -239,7 +239,12 @@ const AdminDashboard = () => {
     }
     
     if (backingTypeFilter !== 'all') {
-      result = result.filter(request => request.backing_type === backingTypeFilter);
+      // Check if backing_type is an array and includes the filter, or is a string and matches
+      result = result.filter(request => 
+        Array.isArray(request.backing_type) 
+          ? request.backing_type.includes(backingTypeFilter)
+          : request.backing_type === backingTypeFilter
+      );
     }
     
     if (viewMode === 'calendar' && selectedDate) {
@@ -346,41 +351,7 @@ const AdminDashboard = () => {
     let total = 0;
     
     selected.forEach(req => {
-      let baseCost = 0;
-      switch (req.backing_type) {
-        case 'full-song':
-          baseCost = 30;
-          break;
-        case 'audition-cut':
-          baseCost = 15;
-          break;
-        case 'note-bash':
-          baseCost = 10;
-          break;
-        default:
-          baseCost = 20;
-      }
-      
-      if (req.additional_services) {
-        req.additional_services.forEach((service: string) => {
-          switch (service) {
-            case 'rush-order':
-              baseCost += 10;
-              break;
-            case 'complex-songs':
-              baseCost += 7;
-              break;
-            case 'additional-edits':
-              baseCost += 5;
-              break;
-            case 'exclusive-ownership':
-              baseCost += 40;
-              break;
-          }
-        });
-      }
-      
-      total += baseCost;
+      total += calculateRequestCost(req); // Use the shared utility function
     });
     
     return total;
@@ -803,7 +774,7 @@ const AdminDashboard = () => {
                         <p className="text-2xl font-bold text-[#1C0357] mt-2">
                           ${requests
                             .filter(r => r.status !== 'completed' && r.status !== 'cancelled')
-                            .reduce((sum, req) => sum + (req.cost || calculateRequestCost(req)), 0)
+                            .reduce((sum, req) => sum + calculateRequestCost(req), 0)
                             .toFixed(2)}
                         </p>
                       </div>
@@ -1005,9 +976,13 @@ const AdminDashboard = () => {
                                             {request.musical_or_artist}
                                           </p>
                                         </div>
-                                        <Badge variant={getBadgeVariant(request.backing_type)}>
-                                          {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                        </Badge>
+                                        <div className="flex flex-wrap gap-1">
+                                          {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
+                                            <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+                                              {type.replace('-', ' ')}
+                                            </Badge>
+                                          )) : (request.backing_type ? <Badge variant={getBadgeVariant(request.backing_type)} className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : null)}
+                                        </div>
                                       </div>
                                       <div className="mt-3 flex justify-between items-center">
                                         <div className="flex items-center text-sm">
@@ -1275,9 +1250,13 @@ const AdminDashboard = () => {
                                     <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={getBadgeVariant(request.backing_type)}>
-                                      {request.backing_type?.replace('-', ' ') || 'N/A'}
-                                    </Badge>
+                                    <div className="flex flex-wrap gap-1">
+                                      {Array.isArray(request.backing_type) ? request.backing_type.map((type: string, index: number) => (
+                                        <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+                                          {type.replace('-', ' ')}
+                                        </Badge>
+                                      )) : (request.backing_type ? <Badge variant={getBadgeVariant(request.backing_type)} className="capitalize">{request.backing_type.replace('-', ' ')}</Badge> : null)}
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
@@ -1315,7 +1294,7 @@ const AdminDashboard = () => {
                                   <TableCell>
                                     <div className="flex items-center font-medium">
                                       <DollarSign className="w-4 h-4 mr-1" />
-                                      <span>{(request.cost || calculateRequestCost(request)).toFixed(2)}</span>
+                                      <span>{calculateRequestCost(request).toFixed(2)}</span>
                                     </div>
                                   </TableCell>
                                   <TableCell>

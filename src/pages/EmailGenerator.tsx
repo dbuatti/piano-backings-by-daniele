@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { generateEmailCopy, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
+import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -25,7 +27,7 @@ const EmailGenerator = () => {
     song_title: '',
     musical_or_artist: '',
     track_purpose: 'personal-practise',
-    backing_type: 'full-song',
+    backing_type: [] as string[], // Changed to array
     delivery_date: '',
     special_requests: '',
     song_key: 'C Major (0)',
@@ -57,7 +59,7 @@ const EmailGenerator = () => {
             song_title: data.song_title || '',
             musical_or_artist: data.musical_or_artist || '',
             track_purpose: data.track_purpose || 'personal-practise',
-            backing_type: data.backing_type || 'full-song',
+            backing_type: Array.isArray(data.backing_type) ? data.backing_type : (data.backing_type ? [data.backing_type] : []), // Handle array or single string
             delivery_date: data.delivery_date || '',
             special_requests: data.special_requests || '',
             song_key: data.song_key || 'C Major (0)',
@@ -85,7 +87,7 @@ const EmailGenerator = () => {
           song_title: request.song_title || '',
           musical_or_artist: request.musical_or_artist || '',
           track_purpose: request.track_purpose || 'personal-practise',
-          backing_type: request.backing_type || 'full-song',
+          backing_type: Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []), // Handle array or single string
           delivery_date: request.delivery_date || '',
           special_requests: request.special_requests || '',
           song_key: request.song_key || 'C Major (0)',
@@ -119,6 +121,16 @@ const EmailGenerator = () => {
     });
   };
 
+  // New handler for multi-select backing types
+  const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
+    setFormData(prev => {
+      const newBackingTypes = checked
+        ? [...prev.backing_type, type]
+        : prev.backing_type.filter(t => t !== type);
+      return { ...prev, backing_type: newBackingTypes };
+    });
+  };
+
   const generateEmail = async () => {
     setIsGenerating(true);
     try {
@@ -129,7 +141,7 @@ const EmailGenerator = () => {
         song_title: formData.song_title,
         musical_or_artist: formData.musical_or_artist,
         track_purpose: formData.track_purpose,
-        backing_type: formData.backing_type,
+        backing_type: formData.backing_type, // Now an array
         delivery_date: formData.delivery_date,
         special_requests: formData.special_requests,
         song_key: formData.song_key,
@@ -263,17 +275,36 @@ const EmailGenerator = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="backing_type">Backing Type</Label>
-                    <Select onValueChange={(value) => handleSelectChange('backing_type', value)} value={formData.backing_type}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select backing type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="full-song">Full song backing</SelectItem>
-                        <SelectItem value="audition-cut">Audition cut backing</SelectItem>
-                        <SelectItem value="note-bash">Note/melody bash</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Backing Type(s)</Label>
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-center">
+                        <Checkbox
+                          id="backing-full-song"
+                          checked={formData.backing_type.includes('full-song')}
+                          onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor="backing-full-song">Full Song Backing</Label>
+                      </div>
+                      <div className="flex items-center">
+                        <Checkbox
+                          id="backing-audition-cut"
+                          checked={formData.backing_type.includes('audition-cut')}
+                          onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor="backing-audition-cut">Audition Cut Backing</Label>
+                      </div>
+                      <div className="flex items-center">
+                        <Checkbox
+                          id="backing-note-bash"
+                          checked={formData.backing_type.includes('note-bash')}
+                          onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor="backing-note-bash">Note/Melody Bash</Label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 

@@ -57,7 +57,7 @@ const FormPage = () => {
     youtubeLink: '',
     additionalLinks: '', // New field for additional links
     trackPurpose: '',
-    backingType: '',
+    backingType: [] as string[], // Changed to array for multi-select
     deliveryDate: '',
     additionalServices: [] as string[],
     specialRequests: '',
@@ -156,6 +156,16 @@ const FormPage = () => {
     });
   };
 
+  // New handler for multi-select backing types
+  const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
+    setFormData(prev => {
+      const newBackingTypes = checked
+        ? [...prev.backingType, type]
+        : prev.backingType.filter(t => t !== type);
+      return { ...prev, backingType: newBackingTypes };
+    });
+  };
+
   const fillDummyData = () => {
     setFormData({
       email: user?.email || 'test@example.com',
@@ -171,7 +181,7 @@ const FormPage = () => {
       youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY', // Added a dummy YouTube link
       additionalLinks: 'https://example.com/extra-reference', // Dummy additional link
       trackPurpose: 'personal-practise',
-      backingType: 'full-song',
+      backingType: ['full-song', 'audition-cut'], // Dummy multi-select
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
       specialRequests: 'Please make sure the tempo matches the reference exactly.',
@@ -190,6 +200,11 @@ const FormPage = () => {
     setIsSubmitting(true);
     
     try {
+      // Basic validation for backingType
+      if (formData.backingType.length === 0) {
+        throw new Error('Please select at least one backing type.');
+      }
+
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -298,7 +313,7 @@ const FormPage = () => {
           voiceMemoFileUrl: voiceMemoFileUrl,
           sheetMusicUrl: sheetMusicUrl,
           trackPurpose: formData.trackPurpose,
-          backingType: formData.backingType,
+          backingType: formData.backingType, // Now an array
           deliveryDate: formData.deliveryDate,
           additionalServices: formData.additionalServices,
           specialRequests: formData.specialRequests,
@@ -369,7 +384,7 @@ const FormPage = () => {
         youtubeLink: '',
         additionalLinks: '', // Clear the new field
         trackPurpose: '',
-        backingType: '',
+        backingType: [], // Clear as array
         deliveryDate: '',
         additionalServices: [],
         specialRequests: '',
@@ -851,20 +866,69 @@ const FormPage = () => {
                       </div>
                     </div>
                     
+                    {/* Multi-select for Backing Type */}
                     <div>
-                      <Label htmlFor="backingType" className="text-sm mb-1">What do you need?</Label>
-                      <div className="relative">
-                        <Select onValueChange={(value) => handleSelectChange('backingType', value)} value={formData.backingType}>
-                          <SelectTrigger className="pl-8 py-2 text-sm">
-                            <SelectValue placeholder="Select backing type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="full-song" className="text-sm">Full song backing</SelectItem>
-                            <SelectItem value="audition-cut" className="text-sm">Audition cut backing</SelectItem>
-                            <SelectItem value="note-bash" className="text-sm">Note/melody bash</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                      <h3 className="font-semibold mb-2 flex items-center text-sm">
+                        <MusicIcon className="mr-1" size={14} />
+                        What do you need? <span className="text-red-500 ml-1">*</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Label htmlFor="backing-full-song" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                          <Card className={cn(
+                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                            "hover:border-[#F538BC] hover:shadow-md",
+                            formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                          )}>
+                            <Checkbox
+                              id="backing-full-song"
+                              checked={formData.backingType.includes('full-song')}
+                              onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
+                              className="mt-1 mr-3"
+                            />
+                            <div className="flex flex-col flex-1">
+                              <span className="font-bold text-sm text-[#1C0357]">Full Song Backing</span>
+                              <p className="text-xs text-gray-600 mt-1">Complete song accompaniment</p>
+                            </div>
+                          </Card>
+                        </Label>
+                        
+                        <Label htmlFor="backing-audition-cut" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                          <Card className={cn(
+                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                            "hover:border-[#F538BC] hover:shadow-md",
+                            formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                          )}>
+                            <Checkbox
+                              id="backing-audition-cut"
+                              checked={formData.backingType.includes('audition-cut')}
+                              onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
+                              className="mt-1 mr-3"
+                            />
+                            <div className="flex flex-col flex-1">
+                              <span className="font-bold text-sm text-[#1C0357]">Audition Cut Backing</span>
+                              <p className="text-xs text-gray-600 mt-1">Shortened version for auditions</p>
+                            </div>
+                          </Card>
+                        </Label>
+                        
+                        <Label htmlFor="backing-note-bash" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                          <Card className={cn(
+                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                            "hover:border-[#F538BC] hover:shadow-md",
+                            formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                          )}>
+                            <Checkbox
+                              id="backing-note-bash"
+                              checked={formData.backingType.includes('note-bash')}
+                              onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
+                              className="mt-1 mr-3"
+                            />
+                            <div className="flex flex-col flex-1">
+                              <span className="font-bold text-sm text-[#1C0357]">Note/Melody Bash</span>
+                              <p className="text-xs text-gray-600 mt-1">Focus on specific melodic lines</p>
+                            </div>
+                          </Card>
+                        </Label>
                       </div>
                     </div>
                   </div>
