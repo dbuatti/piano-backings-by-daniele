@@ -12,6 +12,18 @@ import { format } from 'date-fns';
 import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+// Helper function to normalize backing_type
+const getSafeBackingTypes = (rawType: any): string[] => {
+  let types: string[] = [];
+  if (Array.isArray(rawType)) {
+    types = rawType.filter((item: any) => typeof item === 'string');
+  } else if (typeof rawType === 'string') {
+    types = [rawType];
+  }
+  // Ensure no empty strings or null/undefined strings if they somehow got through
+  return types.filter(type => type && type.trim() !== '');
+};
+
 const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,10 +256,7 @@ const UserDashboard = () => {
                       </TableRow>
                     ) : (
                       requests.map((request) => {
-                        // Normalize backing_type to always be an array of strings
-                        const normalizedBackingTypes = Array.isArray(request.backing_type)
-                          ? request.backing_type.filter((type: any) => typeof type === 'string')
-                          : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+                        const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
                         return (
                           <TableRow key={request.id}>

@@ -30,6 +30,18 @@ import {
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 
+// Helper function to normalize backing_type
+const getSafeBackingTypes = (rawType: any): string[] => {
+  let types: string[] = [];
+  if (Array.isArray(rawType)) {
+    types = rawType.filter((item: any) => typeof item === 'string');
+  } else if (typeof rawType === 'string') {
+    types = [rawType];
+  }
+  // Ensure no empty strings or null/undefined strings if they somehow got through
+  return types.filter(type => type && type.trim() !== '');
+};
+
 const ClientTrackView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -147,10 +159,7 @@ const ClientTrackView = () => {
   const minCost = estimatedCost - 2;
   const maxCost = estimatedCost + 5;
 
-  // Normalize backing_type to always be an array of strings
-  const normalizedBackingTypes = Array.isArray(request.backing_type)
-    ? request.backing_type.filter((type: any) => typeof type === 'string')
-    : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">

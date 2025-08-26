@@ -99,6 +99,18 @@ import TestEmail from './TestEmail'; // We'll reuse the component directly
 import TestEmailNotification from './TestEmailNotification'; // We'll reuse the component directly
 import DropboxMonitor from './DropboxMonitor'; // We'll reuse the component directly
 
+// Helper function to normalize backing_type
+const getSafeBackingTypes = (rawType: any): string[] => {
+  let types: string[] = [];
+  if (Array.isArray(rawType)) {
+    types = rawType.filter((item: any) => typeof item === 'string');
+  } else if (typeof rawType === 'string') {
+    types = [rawType];
+  }
+  // Ensure no empty strings or null/undefined strings if they somehow got through
+  return types.filter(type => type && type.trim() !== '');
+};
+
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
@@ -239,11 +251,9 @@ const AdminDashboard = () => {
     }
     
     if (backingTypeFilter !== 'all') {
-      // Check if backing_type is an array and includes the filter, or is a string and matches
+      // Use the safe backing types for filtering
       result = result.filter(request => 
-        Array.isArray(request.backing_type) 
-          ? request.backing_type.includes(backingTypeFilter)
-          : request.backing_type === backingTypeFilter
+        getSafeBackingTypes(request.backing_type).includes(backingTypeFilter)
       );
     }
     
@@ -960,10 +970,7 @@ const AdminDashboard = () => {
                               <div className="space-y-4 max-h-96 overflow-y-auto">
                                 {filteredRequests.length > 0 ? (
                                   filteredRequests.map((request) => {
-                                    // Normalize backing_type to always be an array of strings
-                                    const normalizedBackingTypes = Array.isArray(request.backing_type)
-                                      ? request.backing_type.filter((type: any) => typeof type === 'string')
-                                      : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+                                    const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
                                     return (
                                       <div 
@@ -1225,10 +1232,7 @@ const AdminDashboard = () => {
                               </TableRow>
                             ) : (
                               filteredRequests.map((request) => {
-                                // Normalize backing_type to always be an array of strings
-                                const normalizedBackingTypes = Array.isArray(request.backing_type)
-                                  ? request.backing_type.filter((type: any) => typeof type === 'string')
-                                  : (typeof request.backing_type === 'string' ? [request.backing_type] : []);
+                                const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
                                 return (
                                   <TableRow 
