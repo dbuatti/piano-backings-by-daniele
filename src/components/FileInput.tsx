@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, UploadCloud } from 'lucide-react'; // Import UploadCloud icon
 
 interface FileInputProps {
   id: string;
@@ -26,6 +26,7 @@ const FileInput: React.FC<FileInputProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string>('No file chosen');
+  const [isDragging, setIsDragging] = useState(false); // New state for drag-and-drop
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -37,13 +38,43 @@ const FileInput: React.FC<FileInputProps> = ({
     onChange(file);
   };
 
+  // Drag and drop handlers
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    const files = event.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setFileName(file.name);
+      onChange(file);
+    }
+  };
+
   return (
     <div className={cn("space-y-1", className)}>
       <label htmlFor={id} className="flex items-center text-sm mb-1">
         <Icon className="mr-1" size={14} />
         {label} {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      <div className="flex items-center border border-input rounded-md px-3 py-2 text-sm bg-white">
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm bg-white transition-colors duration-200",
+          isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <input
           id={id}
           name={id}
@@ -51,18 +82,21 @@ const FileInput: React.FC<FileInputProps> = ({
           accept={accept}
           onChange={handleFileChange}
           ref={fileInputRef}
-          // Removed the 'required' attribute from here
           className="hidden"
         />
+        <UploadCloud className={cn("h-8 w-8 mb-2", isDragging ? "text-[#F538BC]" : "text-gray-400")} />
+        <p className="text-gray-700 mb-2 text-center">
+          <span className="font-semibold">Drag & drop your file here</span> or
+        </p>
         <Button
           type="button"
           onClick={handleButtonClick}
           variant="outline"
-          className="mr-2 py-1 px-3 h-auto text-sm font-semibold bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80"
+          className="py-1 px-3 h-auto text-sm font-semibold bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80"
         >
-          Choose file
+          Browse files
         </Button>
-        <span className="text-gray-500 truncate flex-1">{fileName}</span>
+        <p className="text-gray-500 mt-2 truncate max-w-full">{fileName}</p>
       </div>
       {note && <p className="text-xs text-gray-500 mt-1">{note}</p>}
     </div>
