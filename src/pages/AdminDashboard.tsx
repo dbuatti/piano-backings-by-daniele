@@ -50,7 +50,8 @@ import {
   MailIcon,
   Settings,
   Database,
-  TestTube
+  TestTube,
+  UploadCloud // Import UploadCloud icon for FileInput
 } from 'lucide-react';
 import {
   Select,
@@ -92,6 +93,7 @@ import CompletionEmailDialog from '@/components/CompletionEmailDialog';
 import { calculateRequestCost } from '@/utils/pricing';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FileInput from '@/components/FileInput'; // Import the FileInput component
 
 // Import content from other admin pages to be integrated
 import DataImporter from './DataImporter'; // We'll reuse the component directly
@@ -1465,17 +1467,16 @@ const AdminDashboard = () => {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="track-file">Select MP3 File</Label>
-                    <Input 
-                      id="track-file"
-                      type="file" 
-                      accept="audio/mp3,audio/mpeg" 
-                      onChange={(e) => e.target.files && setUploadFile(e.target.files[0])}
-                    />
-                  </div>
+                  <FileInput
+                    id="track-file-upload"
+                    label="Select MP3 File"
+                    icon={UploadCloud} // Using UploadCloud icon
+                    accept="audio/mp3,audio/mpeg"
+                    onChange={setUploadFile}
+                    note="Drag and drop your MP3 file here, or click to browse."
+                  />
                   <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setUploadTrackId(null)}>
+                    <Button variant="outline" onClick={() => { setUploadTrackId(null); setUploadFile(null); }}>
                       Cancel
                     </Button>
                     <Button 
