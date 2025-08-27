@@ -25,6 +25,7 @@ import {
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
+import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 
 const RequestDetails = () => {
   const { id } = useParams();
@@ -201,6 +202,8 @@ const RequestDetails = () => {
     }
   };
 
+  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -288,9 +291,13 @@ const RequestDetails = () => {
                     <p className="text-sm text-gray-500 flex items-center">
                       <Headphones className="mr-1 h-4 w-4" /> Backing Type
                     </p>
-                    <Badge className="capitalize">
-                      {request.backing_type?.replace('-', ' ') || 'Not specified'}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                        <Badge key={index} className="capitalize">
+                          {type.replace('-', ' ')}
+                        </Badge>
+                      )) : <Badge className="capitalize">Not specified</Badge>}
+                    </div>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 flex items-center">

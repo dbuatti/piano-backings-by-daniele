@@ -96,24 +96,13 @@ import NotificationRecipientsManager from '@/components/NotificationRecipientsMa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileInput from '@/components/FileInput'; // Import the FileInput component
 import RequestOwnershipManager from '@/components/RequestOwnershipManager'; // Import the new component
+import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 
 // Import content from other admin pages to be integrated
 import DataImporter from './DataImporter'; // We'll reuse the component directly
 import TestEmail from './TestEmail'; // We'll reuse the component directly
 import TestEmailNotification from './TestEmailNotification'; // We'll reuse the component directly
 import DropboxMonitor from './DropboxMonitor'; // We'll reuse the component directly
-
-// Helper function to normalize backing_type
-const getSafeBackingTypes = (rawType: any): string[] => {
-  let types: string[] = [];
-  if (Array.isArray(rawType)) {
-    types = rawType.filter((item: any) => typeof item === 'string');
-  } else if (typeof rawType === 'string') {
-    types = [rawType];
-  }
-  // Ensure no empty strings or null/undefined strings if they somehow got through
-  return types.filter(type => type && type.trim() !== '');
-};
 
 const AdminDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);

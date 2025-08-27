@@ -11,18 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-// Helper function to normalize backing_type
-const getSafeBackingTypes = (rawType: any): string[] => {
-  let types: string[] = [];
-  if (Array.isArray(rawType)) {
-    types = rawType.filter((item: any) => typeof item === 'string');
-  } else if (typeof rawType === 'string') {
-    types = [rawType];
-  }
-  // Ensure no empty strings or null/undefined strings if they somehow got through
-  return types.filter(type => type && type.trim() !== '');
-};
+import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 
 const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
