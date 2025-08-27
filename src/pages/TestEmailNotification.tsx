@@ -104,12 +104,7 @@ const TestEmailNotification = () => {
   };
 
   return (
-    <div className="py-4"> {/* Adjusted padding for embedding */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Test Email Notifications</h1>
-        <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Test the email notifications you receive when clients submit requests</p>
-      </div>
-      
+    <>
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -269,7 +264,7 @@ const TestEmailNotification = () => {
           Note: This will create a real entry in your database, but it will be clearly marked as a test.
         </p>
       </div>
-    </div>
+    </>
   );
 };
 

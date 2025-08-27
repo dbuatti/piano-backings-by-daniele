@@ -94,12 +94,7 @@ Piano Backings by Daniele</p>`
   };
 
   return (
-    <div className="py-4"> {/* Adjusted padding for embedding */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Test Email Function</h1>
-        <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Test the email sending functionality</p>
-      </div>
-      
+    <>
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -210,7 +205,7 @@ Piano Backings by Daniele</p>`
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

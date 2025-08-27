@@ -61,15 +61,10 @@ const DropboxMonitor = () => {
   };
 
   return (
-    <div className="py-4"> {/* Adjusted padding for embedding */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Dropbox Connection Monitor</h1>
-        <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Test and monitor your Dropbox integration</p>
-      </div>
-      
+    <>
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl text-[#1C0357]">Connection Status</CardTitle>
+          <CardTitle className="text-2xl text-[#1C0357]">Dropbox Connection Status</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-6">
@@ -244,7 +239,7 @@ const DropboxMonitor = () => {
             </CardContent>
           </Card>
         </div>
-    </div>
+    </>
   );
 };
 
