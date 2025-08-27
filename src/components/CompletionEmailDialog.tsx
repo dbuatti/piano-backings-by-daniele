@@ -27,6 +27,7 @@ const CompletionEmailDialog = ({
   const [isSending, setIsSending] = useState(false);
   const [emailContent, setEmailContent] = useState('');
   const [emailSubject, setEmailSubject] = useState(`Your "${songTitle}" backing track is ready!`);
+  const [recipientEmails, setRecipientEmails] = useState(clientEmail); // New state for editable recipient emails
   const [showPreview, setShowPreview] = useState(false);
 
   // Generate the default email content as full HTML
@@ -74,7 +75,7 @@ const CompletionEmailDialog = ({
           <p style="margin: 0; color: #333;"><strong style="color: #1C0357;">M</strong> 0424 174 067</p>
           <p style="margin: 5px 0; color: #333;"><strong style="color: #1C0357;">E</strong> <a href="mailto:pianobackingsbydaniele@gmail.com" style="color: #007bff; text-decoration: none;">pianobackingsbydaniele@gmail.com</a></p>
           <p style="margin: 10px 0 5px 0; font-weight: bold; color: #1C0357;">Piano Backings By Daniele</p>
-          <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
+          <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
           <div style="margin-top: 15px;">
             <a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="display: inline-block; margin-right: 5px;">
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/1200px-2021_Facebook_icon.svg.png" alt="Facebook" width="24" height="24" style="vertical-align: middle;">
@@ -93,11 +94,12 @@ const CompletionEmailDialog = ({
 </div>`;
   };
 
-  // Set default content when dialog opens
+  // Set default content and recipient when dialog opens
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
       setEmailContent(generateDefaultEmailHtml(clientName, songTitle, trackUrl));
+      setRecipientEmails(clientEmail); // Initialize with clientEmail
       setShowPreview(false);
     }
   };
@@ -121,6 +123,11 @@ const CompletionEmailDialog = ({
         throw new Error('You must be logged in to send emails');
       }
 
+      // Basic validation for recipient emails
+      if (!recipientEmails.trim()) {
+        throw new Error('Recipient email address(es) cannot be empty.');
+      }
+
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
         {
@@ -130,7 +137,7 @@ const CompletionEmailDialog = ({
             'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-            to: clientEmail,
+            to: recipientEmails, // Use the editable recipient emails
             subject: emailSubject,
             html: emailContent, // Use the edited HTML content directly
             senderEmail: 'pianobackingsbydaniele@gmail.com'
@@ -146,7 +153,7 @@ const CompletionEmailDialog = ({
       
       toast({
         title: "Email Sent",
-        description: `Completion email sent to ${clientEmail}`,
+        description: `Completion email sent to ${recipientEmails}`,
       });
       
       setIsOpen(false);
@@ -178,6 +185,18 @@ const CompletionEmailDialog = ({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label htmlFor="recipient-emails">Recipient Email(s)</Label>
+            <Textarea
+              id="recipient-emails"
+              value={recipientEmails}
+              onChange={(e) => setRecipientEmails(e.target.value)}
+              placeholder="client@example.com, another@example.com"
+              rows={2}
+              className="w-full p-2 border rounded-md mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">Enter multiple emails separated by commas.</p>
+          </div>
           <div>
             <Label htmlFor="subject">Subject</Label>
             <input
@@ -225,7 +244,6 @@ const CompletionEmailDialog = ({
               </div>
               
               <div className="text-sm text-gray-500">
-                <p><strong>To:</strong> {clientEmail}</p>
                 <p><strong>Client:</strong> {clientName}</p>
                 <p><strong>Song:</strong> {songTitle}</p>
                 {trackUrl && <p><strong>Track URL:</strong> {trackUrl}</p>}
@@ -258,7 +276,7 @@ const CompletionEmailDialog = ({
             </Button>
             <Button 
               onClick={handleSendEmail}
-              disabled={isSending}
+              disabled={isSending || !recipientEmails.trim()}
               className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
             >
               <Send className="mr-2 h-4 w-4" />

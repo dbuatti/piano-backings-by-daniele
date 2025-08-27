@@ -59,7 +59,7 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
     
-    const { to, subject, html, cc, bcc, replyTo, senderEmail } = requestBody;
+    let { to, subject, html, cc, bcc, replyTo, senderEmail } = requestBody;
 
     // Get the authenticated user (this will be the Supabase user, not the Gmail user)
     // We still check for a user token for logging purposes, but it's not required for operation
@@ -83,6 +83,23 @@ serve(async (req) => {
     
     if (!to || !subject || !html || !senderEmail) {
       return new Response(JSON.stringify({ error: "Missing 'to', 'subject', 'html', or 'senderEmail' content" }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Normalize 'to' field: if it's a string, split by comma into an array
+    let recipientList: string[];
+    if (typeof to === 'string') {
+      recipientList = to.split(',').map((email: string) => email.trim()).filter(Boolean);
+    } else if (Array.isArray(to)) {
+      recipientList = to.map((email: string) => email.trim()).filter(Boolean);
+    } else {
+      recipientList = [];
+    }
+
+    if (recipientList.length === 0) {
+      return new Response(JSON.stringify({ error: "No valid recipient email addresses provided." }), { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -232,7 +249,7 @@ serve(async (req) => {
     }
     
     // Create the email message in RFC 2822 format
-    let message = `To: ${Array.isArray(to) ? to.join(', ') : to}\r\n`;
+    let message = `To: ${recipientList.join(', ')}\r\n`; // Join multiple recipients with comma
     message += `From: ${GMAIL_USER}\r\n`; // This will be pianobackingsbydaniele@gmail.com
     message += `Subject: ${subject}\r\n`;
     
@@ -295,7 +312,7 @@ serve(async (req) => {
         .from('notifications')
         .insert([
           {
-            recipient: Array.isArray(to) ? to.join(', ') : to,
+            recipient: recipientList.join(', '), // Store all recipients
             sender: GMAIL_USER,
             subject: subject,
             content: html,
@@ -306,7 +323,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ 
-          message: `Email sent successfully to ${Array.isArray(to) ? to.join(', ') : to}`,
+          message: `Email sent successfully to ${recipientList.join(', ')}`,
           gmailData: gmailData
         }),
         { 
