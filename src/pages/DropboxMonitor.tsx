@@ -184,61 +184,62 @@ const DropboxMonitor = () => {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+      
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-[#1C0357]">Token Management Tips</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start">
+                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Set calendar reminders to test token every 30-60 days</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Bookmark your Dropbox App Console for quick access</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Keep a note of the token generation date</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Test immediately after any Dropbox app changes</span>
+              </li>
+            </ul>
+          </CardContent>
         </Card>
         
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#1C0357]">Token Management Tips</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Set calendar reminders to test token every 30-60 days</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Bookmark your Dropbox App Console for quick access</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Keep a note of the token generation date</span>
-                </li>
-                <li className="flex items-start">
-                  <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Test immediately after any Dropbox app changes</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#1C0357]">Common Issues</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start">
-                  <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span>Refresh token expires after app permission changes</span>
-                </li>
-                <li className="flex items-start">
-                  <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span>Security settings may invalidate tokens</span>
-                </li>
-                <li className="flex items-start">
-                  <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span>App reconfiguration requires new token</span>
-                </li>
-                <li className="flex items-start">
-                  <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span>Long periods of inactivity may expire tokens</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl text-[#1C0357]">Common Issues</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start">
+                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <span>Refresh token expires after app permission changes</span>
+              </li>
+              <li className="flex items-start">
+                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <span>Security settings may invalidate tokens</span>
+              </li>
+              <li className="flex items-start">
+                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <span>App reconfiguration requires new token</span>
+              </li>
+              <li className="flex items-start">
+                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <span>Long periods of inactivity may expire tokens</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 };
