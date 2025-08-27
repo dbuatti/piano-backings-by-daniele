@@ -5,8 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Upload, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { calculateRequestCost } from '@/utils/pricing';
@@ -299,109 +297,103 @@ const DataImporter = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Data Importer</h1>
-          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Import past orders from Google Sheets</p>
-        </div>
-        
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Upload className="mr-2 h-5 w-5" />
-              Import Backing Requests
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <p className="mb-4">
-                Paste the raw data from your Google Sheet below. Make sure to include the header row.
-                The data should be comma-separated (CSV).
-              </p>
-              <p className="text-sm text-gray-600 mb-4">
-                <strong>Important:</strong> This tool will attempt to map your sheet columns to the app's database fields.
-                It assumes past orders are `completed` and `paid`.
-              </p>
-              
-              <Label htmlFor="raw-data" className="text-sm font-medium">Paste Google Sheet Data Here</Label>
-              <Textarea
-                id="raw-data"
-                value={rawData}
-                onChange={(e) => setRawData(e.target.value)}
-                rows={15}
-                placeholder="Paste your comma-separated Google Sheet data here, including headers..."
-                className="mt-2 font-mono text-sm"
-                disabled={isImporting}
-              />
-              
-              <Button 
-                onClick={handleImport}
-                disabled={isImporting || !rawData.trim()}
-                className="mt-4 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-12 px-6 w-full"
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing Data...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-5 w-5" />
-                    Start Import
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {error && (
-              <div className="mt-6">
-                <ErrorDisplay error={error} title="Overall Import Error" />
-              </div>
-            )}
-
-            {importResults.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-2 text-[#1C0357] flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
-                  Successfully Imported ({importResults.length})
-                </h3>
-                <div className="bg-green-50 p-4 rounded-lg max-h-60 overflow-y-auto border border-green-200">
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    {importResults.map((res, index) => (
-                      <li key={index}>
-                        <strong>{res.data.song_title}</strong> by {res.data.name} ({res.data.email})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {importErrors.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-2 text-[#1C0357] flex items-center">
-                  <XCircle className="mr-2 h-5 w-5 text-red-600" />
-                  Failed to Import ({importErrors.length})
-                </h3>
-                <div className="bg-red-50 p-4 rounded-lg max-h-60 overflow-y-auto border border-red-200">
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    {importErrors.map((err, index) => (
-                      <li key={index}>
-                        <strong>{err.request.song_title || 'Unknown Song'}</strong> for {err.request.email || 'Unknown Email'}: {err.error}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <MadeWithDyad />
+    <div className="py-4"> {/* Adjusted padding for embedding */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Data Importer</h1>
+        <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Import past orders from Google Sheets</p>
       </div>
+      
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+            <Upload className="mr-2 h-5 w-5" />
+            Import Backing Requests
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <p className="mb-4">
+              Paste the raw data from your Google Sheet below. Make sure to include the header row.
+              The data should be comma-separated (CSV).
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              <strong>Important:</strong> This tool will attempt to map your sheet columns to the app's database fields.
+              It assumes past orders are `completed` and `paid`.
+            </p>
+            
+            <Label htmlFor="raw-data" className="text-sm font-medium">Paste Google Sheet Data Here</Label>
+            <Textarea
+              id="raw-data"
+              value={rawData}
+              onChange={(e) => setRawData(e.target.value)}
+              rows={15}
+              placeholder="Paste your comma-separated Google Sheet data here, including headers..."
+              className="mt-2 font-mono text-sm"
+              disabled={isImporting}
+            />
+            
+            <Button 
+              onClick={handleImport}
+              disabled={isImporting || !rawData.trim()}
+              className="mt-4 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-12 px-6 w-full"
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing Data...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-5 w-5" />
+                  Start Import
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {error && (
+            <div className="mt-6">
+              <ErrorDisplay error={error} title="Overall Import Error" />
+            </div>
+          )}
+
+          {importResults.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-xl font-semibold mb-2 text-[#1C0357] flex items-center">
+                <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+                Successfully Imported ({importResults.length})
+              </h3>
+              <div className="bg-green-50 p-4 rounded-lg max-h-60 overflow-y-auto border border-green-200">
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {importResults.map((res, index) => (
+                    <li key={index}>
+                      <strong>{res.data.song_title}</strong> by {res.data.name} ({res.data.email})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {importErrors.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-xl font-semibold mb-2 text-[#1C0357] flex items-center">
+                <XCircle className="mr-2 h-5 w-5 text-red-600" />
+                Failed to Import ({importErrors.length})
+              </h3>
+              <div className="bg-red-50 p-4 rounded-lg max-h-60 overflow-y-auto border border-red-200">
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {importErrors.map((err, index) => (
+                    <li key={index}>
+                      <strong>{err.request.song_title || 'Unknown Song'}</strong> for {err.request.email || 'Unknown Email'}: {err.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
