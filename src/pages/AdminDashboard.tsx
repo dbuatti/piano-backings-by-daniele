@@ -90,6 +90,7 @@ import {
 } from "@/components/ui/tooltip";
 import PricingMatrix from '@/components/PricingMatrix';
 import CompletionEmailDialog from '@/components/CompletionEmailDialog';
+import PaymentReminderEmailDialog from '@/components/PaymentReminderEmailDialog'; // Import the new component
 import { calculateRequestCost } from '@/utils/pricing';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1406,6 +1407,22 @@ const AdminDashboard = () => {
                                             <p>Email Client</p>
                                           </TooltipContent>
                                         </Tooltip>
+                                        {!request.is_paid && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <PaymentReminderEmailDialog
+                                                requestId={request.id}
+                                                clientEmail={request.email}
+                                                clientName={request.name || 'Client'}
+                                                songTitle={request.song_title}
+                                                cost={calculateRequestCost(request)}
+                                              />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>Send Payment Reminder</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button 

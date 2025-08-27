@@ -75,15 +75,15 @@ export const generateEmailCopy = async (request: BackingRequest) => {
        - If they provided a reference link, mention you used it as a guide
        - If they have specific musical requests, acknowledge them specifically
        - Summarize the request in a natural way rather than quoting it verbatim
-    5. Include a detailed pricing breakdown with transparent costs
-    6. Offer multiple payment options with clear instructions
-    7. Proactively offer adjustments or revisions to ensure satisfaction
-    8. Include a personalized sign-off that reflects your professional relationship
-    9. Add your signature with contact information
-    10. Include a link to their customer portal where they can view their request details and download their track
-    11. Keep the tone professional yet friendly, showing genuine care for their success
-    12. Never use "Break a leg" - end with "Warmly" instead
-    13. Make sure hyperlinks are properly formatted as plain text URLs (not HTML) for better email compatibility
+    5. Include a detailed pricing breakdown with transparent costs, making the total amount due prominent.
+    6. Offer multiple payment options with clear instructions.
+    7. Proactively offer adjustments or revisions to ensure satisfaction.
+    8. Include a personalized sign-off that reflects your professional relationship.
+    9. Add your signature with contact information.
+    10. Include a link to their customer portal where they can view their request details and download their track.
+    11. Keep the tone professional yet friendly, showing genuine care for their success.
+    12. Never use "Break a leg" - end with "Warmly" instead.
+    13. Make sure hyperlinks are properly formatted as plain text URLs (not HTML) for better email compatibility.
     
     Additional context for tone:
     - Many clients are preparing for auditions or performances, so be encouraging
@@ -135,6 +135,8 @@ const generateFallbackEmail = (request: BackingRequest) => {
     }
   }
   
+  const totalCost = calculateTotal(request.backing_type, request.additional_services);
+
   return {
     subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
     body: `Hi ${request.name},
@@ -149,14 +151,16 @@ Here's a breakdown of the work completed:
 ${request.backing_type.map(type => `• ${type.replace('-', ' ')} backing: $${getBasePriceForType(type)}`).join('\n')}
 ${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
 
-Total amount: $${calculateTotal(request.backing_type, request.additional_services)}
+---
+**Total amount due: $${totalCost}**
+---
 
-You can complete your payment via:
+You can view your request details, download your track, and complete your payment here:
+https://pianobackingsbydaniele.vercel.app/track/${request.id}
+
+Alternatively, you can complete your payment via:
 1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
 2. Direct bank transfer: BSB: 923100 | Account: 301110875
-
-View your request details and download your track here:
-https://pianobackingsbydaniele.vercel.app/track/${request.id}
 
 ${request.additional_links ? `
 Additional Links provided:
