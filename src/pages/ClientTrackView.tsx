@@ -48,50 +48,94 @@ const ClientTrackView = () => {
   const { toast } = useToast();
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     const fetchRequest = async () => {
+      setLoading(true);
+      setAccessDenied(false);
+      
+      if (!id) {
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const emailFromUrl = urlParams.get('email');
+      
       try {
-        // First try to get request by ID
-        let { data, error } = await supabase
+        // Always fetch the request by ID first
+        const { data: requestData, error: fetchError } = await supabase
           .from('backing_requests')
           .select('*')
           .eq('id', id)
           .single();
         
-        // If not found by ID, try to get by email (for guest access)
-        if (error || !data) {
-          const urlParams = new URLSearchParams(window.location.search);
-          const email = urlParams.get('email');
-          
-          if (email) {
-            ({ data, error } = await supabase
-              .from('backing_requests')
-              .select('*')
-              .eq('email', email)
-              .eq('id', id)
-              .single());
+        if (fetchError || !requestData) {
+          console.error('Error fetching request by ID:', fetchError);
+          setAccessDenied(true);
+          toast({
+            title: "Error",
+            description: "Request not found or access denied.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Now, determine access based on user_id and email
+        const { data: { session } } = await supabase.auth.getSession();
+        const loggedInUserId = session?.user?.id;
+        const loggedInUserEmail = session?.user?.email;
+
+        let hasAccess = false;
+
+        if (requestData.user_id) {
+          // If the request is linked to a user_id, only the owner can access
+          if (loggedInUserId === requestData.user_id) {
+            hasAccess = true;
+          } else {
+            // If logged in but not the owner, deny access
+            console.warn('Logged-in user is not the owner of this request.');
+          }
+        } else {
+          // If the request is NOT linked to a user_id (guest submission)
+          // Allow access if email from URL matches request email
+          if (emailFromUrl && requestData.email && emailFromUrl.toLowerCase() === requestData.email.toLowerCase()) {
+            hasAccess = true;
+          } else if (loggedInUserEmail && requestData.email && loggedInUserEmail.toLowerCase() === requestData.email.toLowerCase()) {
+            // If no email in URL, but logged-in user's email matches request email
+            hasAccess = true;
+          } else {
+            console.warn('Guest access denied: Email mismatch or no email provided in URL/session for unlinked request.');
           }
         }
-        
-        if (error) throw error;
-        
-        setRequest(data);
+
+        if (hasAccess) {
+          setRequest(requestData);
+        } else {
+          setAccessDenied(true);
+          toast({
+            title: "Access Denied",
+            description: "You do not have permission to view this track. Please ensure you are logged in with the correct account or using the correct access link.",
+            variant: "destructive",
+          });
+        }
+
       } catch (error: any) {
+        console.error('Error in ClientTrackView fetch logic:', error);
+        setAccessDenied(true);
         toast({
           title: "Error",
           description: `Failed to fetch request: ${error.message}`,
           variant: "destructive",
         });
-        navigate('/user-dashboard');
       } finally {
         setLoading(false);
       }
     };
     
-    if (id) {
-      fetchRequest();
-    }
+    fetchRequest();
   }, [id, navigate, toast]);
 
   const getStatusBadge = (status: string) => {
@@ -133,16 +177,16 @@ const ClientTrackView = () => {
     );
   }
 
-  if (!request) {
+  if (accessDenied || !request) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <FileAudio className="mx-auto h-16 w-16 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Track not found</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied or Track Not Found</h3>
             <p className="mt-1 text-gray-500">
-              We couldn't find the track you're looking for.
+              You do not have permission to view this track, or the track does not exist.
             </p>
             <div className="mt-6">
               <Button onClick={() => navigate('/user-dashboard')}>

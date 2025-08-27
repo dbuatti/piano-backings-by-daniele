@@ -95,6 +95,7 @@ import { calculateRequestCost } from '@/utils/pricing';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FileInput from '@/components/FileInput'; // Import the FileInput component
+import RequestOwnershipManager from '@/components/RequestOwnershipManager'; // Import the new component
 
 // Import content from other admin pages to be integrated
 import DataImporter from './DataImporter'; // We'll reuse the component directly
@@ -1459,8 +1460,9 @@ const AdminDashboard = () => {
             </TabsContent>
 
             {/* Data Management Tab Content */}
-            <TabsContent value="data-management" className="mt-6">
+            <TabsContent value="data-management" className="mt-6 space-y-6">
               <DataImporter /> {/* Integrate DataImporter directly */}
+              <RequestOwnershipManager /> {/* Integrate RequestOwnershipManager directly */}
             </TabsContent>
 
             {/* Email Tools Tab Content */}
