@@ -72,12 +72,15 @@ serve(async (req) => {
           console.log('Authenticated user:', { userId, userEmail, userName });
         } else {
           console.log('Authorization header present but invalid/expired token, proceeding as anonymous');
+          userId = null; // Explicitly set to null if token is invalid/expired
         }
       } catch (authError) {
         console.log('Error parsing auth header, proceeding as anonymous:', authError.message);
+        userId = null; // Explicitly set to null if parsing fails
       }
     } else {
-      console.log('No Authorization header, proceeding as anonymous');
+      console.log('No Authorization header, processing as anonymous request.');
+      userId = null; // Explicitly set to null if no header
     }
     
     let requestBody;
@@ -888,6 +891,80 @@ serve(async (req) => {
                 }
               ]);
           }
+        }
+      } else { // If fetching recipients was successful
+        if (recipients && recipients.length > 0) {
+          const recipientEmails = recipients.map(r => r.email);
+          console.log('Sending notification to configured recipients:', recipientEmails);
+          
+          for (const email of recipientEmails) {
+            try {
+              const payloadToSend = {
+                to: email,
+                subject: emailSubject,
+                html: emailHtml,
+                senderEmail: defaultSenderEmail
+              };
+              
+              const emailResponse = await fetch(sendEmailUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseServiceKey}`
+                },
+                body: JSON.stringify(payloadToSend)
+              });
+              
+              if (!emailResponse.ok) {
+                const emailErrorText = await emailResponse.text();
+                console.error(`Failed to send notification email to ${email}:`, emailErrorText);
+                await supabaseAdmin
+                  .from('notifications')
+                  .insert([
+                    {
+                      recipient: email,
+                      sender: 'system@pianobackings.com',
+                      subject: emailSubject,
+                      content: emailHtml,
+                      status: 'failed',
+                      type: 'email',
+                      error_message: emailErrorText
+                    }
+                  ]);
+              } else {
+                console.log(`Notification email sent successfully to ${email}`);
+                await supabaseAdmin
+                  .from('notifications')
+                  .insert([
+                    {
+                      recipient: email,
+                      sender: 'system@pianobackings.com',
+                      subject: emailSubject,
+                      content: emailHtml,
+                      status: 'sent',
+                      type: 'email'
+                    }
+                  ]);
+              }
+            } catch (emailError) {
+              console.error(`Error sending notification email to ${email}:`, emailError);
+              await supabaseAdmin
+                .from('notifications')
+                .insert([
+                  {
+                    recipient: email,
+                    sender: 'system@pianobackings.com',
+                    subject: emailSubject,
+                    content: emailHtml,
+                    status: 'failed',
+                    type: 'email',
+                    error_message: emailError.message
+                  }
+                ]);
+            }
+          }
+        } else {
+          console.log('No notification recipients configured, no email sent.');
         }
       }
     } catch (emailError) {
