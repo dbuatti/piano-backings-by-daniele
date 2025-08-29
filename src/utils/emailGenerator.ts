@@ -176,6 +176,8 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
+  const minCost = (trackCost - 2).toFixed(2); // Calculate min cost
+  const maxCost = (trackCost + 5).toFixed(2); // Calculate max cost
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -193,14 +195,14 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     - Client name: ${request.name}
     - Song title: "${request.song_title}"
     - Musical/Artist: ${request.musical_or_artist}
-    - Estimated cost: $${trackCost.toFixed(2)}
+    - Estimated cost: $${minCost} - $${maxCost}
     - Client Portal Link: ${clientPortalLink}
     
     Instructions for crafting the email:
     1. Create a clear subject line indicating it's a payment reminder for their track.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Clearly state that it's a friendly reminder for their backing track request.
-    4. Prominently display the estimated cost for their track.
+    4. Prominently display the estimated cost for their track as a range.
     5. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
     6. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
     7. Offer assistance if they have any questions.
@@ -235,6 +237,8 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
 
 const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost: number) => {
   const firstName = request.name.split(' ')[0];
+  const minCost = (trackCost - 2).toFixed(2); // Calculate min cost
+  const maxCost = (trackCost + 5).toFixed(2); // Calculate max cost
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   return {
@@ -245,7 +249,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
         <p>I hope you're having a good week!</p>
         <p>This is a friendly reminder regarding your recent piano backing track request for <strong>"${request.song_title}"</strong>.</p>
         <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-          The estimated cost for your track is: $${trackCost.toFixed(2)}
+          The estimated cost for your track is: $${minCost} - $${maxCost}
         </p>
         <p>You can view the full details of your request and make your payment via the link below:</p>
         <p style="text-align: center; margin: 30px 0;">
@@ -282,6 +286,8 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
+  const minCost = (trackCost - 2).toFixed(2); // Calculate min cost
+  const maxCost = (trackCost + 5).toFixed(2); // Calculate max cost
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -303,7 +309,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     - Backing type(s): ${request.backing_type.join(', ') || 'N/A'}
     - Special requests: ${request.special_requests || 'None'}
     - Track URL (if available): ${trackUrl || 'Not yet uploaded'}
-    - Estimated cost: $${trackCost.toFixed(2)}
+    - Estimated cost: $${minCost} - $${maxCost}
     - Client Portal Link: ${clientPortalLink}
     
     Instructions for crafting the email:
@@ -312,7 +318,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     3. Announce that the track is complete and ready.
     4. If a Track URL is provided, include a prominent call-to-action button to "Download Your Track" linking directly to the URL.
     5. If no Track URL, provide a button to "View Your Track Details" linking to the Client Portal Link.
-    6. Clearly state the estimated cost for their track.
+    6. Clearly state the estimated cost for their track as a range.
     7. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
     8. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
     9. Proactively offer adjustments or revisions to ensure satisfaction.
@@ -349,6 +355,8 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
 const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trackCost: number) => {
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
+  const minCost = (trackCost - 2).toFixed(2); // Calculate min cost
+  const maxCost = (trackCost + 5).toFixed(2); // Calculate max cost
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   let downloadSection = '';
@@ -386,7 +394,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
         <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
         <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-          The estimated cost for your track is: $${trackCost.toFixed(2)}
+          The estimated cost for your track is: $${minCost} - $${maxCost}
         </p>
         <p>You can view the full details of your request and make your payment via the link below:</p>
         <p style="text-align: center; margin: 30px 0;">
