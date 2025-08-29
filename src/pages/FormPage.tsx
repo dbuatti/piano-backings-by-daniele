@@ -33,12 +33,13 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 import FileInput from "@/components/FileInput"; // Import the new FileInput component
+import AccountPromptCard from '@/components/AccountPromptCard'; // Import the new AccountPromptCard
 
 const FormPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false); // State to control visibility of the new card
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false); // New state for admin status
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
@@ -64,6 +65,7 @@ const FormPage = () => {
     category: '',
     trackType: ''
   });
+  const [errors, setErrors] = useState<Record<string, string>>({}); // State for validation errors
 
   // Check user session on component mount
   useEffect(() => {
@@ -79,8 +81,10 @@ const FormPage = () => {
         // Check if user is admin
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         setIsAdmin(adminEmails.includes(session.user.email));
+        setShowAccountPrompt(false); // Hide prompt if logged in
       } else {
         setIsAdmin(false); // Ensure isAdmin is false if no session
+        setShowAccountPrompt(true); // Show prompt if not logged in
       }
     };
     checkUser();
@@ -136,15 +140,18 @@ const FormPage = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: '' })); // Clear error on change
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    setErrors(prev => ({ ...prev, [name]: '' })); // Clear error on change
   };
 
   // Updated handler for the new FileInput component
   const handleFileInputChange = (file: File | null, fieldName: string) => {
     setFormData(prev => ({ ...prev, [fieldName]: file }));
+    setErrors(prev => ({ ...prev, [fieldName]: '' })); // Clear error on change
   };
 
   const handleCheckboxChange = (service: string) => {
@@ -162,6 +169,7 @@ const FormPage = () => {
       const newBackingTypes = checked
         ? [...prev.backingType, type]
         : prev.backingType.filter(t => t !== type);
+      setErrors(prevErrors => ({ ...prevErrors, backingType: '' })); // Clear error on change
       return { ...prev, backingType: newBackingTypes };
     });
   };
@@ -188,6 +196,7 @@ const FormPage = () => {
       category: 'Practice Tracks',
       trackType: 'polished'
     });
+    setErrors({}); // Clear any existing errors
     
     toast({
       title: "Sample Data Filled",
@@ -198,18 +207,29 @@ const FormPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+    const newErrors: Record<string, string> = {};
+
+    // Client-side validation
+    if (!formData.email) newErrors.email = 'Email is required.';
+    if (!formData.songTitle) newErrors.songTitle = 'Song Title is required.';
+    if (!formData.musicalOrArtist) newErrors.musicalOrArtist = 'Musical or Artist is required.';
+    if (!formData.category) newErrors.category = 'Category is required.';
+    if (!formData.trackType) newErrors.trackType = 'Track Type is required.';
+    if (formData.backingType.length === 0) newErrors.backingType = 'At least one backing type is required.';
+    if (!formData.sheetMusic) newErrors.sheetMusic = 'Sheet music is required. Please upload a PDF file.';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setIsSubmitting(false);
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Basic validation for backingType
-      if (formData.backingType.length === 0) {
-        throw new Error('Please select at least one backing type.');
-      }
-
-      // Custom validation for required sheet music
-      if (!formData.sheetMusic) {
-        throw new Error('Sheet music is required. Please upload a PDF file.');
-      }
-
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -395,6 +415,7 @@ const FormPage = () => {
         category: '',
         trackType: ''
       });
+      setErrors({}); // Clear errors after successful submission
       
       // Show account prompt if user is not logged in
       if (!session) {
@@ -415,8 +436,8 @@ const FormPage = () => {
     }
   };
 
-  const createAccount = () => {
-    navigate('/login');
+  const handleDismissAccountPrompt = () => {
+    setShowAccountPrompt(false);
   };
 
   const keyOptions = [
@@ -465,28 +486,8 @@ const FormPage = () => {
           </Alert>
         )}
 
-        {showAccountPrompt && (
-          <Card className="shadow-lg mb-4 bg-[#1C0357] text-white border-[#1C0357]">
-            <CardContent className="p-4">
-              <div className="flex flex-col items-center justify-between gap-3">
-                <div className="text-center">
-                  <h3 className="text-lg font-bold flex items-center justify-center">
-                    <UserIcon className="mr-2" size={16} /> Create an Account
-                  </h3>
-                  <p className="mt-1 text-sm">
-                    Save your request and access all your tracks in one place!
-                  </p>
-                </div>
-                <Button 
-                  onClick={createAccount}
-                  className="bg-white text-[#1C0357] hover:bg-gray-100 text-sm w-full"
-                  size="sm"
-                >
-                  Create Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {!user && showAccountPrompt && (
+          <AccountPromptCard onDismiss={handleDismissAccountPrompt} />
         )}
 
         <Card className="shadow-lg mb-6">
@@ -560,10 +561,11 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="your.email@example.com"
-                        className="pl-8 py-2 text-sm"
+                        className={cn("pl-8 py-2 text-sm", errors.email && "border-red-500")}
                       />
                       <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
+                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </div>
                   <div>
                     <Label htmlFor="name" className="text-sm mb-1">Name</Label>
@@ -594,10 +596,11 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="e.g., Defying Gravity"
-                        className="pl-8 py-2 text-sm"
+                        className={cn("pl-8 py-2 text-sm", errors.songTitle && "border-red-500")}
                       />
                       <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
+                    {errors.songTitle && <p className="text-red-500 text-xs mt-1">{errors.songTitle}</p>}
                   </div>
                   <div>
                     <Label htmlFor="musicalOrArtist" className="flex items-center text-sm mb-1">
@@ -611,10 +614,11 @@ const FormPage = () => {
                         onChange={handleInputChange} 
                         required 
                         placeholder="e.g., Wicked"
-                        className="pl-8 py-2 text-sm"
+                        className={cn("pl-8 py-2 text-sm", errors.musicalOrArtist && "border-red-500")}
                       />
                       <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
+                    {errors.musicalOrArtist && <p className="text-red-500 text-xs mt-1">{errors.musicalOrArtist}</p>}
                   </div>
                 </div>
                 
@@ -624,7 +628,7 @@ const FormPage = () => {
                   </Label>
                   <div className="relative">
                     <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category}>
-                      <SelectTrigger className="pl-8 py-2 text-sm">
+                      <SelectTrigger className={cn("pl-8 py-2 text-sm", errors.category && "border-red-500")}>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -637,6 +641,7 @@ const FormPage = () => {
                     </Select>
                     <Folder className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                   </div>
+                  {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
                 </div>
               </div>
 
@@ -644,19 +649,20 @@ const FormPage = () => {
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
-                  Track Type
+                  Track Type <span className="text-red-500 ml-1">*</span>
                 </h2>
                 
                 <RadioGroup 
                   value={formData.trackType} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, trackType: value }))}
+                  onValueChange={(value) => handleSelectChange('trackType', value)}
                   className="grid grid-cols-1 md:grid-cols-3 gap-4" // Changed to grid layout
                 >
                   <Label htmlFor="quick" className="flex flex-col items-center justify-center cursor-pointer">
                     <Card className={cn(
                       "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
                       "hover:border-[#F538BC] hover:shadow-md",
-                      formData.trackType === 'quick' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                      formData.trackType === 'quick' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                      errors.trackType && "border-red-500"
                     )}>
                       <RadioGroupItem value="quick" id="quick" className="sr-only" /> {/* Hidden radio button */}
                       <Mic className={cn("h-8 w-8 mb-2", formData.trackType === 'quick' ? "text-[#F538BC]" : "text-gray-500")} />
@@ -670,7 +676,8 @@ const FormPage = () => {
                     <Card className={cn(
                       "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
                       "hover:border-[#F538BC] hover:shadow-md",
-                      formData.trackType === 'one-take' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                      formData.trackType === 'one-take' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                      errors.trackType && "border-red-500"
                     )}>
                       <RadioGroupItem value="one-take" id="one-take" className="sr-only" />
                       <Headphones className={cn("h-8 w-8 mb-2", formData.trackType === 'one-take' ? "text-[#F538BC]" : "text-gray-500")} />
@@ -684,7 +691,8 @@ const FormPage = () => {
                     <Card className={cn(
                       "w-full h-full p-4 flex flex-col items-center text-center transition-all duration-200",
                       "hover:border-[#F538BC] hover:shadow-md",
-                      formData.trackType === 'polished' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                      formData.trackType === 'polished' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                      errors.trackType && "border-red-500"
                     )}>
                       <RadioGroupItem value="polished" id="polished" className="sr-only" />
                       <Sparkles className={cn("h-8 w-8 mb-2", formData.trackType === 'polished' ? "text-[#F538BC]" : "text-gray-500")} />
@@ -694,6 +702,7 @@ const FormPage = () => {
                     </Card>
                   </Label>
                 </RadioGroup>
+                {errors.trackType && <p className="text-red-500 text-xs mt-1">{errors.trackType}</p>}
               </div>
 
               {/* Section 3: Musical Details */}
@@ -850,7 +859,9 @@ const FormPage = () => {
                     onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
                     required // This 'required' prop is for visual indication, actual validation is in handleSubmit
                     note="Make sure it's clear and in the right key"
+                    error={errors.sheetMusic} // Pass error prop
                   />
+                  {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
                   
                   <div className="space-y-4">
                     <div>
@@ -881,7 +892,8 @@ const FormPage = () => {
                           <Card className={cn(
                             "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
                             "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                            formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                            errors.backingType && "border-red-500"
                           )}>
                             <Checkbox
                               id="backing-full-song"
@@ -900,7 +912,8 @@ const FormPage = () => {
                           <Card className={cn(
                             "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
                             "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                            formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                            errors.backingType && "border-red-500"
                           )}>
                             <Checkbox
                               id="backing-audition-cut"
@@ -919,7 +932,8 @@ const FormPage = () => {
                           <Card className={cn(
                             "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
                             "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
+                            formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                            errors.backingType && "border-red-500"
                           )}>
                             <Checkbox
                               id="backing-note-bash"
@@ -934,6 +948,7 @@ const FormPage = () => {
                           </Card>
                         </Label>
                       </div>
+                      {errors.backingType && <p className="text-red-500 text-xs mt-1">{errors.backingType}</p>}
                     </div>
                   </div>
                 </div>
