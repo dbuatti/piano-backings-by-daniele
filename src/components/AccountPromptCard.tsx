@@ -86,7 +86,7 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss }) => {
               Create Your Free Account
             </Button>
           </Link>
-          <Link to="/form-page#request-form"> {/* Changed to navigate to /form-page#request-form */}
+          <Link to="/form-page#request-guidelines"> {/* Changed to navigate to /form-page#request-guidelines */}
             <Button 
               variant="ghost" 
               size="lg" 

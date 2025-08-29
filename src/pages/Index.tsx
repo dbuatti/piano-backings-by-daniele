@@ -86,7 +86,7 @@ const Index = () => {
                   Create Your Free Account
                 </Button>
               </Link>
-              <Link to="/form-page#request-form"> {/* Updated to include hash */}
+              <Link to="/form-page#request-guidelines"> {/* Updated to include new hash */}
                 <Button 
                   variant="ghost" 
                   size="lg" 

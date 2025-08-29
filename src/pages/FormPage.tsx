@@ -502,7 +502,7 @@ const FormPage = () => {
         )}
 
         <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20 py-3 px-4">
+          <CardHeader id="request-guidelines" className="bg-[#D1AAF2]/20 py-3 px-4"> {/* Added id here */}
             <CardTitle className="text-lg md:text-xl text-[#1C0357] flex items-center">
               <MusicIcon className="mr-2" size={16} />
               Request Guidelines
@@ -546,7 +546,7 @@ const FormPage = () => {
         </Card>
 
         <Card className="shadow-lg">
-          <CardHeader id="request-form" className="bg-[#1C0357] text-white py-3 px-4"> {/* Added id here */}
+          <CardHeader id="request-form" className="bg-[#1C0357] text-white py-3 px-4"> {/* Retained id for 'Request Form' in case it's needed elsewhere */}
             <CardTitle className="text-lg md:text-xl">Request Form</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
