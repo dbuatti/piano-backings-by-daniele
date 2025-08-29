@@ -31,7 +31,7 @@ const EmailGenerator = () => {
   const [emailData, setEmailData] = useState({ subject: '', html: '' }); // Changed body to html
   const [recipientEmails, setRecipientEmails] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion'); // New state for template selection
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion-payment'); // Set 'completion-payment' as default
   const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null); // Store the fetched request
 
   const [formData, setFormData] = useState({
@@ -244,7 +244,7 @@ const EmailGenerator = () => {
       setEmailData({ subject: '', html: '' });
       setRecipientEmails('');
       setShowPreview(false);
-      setTemplateType('completion'); // Reset template type
+      setTemplateType('completion-payment'); // Reset to default template type
     } catch (err: any) {
       console.error('Error sending email:', err);
       toast({
