@@ -299,7 +299,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes a payment reminder.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
     
     Request details:
     - Client name: ${request.name}
@@ -313,7 +313,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     - Client Portal Link: ${clientPortalLink}
     
     Instructions for crafting the email:
-    1. Create a compelling subject line that clearly states the track is ready and includes a payment reminder.
+    1. Create a compelling subject line that clearly states the track is ready and includes payment information.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
     4. If a Track URL is provided, include a prominent call-to-action button to "Download Your Track" linking directly to the URL.
@@ -384,7 +384,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   }
 
   return {
-    subject: `Your "${request.song_title}" backing track is ready & Payment Reminder!`,
+    subject: `Your "${request.song_title}" backing track is ready & Payment Information`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <p>Hi ${firstName},</p>
