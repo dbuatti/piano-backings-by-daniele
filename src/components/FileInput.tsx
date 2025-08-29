@@ -12,6 +12,7 @@ interface FileInputProps {
   required?: boolean;
   className?: string;
   note?: string;
+  error?: string; // Added error prop
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -23,6 +24,7 @@ const FileInput: React.FC<FileInputProps> = ({
   required = false,
   className,
   note,
+  error, // Destructure error prop
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string>('No file chosen');
@@ -69,7 +71,8 @@ const FileInput: React.FC<FileInputProps> = ({
       <div
         className={cn(
           "flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm bg-white transition-colors duration-200",
-          isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400"
+          isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400",
+          error && "border-red-500" // Apply error styling
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -99,6 +102,7 @@ const FileInput: React.FC<FileInputProps> = ({
         <p className="text-gray-500 mt-2 truncate max-w-full">{fileName}</p>
       </div>
       {note && <p className="text-xs text-gray-500 mt-1">{note}</p>}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>} {/* Display error message */}
     </div>
   );
 };

@@ -369,7 +369,7 @@ const FormPage = () => {
       
       // Always add the anon key to the Authorization header
       // This is often required by Supabase Edge Functions even if they are "public"
-      headers['Authorization'] = `Bearer ${supabase.supabaseKey}`;
+      headers['Authorization'] = `Bearer ${supabase.anonKey}`;
       
       // Submit to Supabase function
       const response = await fetch(

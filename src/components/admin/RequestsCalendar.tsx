@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import CalendarComponent from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format, isSameDay } from 'date-fns';
-import { Calendar, Eye, Music, Upload, User } from 'lucide-react';
+import { Calendar, Eye, Music, Upload, User, Check, Clock, X } from 'lucide-react'; // Imported Check, Clock, X
 import { getSafeBackingTypes } from '@/utils/helpers';
 
 interface RequestsCalendarProps {
