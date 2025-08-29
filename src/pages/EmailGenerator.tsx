@@ -5,21 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { generateEmailCopy, BackingRequest } from "@/utils/emailGenerator";
+import { generateCompletionEmail, generatePaymentReminderEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { cn } from "@/lib/utils"; // Import cn for conditional classNames
+import { cn } from "@/lib/utils";
+import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle } from 'lucide-react';
+import { calculateRequestCost } from '@/utils/pricing'; // Import pricing utility
 
 const EmailGenerator = () => {
   const { toast } = useToast();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [emailData, setEmailData] = useState({ subject: '', body: '' });
+  const [isSending, setIsSending] = useState(false);
+  const [emailData, setEmailData] = useState({ subject: '', html: '' }); // Changed body to html
+  const [recipientEmails, setRecipientEmails] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'custom'>('completion'); // New state for template selection
+  const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null); // Store the fetched request
+
   const [formData, setFormData] = useState({
     id: '',
     name: '',
@@ -27,7 +35,7 @@ const EmailGenerator = () => {
     song_title: '',
     musical_or_artist: '',
     track_purpose: 'personal-practise',
-    backing_type: [] as string[], // Changed to array
+    backing_type: [] as string[],
     delivery_date: '',
     special_requests: '',
     song_key: 'C Major (0)',
@@ -35,13 +43,15 @@ const EmailGenerator = () => {
     track_type: 'polished',
     youtube_link: '',
     voice_memo: '',
-    additional_links: '' // New field
+    additional_links: '',
+    track_url: '' // Added track_url to formData
   });
 
   // Prefill form data from request ID or passed state
   useEffect(() => {
     const fetchRequestDetails = async () => {
-      // If we have an ID in the URL, fetch the request details
+      let requestData: any = null;
+
       if (id) {
         try {
           const { data, error } = await supabase
@@ -51,24 +61,7 @@ const EmailGenerator = () => {
             .single();
           
           if (error) throw error;
-          
-          setFormData({
-            id: data.id || '',
-            name: data.name || '',
-            email: data.email || '',
-            song_title: data.song_title || '',
-            musical_or_artist: data.musical_or_artist || '',
-            track_purpose: data.track_purpose || 'personal-practise',
-            backing_type: Array.isArray(data.backing_type) ? data.backing_type : (data.backing_type ? [data.backing_type] : []), // Handle array or single string
-            delivery_date: data.delivery_date || '',
-            special_requests: data.special_requests || '',
-            song_key: data.song_key || 'C Major (0)',
-            additional_services: data.additional_services || [],
-            track_type: data.track_type || 'polished',
-            youtube_link: data.youtube_link || '',
-            voice_memo: data.voice_memo || '',
-            additional_links: data.additional_links || '' // Set new field
-          });
+          requestData = data;
         } catch (error: any) {
           toast({
             title: "Error",
@@ -76,32 +69,43 @@ const EmailGenerator = () => {
             variant: "destructive",
           });
         }
-      } 
-      // Otherwise, check if we have state passed from navigation
-      else if (location.state?.request) {
-        const request = location.state.request;
+      } else if (location.state?.request) {
+        requestData = location.state.request;
+      }
+
+      if (requestData) {
+        setCurrentRequest(requestData); // Store the fetched request
         setFormData({
-          id: request.id || '',
-          name: request.name || '',
-          email: request.email || '',
-          song_title: request.song_title || '',
-          musical_or_artist: request.musical_or_artist || '',
-          track_purpose: request.track_purpose || 'personal-practise',
-          backing_type: Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []), // Handle array or single string
-          delivery_date: request.delivery_date || '',
-          special_requests: request.special_requests || '',
-          song_key: request.song_key || 'C Major (0)',
-          additional_services: request.additional_services || [],
-          track_type: request.track_type || 'polished',
-          youtube_link: request.youtube_link || '',
-          voice_memo: request.voice_memo || '',
-          additional_links: request.additional_links || '' // Set new field
+          id: requestData.id || '',
+          name: requestData.name || '',
+          email: requestData.email || '',
+          song_title: requestData.song_title || '',
+          musical_or_artist: requestData.musical_or_artist || '',
+          track_purpose: requestData.track_purpose || 'personal-practise',
+          backing_type: Array.isArray(requestData.backing_type) ? requestData.backing_type : (requestData.backing_type ? [requestData.backing_type] : []),
+          delivery_date: requestData.delivery_date || '',
+          special_requests: requestData.special_requests || '',
+          song_key: requestData.song_key || 'C Major (0)',
+          additional_services: requestData.additional_services || [],
+          track_type: requestData.track_type || 'polished',
+          youtube_link: requestData.youtube_link || '',
+          voice_memo: requestData.voice_memo || '',
+          additional_links: requestData.additional_links || '',
+          track_url: requestData.track_url || '' // Set track_url
         });
+        setRecipientEmails(requestData.email || ''); // Set initial recipient email
       }
     };
     
     fetchRequestDetails();
   }, [id, location.state, toast]);
+
+  // Generate email content whenever templateType or currentRequest changes
+  useEffect(() => {
+    if (currentRequest) {
+      handleGenerateEmail(templateType);
+    }
+  }, [templateType, currentRequest]); // Regenerate when template or request changes
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -121,7 +125,6 @@ const EmailGenerator = () => {
     });
   };
 
-  // New handler for multi-select backing types
   const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
     setFormData(prev => {
       const newBackingTypes = checked
@@ -131,29 +134,40 @@ const EmailGenerator = () => {
     });
   };
 
-  const generateEmail = async () => {
+  const handleGenerateEmail = async (selectedTemplateType: 'completion' | 'payment-reminder' | 'custom') => {
+    if (!currentRequest) {
+      toast({
+        title: "Error",
+        description: "No request data available to generate email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      const request: BackingRequest = {
-        id: formData.id,
-        name: formData.name,
-        email: formData.email,
-        song_title: formData.song_title,
-        musical_or_artist: formData.musical_or_artist,
-        track_purpose: formData.track_purpose,
-        backing_type: formData.backing_type, // Now an array
-        delivery_date: formData.delivery_date,
-        special_requests: formData.special_requests,
-        song_key: formData.song_key,
-        additional_services: formData.additional_services,
-        track_type: formData.track_type,
-        youtube_link: formData.youtube_link,
-        voice_memo: formData.voice_memo,
-        additional_links: formData.additional_links // Include new field
+      let result;
+      const requestWithCost: BackingRequest = {
+        ...currentRequest,
+        cost: calculateRequestCost(currentRequest) // Ensure cost is calculated
       };
 
-      const result = await generateEmailCopy(request);
-      setEmailData(result);
+      if (selectedTemplateType === 'completion') {
+        result = await generateCompletionEmail(requestWithCost);
+      } else if (selectedTemplateType === 'payment-reminder') {
+        result = await generatePaymentReminderEmail(requestWithCost);
+      } else {
+        // For 'custom', we might want to clear or keep current content
+        setEmailData({ subject: '', html: '' });
+        toast({
+          title: "Custom Template Selected",
+          description: "You can now write your custom email.",
+        });
+        setIsGenerating(false);
+        return;
+      }
+      
+      setEmailData({ subject: result.subject, html: result.html });
       
       toast({
         title: "Email Generated",
@@ -167,6 +181,71 @@ const EmailGenerator = () => {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setIsSending(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to send emails');
+      }
+
+      if (!recipientEmails.trim()) {
+        throw new Error('Recipient email address(es) cannot be empty.');
+      }
+      if (!emailData.subject.trim()) {
+        throw new Error('Email subject cannot be empty.');
+      }
+      if (!emailData.html.trim()) {
+        throw new Error('Email body cannot be empty.');
+      }
+
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            to: recipientEmails,
+            subject: emailData.subject,
+            html: emailData.html,
+            senderEmail: 'pianobackingsbydaniele@gmail.com'
+          }),
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to send email: ${response.status} ${response.statusText}`);
+      }
+      
+      toast({
+        title: "Email Sent",
+        description: `Email sent to ${recipientEmails}`,
+      });
+      
+      // Optionally clear email fields or navigate away
+      setEmailData({ subject: '', html: '' });
+      setRecipientEmails('');
+      setShowPreview(false);
+      setTemplateType('completion'); // Reset template type
+    } catch (err: any) {
+      console.error('Error sending email:', err);
+      toast({
+        title: "Error",
+        description: `Failed to send email: ${err.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -203,7 +282,7 @@ const EmailGenerator = () => {
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
-          <p className="text-lg text-[#1C0357]/90">Generate professional email copy for completed backing tracks</p>
+          <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests</p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -222,6 +301,7 @@ const EmailGenerator = () => {
                       value={formData.name}
                       onChange={handleInputChange}
                       placeholder="e.g., Izzi Buckler"
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                   <div>
@@ -233,6 +313,7 @@ const EmailGenerator = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="e.g., izzy@example.com"
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                 </div>
@@ -246,6 +327,7 @@ const EmailGenerator = () => {
                       value={formData.song_title}
                       onChange={handleInputChange}
                       placeholder="e.g., Worth the Breath"
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                   <div>
@@ -256,6 +338,7 @@ const EmailGenerator = () => {
                       value={formData.musical_or_artist}
                       onChange={handleInputChange}
                       placeholder="e.g., Ben Nicholson and Nick Hedger"
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                 </div>
@@ -263,7 +346,7 @@ const EmailGenerator = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="track_purpose">Track Purpose</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={formData.track_purpose}>
+                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={formData.track_purpose} disabled>
                       <SelectTrigger>
                         <SelectValue placeholder="Select purpose" />
                       </SelectTrigger>
@@ -283,6 +366,7 @@ const EmailGenerator = () => {
                           checked={formData.backing_type.includes('full-song')}
                           onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
                           className="mr-2"
+                          disabled // Disable editing if loaded from request
                         />
                         <Label htmlFor="backing-full-song">Full Song Backing</Label>
                       </div>
@@ -292,6 +376,7 @@ const EmailGenerator = () => {
                           checked={formData.backing_type.includes('audition-cut')}
                           onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
                           className="mr-2"
+                          disabled // Disable editing if loaded from request
                         />
                         <Label htmlFor="backing-audition-cut">Audition Cut Backing</Label>
                       </div>
@@ -301,6 +386,7 @@ const EmailGenerator = () => {
                           checked={formData.backing_type.includes('note-bash')}
                           onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
                           className="mr-2"
+                          disabled // Disable editing if loaded from request
                         />
                         <Label htmlFor="backing-note-bash">Note/Melody Bash</Label>
                       </div>
@@ -311,7 +397,7 @@ const EmailGenerator = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="track_type">Track Type</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={formData.track_type}>
+                    <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={formData.track_type} disabled>
                       <SelectTrigger>
                         <SelectValue placeholder="Select track type" />
                       </SelectTrigger>
@@ -324,7 +410,7 @@ const EmailGenerator = () => {
                   </div>
                   <div>
                     <Label htmlFor="song_key">Song Key</Label>
-                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={formData.song_key}>
+                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={formData.song_key} disabled>
                       <SelectTrigger>
                         <SelectValue placeholder="Select key" />
                       </SelectTrigger>
@@ -347,6 +433,7 @@ const EmailGenerator = () => {
                     type="date"
                     value={formData.delivery_date}
                     onChange={handleInputChange}
+                    disabled // Disable editing if loaded from request
                   />
                 </div>
                 
@@ -360,6 +447,7 @@ const EmailGenerator = () => {
                         className="mr-2"
                         checked={formData.additional_services.includes('rush-order')}
                         onChange={() => handleCheckboxChange('rush-order')}
+                        disabled // Disable editing if loaded from request
                       />
                       <Label htmlFor="rush-order">Rush Order (+$10)</Label>
                     </div>
@@ -370,6 +458,7 @@ const EmailGenerator = () => {
                         className="mr-2"
                         checked={formData.additional_services.includes('complex-songs')}
                         onChange={() => handleCheckboxChange('complex-songs')}
+                        disabled // Disable editing if loaded from request
                       />
                       <Label htmlFor="complex-songs">Complex Songs (+$7)</Label>
                     </div>
@@ -380,6 +469,7 @@ const EmailGenerator = () => {
                         className="mr-2"
                         checked={formData.additional_services.includes('additional-edits')}
                         onChange={() => handleCheckboxChange('additional-edits')}
+                        disabled // Disable editing if loaded from request
                       />
                       <Label htmlFor="additional-edits">Additional Edits (+$5)</Label>
                     </div>
@@ -390,6 +480,7 @@ const EmailGenerator = () => {
                         className="mr-2"
                         checked={formData.additional_services.includes('exclusive-ownership')}
                         onChange={() => handleCheckboxChange('exclusive-ownership')}
+                        disabled // Disable editing if loaded from request
                       />
                       <Label htmlFor="exclusive-ownership">Exclusive Ownership (+$40)</Label>
                     </div>
@@ -405,6 +496,7 @@ const EmailGenerator = () => {
                     onChange={handleInputChange}
                     placeholder="Any special requests or notes..."
                     rows={3}
+                    disabled // Disable editing if loaded from request
                   />
                 </div>
                 
@@ -417,6 +509,7 @@ const EmailGenerator = () => {
                       value={formData.youtube_link}
                       onChange={handleInputChange}
                       placeholder="https://www.youtube.com/watch?v=..."
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                   <div>
@@ -427,6 +520,7 @@ const EmailGenerator = () => {
                       value={formData.voice_memo}
                       onChange={handleInputChange}
                       placeholder="https://example.com/voice-memo.mp3"
+                      disabled // Disable editing if loaded from request
                     />
                   </div>
                 </div>
@@ -439,17 +533,11 @@ const EmailGenerator = () => {
                     value={formData.additional_links}
                     onChange={handleInputChange}
                     placeholder="e.g., Dropbox link, Spotify link"
+                    disabled // Disable editing if loaded from request
                   />
                 </div>
                 
                 <div className="flex gap-4">
-                  <Button 
-                    onClick={(e) => { e.preventDefault(); generateEmail(); }}
-                    disabled={isGenerating}
-                    className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90"
-                  >
-                    {isGenerating ? 'Generating Email...' : 'Generate Email Copy'}
-                  </Button>
                   <Link to="/admin">
                     <Button variant="outline">
                       Back to Dashboard
@@ -465,53 +553,126 @@ const EmailGenerator = () => {
               <CardTitle className="text-2xl text-[#1C0357]">Generated Email</CardTitle>
             </CardHeader>
             <CardContent>
-              {emailData.subject || emailData.body ? (
-                <div className="space-y-6">
-                  <div>
-                    <Label>Subject</Label>
-                    <div className="mt-1 p-3 bg-gray-50 rounded-md border">
-                      <div className="flex justify-between items-start">
-                        <p className="font-medium">{emailData.subject}</p>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => copyToClipboard(emailData.subject)}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label>Email Body</Label>
-                    <div className="mt-1 p-3 bg-gray-50 rounded-md border">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm text-gray-500">Preview</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => copyToClipboard(emailData.body)}
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                      <div className="whitespace-pre-wrap text-sm">
-                        {emailData.body}
-                      </div>
-                    </div>
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="template-type">Select Template</Label>
+                  <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'custom') => setTemplateType(value)} value={templateType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an email template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="completion">Completion Email</SelectItem>
+                      <SelectItem value="payment-reminder">Payment Reminder</SelectItem>
+                      <SelectItem value="custom">Custom Email</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="recipient-emails">Recipient Email(s)</Label>
+                  <Textarea
+                    id="recipient-emails"
+                    value={recipientEmails}
+                    onChange={(e) => setRecipientEmails(e.target.value)}
+                    placeholder="client@example.com, another@example.com"
+                    rows={2}
+                    className="w-full p-2 border rounded-md mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter multiple emails separated by commas.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="subject">Subject</Label>
+                  <div className="mt-1 relative">
+                    <Input
+                      id="subject"
+                      value={emailData.subject}
+                      onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
+                      placeholder="Email Subject"
+                      className="pr-10"
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => copyToClipboard(emailData.subject)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">
-                    Fill in the request details and click "Generate Email Copy" to create professional email content.
-                  </p>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label htmlFor="html-content">Email Body (HTML)</Label>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleGenerateEmail(templateType)} // Regenerate current template
+                        disabled={isGenerating || templateType === 'custom'}
+                        className="flex items-center"
+                      >
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Generate
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea
+                    id="html-content"
+                    value={emailData.html}
+                    onChange={(e) => setEmailData(prev => ({ ...prev, html: e.target.value }))}
+                    placeholder="Enter your HTML email content here..."
+                    rows={12}
+                    className="mt-1 font-mono text-sm"
+                  />
                 </div>
-              )}
+
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    onClick={handleSendEmail}
+                    disabled={isSending || !recipientEmails.trim() || !emailData.subject.trim() || !emailData.html.trim()}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {isSending ? 'Sending...' : 'Send Email'}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
+        
+        {/* Email Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <Eye className="mr-2 h-5 w-5" />
+                Email Preview
+              </DialogTitle>
+            </DialogHeader>
+            <div className="border rounded-md p-4 bg-gray-50 min-h-[200px]">
+              <h3 className="font-semibold mb-2">Subject: {emailData.subject}</h3>
+              <div 
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: emailData.html }} 
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowPreview(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         
         <MadeWithDyad />
       </div>

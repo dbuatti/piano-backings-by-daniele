@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { calculateRequestCost } from "./pricing"; // Import the pricing utility
 
 // Initialize Gemini API client
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
@@ -19,163 +20,263 @@ export interface BackingRequest {
   youtube_link?: string;
   voice_memo?: string;
   additional_links?: string; // Added new field
+  cost?: number; // Added cost for payment reminders
 }
 
-// Email signature template
-const EMAIL_SIGNATURE = `
-<p>Warmly,<br>
-Daniele Buatti<br>
-Piano Backings by Daniele<br>
-<a href="https://pianobackings.com">pianobackings.com</a><br>
-<a href="https://www.youtube.com/@pianobackingsbydaniele">YouTube</a> | 
-<a href="https://www.instagram.com/pianobackingsbydaniele/">Instagram</a> | 
-<a href="https://www.facebook.com/PianoBackingsbyDaniele">Facebook</a></p>
+// HTML Email signature template
+const EMAIL_SIGNATURE_HTML = `
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td valign="top" style="padding-right: 20px; width: 150px;">
+        <p style="margin: 0; font-weight: bold; color: #F538BC; font-size: 18px;">Daniele Buatti</p>
+        <p style="margin: 5px 0 0 0; color: #1C0357; font-size: 14px;">Piano Backings by Daniele</p>
+      </td>
+      <td valign="top" style="border-left: 2px solid #F538BC; padding-left: 20px;">
+        <p style="margin: 0; color: #333;"><strong style="color: #1C0357;">M</strong> 0424 174 067</p>
+        <p style="margin: 5px 0; color: #333;"><strong style="color: #1C0357;">E</strong> <a href="mailto:pianobackingsbydaniele@gmail.com" style="color: #007bff; text-decoration: none;">pianobackingsbydaniele@gmail.com</a></p>
+        <p style="margin: 10px 0 5px 0; font-weight: bold; color: #1C0357;">Piano Backings By Daniele</p>
+        <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
+        <div style="margin-top: 15px;">
+          <a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="display: inline-block; margin-right: 5px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/1200px-2021_Facebook_icon.svg.png" alt="Facebook" width="24" height="24" style="vertical-align: middle;">
+          </a>
+          <a href="https://www.youtube.com/@pianobackingsbydaniele" target="_blank" style="display: inline-block; margin-right: 5px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1200px-YouTube_full-color_icon_%282017%29.svg.png" alt="YouTube" width="24" height="24" style="vertical-align: middle;">
+          </a>
+          <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" style="display: inline-block;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/1200px-Instagram_logo_2016.svg.png" alt="Instagram" width="24" height="24" style="vertical-align: middle;">
+          </a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
 `;
 
-export const generateEmailCopy = async (request: BackingRequest) => {
-  // Check if API key is valid
+// Helper function to convert plain text to basic HTML paragraphs
+const textToHtml = (text: string) => {
+  return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
+         text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
+         `</div>`;
+};
+
+export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const firstName = request.name.split(' ')[0];
+  const trackUrl = request.track_url; // Assuming track_url might be available
+
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    console.log("Gemini API key not configured, using fallback template");
-    return generateFallbackEmail(request);
+    console.log("Gemini API key not configured, using fallback completion template");
+    return generateFallbackCompletionEmail(request);
   }
 
   try {
-    // Get the generative model
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
-    // Create a more sophisticated prompt based on the request data
     const prompt = `
-    You are Daniele, a professional piano backing track creator who provides custom accompaniment for musical theatre performers. 
-    Generate a personalized, warm, and professional email for a completed backing track request.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
     
     Request details:
-    - Request ID: ${request.id || 'N/A'}
     - Client name: ${request.name}
-    - Client email: ${request.email}
     - Song title: "${request.song_title}"
     - Musical/Artist: ${request.musical_or_artist}
     - Track purpose: ${request.track_purpose}
     - Backing type(s): ${request.backing_type.join(', ') || 'N/A'}
-    - Delivery date: ${request.delivery_date}
     - Special requests: ${request.special_requests || 'None'}
-    - Song key: ${request.song_key}
-    - Additional services: ${request.additional_services.join(', ') || 'None'}
-    - Track type: ${request.track_type}
-    - YouTube reference: ${request.youtube_link || 'Not provided'}
-    - Voice memo reference: ${request.voice_memo || 'Not provided'}
-    - Additional links: ${request.additional_links || 'Not provided'}
+    - Track URL (if available): ${trackUrl || 'Not yet uploaded'}
+    - Client Portal Link: ${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}
     
     Instructions for crafting the email:
-    1. Create a compelling subject line that immediately tells the client their track is ready
-    2. Open with a warm, personalized greeting using the client's name
-    3. Use natural, conversational language - avoid overly enthusiastic phrases like "thrilled"
-    4. Address special requests intelligently:
-       - If the request is about tempo, mention you've adjusted the track to their specified tempo
-       - If they provided a reference link, mention you used it as a guide
-       - If they have specific musical requests, acknowledge them specifically
-       - Summarize the request in a natural way rather than quoting it verbatim
-    5. Include a detailed pricing breakdown with transparent costs, making the total amount due prominent.
-    6. Offer multiple payment options with clear instructions.
-    7. Proactively offer adjustments or revisions to ensure satisfaction.
-    8. Include a personalized sign-off that reflects your professional relationship.
-    9. Add your signature with contact information.
-    10. Include a link to their customer portal where they can view their request details and download their track.
-    11. Keep the tone professional yet friendly, showing genuine care for their success.
-    12. Never use "Break a leg" - end with "Warmly" instead.
-    13. Make sure hyperlinks are properly formatted as plain text URLs (not HTML) for better email compatibility.
-    
-    Additional context for tone:
-    - Many clients are preparing for auditions or performances, so be encouraging
-    - Some clients may be students or emerging artists, so be supportive
-    - Clients have already paid or will pay, so express gratitude for their business
-    - Your reputation depends on client satisfaction, so be thorough and helpful
+    1. Create a compelling subject line that immediately tells the client their track is ready.
+    2. Open with a warm, personalized greeting using the client's first name.
+    3. Announce that the track is complete and ready.
+    4. If a Track URL is provided, include a prominent call-to-action button to "Download Your Track" linking directly to the URL.
+    5. If no Track URL, provide a button to "View Your Track Details" linking to the Client Portal Link.
+    6. Proactively offer adjustments or revisions to ensure satisfaction.
+    7. Express gratitude for their business.
+    8. Keep the tone professional yet friendly, showing genuine care for their success.
+    9. Never use "Break a leg" - end with "Warmly" instead.
+    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    11. Do NOT include pricing information in this completion email.
     
     Format the response as JSON with two fields:
     {
-      "subject": "Email subject line that creates excitement",
-      "body": "Full email body content with proper line breaks"
+      "subject": "Email subject line",
+      "html": "Full HTML email body content"
     }
     `;
     
-    // Generate content
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
     
-    // Try to parse the response as JSON
     try {
       const emailData = JSON.parse(text);
-      // Add the signature to the email body
-      emailData.body += `\n\n${EMAIL_SIGNATURE}`;
+      emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
-      // If parsing fails, use fallback
-      console.error('Error parsing Gemini response:', parseError);
-      return generateFallbackEmail(request);
+      console.error('Error parsing Gemini response for completion email:', parseError);
+      return generateFallbackCompletionEmail(request);
     }
   } catch (error) {
-    console.error('Error generating email copy:', error);
-    // Use fallback email template
-    return generateFallbackEmail(request);
+    console.error('Error generating completion email copy with Gemini:', error);
+    return generateFallbackCompletionEmail(request);
   }
 };
 
-// Fallback email template
-const generateFallbackEmail = (request: BackingRequest) => {
-  // Process special requests more intelligently
-  let specialRequestSummary = '';
-  if (request.special_requests) {
-    if (request.special_requests.toLowerCase().includes('bpm') || request.special_requests.toLowerCase().includes('tempo')) {
-      specialRequestSummary = 'I\'ve adjusted the tempo to your requested speed.';
-    } else if (request.special_requests.toLowerCase().includes('youtube') || request.special_requests.toLowerCase().includes('reference')) {
-      specialRequestSummary = 'I\'ve used your reference recording as a guide for the track.';
-    } else {
-      specialRequestSummary = 'I\'ve incorporated your specific requests into the track.';
-    }
+const generateFallbackCompletionEmail = (request: BackingRequest) => {
+  const firstName = request.name.split(' ')[0];
+  const trackUrl = request.track_url;
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+
+  let downloadSection = '';
+  if (trackUrl) {
+    downloadSection = `
+      <p style="margin-top: 20px;">You can download your track directly using the button below:</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${trackUrl}" 
+           style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+          Download Your Track
+        </a>
+      </p>
+      <p>Please let me know if you have any trouble accessing it.</p>
+    `;
+  } else {
+    downloadSection = `
+      <p style="margin-top: 20px;">Your track details are now available. You can view your request and access your track (once uploaded) using the button below:</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${clientPortalLink}" 
+           style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+          View Your Track Details
+        </a>
+      </p>
+    `;
   }
-  
-  const totalCost = calculateTotal(request.backing_type, request.additional_services);
 
   return {
-    subject: `Your "${request.song_title}" backing track is ready, ${request.name}!`,
-    body: `Hi ${request.name},
-
-I hope you're doing well!
-
-Your custom piano backing track for "${request.song_title}" from ${request.musical_or_artist} is now complete and ready for your ${request.track_purpose === 'audition-backing' ? 'audition' : 'practice'}.
-
-${request.special_requests ? specialRequestSummary : 'I\'ve prepared this track with great care to match your needs.'}
-
-Here's a breakdown of the work completed:
-${request.backing_type.map(type => `• ${type.replace('-', ' ')} backing: $${getBasePriceForType(type)}`).join('\n')}
-${request.additional_services.map(service => `• ${service.replace('-', ' ')}: $${getServicePrice(service)}`).join('\n')}
-
----
-**Total amount due: $${totalCost}**
----
-
-You can view your request details, download your track, and complete your payment here:
-https://pianobackingsbydaniele.vercel.app/track/${request.id}
-
-Alternatively, you can complete your payment via:
-1. Buy Me a Coffee: https://www.buymeacoffee.com/Danielebuatti
-2. Direct bank transfer: BSB: 923100 | Account: 301110875
-
-${request.additional_links ? `
-Additional Links provided:
-${request.additional_links}
-` : ''}
-
-If you'd like any tweaks—tempo adjustments, dynamics, or anything else—just reply to this email, and I'll happily adjust it for you.
-
-Thank you so much for choosing Piano Backings by Daniele. I'm genuinely excited to hear how your ${request.track_purpose === 'audition-backing' ? 'audition' : 'performance'} goes!
-
-${EMAIL_SIGNATURE}`
+    subject: `Your "${request.song_title}" backing track is ready!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <p>Hi ${firstName},</p>
+        <p>I hope this email finds you well!</p>
+        <p>I'm excited to let you know that your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you.</p>
+        ${downloadSection}
+        <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
+        <p>Thank you so much for choosing Piano Backings by Daniele.</p>
+        <p style="margin-top: 20px;">Warmly,</p>
+      </div>
+      ${EMAIL_SIGNATURE_HTML}
+    `
   };
 };
 
-// Helper functions for pricing
+export const generatePaymentReminderEmail = async (request: BackingRequest) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const firstName = request.name.split(' ')[0];
+  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+
+  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
+    console.log("Gemini API key not configured, using fallback payment reminder template");
+    return generateFallbackPaymentReminderEmail(request, trackCost);
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
+    
+    Request details:
+    - Client name: ${request.name}
+    - Song title: "${request.song_title}"
+    - Musical/Artist: ${request.musical_or_artist}
+    - Estimated cost: $${trackCost.toFixed(2)}
+    - Client Portal Link: ${clientPortalLink}
+    
+    Instructions for crafting the email:
+    1. Create a clear subject line indicating it's a payment reminder for their track.
+    2. Open with a warm, personalized greeting using the client's first name.
+    3. Clearly state that it's a friendly reminder for their backing track request.
+    4. Prominently display the estimated cost for their track.
+    5. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
+    6. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
+    7. Offer assistance if they have any questions.
+    8. Express gratitude for their business.
+    9. Keep the tone professional yet friendly.
+    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    
+    Format the response as JSON with two fields:
+    {
+      "subject": "Email subject line",
+      "html": "Full HTML email body content"
+    }
+    `;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    try {
+      const emailData = JSON.parse(text);
+      emailData.html += EMAIL_SIGNATURE_HTML;
+      return emailData;
+    } catch (parseError) {
+      console.error('Error parsing Gemini response for payment reminder email:', parseError);
+      return generateFallbackPaymentReminderEmail(request, trackCost);
+    }
+  } catch (error) {
+    console.error('Error generating payment reminder email copy with Gemini:', error);
+    return generateFallbackPaymentReminderEmail(request, trackCost);
+  }
+};
+
+const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost: number) => {
+  const firstName = request.name.split(' ')[0];
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+
+  return {
+    subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <p>Hi ${firstName},</p>
+        <p>I hope you're having a good week!</p>
+        <p>This is a friendly reminder regarding your recent piano backing track request for <strong>"${request.song_title}"</strong>.</p>
+        <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+          The estimated cost for your track is: $${trackCost.toFixed(2)}
+        </p>
+        <p>You can view the full details of your request and make your payment via the link below:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${clientPortalLink}" 
+             style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+            View Request & Make Payment
+          </a>
+        </p>
+        <p style="margin-top: 20px;">
+          Alternatively, you can pay directly using one of the methods below:
+        </p>
+        <ul style="list-style: none; padding: 0; margin-top: 10px;">
+          <li style="margin-bottom: 10px;">
+            <strong>Buy Me a Coffee (Preferred):</strong> <a href="https://buymeacoffee.com/Danielebuatti" target="_blank" style="color: #007bff; text-decoration: none;">https://buymeacoffee.com/Danielebuatti</a>
+          </li>
+          <li>
+            <strong>Direct Bank Transfer:</strong><br>
+            BSB: 923100<br>
+            Account: 301110875
+          </li>
+        </ul>
+        <p style="margin-top: 20px;">
+          Please let me know if you have any questions or if there's anything else I can assist you with.
+        </p>
+        <p style="margin-top: 20px;">Warmly,</p>
+      </div>
+      ${EMAIL_SIGNATURE_HTML}
+    `
+  };
+};
+
+// Helper functions for pricing (kept for fallback logic)
 const getBasePriceForType = (type: string) => {
   switch (type) {
     case 'full-song': return '30';

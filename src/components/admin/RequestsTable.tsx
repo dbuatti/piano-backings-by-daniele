@@ -49,8 +49,6 @@ import {
   Youtube 
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
-import CompletionEmailDialog from '@/components/CompletionEmailDialog';
-import PaymentReminderEmailDialog from '@/components/PaymentReminderEmailDialog';
 import { getSafeBackingTypes } from '@/utils/helpers';
 
 interface RequestsTableProps {
@@ -64,7 +62,7 @@ interface RequestsTableProps {
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
-  openEmailGenerator: (request: any) => void;
+  openEmailGenerator: (request: any) => void; // Keep this prop for now, but it will navigate
   openDeleteDialog: (id: string) => void;
   openBatchDeleteDialog: () => void;
   openUploadPlatformsDialog: (id: string) => void;
@@ -81,7 +79,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   updatePaymentStatus,
   uploadTrack,
   shareTrack,
-  openEmailGenerator,
+  openEmailGenerator, // This prop will now be used for navigation
   openDeleteDialog,
   openBatchDeleteDialog,
   openUploadPlatformsDialog,
@@ -433,34 +431,18 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <CompletionEmailDialog 
-                                  requestId={request.id}
-                                  clientEmail={request.email}
-                                  clientName={request.name || 'Client'}
-                                  songTitle={request.song_title}
-                                  trackUrl={request.track_url}
-                                />
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => openEmailGenerator(request)} // Now navigates to EmailGenerator
+                                >
+                                  <Mail className="w-4 h-4" />
+                                </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Email Client</p>
                               </TooltipContent>
                             </Tooltip>
-                            {!request.is_paid && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <PaymentReminderEmailDialog
-                                    requestId={request.id}
-                                    clientEmail={request.email}
-                                    clientName={request.name || 'Client'}
-                                    songTitle={request.song_title}
-                                    cost={calculateRequestCost(request)}
-                                  />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Send Payment Reminder</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button 
