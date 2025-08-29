@@ -13,8 +13,14 @@ import { generateCompletionEmail, generatePaymentReminderEmail, BackingRequest }
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
-import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy } from 'lucide-react'; // Added Copy
+import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing'; // Import pricing utility
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"; // Imported Dialog components
 
 const EmailGenerator = () => {
   const { toast } = useToast();
