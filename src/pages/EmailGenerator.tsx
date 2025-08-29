@@ -13,7 +13,7 @@ import { generateCompletionEmail, generatePaymentReminderEmail, BackingRequest }
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
-import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle } from 'lucide-react';
+import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy } from 'lucide-react'; // Added Copy
 import { calculateRequestCost } from '@/utils/pricing'; // Import pricing utility
 
 const EmailGenerator = () => {
