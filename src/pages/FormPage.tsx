@@ -29,7 +29,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 import FileInput from "@/components/FileInput"; // Import the new FileInput component
@@ -38,6 +38,7 @@ import AccountPromptCard from '@/components/AccountPromptCard'; // Import the ne
 const FormPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAccountPrompt, setShowAccountPrompt] = useState(false); // State to control visibility of the new card
   const [user, setUser] = useState<any>(null);
@@ -90,16 +91,19 @@ const FormPage = () => {
     checkUser();
   }, []);
 
-  // Scroll to element if hash is present
+  // Scroll to element if hash is present in the URL
   useEffect(() => {
-    if (window.location.hash) {
-      const id = window.location.hash.replace('#', '');
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
       const element = document.getElementById(id);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        // Use a small timeout to ensure the element is rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       }
     }
-  }, []); // Run once on mount
+  }, [location]);
 
   // Fetch incomplete track count
   useEffect(() => {
