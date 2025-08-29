@@ -329,15 +329,14 @@ const FormPage = () => {
       
       console.log('Submitting form data:', submissionData);
       
-      // Prepare headers - only include Authorization if user is logged in
+      // Prepare headers - Include Authorization header with anon key for public Edge Functions
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
       
-      // Only add Authorization header if user is logged in
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
+      // Always add the anon key to the Authorization header
+      // This is often required by Supabase Edge Functions even if they are "public"
+      headers['Authorization'] = `Bearer ${supabase.supabaseKey}`;
       
       // Submit to Supabase function
       const response = await fetch(
