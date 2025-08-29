@@ -362,8 +362,6 @@ const FormPage = () => {
         }
       };
       
-      console.log('Submitting form data:', submissionData);
-      
       // Prepare headers - Include Authorization header with anon key for public Edge Functions
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -383,11 +381,7 @@ const FormPage = () => {
         }
       );
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', [...response.headers.entries()]);
-      
       const responseText = await response.text();
-      console.log('Response text:', responseText);
       
       let result;
       try {
@@ -400,8 +394,6 @@ const FormPage = () => {
       if (!response.ok) {
         throw new Error(result.error || `Failed to submit form: ${response.status} ${response.statusText}`);
       }
-      
-      console.log('Form submission result:', result);
       
       toast({
         title: "Request Submitted!",
