@@ -28,7 +28,7 @@ import {
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
@@ -369,7 +369,7 @@ const FormPage = () => {
       
       // Always add the anon key to the Authorization header
       // This is often required by Supabase Edge Functions even if they are "public"
-      headers['Authorization'] = `Bearer ${supabase.anonKey}`;
+      headers['Authorization'] = `Bearer ${SUPABASE_PUBLISHABLE_KEY}`;
       
       // Submit to Supabase function
       const response = await fetch(
