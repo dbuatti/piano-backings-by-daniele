@@ -90,6 +90,17 @@ const FormPage = () => {
     checkUser();
   }, []);
 
+  // Scroll to element if hash is present
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, []); // Run once on mount
+
   // Fetch incomplete track count
   useEffect(() => {
     const fetchIncompleteTracks = async () => {
@@ -535,7 +546,7 @@ const FormPage = () => {
         </Card>
 
         <Card className="shadow-lg">
-          <CardHeader className="bg-[#1C0357] text-white py-3 px-4">
+          <CardHeader id="request-form" className="bg-[#1C0357] text-white py-3 px-4"> {/* Added id here */}
             <CardTitle className="text-lg md:text-xl">Request Form</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
