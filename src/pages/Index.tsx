@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 
@@ -20,6 +20,54 @@ const Index = () => {
               Order Custom Track
             </Button>
           </Link>
+        </div>
+      </section>
+
+      {/* Why Create an Account Section - NEW */}
+      <section className="py-12 px-4 sm:px-6 bg-[#1C0357] text-white">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-6 flex items-center justify-center">
+            <UserCheck className="mr-3" />
+            Why Create an Account?
+          </h2>
+          <p className="text-xl mb-10 max-w-3xl mx-auto">
+            Unlock the full potential of your Piano Backings experience.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6 flex flex-col items-center text-center">
+                <Eye className="h-12 w-12 mb-4 text-[#F538BC]" />
+                <h3 className="text-xl font-bold mb-2">Track Your Orders</h3>
+                <p>View the status of all your requests in one convenient dashboard.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6 flex flex-col items-center text-center">
+                <Lock className="h-12 w-12 mb-4 text-[#F538BC]" />
+                <h3 className="text-xl font-bold mb-2">Secure Access</h3>
+                <p>Download your tracks anytime, from any device, with a secure login.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6 flex flex-col items-center text-center">
+                <Edit className="h-12 w-12 mb-4 text-[#F538BC]" />
+                <h3 className="text-xl font-bold mb-2">Manage Requests</h3>
+                <p>Easily review and update your order details after submission.</p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link to="/login">
+              <Button size="lg" className="bg-white text-[#1C0357] hover:bg-gray-200 text-lg px-8 py-3">
+                Create Your Free Account
+              </Button>
+            </Link>
+            <Link to="/form-page">
+              <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10 text-lg px-8 py-3">
+                Order Track Anonymously
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
