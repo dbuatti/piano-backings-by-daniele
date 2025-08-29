@@ -35,8 +35,7 @@ import ErrorDisplay from '@/components/ErrorDisplay'; // Import ErrorDisplay com
 interface UserProfile {
   id: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
+  // Removed first_name and last_name as they are no longer returned by the RPC function
 }
 
 const RequestDetails = () => {
@@ -116,6 +115,7 @@ const RequestDetails = () => {
 
   const fetchCurrentOwnerProfile = async (userId: string) => {
     try {
+      // Fetch from public.profiles table for first_name, last_name
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email, first_name, last_name')
@@ -231,8 +231,8 @@ const RequestDetails = () => {
         const profiles: UserProfile[] = authUsers.map((user: any) => ({
           id: user.id,
           email: user.email,
-          first_name: user.raw_user_meta_data?.first_name,
-          last_name: user.raw_user_meta_data?.last_name,
+          // first_name: user.raw_user_meta_data?.first_name, // Removed as RPC no longer returns this
+          // last_name: user.raw_user_meta_data?.last_name,   // Removed as RPC no longer returns this
         }));
         setFoundUsersForAssignment(profiles);
       } else {
@@ -566,7 +566,7 @@ const RequestDetails = () => {
                         <div className="flex items-center">
                           <User className="mr-2 h-4 w-4 text-gray-600" />
                           <span className="font-medium text-sm">{user.email}</span>
-                          {user.first_name && <span className="ml-2 text-xs text-gray-500">({user.first_name} {user.last_name})</span>}
+                          {/* Removed first_name and last_name display as RPC no longer returns them directly */}
                         </div>
                         <Button 
                           size="sm" 
