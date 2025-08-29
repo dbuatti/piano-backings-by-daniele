@@ -11,6 +11,11 @@ const Index = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     const checkAuthStatus = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -86,7 +91,7 @@ const Index = () => {
                   Create Your Free Account
                 </Button>
               </Link>
-              <Link to="/form-page#request-guidelines"> {/* Updated to include new hash */}
+              <Link to="/form-page#request-guidelines">
                 <Button 
                   variant="ghost" 
                   size="lg" 
