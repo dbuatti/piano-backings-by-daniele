@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { generateCompletionEmail, generatePaymentReminderEmail, BackingRequest } from "@/utils/emailGenerator";
+import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ const EmailGenerator = () => {
   const [emailData, setEmailData] = useState({ subject: '', html: '' }); // Changed body to html
   const [recipientEmails, setRecipientEmails] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'custom'>('completion'); // New state for template selection
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion'); // New state for template selection
   const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null); // Store the fetched request
 
   const [formData, setFormData] = useState({
@@ -140,7 +140,7 @@ const EmailGenerator = () => {
     });
   };
 
-  const handleGenerateEmail = async (selectedTemplateType: 'completion' | 'payment-reminder' | 'custom') => {
+  const handleGenerateEmail = async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom') => {
     if (!currentRequest) {
       toast({
         title: "Error",
@@ -162,6 +162,8 @@ const EmailGenerator = () => {
         result = await generateCompletionEmail(requestWithCost);
       } else if (selectedTemplateType === 'payment-reminder') {
         result = await generatePaymentReminderEmail(requestWithCost);
+      } else if (selectedTemplateType === 'completion-payment') {
+        result = await generateCompletionAndPaymentEmail(requestWithCost);
       } else {
         // For 'custom', we might want to clear or keep current content
         setEmailData({ subject: '', html: '' });
@@ -562,13 +564,14 @@ const EmailGenerator = () => {
               <div className="space-y-6">
                 <div>
                   <Label htmlFor="template-type">Select Template</Label>
-                  <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'custom') => setTemplateType(value)} value={templateType}>
+                  <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom') => setTemplateType(value)} value={templateType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select an email template" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="completion">Completion Email</SelectItem>
                       <SelectItem value="payment-reminder">Payment Reminder</SelectItem>
+                      <SelectItem value="completion-payment">Completion & Payment Reminder</SelectItem>
                       <SelectItem value="custom">Custom Email</SelectItem>
                     </SelectContent>
                   </Select>
