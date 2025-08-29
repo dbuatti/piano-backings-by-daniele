@@ -189,9 +189,8 @@ const AdminDashboard = () => {
     // Listen for auth state changes to re-run the check if needed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('AdminDashboard: Auth state changed event:', event, 'Session:', session);
-      // Reset authChecked to false to show loading state again during re-check
-      setAuthChecked(false); 
-      checkAdminAccess();
+      // Removed: setAuthChecked(false); // This was causing the flicker by resetting the loading state prematurely
+      checkAdminAccess(); // Let checkAdminAccess handle all state updates, including setting authChecked to true
     });
 
     return () => {
