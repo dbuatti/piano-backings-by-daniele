@@ -757,7 +757,7 @@ const FormPage = () => {
                       <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack}>
                         <SelectTrigger className="pl-8 py-2 text-sm">
                           <SelectValue placeholder="Select key" />
-                        </SelectTrigger>
+                      </SelectTrigger>
                         <SelectContent>
                           {keyOptions.map((key) => (
                             <SelectItem key={key.value} value={key.value} className="text-sm">

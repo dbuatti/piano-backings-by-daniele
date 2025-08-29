@@ -86,12 +86,11 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss }) => {
               Create Your Free Account
             </Button>
           </Link>
-          <Link to="/order-track"> {/* Changed to navigate to /order-track */}
+          <Link to="/form-page"> {/* Changed to navigate to /form-page */}
             <Button 
-              variant="outline" 
+              variant="ghost" 
               size="lg" 
-              className="bg-transparent border-white text-white hover:bg-white/10 text-base px-6 py-3"
-              // Removed onClick={onDismiss} as it now navigates
+              className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
             >
               Order Track Anonymously
             </Button>
