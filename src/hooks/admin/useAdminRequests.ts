@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +25,7 @@ export const useAdminRequests = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -45,11 +45,11 @@ export const useAdminRequests = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]); // `toast` is a stable reference from `useToast`
 
   useEffect(() => {
     fetchRequests();
-  }, []); // Fetch on component mount
+  }, [fetchRequests]); // `fetchRequests` is now stable due to useCallback
 
   return { requests, setRequests, loading, fetchRequests };
 };
