@@ -37,25 +37,16 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
   });
   const { toast } = useToast();
 
-  const handleUploadTrack = (id: string) => {
-    setUploadTrackId(id);
-  };
-
-  const handleFileChange = (file: File | null) => {
-    setUploadFile(file);
-  };
-
-  const handleFileUpload = async () => {
-    if (!uploadTrackId || !uploadFile) return;
-    
+  // Core upload logic, now reusable for both dialog and direct upload
+  const performUpload = async (id: string, file: File) => {
     try {
-      const fileExt = uploadFile.name.split('.').pop();
-      const fileName = `tracks/${uploadTrackId}.${fileExt}`;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `tracks/${id}.${fileExt}`; // Use the request ID as part of the file name
       
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('tracks')
-        .upload(fileName, uploadFile, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
@@ -75,14 +66,14 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
           track_url: publicUrl,
           status: 'completed'
         })
-        .eq('id', uploadTrackId);
+        .eq('id', id);
       
       if (updateError) {
         throw updateError;
       }
       
       setRequests(prev => prev.map(req => 
-        req.id === uploadTrackId ? { 
+        req.id === id ? { 
           ...req, 
           track_url: publicUrl,
           status: 'completed'
@@ -93,16 +84,38 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
         title: "Track Uploaded",
         description: "Track has been uploaded successfully and marked as completed.",
       });
-      
-      setUploadTrackId(null);
-      setUploadFile(null);
+      return true; // Indicate success
     } catch (error: any) {
       toast({
         title: "Error",
         description: `Failed to upload track: ${error.message}. Please check your permissions and try again.`,
         variant: "destructive",
       });
+      return false; // Indicate failure
     }
+  };
+
+  const handleUploadTrack = (id: string) => {
+    setUploadTrackId(id);
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setUploadFile(file);
+  };
+
+  // Function for dialog upload
+  const handleFileUpload = async () => {
+    if (!uploadTrackId || !uploadFile) return;
+    const success = await performUpload(uploadTrackId, uploadFile);
+    if (success) {
+      setUploadTrackId(null);
+      setUploadFile(null);
+    }
+  };
+
+  // Function for direct drag-and-drop upload
+  const handleDirectFileUpload = async (id: string, file: File) => {
+    await performUpload(id, file);
   };
 
   const openUploadPlatformsDialog = (id: string) => {
@@ -167,6 +180,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
     platforms, setPlatforms,
     handleUploadTrack,
     handleFileUpload,
+    handleDirectFileUpload, // Expose the new direct upload handler
     openUploadPlatformsDialog,
     saveUploadPlatforms,
   };

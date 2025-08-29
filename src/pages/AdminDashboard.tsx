@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
@@ -69,6 +69,7 @@ const AdminDashboard = () => {
     platforms, setPlatforms,
     handleUploadTrack,
     handleFileUpload,
+    handleDirectFileUpload, // Get the new direct upload handler
     openUploadPlatformsDialog,
     saveUploadPlatforms,
   } = useUploadDialogs(requests, setRequests);
@@ -165,7 +166,7 @@ const AdminDashboard = () => {
     } finally {
       setAuthChecked(true); // Ensure authChecked is set to true regardless of outcome
     }
-  }, [navigate, toast, fetchRequests]); // fetchRequests is a dependency of useCallback
+  }, [navigate, toast, fetchRequests]);
 
   useEffect(() => {
     checkAdminAccess();
@@ -179,7 +180,7 @@ const AdminDashboard = () => {
       subscription.unsubscribe();
     };
 
-  }, [checkAdminAccess]); // checkAdminAccess is a dependency of useEffect
+  }, [checkAdminAccess]);
 
   const openEmailGenerator = (request: any) => {
     navigate(`/email-generator/${request.id}`);
@@ -282,6 +283,7 @@ const AdminDashboard = () => {
                   openDeleteDialog={openDeleteDialog}
                   openBatchDeleteDialog={openBatchDeleteDialog}
                   openUploadPlatformsDialog={openUploadPlatformsDialog}
+                  onDirectFileUpload={handleDirectFileUpload} // Pass the new handler
                 />
               )}
             </TabsContent>
