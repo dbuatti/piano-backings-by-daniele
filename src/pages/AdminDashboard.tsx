@@ -35,7 +35,7 @@ import {
 // Custom Hooks
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
 import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
-import { useRequestActions } from '@/hooks/admin/useRequestActions';
+import { useRequestActions } => '@/hooks/admin/useRequestActions';
 import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
 import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
 import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
@@ -87,120 +87,128 @@ const AdminDashboard = () => {
   } = useDeleteDialogs(requests, setRequests, selectedRequests);
 
 
-  useEffect(() => {
-    console.log('AdminDashboard useEffect: Running authentication check...');
-    const checkAdminAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('AdminDashboard: Session data:', session);
+  const checkAdminAccess = useCallback(async () => {
+    console.log('AdminDashboard: checkAdminAccess called.');
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('AdminDashboard: Session data:', session);
+    
+    if (!session) {
+      console.log('AdminDashboard: No session found. Setting isAdmin=false, authChecked=true. Redirecting to login.');
+      setIsAdmin(false);
+      setAuthChecked(true); // Mark auth checked even if no session, to stop loading state
+      navigate('/login');
+      return;
+    }
+    
+    const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+    console.log('AdminDashboard: Current user email:', session.user.email);
+
+    if (adminEmails.includes(session.user.email)) {
+      console.log('AdminDashboard: User is admin via session email. Setting isAdmin=true, authChecked=true.');
+      setIsAdmin(true);
+      setAuthChecked(true);
+      fetchRequests(); // Fetch requests only if admin
+      return;
+    }
+    
+    try {
+      console.log('AdminDashboard: Fetching profile for admin check...');
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', session.user.id)
+        .single();
       
-      if (!session) {
-        console.log('AdminDashboard: No session found, redirecting to login.');
-        navigate('/login');
-        setAuthChecked(true); // Mark auth checked even if no session, to stop loading state
+      if (error) {
+        console.error('AdminDashboard: Error fetching profile:', error);
+        // Fallback check if profile fetch fails but session email is admin
+        if (adminEmails.includes(session.user.email)) {
+          console.log('AdminDashboard: Profile fetch failed, but session email is admin. Granting access. Setting isAdmin=true, authChecked=true.');
+          setIsAdmin(true);
+          setAuthChecked(true);
+          fetchRequests();
+        } else {
+          console.log('AdminDashboard: Access denied after profile fetch error. Setting isAdmin=false, authChecked=true.');
+          setIsAdmin(false);
+          setAuthChecked(true);
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access this page.",
+            variant: "destructive",
+          });
+          navigate('/');
+        }
         return;
       }
       
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      console.log('AdminDashboard: Current user email:', session.user.email);
-
-      if (adminEmails.includes(session.user.email)) {
-        console.log('AdminDashboard: User is admin via session email.');
+      if (adminEmails.includes(profile?.email)) {
+        console.log('AdminDashboard: User is admin via profile email. Setting isAdmin=true, authChecked=true.');
         setIsAdmin(true);
         setAuthChecked(true);
-        fetchRequests(); // Fetch requests only if admin
-        return;
+        fetchRequests();
+      } else {
+        console.log('AdminDashboard: Access denied, profile email not admin. Setting isAdmin=false, authChecked=true.');
+        setIsAdmin(false);
+        setAuthChecked(true);
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access this page.",
+          variant: "destructive",
+        });
+        navigate('/');
       }
-      
-      try {
-        console.log('AdminDashboard: Fetching profile for admin check...');
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          console.error('AdminDashboard: Error fetching profile:', error);
-          // Fallback check if profile fetch fails but session email is admin
-          if (adminEmails.includes(session.user.email)) {
-            console.log('AdminDashboard: Profile fetch failed, but session email is admin. Granting access.');
-            setIsAdmin(true);
-            setAuthChecked(true);
-            fetchRequests();
-          } else {
-            console.log('AdminDashboard: Access denied after profile fetch error.');
-            toast({
-              title: "Access Denied",
-              description: "You don't have permission to access this page.",
-              variant: "destructive",
-            });
-            navigate('/');
-          }
-          return;
-        }
-        
-        if (adminEmails.includes(profile?.email)) {
-          console.log('AdminDashboard: User is admin via profile email.');
-          setIsAdmin(true);
-          setAuthChecked(true);
-          fetchRequests();
-        } else {
-          console.log('AdminDashboard: Access denied, profile email not admin.');
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/');
-        }
-      } catch (error: any) {
-        console.error('AdminDashboard: Error checking admin status (catch block):', error);
-        // Fallback check if any error occurs during profile fetch but session email is admin
-        if (adminEmails.includes(session.user.email)) {
-          console.log('AdminDashboard: Error in catch block, but session email is admin. Granting access.');
-          setIsAdmin(true);
-          setAuthChecked(true);
-          fetchRequests();
-        } else {
-          console.log('AdminDashboard: Access denied after general error.');
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/');
-        }
-      } finally {
-        console.log('AdminDashboard: Setting authChecked to true in finally block.');
-        setAuthChecked(true); // Ensure authChecked is set to true regardless of outcome
+    } catch (error: any) {
+      console.error('AdminDashboard: Error checking admin status (catch block):', error);
+      // Fallback check if any error occurs during profile fetch but session email is admin
+      if (adminEmails.includes(session.user.email)) {
+        console.log('AdminDashboard: Error in catch block, but session email is admin. Granting access. Setting isAdmin=true, authChecked=true.');
+        setIsAdmin(true);
+        setAuthChecked(true);
+        fetchRequests();
+      } else {
+        console.log('AdminDashboard: Access denied after general error. Setting isAdmin=false, authChecked=true.');
+        setIsAdmin(false);
+        setAuthChecked(true);
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access this page.",
+          variant: "destructive",
+        });
+        navigate('/');
       }
-    };
-    
+    } finally {
+      console.log('AdminDashboard: Setting authChecked to true in finally block.');
+      setAuthChecked(true); // Ensure authChecked is set to true regardless of outcome
+    }
+  }, [navigate, toast, fetchRequests]); // fetchRequests is a dependency of useCallback
+
+  useEffect(() => {
+    console.log('AdminDashboard useEffect: Initial mount or dependency change. Calling checkAdminAccess.');
     checkAdminAccess();
 
     // Listen for auth state changes to re-run the check if needed
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('AdminDashboard: Auth state changed event:', _event, 'Session:', session);
-      // If session changes, re-run the check. This might cause flickering if not handled carefully.
-      // For now, let's keep it to see if it's the cause.
-      // setAuthChecked(false); // Reset authChecked to show loading again
-      // checkAdminAccess();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('AdminDashboard: Auth state changed event:', event, 'Session:', session);
+      // Reset authChecked to false to show loading state again during re-check
+      setAuthChecked(false); 
+      checkAdminAccess();
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+      console.log('AdminDashboard useEffect: Cleaning up auth state listener.');
+      subscription.unsubscribe();
     };
 
-  }, [navigate, toast, fetchRequests]); // Add fetchRequests to dependencies
+  }, [checkAdminAccess]); // checkAdminAccess is a dependency of useEffect
 
   const openEmailGenerator = (request: any) => {
     navigate(`/email-generator/${request.id}`);
   };
 
-  console.log('AdminDashboard Render: isAdmin:', isAdmin, 'authChecked:', authChecked);
+  console.log('AdminDashboard Render: isAdmin:', isAdmin, 'authChecked:', authChecked, 'Loading requests:', loading);
 
   if (!authChecked) {
-    console.log('AdminDashboard Render: Showing loading state.');
+    console.log('AdminDashboard Render: Showing loading state because authChecked is false.');
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
@@ -212,7 +220,7 @@ const AdminDashboard = () => {
   }
 
   if (!isAdmin) {
-    console.log('AdminDashboard Render: Showing access denied state.');
+    console.log('AdminDashboard Render: Showing access denied state because isAdmin is false.');
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
