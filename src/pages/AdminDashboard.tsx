@@ -42,6 +42,7 @@ import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 
 const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -88,7 +89,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const { data: { session } = { session: null } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         navigate('/login');
@@ -98,6 +99,7 @@ const AdminDashboard = () => {
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
+        setAuthChecked(true);
         fetchRequests(); // Fetch requests only if admin
         return;
       }
@@ -113,6 +115,7 @@ const AdminDashboard = () => {
           console.error('Error fetching profile:', error);
           if (adminEmails.includes(session.user.email)) {
             setIsAdmin(true);
+            setAuthChecked(true);
             fetchRequests();
           } else {
             toast({
@@ -127,6 +130,7 @@ const AdminDashboard = () => {
         
         if (adminEmails.includes(profile?.email)) {
           setIsAdmin(true);
+          setAuthChecked(true);
           fetchRequests();
         } else {
           toast({
@@ -140,6 +144,7 @@ const AdminDashboard = () => {
         console.error('Error checking admin status:', error);
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
+          setAuthChecked(true);
           fetchRequests();
         } else {
           toast({
@@ -147,7 +152,7 @@ const AdminDashboard = () => {
             description: "You don't have permission to access this page.",
             variant: "destructive",
           });
-            navigate('/');
+          navigate('/');
         }
       }
     };
@@ -159,12 +164,23 @@ const AdminDashboard = () => {
     navigate(`/email-generator/${request.id}`);
   };
 
-  if (!isAdmin) {
+  if (!authChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         <div className="flex items-center justify-center h-96">
           <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <p>Access Denied</p>
         </div>
       </div>
     );
