@@ -316,10 +316,10 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     1. Create a compelling subject line that clearly states the track is ready and includes payment information.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
-    4. If a Track URL is provided, include a prominent call-to-action button to "Download Your Track" linking directly to the URL.
-    5. If no Track URL, provide a button to "View Your Track Details" linking to the Client Portal Link.
-    6. Clearly state the estimated cost for their track as a range.
-    7. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
+    4. If a Track URL is provided, include a prominent call-to-action button to "Download Your Track" linking directly to the Track URL. This button should be visually distinct (e.g., use background-color: #F538BC;).
+    5. Always include a separate call-to-action button to "View Request & Make Payment" linking to the Client Portal Link. This button should be present whether a Track URL is provided or not (use background-color: #1C0357;).
+    6. If no Track URL is provided, the "Download Your Track" button should not appear. Instead, the email should clearly state that the track is complete and direct the client to the "View Request & Make Payment" button to access details and the track once uploaded.
+    7. Clearly state the estimated cost for their track as a range.
     8. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
     9. Proactively offer adjustments or revisions to ensure satisfaction.
     10. Express gratitude for their business.
@@ -359,25 +359,35 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const maxCost = (trackCost + 5).toFixed(2); // Calculate max cost
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
-  let downloadSection = '';
+  let trackAccessSection = '';
   if (trackUrl) {
-    downloadSection = `
+    // If track URL is available, provide a direct download button and a separate view details button
+    trackAccessSection = `
+      <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
       <p style="margin-top: 20px;">You can download your track directly using the button below:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="${trackUrl}" 
-           style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+           style="background-color: #F538BC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
           Download Your Track
         </a>
       </p>
-      <p>Please let me know if you have any trouble accessing it.</p>
-    `;
-  } else {
-    downloadSection = `
-      <p style="margin-top: 20px;">Your track details are now available. You can view your request and access your track (once uploaded) using the button below:</p>
+      <p style="margin-top: 20px;">You can also view all your request details, including payment information, on your dedicated client page:</p>
       <p style="text-align: center; margin: 30px 0;">
         <a href="${clientPortalLink}" 
            style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-          View Your Track Details
+          View Request & Make Payment
+        </a>
+      </p>
+    `;
+  } else {
+    // If no track URL, provide a single button to view details and payment
+    trackAccessSection = `
+      <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
+      <p style="margin-top: 20px;">The track has been completed, and you can view all your request details, including payment information and access the track once uploaded, on your dedicated client page:</p>
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${clientPortalLink}" 
+           style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+          View Track Details & Make Payment
         </a>
       </p>
     `;
@@ -389,19 +399,11 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <p>Hi ${firstName},</p>
         <p>I hope this email finds you well!</p>
-        <p>I'm excited to let you know that your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you.</p>
-        ${downloadSection}
+        ${trackAccessSection}
         <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
         <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
           The estimated cost for your track is: $${minCost} - $${maxCost}
-        </p>
-        <p>You can view the full details of your request and make your payment via the link below:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${clientPortalLink}" 
-             style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-            View Request & Make Payment
-          </a>
         </p>
         <p style="margin-top: 20px;">
           Alternatively, you can pay directly using one of the methods below:
