@@ -1,16 +1,47 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, Lock, Edit, UserPlus, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client'; // Import supabase
 
 interface AccountPromptCardProps {
   onDismiss?: () => void;
 }
 
 const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss }) => {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [loadingAuth, setLoadingAuth] = useState(true); // To prevent flickering
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsSignedIn(!!session);
+      setLoadingAuth(false);
+    };
+
+    checkAuthStatus();
+
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsSignedIn(!!session);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loadingAuth) {
+    return null; // Or a loading spinner if preferred, while auth status is being checked
+  }
+
+  if (isSignedIn) {
+    return null; // Don't show the card if the user is signed in
+  }
+
   return (
     <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357] relative">
       {onDismiss && (
@@ -55,14 +86,16 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss }) => {
               Create Your Free Account
             </Button>
           </Link>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="bg-transparent border-white text-white hover:bg-white/10 text-base px-6 py-3"
-            onClick={onDismiss}
-          >
-            Continue as Guest
-          </Button>
+          <Link to="/order-track"> {/* Changed to navigate to /order-track */}
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="bg-transparent border-white text-white hover:bg-white/10 text-base px-6 py-3"
+              // Removed onClick={onDismiss} as it now navigates
+            >
+              Order Track Anonymously
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>
