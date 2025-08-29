@@ -58,7 +58,7 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss }) => {
           <Button 
             variant="outline" 
             size="lg" 
-            className="border-white text-white hover:bg-white/10 text-base px-6 py-3"
+            className="bg-transparent border-white text-white hover:bg-white/10 text-base px-6 py-3"
             onClick={onDismiss}
           >
             Continue as Guest
