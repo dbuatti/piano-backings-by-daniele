@@ -109,7 +109,7 @@ const Header = () => {
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center">
               <img 
-                className="h-16 w-auto rounded-lg shadow-md" 
+                className="h-16 w-auto rounded-lg" 
                 src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
                 alt="Piano Backings By Daniele Logo" 
               />
@@ -243,7 +243,7 @@ const Header = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <img 
-                        className="h-12 w-auto rounded-lg shadow-md" 
+                        className="h-12 w-auto rounded-lg" 
                         src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
                         alt="Piano Backings By Daniele Logo" 
                       />
