@@ -118,7 +118,7 @@ const RequestDetails = () => {
       // Fetch from public.profiles table for first_name, last_name
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, first_name, last_name')
+        .select('id, email') // Only select id and email as first_name/last_name are not guaranteed
         .eq('id', userId)
         .single();
       
@@ -511,7 +511,6 @@ const RequestDetails = () => {
                     <div className="flex items-center">
                       <User className="mr-2 h-4 w-4 text-green-600" />
                       <span className="font-medium text-sm">{currentOwnerProfile.email}</span>
-                      {currentOwnerProfile.first_name && <span className="ml-2 text-xs text-gray-600">({currentOwnerProfile.first_name} {currentOwnerProfile.last_name})</span>}
                     </div>
                     <Button 
                       variant="destructive" 
