@@ -1,4 +1,3 @@
-// This file has been regenerated to resolve a persistent syntax error.
 "use client";
 
 import * as React from "react";
@@ -111,7 +110,7 @@ const Header = () => {
             <Link to="/" className="flex items-center">
               <img 
                 className="h-16 w-auto rounded-lg border-2 border-white shadow-md" 
-                src="/logo.jpeg" 
+                src="/logo.svg" 
                 alt="Piano Backings By Daniele Logo" 
               />
             </Link>
@@ -245,7 +244,7 @@ const Header = () => {
                     <div className="flex items-center">
                       <img 
                         className="h-12 w-auto rounded-lg border-2 border-white" 
-                        src="/logo.jpeg" 
+                        src="/logo.svg" 
                         alt="Piano Backings By Daniele Logo" 
                       />
                     </div>
