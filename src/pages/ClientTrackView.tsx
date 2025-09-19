@@ -189,8 +189,8 @@ const ClientTrackView = () => {
   }
 
   const estimatedCost = calculateRequestCost(request);
-  const minCost = estimatedCost - 2;
-  const maxCost = estimatedCost + 5;
+  const minCost = (estimatedCost * 0.5).toFixed(2); // 50% of estimated cost
+  const maxCost = (estimatedCost * 1.5).toFixed(2); // 150% of estimated cost
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
