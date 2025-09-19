@@ -73,7 +73,7 @@ const ClientTrackView = () => {
         }
 
         // Now, determine access based on user_id and email
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
         const loggedInUserId = session?.user?.id;
         const loggedInUserEmail = session?.user?.email;
 
@@ -189,8 +189,12 @@ const ClientTrackView = () => {
   }
 
   const estimatedCost = calculateRequestCost(request);
-  const minCost = (estimatedCost * 0.5).toFixed(2); // 50% of estimated cost
-  const maxCost = (estimatedCost * 1.5).toFixed(2); // 150% of estimated cost
+  const rawMinCost = estimatedCost * 0.5;
+  const rawMaxCost = estimatedCost * 1.5;
+
+  // Round min and max costs to the nearest multiple of 5
+  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2);
+  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2);
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
