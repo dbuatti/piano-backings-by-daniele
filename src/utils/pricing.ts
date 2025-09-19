@@ -64,5 +64,8 @@ export const calculateRequestCost = (request: any) => {
     });
   }
   
-  return parseFloat(baseCost.toFixed(2));
+  // Round the final cost to the nearest multiple of 5
+  const roundedCost = Math.round(baseCost / 5) * 5;
+  
+  return parseFloat(roundedCost.toFixed(2));
 };
