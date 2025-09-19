@@ -72,19 +72,22 @@ const ClientTrackView = () => {
           return;
         }
 
-        // Now, determine access based on user_id and email
+        // Now, determine access based on user_id, email, and admin status
         const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
         const loggedInUserId = session?.user?.id;
         const loggedInUserEmail = session?.user?.email;
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        const isAdmin = loggedInUserEmail && adminEmails.includes(loggedInUserEmail);
 
         let hasAccess = false;
 
-        if (requestData.user_id) {
+        if (isAdmin) {
+          hasAccess = true; // Admins can view any track
+        } else if (requestData.user_id) {
           // If the request is linked to a user_id, only the owner can access
           if (loggedInUserId === requestData.user_id) {
             hasAccess = true;
           } else {
-            // If logged in but not the owner, deny access
             console.warn('Logged-in user is not the owner of this request.');
           }
         } else {
