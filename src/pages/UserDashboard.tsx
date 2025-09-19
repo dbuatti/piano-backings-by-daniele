@@ -31,7 +31,7 @@ const UserDashboard = () => {
         const email = urlParams.get('email');
         
         if (email) {
-          fetchUserRequestsByEmail(email);
+          fetchGuestRequestsByEmail(email); // Use the new function for guests
           setShowAccountPrompt(true);
         } else {
           navigate('/login');
@@ -48,11 +48,11 @@ const UserDashboard = () => {
 
   const fetchUserRequests = async (userId: string) => {
     try {
+      // For authenticated users, RLS should handle filtering by user_id or auth.email()
       const { data, error } = await supabase
         .from('backing_requests')
         .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }); // RLS will filter this based on auth.uid() and auth.email()
       
       if (error) throw error;
       
@@ -68,21 +68,32 @@ const UserDashboard = () => {
     }
   };
 
-  const fetchUserRequestsByEmail = async (email: string) => {
+  // New function to fetch requests for unauthenticated guests via Edge Function
+  const fetchGuestRequestsByEmail = async (email: string) => {
     try {
-      const { data, error } = await supabase
-        .from('backing_requests')
-        .select('*')
-        .eq('email', email)
-        .order('created_at', { ascending: false });
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-requests-by-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // No Authorization header for unauthenticated access, as the Edge Function uses service_role_key
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
       
-      if (error) throw error;
+      const result = await response.json();
       
-      setRequests(data || []);
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to fetch guest requests: ${response.status} ${response.statusText}`);
+      }
+      
+      setRequests(result.requests || []);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: `Failed to fetch requests: ${error.message}`,
+        description: `Failed to fetch guest requests: ${error.message}`,
         variant: "destructive",
       });
     } finally {
