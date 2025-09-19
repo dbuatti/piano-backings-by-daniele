@@ -367,9 +367,12 @@ const FormPage = () => {
         'Content-Type': 'application/json'
       };
       
-      // Always add the anon key to the Authorization header
-      // This is often required by Supabase Edge Functions even if they are "public"
-      headers['Authorization'] = `Bearer ${SUPABASE_PUBLISHABLE_KEY}`;
+      // If a user is logged in, use their access token. Otherwise, use the anon key.
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else {
+        headers['Authorization'] = `Bearer ${SUPABASE_PUBLISHABLE_KEY}`;
+      }
       
       // Submit to Supabase function
       const response = await fetch(
