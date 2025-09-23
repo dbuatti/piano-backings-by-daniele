@@ -19,7 +19,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
   const completedRequests = requests.filter(r => r.status === 'completed').length;
   const pendingRevenue = requests
     .filter(r => r.status !== 'completed' && r.status !== 'cancelled' && !r.is_paid)
-    .reduce((sum, req) => sum + calculateRequestCost(req), 0);
+    .reduce((sum, req) => sum + calculateRequestCost(req).totalCost, 0); // Corrected to access .totalCost
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 mt-6">
