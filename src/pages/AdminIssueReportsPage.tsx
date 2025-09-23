@@ -27,7 +27,7 @@ import {
 import { format } from 'date-fns';
 import { MessageSquare, CheckCircle, XCircle, Trash2, Loader2, AlertCircle, Eye } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { cn } => '@/lib/utils';
+import { cn } from '@/lib/utils'; // Corrected import statement
 
 interface IssueReport {
   id: string;

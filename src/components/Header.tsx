@@ -327,8 +327,9 @@ const Header = () => {
                           <Shield className="mr-3 h-5 w-5" />
                           Admin Dashboard
                         </Link>
+                        {/* Updated link to point to the new tab in AdminDashboard */}
                         <Link 
-                          to="/admin?tab=issue-reports" {/* Updated link */}
+                          to="/admin?tab=issue-reports" 
                           className={cn(
                             "block px-4 py-3 rounded-md text-base font-medium flex items-center",
                             "text-white hover:bg-white/20"
