@@ -35,7 +35,8 @@ import ErrorDisplay from '@/components/ErrorDisplay'; // Import ErrorDisplay com
 interface UserProfile {
   id: string;
   email: string;
-  // Removed first_name and last_name as they are no longer returned by the RPC function
+  first_name?: string; // Added first_name
+  last_name?: string;  // Added last_name
 }
 
 const RequestDetails = () => {
@@ -96,7 +97,7 @@ const RequestDetails = () => {
       
       // Fetch current owner profile if user_id is set
       if (data.user_id) {
-        await fetchCurrentOwnerProfile(data.user_id);
+        await fetchCurrentOwnerProfile(data.user_id, data.email); // Pass request.email
       } else {
         setCurrentOwnerProfile(null);
       }
@@ -113,18 +114,23 @@ const RequestDetails = () => {
     }
   };
 
-  const fetchCurrentOwnerProfile = async (userId: string) => {
+  const fetchCurrentOwnerProfile = async (userId: string, requestEmail: string) => {
     try {
       // Fetch from public.profiles table for first_name, last_name
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email') // Only select id and email as first_name/last_name are not guaranteed
+        .select('id, first_name, last_name') // Corrected select to match profiles table schema
         .eq('id', userId)
         .single();
       
       if (profileError) throw profileError;
       
-      setCurrentOwnerProfile(profileData as UserProfile);
+      setCurrentOwnerProfile({
+        id: profileData.id,
+        email: requestEmail, // Use the email from the request itself
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+      });
     } catch (error: any) {
       console.error('Error fetching current owner profile:', error);
       setCurrentOwnerProfile(null);
@@ -231,8 +237,8 @@ const RequestDetails = () => {
         const profiles: UserProfile[] = authUsers.map((user: any) => ({
           id: user.id,
           email: user.email,
-          // first_name: user.raw_user_meta_data?.first_name, // Removed as RPC no longer returns this
-          // last_name: user.raw_user_meta_data?.last_name,   // Removed as RPC no longer returns this
+          first_name: user.raw_user_meta_data?.first_name, // Use raw_user_meta_data
+          last_name: user.raw_user_meta_data?.last_name,   // Use raw_user_meta_data
         }));
         setFoundUsersForAssignment(profiles);
       } else {
@@ -511,6 +517,11 @@ const RequestDetails = () => {
                     <div className="flex items-center">
                       <User className="mr-2 h-4 w-4 text-green-600" />
                       <span className="font-medium text-sm">{currentOwnerProfile.email}</span>
+                      {currentOwnerProfile.first_name && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({currentOwnerProfile.first_name} {currentOwnerProfile.last_name})
+                        </span>
+                      )}
                     </div>
                     <Button 
                       variant="destructive" 
@@ -565,7 +576,11 @@ const RequestDetails = () => {
                         <div className="flex items-center">
                           <User className="mr-2 h-4 w-4 text-gray-600" />
                           <span className="font-medium text-sm">{user.email}</span>
-                          {/* Removed first_name and last_name display as RPC no longer returns them directly */}
+                          {user.first_name && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              ({user.first_name} {user.last_name})
+                            </span>
+                          )}
                         </div>
                         <Button 
                           size="sm" 
@@ -630,7 +645,7 @@ const RequestDetails = () => {
                         href={request.youtube_link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline"
+                        className="font-medium text-blue-600 hover:underline text-sm"
                       >
                         {request.youtube_link}
                       </a>
@@ -647,7 +662,7 @@ const RequestDetails = () => {
                         href={request.voice_memo} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline"
+                        className="font-medium text-blue-600 hover:underline text-sm"
                       >
                         {request.voice_memo}
                       </a>
@@ -681,7 +696,7 @@ const RequestDetails = () => {
                         href={request.additional_links} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline"
+                        className="font-medium text-blue-600 hover:underline text-sm"
                       >
                         {request.additional_links}
                       </a>

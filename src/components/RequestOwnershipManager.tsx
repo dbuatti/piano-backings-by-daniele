@@ -13,8 +13,8 @@ import { format } from 'date-fns';
 interface UserProfile {
   id: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
+  first_name?: string; // Added first_name
+  last_name?: string;  // Added last_name
 }
 
 interface BackingRequest {
