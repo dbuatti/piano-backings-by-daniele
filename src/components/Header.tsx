@@ -78,28 +78,7 @@ const Header = () => {
     }
   };
 
-  const handleAnchorLink = (href: string, e: React.MouseEvent) => {
-    if (href.startsWith('/#') && location.pathname === '/') {
-      e.preventDefault();
-      const anchor = href.split('#')[1];
-      const element = document.getElementById(anchor);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-        window.history.replaceState(null, '', `#${anchor}`);
-      }
-    }
-    setMobileMenuOpen(false);
-  };
-
-  const menuItems = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "About", href: "/#about", icon: Info },
-    { name: "Services", href: "/#services", icon: Music },
-    { name: "Pricing", href: "/#pricing", icon: Music },
-    { name: "Contact", href: "/#contact", icon: Phone },
-    { name: "Tips", href: "/#tips", icon: Info },
-    { name: "Support", href: "/#support", icon: Mail },
-  ];
+  // Removed handleAnchorLink as there are no more anchor links in the header
 
   return (
     <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
@@ -118,28 +97,6 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-0.5">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => handleAnchorLink(item.href, e)}
-                  className={cn(
-                    "px-2 py-2 rounded-md text-sm font-medium transition-colors duration-200 flex items-center",
-                    "hover:bg-white/20 hover:text-white",
-                    location.pathname === item.href.split('#')[0] && 
-                    (location.hash === `#${item.href.split('#')[1]}` || !item.href.includes('#'))
-                      ? "bg-white/30 text-white" 
-                      : "text-white"
-                  )}
-                >
-                  <Icon className="mr-1 h-4 w-4" />
-                  {item.name}
-                </a>
-              );
-            })}
-            
             <Link to="/form-page">
               <Button 
                 className={cn(
@@ -187,7 +144,6 @@ const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    {/* Updated link to point to the new tab in AdminDashboard */}
                     <Link to="/admin?tab=issue-reports" onClick={() => setMobileMenuOpen(false)}>
                       <AlertCircle className="mr-2 h-4 w-4" />
                       Issue Reports
@@ -267,23 +223,7 @@ const Header = () => {
                 
                 <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
                   <nav className="space-y-1">
-                    {menuItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <a
-                          key={item.name}
-                          href={item.href}
-                          onClick={(e) => handleAnchorLink(item.href, e)}
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                        >
-                          <Icon className="mr-3 h-5 w-5" />
-                          {item.name}
-                        </a>
-                      );
-                    })}
+                    {/* Removed menuItems.map for mobile navigation */}
                     
                     <div className="pt-4 border-t border-white/20">
                       <Link 
@@ -327,7 +267,6 @@ const Header = () => {
                           <Shield className="mr-3 h-5 w-5" />
                           Admin Dashboard
                         </Link>
-                        {/* Updated link to point to the new tab in AdminDashboard */}
                         <Link 
                           to="/admin?tab=issue-reports" 
                           className={cn(
