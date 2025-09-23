@@ -25,7 +25,7 @@ import TestEmailNotification from './TestEmailNotification';
 import DropboxMonitor from './DropboxMonitor';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import RequestOwnershipManager from '@/components/RequestOwnershipManager';
-import AdminIssueReportsPage from './AdminIssueReportsPage'; // Import the new AdminIssueReportsPage
+import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent'; // Import the new IssueReportsTabContent
 
 import { 
   HardDrive,
@@ -370,7 +370,7 @@ const AdminDashboard = () => {
 
             {/* New Issue Reports Tab Content */}
             <TabsContent value="issue-reports" className="mt-6">
-              <AdminIssueReportsPage /> {/* Render the Issue Reports page here */}
+              <IssueReportsTabContent /> {/* Render the Issue Reports page here */}
             </TabsContent>
           </Tabs>
           
