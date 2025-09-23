@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } => 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -195,11 +195,11 @@ const ClientTrackView = () => {
   const costBreakdown = calculateRequestCost(request);
   const baseTotalCost = costBreakdown.totalCost;
   
-  // Calculate the range for display
+  // Calculate the range for display, rounding down to the nearest multiple of 5
   const rawMinCost = baseTotalCost * 0.5;
   const rawMaxCost = baseTotalCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); 
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2);
 
   const trackTypeDisplayRange = request.track_type ? getTrackTypeBaseDisplayRange(request.track_type) : null;
 
@@ -511,7 +511,7 @@ const ClientTrackView = () => {
                     
                     {request.voice_memo ? (
                       <div>
-                        <p className="text-sm text-gray-500 flex items-center">
+                        <p className className="text-sm text-gray-500 flex items-center">
                           <FileAudio className="mr-1 h-4 w-4" /> Voice Memo
                         </p>
                         <a 

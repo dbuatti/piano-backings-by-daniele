@@ -175,11 +175,12 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
 export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
+  // Correctly access totalCost from the object returned by calculateRequestCost
+  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -241,8 +242,8 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const firstName = request.name.split(' ')[0];
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   return {
@@ -289,11 +290,12 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
+  // Correctly access totalCost from the object returned by calculateRequestCost
+  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -363,8 +365,8 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const trackUrl = request.track_url;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   let trackAccessSection = '';
