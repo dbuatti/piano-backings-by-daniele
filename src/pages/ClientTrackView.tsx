@@ -26,7 +26,8 @@ import {
   Coffee,
   Banknote,
   Play,
-  FileAudio
+  FileAudio,
+  DollarSign // Added DollarSign icon
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
@@ -191,13 +192,8 @@ const ClientTrackView = () => {
     );
   }
 
-  const estimatedCost = calculateRequestCost(request);
-  const rawMinCost = estimatedCost * 0.5;
-  const rawMaxCost = estimatedCost * 1.5;
-
-  // Round min and max costs to the nearest multiple of 5
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2);
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2);
+  const costBreakdown = calculateRequestCost(request);
+  const estimatedCost = costBreakdown.totalCost;
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
@@ -384,7 +380,7 @@ const ClientTrackView = () => {
                   <div>
                     <p className="mb-2">Estimated Cost for Your Track:</p>
                     <div className="text-3xl font-bold mb-4">
-                      ${minCost} - ${maxCost}
+                      ${estimatedCost.toFixed(2)}
                     </div>
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
@@ -412,6 +408,32 @@ const ClientTrackView = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Cost Breakdown Section */}
+                <div className="mt-6 pt-4 border-t border-white/20">
+                  <h4 className="font-semibold text-lg mb-3 flex items-center">
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Cost Breakdown
+                  </h4>
+                  <ul className="space-y-2 text-sm">
+                    {costBreakdown.baseCosts.map((item, index) => (
+                      <li key={`base-${index}`} className="flex justify-between items-center">
+                        <span className="capitalize">{item.type.replace('-', ' ')} Base Track</span>
+                        <span>${item.cost.toFixed(2)}</span>
+                      </li>
+                    ))}
+                    {costBreakdown.serviceCosts.map((item, index) => (
+                      <li key={`service-${index}`} className="flex justify-between items-center">
+                        <span className="capitalize">{item.service.replace('-', ' ')}</span>
+                        <span>+${item.cost.toFixed(2)}</span>
+                      </li>
+                    ))}
+                    <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
+                      <span>Total Estimated Cost</span>
+                      <span>${costBreakdown.totalCost.toFixed(2)}</span>
+                    </li>
+                  </ul>
                 </div>
                 
                 <div className="mt-6 pt-4 border-t border-white/20">

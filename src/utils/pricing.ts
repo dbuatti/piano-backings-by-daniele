@@ -1,71 +1,87 @@
 // src/utils/pricing.ts
 
 export const calculateRequestCost = (request: any) => {
-  let baseCost = 0;
-  
+  let totalCost = 0;
+  const baseCosts: { type: string; cost: number }[] = [];
+  const serviceCosts: { service: string; cost: number }[] = [];
+  let trackTypeBaseCost = 0; // For cases where backing_type is not explicitly set
+
   // Determine base cost based on backing_type or track_type
-  // Prioritize backing_type if available, otherwise infer from track_type
   const backingTypes = Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []);
   const trackType = request.track_type;
 
   if (backingTypes.length > 0) {
-    // If multiple backing types are selected, sum their base costs
     backingTypes.forEach((type: string) => {
+      let cost = 0;
       switch (type) {
         case 'full-song':
-          baseCost += 30;
+          cost = 30;
           break;
         case 'audition-cut':
-          baseCost += 15;
+          cost = 15;
           break;
         case 'note-bash':
-          baseCost += 10;
+          cost = 10;
           break;
         default:
-          baseCost += 20; // Default if backing_type is unknown
+          cost = 20; // Default if backing_type is unknown
       }
+      baseCosts.push({ type, cost });
+      totalCost += cost;
     });
   } else if (trackType) {
     // If backing_type is not explicitly set, try to infer from track_type
     switch (trackType) {
       case 'quick': 
-        baseCost = 7.5; // Average of 5-10
+        trackTypeBaseCost = 7.5; // Average of 5-10
         break;
       case 'one-take': 
-        baseCost = 15; // Average of 10-20
+        trackTypeBaseCost = 15; // Average of 10-20
         break;
       case 'polished': 
-        baseCost = 25; // Average of 15-35
+        trackTypeBaseCost = 25; // Average of 15-35
         break;
       default: 
-        baseCost = 20; // Default if track_type is unknown
+        trackTypeBaseCost = 20; // Default if track_type is unknown
     }
+    baseCosts.push({ type: trackType, cost: trackTypeBaseCost });
+    totalCost += trackTypeBaseCost;
   } else {
-    baseCost = 20; // General fallback if neither is specified
+    // General fallback if neither is specified
+    const defaultCost = 20;
+    baseCosts.push({ type: 'default', cost: defaultCost });
+    totalCost += defaultCost;
   }
   
   // Add additional service costs
   if (request.additional_services && Array.isArray(request.additional_services)) {
     request.additional_services.forEach((service: string) => {
+      let cost = 0;
       switch (service) {
         case 'rush-order':
-          baseCost += 10;
+          cost = 10;
           break;
         case 'complex-songs':
-          baseCost += 7;
+          cost = 7;
           break;
         case 'additional-edits':
-          baseCost += 5;
+          cost = 5;
           break;
         case 'exclusive-ownership':
-          baseCost += 40;
+          cost = 40;
           break;
       }
+      serviceCosts.push({ service, cost });
+      totalCost += cost;
     });
   }
   
-  // Round the final cost to the nearest multiple of 5
-  const roundedCost = Math.round(baseCost / 5) * 5;
+  // Round the final total cost to the nearest multiple of 5
+  const roundedTotalCost = Math.round(totalCost / 5) * 5;
   
-  return parseFloat(roundedCost.toFixed(2));
+  return {
+    totalCost: parseFloat(roundedTotalCost.toFixed(2)),
+    baseCosts,
+    serviceCosts,
+  };
 };
