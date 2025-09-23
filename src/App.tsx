@@ -21,9 +21,8 @@ import ClientTrackView from "./pages/ClientTrackView";
 import EmailGenerator from "./pages/EmailGenerator";
 import TestEmailNotification from "./pages/TestEmailNotification";
 import DataImporter from "./pages/DataImporter";
-import AdminIssueReportsPage from "./pages/AdminIssueReportsPage"; // Import the new AdminIssueReportsPage
-import ReportIssueButton from "./components/ReportIssueButton"; // Import the new ReportIssueButton
-import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice"; // Import the new UnreadIssueReportsNotice
+import ReportIssueButton from "./components/ReportIssueButton";
+import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice";
 
 const queryClient = new QueryClient();
 
@@ -45,7 +44,6 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
-          {/* Removed the standalone route for AdminIssueReportsPage */}
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />

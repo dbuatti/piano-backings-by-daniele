@@ -78,8 +78,6 @@ const Header = () => {
     }
   };
 
-  // Removed handleAnchorLink as there are no more anchor links in the header
-
   return (
     <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -138,13 +136,13 @@ const Header = () => {
                   <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                    <Link to="/admin">
                       <Shield className="mr-2 h-4 w-4" />
                       Admin Dashboard
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin?tab=issue-reports" onClick={() => setMobileMenuOpen(false)}>
+                    <Link to="/admin?tab=issue-reports">
                       <AlertCircle className="mr-2 h-4 w-4" />
                       Issue Reports
                     </Link>
@@ -223,8 +221,6 @@ const Header = () => {
                 
                 <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
                   <nav className="space-y-1">
-                    {/* Removed menuItems.map for mobile navigation */}
-                    
                     <div className="pt-4 border-t border-white/20">
                       <Link 
                         to="/form-page"
