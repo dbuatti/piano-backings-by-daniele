@@ -187,7 +187,8 @@ const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/issue-reports" onClick={() => setMobileMenuOpen(false)}>
+                    {/* Updated link to point to the new tab in AdminDashboard */}
+                    <Link to="/admin?tab=issue-reports" onClick={() => setMobileMenuOpen(false)}>
                       <AlertCircle className="mr-2 h-4 w-4" />
                       Issue Reports
                     </Link>
@@ -327,7 +328,7 @@ const Header = () => {
                           Admin Dashboard
                         </Link>
                         <Link 
-                          to="/admin/issue-reports"
+                          to="/admin?tab=issue-reports" {/* Updated link */}
                           className={cn(
                             "block px-4 py-3 rounded-md text-base font-medium flex items-center",
                             "text-white hover:bg-white/20"

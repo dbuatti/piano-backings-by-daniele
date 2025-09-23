@@ -45,7 +45,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
-          <Route path="/admin/issue-reports" element={<AdminIssueReportsPage />} /> {/* Add the new route */}
+          {/* Removed the standalone route for AdminIssueReportsPage */}
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
@@ -56,7 +56,6 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        {/* Move these components INSIDE the BrowserRouter */}
         <ReportIssueButton />
         <UnreadIssueReportsNotice />
       </BrowserRouter>

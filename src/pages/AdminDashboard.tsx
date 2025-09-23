@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom'; // Import useSearchParams
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
@@ -48,6 +48,10 @@ const AdminDashboard = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
+
+  // Get active tab from URL, default to 'overview'
+  const activeTab = searchParams.get('tab') || 'overview';
 
   // Custom Hooks for state and logic
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
@@ -219,6 +223,11 @@ const AdminDashboard = () => {
     navigate(`/email-generator/${request.id}`);
   };
 
+  // Handler for tab change
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -252,8 +261,8 @@ const AdminDashboard = () => {
             description="Manage all backing track requests and system settings" 
           />
           
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-5"> {/* Increased grid-cols to 5 */}
               <TabsTrigger value="overview" className="flex items-center">
                 <List className="mr-2 h-4 w-4" /> Overview
               </TabsTrigger>
@@ -265,6 +274,9 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="email-tools" className="flex items-center">
                 <MailIcon className="mr-2 h-4 w-4" /> Email Tools
+              </TabsTrigger>
+              <TabsTrigger value="issue-reports" className="flex items-center"> {/* New tab for Issue Reports */}
+                <AlertCircle className="mr-2 h-4 w-4" /> Issue Reports
               </TabsTrigger>
             </TabsList>
 
@@ -334,7 +346,7 @@ const AdminDashboard = () => {
             <TabsContent value="data-management" className="mt-6 space-y-6">
               <DataImporter />
               <RequestOwnershipManager />
-              <AdminIssueReportsPage /> {/* Render the Issue Reports page here */}
+              {/* AdminIssueReportsPage is now in its own tab */}
             </TabsContent>
 
             {/* Email Tools Tab Content */}
@@ -344,6 +356,11 @@ const AdminDashboard = () => {
                 <TestEmailNotification />
                 <NotificationRecipientsManager />
               </div>
+            </TabsContent>
+
+            {/* New Issue Reports Tab Content */}
+            <TabsContent value="issue-reports" className="mt-6">
+              <AdminIssueReportsPage /> {/* Render the Issue Reports page here */}
             </TabsContent>
           </Tabs>
           

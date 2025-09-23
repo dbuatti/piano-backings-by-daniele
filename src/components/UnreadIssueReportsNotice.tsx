@@ -64,7 +64,7 @@ const UnreadIssueReportsNotice: React.FC = () => {
 
   return (
     <Button
-      onClick={() => navigate('/admin/issue-reports')}
+      onClick={() => navigate('/admin?tab=issue-reports')} // Updated navigation
       className={cn(
         "fixed bottom-24 right-6 rounded-full p-4 shadow-lg bg-red-600 hover:bg-red-700 text-white z-50",
         unreadCount > 0 && "animate-pulse-slow" // Apply pulsing animation if unread

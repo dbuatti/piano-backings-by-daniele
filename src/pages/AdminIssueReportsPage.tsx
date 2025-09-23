@@ -27,7 +27,7 @@ import {
 import { format } from 'date-fns';
 import { MessageSquare, CheckCircle, XCircle, Trash2, Loader2, AlertCircle, Eye } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { cn } from '@/lib/utils';
+import { cn } => '@/lib/utils';
 
 interface IssueReport {
   id: string;
@@ -149,8 +149,7 @@ const AdminIssueReportsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-[#1C0357] mb-2">Issue Reports</h1>
-      <p className="text-lg text-[#1C0357]/90 mb-6">Review and manage user-submitted issues and feedback.</p>
+      {/* Removed h1 and p tags here */}
 
       {error && (
         <div className="mb-6">
