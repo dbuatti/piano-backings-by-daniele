@@ -17,13 +17,9 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
   const totalRequests = requests.length;
   const inProgressRequests = requests.filter(r => r.status === 'in-progress').length;
   const completedRequests = requests.filter(r => r.status === 'completed').length;
-  
   const pendingRevenue = requests
     .filter(r => r.status !== 'completed' && r.status !== 'cancelled' && !r.is_paid)
-    .reduce((sum, req) => {
-      const { min, max } = calculateRequestCost(req);
-      return sum + (min + max) / 2; // Use average for pending revenue
-    }, 0);
+    .reduce((sum, req) => sum + calculateRequestCost(req), 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 mt-6">

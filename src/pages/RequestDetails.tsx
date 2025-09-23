@@ -25,14 +25,12 @@ import {
   RefreshCw,
   AlertCircle,
   Search, // Added Search icon
-  UserPlus, // Added UserPlus icon
-  Banknote // Added Banknote icon for pricing
+  UserPlus // Added UserPlus icon
 } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 import { Input } from '@/components/ui/input'; // Import Input component
 import { Label } from '@/components/ui/label'; // Import Label component
 import ErrorDisplay from '@/components/ErrorDisplay'; // Import ErrorDisplay component
-import { calculateRequestCost } from '@/utils/pricing'; // Import pricing utility
 
 interface UserProfile {
   id: string;
@@ -376,7 +374,6 @@ const RequestDetails = () => {
   };
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const { min: minCost, max: maxCost } = calculateRequestCost(request); // Get min and max
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -493,20 +490,6 @@ const RequestDetails = () => {
                   </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Payment Information */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                <Banknote className="mr-2 h-5 w-5" />
-                Estimated Cost
-              </h3>
-              <p className="text-2xl font-bold text-[#1C0357]">
-                ${minCost.toFixed(2)} - ${maxCost.toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-600 mt-2">
-                This is an estimated range. The final price may vary slightly based on complexity and additional services.
-              </p>
             </div>
           </CardContent>
         </Card>

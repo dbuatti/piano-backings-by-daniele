@@ -194,9 +194,8 @@ const DataImporter = () => {
         additional_links: additionalLinks, // Assign the new field
       };
       
-      // Calculate cost using the utility function and store the average
-      const { min, max } = calculateRequestCost(parsedRequest);
-      parsedRequest.cost = (min + max) / 2;
+      // Calculate cost using the utility function
+      parsedRequest.cost = calculateRequestCost(parsedRequest);
 
       records.push(parsedRequest);
     }

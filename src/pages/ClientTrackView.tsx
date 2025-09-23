@@ -191,7 +191,13 @@ const ClientTrackView = () => {
     );
   }
 
-  const { min: minCost, max: maxCost } = calculateRequestCost(request); // Get min and max
+  const estimatedCost = calculateRequestCost(request);
+  const rawMinCost = estimatedCost * 0.5;
+  const rawMaxCost = estimatedCost * 1.5;
+
+  // Round min and max costs to the nearest multiple of 5
+  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2);
+  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2);
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
@@ -378,7 +384,7 @@ const ClientTrackView = () => {
                   <div>
                     <p className="mb-2">Estimated Cost for Your Track:</p>
                     <div className="text-3xl font-bold mb-4">
-                      ${minCost.toFixed(2)} - ${maxCost.toFixed(2)}
+                      ${minCost} - ${maxCost}
                     </div>
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.

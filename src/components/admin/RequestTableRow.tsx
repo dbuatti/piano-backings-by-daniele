@@ -119,7 +119,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   };
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const { min: minCost, max: maxCost } = calculateRequestCost(request); // Get min and max
 
   const handleDragOver = (event: React.DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
@@ -232,7 +231,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       <TableCell>
         <div className="flex items-center font-medium">
           <DollarSign className="w-4 h-4 mr-1" />
-          <span>${minCost.toFixed(2)} - ${maxCost.toFixed(2)}</span>
+          <span>{calculateRequestCost(request).toFixed(2)}</span>
         </div>
       </TableCell>
       <TableCell>
