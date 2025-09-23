@@ -46,6 +46,7 @@ import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | undefined>(undefined); // New state for admin email
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
@@ -130,6 +131,7 @@ const AdminDashboard = () => {
     
     if (!session) {
       setIsAdmin(false);
+      setAdminEmail(undefined); // Clear email on logout
       setAuthChecked(true); // Mark auth checked even if no session, to stop loading state
       navigate('/login');
       return;
@@ -139,6 +141,7 @@ const AdminDashboard = () => {
 
     if (adminEmails.includes(session.user.email)) {
       setIsAdmin(true);
+      setAdminEmail(session.user.email); // Set admin email here
       setAuthChecked(true);
       fetchRequests(); // Fetch requests only if admin
       return;
@@ -155,10 +158,12 @@ const AdminDashboard = () => {
         // Fallback check if profile fetch fails but session email is admin
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
+          setAdminEmail(session.user.email); // Set admin email here
           setAuthChecked(true);
           fetchRequests();
         } else {
           setIsAdmin(false);
+          setAdminEmail(undefined);
           setAuthChecked(true);
           toast({
             title: "Access Denied",
@@ -172,10 +177,12 @@ const AdminDashboard = () => {
       
       if (adminEmails.includes(profile?.email)) {
         setIsAdmin(true);
+        setAdminEmail(profile?.email); // Set admin email here
         setAuthChecked(true);
         fetchRequests();
       } else {
         setIsAdmin(false);
+        setAdminEmail(undefined);
         setAuthChecked(true);
         toast({
           title: "Access Denied",
@@ -188,10 +195,12 @@ const AdminDashboard = () => {
       // Fallback check if any error occurs during profile fetch but session email is admin
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
+        setAdminEmail(session.user.email); // Set admin email here
         setAuthChecked(true);
         fetchRequests();
       } else {
         setIsAdmin(false);
+        setAdminEmail(undefined);
         setAuthChecked(true);
         toast({
           title: "Access Denied",
@@ -259,6 +268,7 @@ const AdminDashboard = () => {
           <AdminDashboardHeader 
             title="Admin Dashboard" 
             description="Manage all backing track requests and system settings" 
+            adminEmail={adminEmail} // Pass the admin email here
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
