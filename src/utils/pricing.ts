@@ -1,71 +1,82 @@
 // src/utils/pricing.ts
 
 export const calculateRequestCost = (request: any) => {
-  let baseCost = 0;
-  
-  // Determine base cost based on backing_type or track_type
-  // Prioritize backing_type if available, otherwise infer from track_type
+  let minBaseCost = 0;
+  let maxBaseCost = 0;
+  let additionalFixedCost = 0; // For backing_type and additional_services
+
   const backingTypes = Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []);
   const trackType = request.track_type;
 
-  if (backingTypes.length > 0) {
-    // If multiple backing types are selected, sum their base costs
-    backingTypes.forEach((type: string) => {
-      switch (type) {
-        case 'full-song':
-          baseCost += 30;
-          break;
-        case 'audition-cut':
-          baseCost += 15;
-          break;
-        case 'note-bash':
-          baseCost += 10;
-          break;
-        default:
-          baseCost += 20; // Default if backing_type is unknown
-      }
-    });
-  } else if (trackType) {
-    // If backing_type is not explicitly set, try to infer from track_type
+  // 1. Determine base cost range from track_type
+  if (trackType) {
     switch (trackType) {
       case 'quick': 
-        baseCost = 7.5; // Average of 5-10
+        minBaseCost = 5;
+        maxBaseCost = 10;
         break;
       case 'one-take': 
-        baseCost = 15; // Average of 10-20
+        minBaseCost = 10;
+        maxBaseCost = 20;
         break;
       case 'polished': 
-        baseCost = 25; // Average of 15-35
+        minBaseCost = 15;
+        maxBaseCost = 35;
         break;
       default: 
-        baseCost = 20; // Default if track_type is unknown
+        minBaseCost = 10; // Default to a reasonable range if unknown
+        maxBaseCost = 25;
     }
   } else {
-    baseCost = 20; // General fallback if neither is specified
+    // Fallback if trackType is not specified, use a general range
+    minBaseCost = 10;
+    maxBaseCost = 25;
   }
-  
-  // Add additional service costs
+
+  // 2. Add costs for backing_type (treating them as additional fixed costs)
+  // This assumes backing_type adds a fixed amount regardless of track_type base
+  backingTypes.forEach((type: string) => {
+    switch (type) {
+      case 'full-song':
+        additionalFixedCost += 30; // Example fixed cost
+        break;
+      case 'audition-cut':
+        additionalFixedCost += 15; // Example fixed cost
+        break;
+      case 'note-bash':
+        additionalFixedCost += 10; // Example fixed cost
+        break;
+      // No default for backing_type if it's an add-on, only specific types add cost
+    }
+  });
+
+  // 3. Add additional service costs
   if (request.additional_services && Array.isArray(request.additional_services)) {
     request.additional_services.forEach((service: string) => {
       switch (service) {
         case 'rush-order':
-          baseCost += 10;
+          additionalFixedCost += 10;
           break;
         case 'complex-songs':
-          baseCost += 7;
+          additionalFixedCost += 7;
           break;
         case 'additional-edits':
-          baseCost += 5;
+          additionalFixedCost += 5;
           break;
         case 'exclusive-ownership':
-          baseCost += 40;
+          additionalFixedCost += 40;
           break;
       }
     });
   }
   
-  // Round the final cost to the nearest multiple of 5
-  const roundedCost = Math.round(baseCost / 5) * 5;
-  
-  return parseFloat(roundedCost.toFixed(2));
+  // Apply additional fixed costs to both min and max
+  let finalMinCost = minBaseCost + additionalFixedCost;
+  let finalMaxCost = maxBaseCost + additionalFixedCost;
+
+  // Round the final costs to the nearest multiple of 5
+  finalMinCost = Math.round(finalMinCost / 5) * 5;
+  finalMaxCost = Math.round(finalMaxCost / 5) * 5;
+
+  return { min: parseFloat(finalMinCost.toFixed(2)), max: parseFloat(finalMaxCost.toFixed(2)) };
 };

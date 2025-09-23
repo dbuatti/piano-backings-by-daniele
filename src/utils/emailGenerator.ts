@@ -175,16 +175,17 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
 export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  
+  // Use the new calculateRequestCost to get min/max
+  const { min: calculatedMinCost, max: calculatedMaxCost } = calculateRequestCost(request);
+  const minCost = calculatedMinCost.toFixed(2);
+  const maxCost = calculatedMaxCost.toFixed(2);
+  
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback payment reminder template");
-    return generateFallbackPaymentReminderEmail(request, trackCost);
+    return generateFallbackPaymentReminderEmail(request, calculatedMinCost); // Pass calculatedMinCost for consistency
   }
 
   try {
@@ -229,20 +230,22 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
       return emailData;
     } catch (parseError) {
       console.error('Error parsing Gemini response for payment reminder email:', parseError);
-      return generateFallbackPaymentReminderEmail(request, trackCost);
+      return generateFallbackPaymentReminderEmail(request, calculatedMinCost); // Pass calculatedMinCost
     }
   } catch (error) {
     console.error('Error generating payment reminder email copy with Gemini:', error);
-    return generateFallbackPaymentReminderEmail(request, trackCost);
+    return generateFallbackPaymentReminderEmail(request, calculatedMinCost); // Pass calculatedMinCost
   }
 };
 
 const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost: number) => {
   const firstName = request.name.split(' ')[0];
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  
+  // Use the new calculateRequestCost to get min/max
+  const { min: calculatedMinCost, max: calculatedMaxCost } = calculateRequestCost(request);
+  const minCost = calculatedMinCost.toFixed(2);
+  const maxCost = calculatedMaxCost.toFixed(2);
+  
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   return {
@@ -289,16 +292,17 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request);
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  
+  // Use the new calculateRequestCost to get min/max
+  const { min: calculatedMinCost, max: calculatedMaxCost } = calculateRequestCost(request);
+  const minCost = calculatedMinCost.toFixed(2);
+  const maxCost = calculatedMaxCost.toFixed(2);
+  
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback completion and payment reminder template");
-    return generateFallbackCompletionAndPaymentEmail(request, trackCost);
+    return generateFallbackCompletionAndPaymentEmail(request, calculatedMinCost); // Pass calculatedMinCost
   }
 
   try {
@@ -350,21 +354,23 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
       return emailData;
     } catch (parseError) {
       console.error('Error parsing Gemini response for completion and payment email:', parseError);
-      return generateFallbackCompletionAndPaymentEmail(request, trackCost);
+      return generateFallbackCompletionAndPaymentEmail(request, calculatedMinCost); // Pass calculatedMinCost
     }
   } catch (error) {
     console.error('Error generating completion and payment email copy with Gemini:', error);
-    return generateFallbackCompletionAndPaymentEmail(request, trackCost);
+    return generateFallbackCompletionAndPaymentEmail(request, calculatedMinCost); // Pass calculatedMinCost
   }
 };
 
 const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trackCost: number) => {
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  
+  // Use the new calculateRequestCost to get min/max
+  const { min: calculatedMinCost, max: calculatedMaxCost } = calculateRequestCost(request);
+  const minCost = calculatedMinCost.toFixed(2);
+  const maxCost = calculatedMaxCost.toFixed(2);
+  
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
   let trackAccessSection = '';

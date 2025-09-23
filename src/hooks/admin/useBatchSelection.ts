@@ -32,7 +32,8 @@ export const useBatchSelection = (filteredRequests: BackingRequest[]) => {
     let calculatedTotal = 0;
     
     selected.forEach(req => {
-      calculatedTotal += calculateRequestCost(req);
+      const { min, max } = calculateRequestCost(req); // Get min and max
+      calculatedTotal += (min + max) / 2; // Use average for total cost
     });
     
     setTotalCost(calculatedTotal);
