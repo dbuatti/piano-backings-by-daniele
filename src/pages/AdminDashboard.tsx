@@ -6,6 +6,7 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PricingMatrix from '@/components/PricingMatrix';
+import { useQuery } from '@tanstack/react-query';
 
 // Admin Components
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
@@ -24,12 +25,14 @@ import TestEmailNotification from './TestEmailNotification';
 import DropboxMonitor from './DropboxMonitor';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import RequestOwnershipManager from '@/components/RequestOwnershipManager';
+import AdminIssueReportsPage from './AdminIssueReportsPage'; // Import the new AdminIssueReportsPage
 
 import { 
   HardDrive,
   Database,
   MailIcon,
-  List
+  List,
+  AlertCircle // New icon for Issue Reports tab
 } from 'lucide-react';
 
 // Custom Hooks
@@ -86,6 +89,36 @@ const AdminDashboard = () => {
     openDeleteDialog, confirmDeleteRequest,
     openBatchDeleteDialog, confirmBatchDeleteRequests,
   } = useDeleteDialogs(requests, setRequests, selectedRequests);
+
+  // Fetch total issue reports count
+  const { data: totalIssueReports = 0, isLoading: isLoadingTotalIssues } = useQuery<number, Error>({
+    queryKey: ['totalIssueReports'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('issue_reports')
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isAdmin && authChecked,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch unread issue reports count
+  const { data: unreadIssueReports = 0, isLoading: isLoadingUnreadIssues } = useQuery<number, Error>({
+    queryKey: ['unreadIssueReportsCount'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('issue_reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_read', false);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: isAdmin && authChecked,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 10000, // Consider data stale after 10 seconds
+  });
 
 
   const checkAdminAccess = useCallback(async () => {
@@ -237,7 +270,11 @@ const AdminDashboard = () => {
 
             {/* Overview Tab Content */}
             <TabsContent value="overview">
-              <AdminStatsCards requests={requests} />
+              <AdminStatsCards 
+                requests={requests} 
+                totalIssueReports={totalIssueReports}
+                unreadIssueReports={unreadIssueReports}
+              />
               
               <AdminFiltersAndViews
                 searchTerm={searchTerm}
@@ -297,6 +334,7 @@ const AdminDashboard = () => {
             <TabsContent value="data-management" className="mt-6 space-y-6">
               <DataImporter />
               <RequestOwnershipManager />
+              <AdminIssueReportsPage /> {/* Render the Issue Reports page here */}
             </TabsContent>
 
             {/* Email Tools Tab Content */}

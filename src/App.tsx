@@ -20,7 +20,10 @@ import DropboxMonitor from "./pages/DropboxMonitor";
 import ClientTrackView from "./pages/ClientTrackView";
 import EmailGenerator from "./pages/EmailGenerator";
 import TestEmailNotification from "./pages/TestEmailNotification";
-import DataImporter from "./pages/DataImporter"; // Import the new DataImporter component
+import DataImporter from "./pages/DataImporter";
+import AdminIssueReportsPage from "./pages/AdminIssueReportsPage"; // Import the new AdminIssueReportsPage
+import ReportIssueButton from "./components/ReportIssueButton"; // Import the new ReportIssueButton
+import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice"; // Import the new UnreadIssueReportsNotice
 
 const queryClient = new QueryClient();
 
@@ -42,17 +45,20 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
+          <Route path="/admin/issue-reports" element={<AdminIssueReportsPage />} /> {/* Add the new route */}
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
           <Route path="/email-generator" element={<EmailGenerator />} />
           <Route path="/email-generator/:id" element={<EmailGenerator />} />
           <Route path="/test-email-notification" element={<TestEmailNotification />} />
-          <Route path="/data-importer" element={<DataImporter />} /> {/* Add the new route */}
+          <Route path="/data-importer" element={<DataImporter />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      <ReportIssueButton /> {/* Render the floating ReportIssueButton globally */}
+      <UnreadIssueReportsNotice /> {/* Render the floating UnreadIssueReportsNotice globally */}
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle } from "lucide-react"; // Import AlertCircle
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,7 +186,12 @@ const Header = () => {
                       Admin Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  {/* Removed direct links to Test Email and Import Data */}
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/issue-reports" onClick={() => setMobileMenuOpen(false)}>
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      Issue Reports
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -321,7 +326,17 @@ const Header = () => {
                           <Shield className="mr-3 h-5 w-5" />
                           Admin Dashboard
                         </Link>
-                        {/* Removed direct links to Test Email and Import Data */}
+                        <Link 
+                          to="/admin/issue-reports"
+                          className={cn(
+                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                            "text-white hover:bg-white/20"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <AlertCircle className="mr-3 h-5 w-5" />
+                          Issue Reports
+                        </Link>
                       </>
                     )}
                     
