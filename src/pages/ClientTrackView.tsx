@@ -511,7 +511,7 @@ const ClientTrackView = () => {
                     
                     {request.voice_memo ? (
                       <div>
-                        <p className className="text-sm text-gray-500 flex items-center">
+                        <p className="text-sm text-gray-500 flex items-center">
                           <FileAudio className="mr-1 h-4 w-4" /> Voice Memo
                         </p>
                         <a 
