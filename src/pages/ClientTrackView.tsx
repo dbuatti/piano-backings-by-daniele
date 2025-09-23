@@ -201,6 +201,8 @@ const ClientTrackView = () => {
   const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
   const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
 
+  const trackTypeDisplayRange = request.track_type ? getTrackTypeBaseDisplayRange(request.track_type) : null;
+
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
   return (
