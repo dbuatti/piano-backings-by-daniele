@@ -559,6 +559,20 @@ const FormPage = () => {
                 
                 <div className="space-y-4">
                   <div>
+                    <Label htmlFor="name" className="text-sm mb-1">Name</Label>
+                    <div className="relative">
+                      <Input 
+                        id="name" 
+                        name="name" 
+                        value={formData.name} 
+                        onChange={handleInputChange} 
+                        placeholder="Your full name"
+                        className="pl-8 py-2 text-sm"
+                      />
+                      <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                    </div>
+                  </div>
+                  <div>
                     <Label htmlFor="email" className="flex items-center text-sm mb-1">
                       Email <span className="text-red-500 ml-1">*</span>
                     </Label>
@@ -576,20 +590,6 @@ const FormPage = () => {
                       <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="name" className="text-sm mb-1">Name</Label>
-                    <div className="relative">
-                      <Input 
-                        id="name" 
-                        name="name" 
-                        value={formData.name} 
-                        onChange={handleInputChange} 
-                        placeholder="Your full name"
-                        className="pl-8 py-2 text-sm"
-                      />
-                      <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                    </div>
                   </div>
                 </div>
                 
@@ -782,14 +782,27 @@ const FormPage = () => {
                 )}
               </div>
 
-              {/* Section 4: Track Details */}
+              {/* Section 4: Materials */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">4</span>
-                  Track Details
+                  Materials
                 </h2>
                 
                 <div className="space-y-4">
+                  {/* Using the new FileInput component */}
+                  <FileInput
+                    id="sheetMusic"
+                    label="Please upload your sheet music as a PDF"
+                    icon={FileTextIcon}
+                    accept=".pdf"
+                    onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
+                    required // This 'required' prop is for visual indication, actual validation is in handleSubmit
+                    note="Make sure it's clear and in the right key"
+                    error={errors.sheetMusic} // Pass error prop
+                  />
+                  {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
+
                   <div>
                     <Label htmlFor="youtubeLink" className="flex items-center text-sm mb-1">
                       <LinkIcon className="mr-1" size={14} />
@@ -859,123 +872,118 @@ const FormPage = () => {
                     </div>
                     <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
                   </div>
-                  
-                  {/* Using the new FileInput component */}
-                  <FileInput
-                    id="sheetMusic"
-                    label="Please upload your sheet music as a PDF"
-                    icon={FileTextIcon}
-                    accept=".pdf"
-                    onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
-                    required // This 'required' prop is for visual indication, actual validation is in handleSubmit
-                    note="Make sure it's clear and in the right key"
-                    error={errors.sheetMusic} // Pass error prop
-                  />
-                  {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="trackPurpose" className="text-sm mb-1">This track is for...</Label>
-                      <div className="relative">
-                        <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
-                          <SelectTrigger className="pl-8 py-2 text-sm">
-                            <SelectValue placeholder="Select purpose" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
-                            <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
-                            <SelectItem value="melody-bash" className="text-sm">Note/melody bash</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Target className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                      </div>
+                </div>
+              </div>
+
+              {/* Section 5: Purpose */}
+              <div className="border-b border-gray-200 pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
+                  Purpose
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="trackPurpose" className="text-sm mb-1">This track is for...</Label>
+                    <div className="relative">
+                      <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose}>
+                        <SelectTrigger className="pl-8 py-2 text-sm">
+                          <SelectValue placeholder="Select purpose" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
+                          <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
+                          <SelectItem value="melody-bash" className="text-sm">Note/melody bash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Target className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
-                    
-                    {/* Multi-select for Backing Type */}
-                    <div>
-                      <h3 className="font-semibold mb-2 flex items-center text-sm">
-                        <MusicIcon className="mr-1" size={14} />
-                        What do you need? <span className="text-red-500 ml-1">*</span>
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Label htmlFor="backing-full-song" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                          <Card className={cn(
-                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                            "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                            errors.backingType && "border-red-500"
-                          )}>
-                            <Checkbox
-                              id="backing-full-song"
-                              checked={formData.backingType.includes('full-song')}
-                              onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
-                              className="mt-1 mr-3"
-                            />
-                            <div className="flex flex-col flex-1">
-                              <span className="font-bold text-sm text-[#1C0357]">Full Song Backing</span>
-                              <p className="text-xs text-gray-600 mt-1">Complete song accompaniment</p>
-                            </div>
-                          </Card>
-                        </Label>
-                        
-                        <Label htmlFor="backing-audition-cut" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                          <Card className={cn(
-                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                            "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                            errors.backingType && "border-red-500"
-                          )}>
-                            <Checkbox
-                              id="backing-audition-cut"
-                              checked={formData.backingType.includes('audition-cut')}
-                              onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
-                              className="mt-1 mr-3"
-                            />
-                            <div className="flex flex-col flex-1">
-                              <span className="font-bold text-sm text-[#1C0357]">Audition Cut Backing</span>
-                              <p className="text-xs text-gray-600 mt-1">Shortened version for auditions</p>
-                            </div>
-                          </Card>
-                        </Label>
-                        
-                        <Label htmlFor="backing-note-bash" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                          <Card className={cn(
-                            "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                            "hover:border-[#F538BC] hover:shadow-md",
-                            formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                            errors.backingType && "border-red-500"
-                          )}>
-                            <Checkbox
-                              id="backing-note-bash"
-                              checked={formData.backingType.includes('note-bash')}
-                              onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
-                              className="mt-1 mr-3"
-                            />
-                            <div className="flex flex-col flex-1">
-                              <span className="font-bold text-sm text-[#1C0357]">Note/Melody Bash</span>
-                              <p className="text-xs text-gray-600 mt-1">Focus on specific melodic lines</p>
-                            </div>
-                          </Card>
-                        </Label>
-                      </div>
-                      {errors.backingType && <p className="text-red-500 text-xs mt-1">{errors.backingType}</p>}
+                  </div>
+                  
+                  {/* Multi-select for Backing Type */}
+                  <div>
+                    <h3 className="font-semibold mb-2 flex items-center text-sm">
+                      <MusicIcon className="mr-1" size={14} />
+                      What do you need? <span className="text-red-500 ml-1">*</span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Label htmlFor="backing-full-song" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <Card className={cn(
+                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                          errors.backingType && "border-red-500"
+                        )}>
+                          <Checkbox
+                            id="backing-full-song"
+                            checked={formData.backingType.includes('full-song')}
+                            onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex flex-col flex-1">
+                            <span className="font-bold text-sm text-[#1C0357]">Full Song Backing</span>
+                            <p className="text-xs text-gray-600 mt-1">Complete song accompaniment</p>
+                          </div>
+                        </Card>
+                      </Label>
+                      
+                      <Label htmlFor="backing-audition-cut" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <Card className={cn(
+                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                          errors.backingType && "border-red-500"
+                        )}>
+                          <Checkbox
+                            id="backing-audition-cut"
+                            checked={formData.backingType.includes('audition-cut')}
+                            onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex flex-col flex-1">
+                            <span className="font-bold text-sm text-[#1C0357]">Audition Cut Backing</span>
+                            <p className="text-xs text-gray-600 mt-1">Shortened version for auditions</p>
+                          </div>
+                        </Card>
+                      </Label>
+                      
+                      <Label htmlFor="backing-note-bash" className="flex flex-col items-center justify-center cursor-pointer w-full">
+                        <Card className={cn(
+                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
+                          "hover:border-[#F538BC] hover:shadow-md",
+                          formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
+                          errors.backingType && "border-red-500"
+                        )}>
+                          <Checkbox
+                            id="backing-note-bash"
+                            checked={formData.backingType.includes('note-bash')}
+                            onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex flex-col flex-1">
+                            <span className="font-bold text-sm text-[#1C0357]">Note/Melody Bash</span>
+                            <p className="text-xs text-gray-600 mt-1">Focus on specific melodic lines</p>
+                          </div>
+                        </Card>
+                      </Label>
                     </div>
+                    {errors.backingType && <p className="text-red-500 text-xs mt-1">{errors.backingType}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Section 5: Additional Services */}
+              {/* Section 6: Additional Services & Timeline */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
-                  Additional Services
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">6</span>
+                  Additional Services & Timeline
                 </h2>
                 
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="deliveryDate" className="flex items-center text-sm mb-1">
                       <CalendarIcon className="mr-1" size={14} />
-                      When do you need your track for?
+                      When do you need your track by?
                     </Label>
                     <div className="relative">
                       <Input 
@@ -1087,7 +1095,7 @@ const FormPage = () => {
                   <div>
                     <Label htmlFor="specialRequests" className="text-sm mb-1 flex items-center">
                       <MessageSquare className="mr-1" size={14} />
-                      Special Requests
+                      Special Requests / Notes
                     </Label>
                     <Textarea
                       id="specialRequests"
