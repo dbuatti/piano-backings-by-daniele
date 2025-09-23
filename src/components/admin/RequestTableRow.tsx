@@ -231,7 +231,15 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       <TableCell>
         <div className="flex items-center font-medium">
           <DollarSign className="w-4 h-4 mr-1" />
-          <span>{calculateRequestCost(request).totalCost.toFixed(2)}</span>
+          <span>
+            {(() => {
+              const calculatedCost = calculateRequestCost(request);
+              if (calculatedCost && typeof calculatedCost.totalCost === 'number') {
+                return calculatedCost.totalCost.toFixed(2);
+              }
+              return 'N/A';
+            })()}
+          </span>
         </div>
       </TableCell>
       <TableCell>
