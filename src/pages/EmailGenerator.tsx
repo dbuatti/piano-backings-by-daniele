@@ -88,7 +88,7 @@ const EmailGenerator = () => {
           song_title: requestData.song_title || '',
           musical_or_artist: requestData.musical_or_artist || '',
           track_purpose: requestData.track_purpose || 'personal-practise',
-          backing_type: Array.isArray(requestData.backing_type) ? requestData.backing_type : (requestData.backing_type ? [requestData.backing_type] : []),
+          backing_type: Array.isArray(requestData.backing_type) ? requestData.backing_type : (requestData.backing_type ? [request.backing_type] : []),
           delivery_date: requestData.delivery_date || '',
           special_requests: requestData.special_requests || '',
           song_key: requestData.song_key || 'C Major (0)',
@@ -155,7 +155,7 @@ const EmailGenerator = () => {
       let result;
       const requestWithCost: BackingRequest = {
         ...currentRequest,
-        cost: calculateRequestCost(currentRequest) // Ensure cost is calculated
+        cost: calculateRequestCost(currentRequest).totalCost // Ensure cost is calculated
       };
 
       if (selectedTemplateType === 'completion') {
@@ -424,7 +424,7 @@ const EmailGenerator = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {keyOptions.map((key) => (
-                          <SelectItem key={key.value} value={key.value}>
+                          <SelectItem key={key.value} value={key.value} className="text-sm">
                             {key.label}
                           </SelectItem>
                         ))}

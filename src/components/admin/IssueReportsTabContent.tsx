@@ -145,7 +145,7 @@ const IssueReportsTabContent: React.FC = () => {
           <IssueReportsTable
             reports={reports || []}
             isLoading={isLoading}
-            toggleReadStatus={toggleReadStatusMutation.mutate}
+            toggleReadStatus={(id, is_read) => toggleReadStatusMutation.mutate({ id, is_read })}
             openDeleteDialog={openDeleteDialog}
             deleteDialogOpen={deleteDialogOpen}
             setDeleteDialogOpen={setDeleteDialogOpen}

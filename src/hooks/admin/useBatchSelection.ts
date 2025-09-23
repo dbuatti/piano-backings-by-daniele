@@ -32,7 +32,7 @@ export const useBatchSelection = (filteredRequests: BackingRequest[]) => {
     let calculatedTotal = 0;
     
     selected.forEach(req => {
-      calculatedTotal += calculateRequestCost(req);
+      calculatedTotal += calculateRequestCost(req).totalCost;
     });
     
     setTotalCost(calculatedTotal);

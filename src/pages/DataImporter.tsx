@@ -195,7 +195,7 @@ const DataImporter = () => {
       };
       
       // Calculate cost using the utility function
-      parsedRequest.cost = calculateRequestCost(parsedRequest);
+      parsedRequest.cost = calculateRequestCost(parsedRequest).totalCost;
 
       records.push(parsedRequest);
     }
