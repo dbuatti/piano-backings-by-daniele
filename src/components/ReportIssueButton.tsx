@@ -107,11 +107,11 @@ const ReportIssueButton: React.FC = () => {
     <>
       <Button
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-6 right-6 rounded-full p-4 shadow-lg bg-[#F538BC] hover:bg-[#F538BC]/90 text-white z-50"
-        size="icon"
+        className="fixed bottom-6 right-6 shadow-lg bg-[#F538BC] hover:bg-[#F538BC]/90 text-white z-50 rounded-lg"
+        // Removed size="icon" to allow text
       >
-        <MessageSquare className="h-5 w-5" />
-        <span className="sr-only">Report Issue</span>
+        <MessageSquare className="mr-2 h-5 w-5" />
+        Report an Issue
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
