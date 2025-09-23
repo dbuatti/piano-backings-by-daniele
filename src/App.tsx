@@ -56,9 +56,10 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        {/* Move these components INSIDE the BrowserRouter */}
+        <ReportIssueButton />
+        <UnreadIssueReportsNotice />
       </BrowserRouter>
-      <ReportIssueButton /> {/* Render the floating ReportIssueButton globally */}
-      <UnreadIssueReportsNotice /> {/* Render the floating UnreadIssueReportsNotice globally */}
     </TooltipProvider>
   </QueryClientProvider>
 );
