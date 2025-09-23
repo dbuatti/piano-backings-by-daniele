@@ -85,3 +85,21 @@ export const calculateRequestCost = (request: any) => {
     serviceCosts,
   };
 };
+
+/**
+ * Returns the display range for a given track type.
+ * @param trackType The type of track (e.g., 'quick', 'one-take', 'polished').
+ * @returns A string representing the price range (e.g., "$5 - $10") or null if not applicable.
+ */
+export const getTrackTypeBaseDisplayRange = (trackType: string): string | null => {
+  switch (trackType) {
+    case 'quick':
+      return "$5 - $10";
+    case 'one-take':
+      return "$10 - $20";
+    case 'polished':
+      return "$15 - $35";
+    default:
+      return null;
+  }
+};

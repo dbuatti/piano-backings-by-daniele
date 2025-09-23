@@ -29,7 +29,7 @@ import {
   FileAudio,
   DollarSign // Added DollarSign icon
 } from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing';
+import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 
 const ClientTrackView = () => {
@@ -193,13 +193,8 @@ const ClientTrackView = () => {
   }
 
   const costBreakdown = calculateRequestCost(request);
-  const baseTotalCost = costBreakdown.totalCost;
-  
-  // Calculate the range for display
-  const rawMinCost = baseTotalCost * 0.5;
-  const rawMaxCost = baseTotalCost * 1.5;
-  const minCost = (Math.round(rawMinCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
-  const maxCost = (Math.round(rawMaxCost / 5) * 5).toFixed(2); // Round to nearest multiple of 5
+  const estimatedCost = costBreakdown.totalCost;
+  const trackTypeDisplayRange = request.track_type ? getTrackTypeBaseDisplayRange(request.track_type) : null;
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
@@ -386,8 +381,13 @@ const ClientTrackView = () => {
                   <div>
                     <p className="mb-2">Estimated Cost for Your Track:</p>
                     <div className="text-3xl font-bold mb-4">
-                      ${minCost} - ${maxCost}
+                      ${estimatedCost.toFixed(2)}
                     </div>
+                    {trackTypeDisplayRange && (
+                      <p className="text-sm opacity-90 mb-2">
+                        Base cost for {request.track_type?.replace('-', ' ')}: {trackTypeDisplayRange}
+                      </p>
+                    )}
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
                     </p>
