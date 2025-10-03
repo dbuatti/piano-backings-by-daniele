@@ -50,13 +50,9 @@ const RequestDetails = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
 
-  // State for ownership management
-  const [searchUserEmail, setSearchUserEmail] = useState('');
-  const [foundUsersForAssignment, setFoundUsersForAssignment] = useState<UserProfile[]>([]);
-  const [currentOwnerProfile, setCurrentOwnerProfile] = useState<UserProfile | null>(null);
-  const [assigningUser, setAssigningUser] = useState(false);
-  const [searchingUsers, setSearchingUsers] = useState(false); // New state for search loading
+  // State for ownership management (removed from here, now in RequestOwnershipTabContent)
   const [ownershipError, setOwnershipError] = useState<any>(null);
+
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -97,11 +93,12 @@ const RequestDetails = () => {
       
       setRequest(data);
       
-      if (data.user_id) {
-        await fetchCurrentOwnerProfile(data.user_id, data.email);
-      } else {
-        setCurrentOwnerProfile(null);
-      }
+      // Removed current owner profile fetch as it's no longer needed here
+      // if (data.user_id) {
+      //   await fetchCurrentOwnerProfile(data.user_id, data.email);
+      // } else {
+      //   setCurrentOwnerProfile(null);
+      // }
 
     } catch (error: any) {
       toast({
@@ -115,27 +112,28 @@ const RequestDetails = () => {
     }
   };
 
-  const fetchCurrentOwnerProfile = async (userId: string, requestEmail: string) => {
-    try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .eq('id', userId)
-        .single();
+  // Removed fetchCurrentOwnerProfile as it's no longer needed here
+  // const fetchCurrentOwnerProfile = async (userId: string, requestEmail: string) => {
+  //   try {
+  //     const { data: profileData, error: profileError } = await supabase
+  //       .from('profiles')
+  //       .select('id, first_name, last_name')
+  //       .eq('id', userId)
+  //       .single();
       
-      if (profileError) throw profileError;
+  //     if (profileError) throw profileError;
       
-      setCurrentOwnerProfile({
-        id: profileData.id,
-        email: requestEmail,
-        first_name: profileData.first_name,
-        last_name: profileData.last_name,
-      });
-    } catch (error: any) {
-      console.error('Error fetching current owner profile:', error);
-      setCurrentOwnerProfile(null);
-    }
-  };
+  //     setCurrentOwnerProfile({
+  //       id: profileData.id,
+  //       email: requestEmail,
+  //       first_name: profileData.first_name,
+  //       last_name: profileData.last_name,
+  //     });
+  //   } catch (error: any) {
+  //     console.error('Error fetching current owner profile:', error);
+  //     setCurrentOwnerProfile(null);
+  //   }
+  // };
 
   const triggerDropboxAutomation = async () => {
     setIsTriggeringDropbox(true);
@@ -204,124 +202,10 @@ const RequestDetails = () => {
     }
   };
 
-  // Ownership Management Functions
-  const handleSearchUsersForAssignment = async () => {
-    setSearchingUsers(true); // Set searching state
-    setOwnershipError(null);
-    setFoundUsersForAssignment([]);
-
-    if (!searchUserEmail.trim()) {
-      toast({
-        title: "Search Term Required",
-        description: "Please enter an email address to search for users.",
-        variant: "destructive",
-      });
-      setSearchingUsers(false);
-      return;
-    }
-
-    try {
-      const { data: authUsers, error: authError } = await supabase.rpc('get_users_by_email', {
-        p_email: searchUserEmail.toLowerCase()
-      });
-
-      if (authError) {
-        console.error('Error searching auth users:', authError);
-        throw new Error(`Failed to search users: ${authError.message}`);
-      }
-
-      if (authUsers && authUsers.length > 0) {
-        const profiles: UserProfile[] = authUsers.map((user: any) => ({
-          id: user.id,
-          email: user.email,
-          first_name: user.raw_user_meta_data?.first_name,
-          last_name: user.raw_user_meta_data?.last_name,
-        }));
-        setFoundUsersForAssignment(profiles);
-      } else {
-        toast({
-          title: "No Users Found",
-          description: `No registered users found with email containing "${searchUserEmail}".`,
-        });
-      }
-    } catch (err: any) {
-      console.error('Error searching users for assignment:', err);
-      setOwnershipError(err);
-      toast({
-        title: "Error",
-        description: `Failed to search for users: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setSearchingUsers(false); // Clear searching state
-    }
-  };
-
-  const handleAssignOwner = async (userIdToAssign: string, userEmailToAssign: string) => {
-    setAssigningUser(true);
-    setOwnershipError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('backing_requests')
-        .update({ user_id: userIdToAssign, email: userEmailToAssign })
-        .eq('id', id);
-
-      if (updateError) {
-        console.error('Error assigning owner:', updateError);
-        throw new Error(`Failed to assign owner: ${updateError.message}`);
-      }
-
-      toast({
-        title: "Owner Assigned",
-        description: `Request successfully linked to ${userEmailToAssign}.`,
-      });
-      setFoundUsersForAssignment([]);
-      setSearchUserEmail('');
-      fetchRequest();
-    } catch (err: any) {
-      console.error('Error assigning owner:', err);
-      setOwnershipError(err);
-      toast({
-        title: "Error",
-        description: `Failed to assign owner: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setAssigningUser(false);
-    }
-  };
-
-  const handleUnlinkOwner = async () => {
-    setAssigningUser(true);
-    setOwnershipError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('backing_requests')
-        .update({ user_id: null })
-        .eq('id', id);
-
-      if (updateError) {
-        console.error('Error unlinking owner:', updateError);
-        throw new Error(`Failed to unlink owner: ${updateError.message}`);
-      }
-
-      toast({
-        title: "Owner Unlinked",
-        description: "Request successfully unlinked from its owner.",
-      });
-      fetchRequest();
-    } catch (err: any) {
-      console.error('Error unlinking owner:', err);
-      setOwnershipError(err);
-      toast({
-        title: "Error",
-        description: `Failed to unlink owner: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setAssigningUser(false);
-    }
-  };
+  // Removed Ownership Management Functions from here
+  // const handleSearchUsersForAssignment = async () => { ... }
+  // const handleAssignOwner = async (userIdToAssign: string, userEmailToAssign: string) => { ... }
+  // const handleUnlinkOwner = async () => { ... }
 
 
   if (!isAdmin) {
@@ -491,117 +375,7 @@ const RequestDetails = () => {
           </CardContent>
         </Card>
         
-        {/* New Section: Manage Track Ownership */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <UserPlus className="mr-2 h-5 w-5" />
-              Manage Track Ownership
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {ownershipError && (
-              <div className="mb-4">
-                <ErrorDisplay error={ownershipError} title="Ownership Management Error" />
-              </div>
-            )}
-
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Current Owner</h3>
-                {request.user_id && currentOwnerProfile ? (
-                  <div className="flex items-center justify-between p-3 border rounded-md bg-green-50 border-green-300">
-                    <div className="flex items-center">
-                      <User className="mr-2 h-4 w-4 text-green-600" />
-                      <span className="font-medium text-sm">{currentOwnerProfile.email}</span>
-                      {currentOwnerProfile.first_name && (
-                        <span className="ml-2 text-xs text-gray-500">
-                          ({currentOwnerProfile.first_name} {currentOwnerProfile.last_name})
-                        </span>
-                      )}
-                    </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={handleUnlinkOwner} 
-                      disabled={assigningUser}
-                    >
-                      {assigningUser ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlink Owner'}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">This track is not currently linked to a registered user.</p>
-                )}
-              </div>
-
-              <Separator /> {/* Visual separator */}
-
-              <div className="pt-4">
-                <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Assign New Owner</h3>
-                <Label htmlFor="search-user-email" className="text-sm mb-1">Search User by Email</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    id="search-user-email"
-                    type="email"
-                    placeholder="Enter user email to search"
-                    value={searchUserEmail}
-                    onChange={(e) => setSearchUserEmail(e.target.value)}
-                    className="flex-1"
-                    disabled={searchingUsers || assigningUser}
-                  />
-                  <Button onClick={handleSearchUsersForAssignment} disabled={searchingUsers || assigningUser}>
-                    {searchingUsers ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Search
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {foundUsersForAssignment.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <h4 className="font-semibold text-sm text-gray-700">Select User to Assign:</h4>
-                    {foundUsersForAssignment.map(user => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-3 border rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center">
-                          <User className="mr-2 h-4 w-4 text-gray-600" />
-                          <span className="font-medium text-sm">{user.email}</span>
-                          {user.first_name && (
-                            <span className="ml-2 text-xs text-gray-500">
-                              ({user.first_name} {user.last_name})
-                            </span>
-                          )}
-                        </div>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleAssignOwner(user.id, user.email)} 
-                          disabled={assigningUser}
-                        >
-                          {assigningUser ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Assign'}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {searchingUsers && foundUsersForAssignment.length === 0 && searchUserEmail.trim() && (
-                  <p className="text-center text-gray-500 text-sm mt-4">Searching for users...</p>
-                )}
-                {!searchingUsers && foundUsersForAssignment.length === 0 && searchUserEmail.trim() && (
-                  <p className="text-center text-gray-500 text-sm mt-4">No users found matching "{searchUserEmail}".</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Removed Manage Track Ownership section from here */}
         
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">

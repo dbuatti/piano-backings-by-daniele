@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Search, User, Link, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import ErrorDisplay from './ErrorDisplay';
+import ErrorDisplay from '@/components/ErrorDisplay';
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from 'date-fns';
 
@@ -26,7 +26,7 @@ interface BackingRequest {
   created_at: string;
 }
 
-const RequestOwnershipManager: React.FC = () => {
+const RequestOwnershipTabContent: React.FC = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [foundUsers, setFoundUsers] = useState<UserProfile[]>([]);
@@ -353,4 +353,4 @@ const RequestOwnershipManager: React.FC = () => {
   );
 };
 
-export default RequestOwnershipManager;
+export default RequestOwnershipTabContent;

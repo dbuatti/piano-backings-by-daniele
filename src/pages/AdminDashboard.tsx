@@ -25,7 +25,7 @@ import TestEmail from './TestEmail';
 import TestEmailNotification from './TestEmailNotification';
 import DropboxMonitor from './DropboxMonitor';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
-import RequestOwnershipManager from '@/components/RequestOwnershipManager';
+import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent'; // Import the renamed component
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent'; // Import the new IssueReportsTabContent
 
 import { 
@@ -35,7 +35,8 @@ import {
   List,
   AlertCircle, // New icon for Issue Reports tab
   Settings, // Icon for App Settings
-  Plane // Icon for Holiday Mode
+  Plane, // Icon for Holiday Mode
+  UserPlus // Icon for Request Ownership
 } from 'lucide-react';
 
 // Custom Hooks
@@ -275,7 +276,7 @@ const AdminDashboard = () => {
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-6"> {/* Increased grid-cols to 6 */}
+            <TabsList className="grid w-full grid-cols-7"> {/* Increased grid-cols to 7 */}
               <TabsTrigger value="overview" className="flex items-center">
                 <List className="mr-2 h-4 w-4" /> Overview
               </TabsTrigger>
@@ -284,6 +285,9 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="data-management" className="flex items-center">
                 <Database className="mr-2 h-4 w-4" /> Data Management
+              </TabsTrigger>
+              <TabsTrigger value="request-ownership" className="flex items-center"> {/* New tab for Request Ownership */}
+                <UserPlus className="mr-2 h-4 w-4" /> Ownership
               </TabsTrigger>
               <TabsTrigger value="email-tools" className="flex items-center">
                 <MailIcon className="mr-2 h-4 w-4" /> Email Tools
@@ -361,8 +365,12 @@ const AdminDashboard = () => {
             {/* Data Management Tab Content */}
             <TabsContent value="data-management" className="mt-6 space-y-6">
               <DataImporter />
-              <RequestOwnershipManager />
-              {/* AdminIssueReportsPage is now in its own tab */}
+              {/* RequestOwnershipManager is now in its own tab */}
+            </TabsContent>
+
+            {/* New Request Ownership Tab Content */}
+            <TabsContent value="request-ownership" className="mt-6">
+              <RequestOwnershipTabContent />
             </TabsContent>
 
             {/* Email Tools Tab Content */}
