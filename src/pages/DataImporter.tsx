@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Upload, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { calculateRequestCost } from '@/utils/pricing';
+import { cn } from '@/lib/utils'; // Import cn for conditional classNames
 
 interface ParsedRequest {
   email: string;
@@ -306,45 +307,64 @@ const DataImporter = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-6">
-            <p className="mb-4">
-              Paste the raw data from your Google Sheet below. Make sure to include the header row.
-              The data should be comma-separated (CSV).
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-bold text-[#1C0357] mb-2 flex items-center">
+              <FileText className="mr-2 h-5 w-5" />
+              How to Import Data
+            </h3>
+            <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+              <li>Open your Google Sheet containing past backing requests.</li>
+              <li>Select all the data, including the header row.</li>
+              <li>Copy the selected data (Ctrl+C or Cmd+C).</li>
+              <li>Paste the raw data into the text area below.</li>
+              <li>Click "Start Import".</li>
+            </ol>
+            <p className="mt-4 text-sm text-gray-600">
+              <strong>Important:</strong> This tool assumes past orders are `completed` and `paid`.
+              Ensure your sheet has columns like "Email Address", "Song Title", "Musical or artist", etc.
             </p>
-            <p className="text-sm text-gray-600 mb-4">
-              <strong>Important:</strong> This tool will attempt to map your sheet columns to the app's database fields.
-              It assumes past orders are `completed` and `paid`.
-            </p>
-            
-            <Label htmlFor="raw-data" className="text-sm font-medium">Paste Google Sheet Data Here</Label>
-            <Textarea
-              id="raw-data"
-              value={rawData}
-              onChange={(e) => setRawData(e.target.value)}
-              rows={15}
-              placeholder="Paste your comma-separated Google Sheet data here, including headers..."
-              className="mt-2 font-mono text-sm"
-              disabled={isImporting}
-            />
-            
-            <Button 
-              onClick={handleImport}
-              disabled={isImporting || !rawData.trim()}
-              className="mt-4 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-12 px-6 w-full"
-            >
-              {isImporting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importing Data...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-5 w-5" />
-                  Start Import
-                </>
-              )}
-            </Button>
+            <div className="mt-4 p-3 bg-white border rounded-md font-mono text-xs text-gray-800 overflow-x-auto">
+              <p className="font-bold mb-1">Example CSV Format:</p>
+              <pre className="whitespace-pre-wrap">
+                Email Address,Name,Song Title,Musical or artist,When do you need your track for?,What do you need?,Additional Services
+                client1@example.com,John Doe,Song A,Artist X,2023-01-15,"full-song, audition-cut",rush-order
+                client2@example.com,Jane Smith,Song B,Musical Y,2023-02-20,note-bash,complex-songs
+              </pre>
+            </div>
           </div>
+            
+          <Label htmlFor="raw-data" className="text-sm font-medium">Paste Google Sheet Data Here</Label>
+          <Textarea
+            id="raw-data"
+            value={rawData}
+            onChange={(e) => setRawData(e.target.value)}
+            rows={15}
+            placeholder="Paste your comma-separated Google Sheet data here, including headers..."
+            className={cn(
+              "mt-2 font-mono text-sm",
+              rawData.trim() === '' ? "border-gray-300" : "border-[#1C0357]",
+              isImporting && "opacity-70 cursor-not-allowed"
+            )}
+            disabled={isImporting}
+          />
+          
+          <Button 
+            onClick={handleImport}
+            disabled={isImporting || !rawData.trim()}
+            className="mt-4 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-12 px-6 w-full"
+          >
+            {isImporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing Data...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-5 w-5" />
+                Start Import
+              </>
+            )}
+          </Button>
           
           {error && (
             <div className="mt-6">
