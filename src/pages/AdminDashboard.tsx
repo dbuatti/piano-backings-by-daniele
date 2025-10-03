@@ -17,6 +17,7 @@ import RequestsCalendar from '@/components/admin/RequestsCalendar';
 import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
 import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog';
 import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs';
+import HolidayModeSettings from '@/components/admin/HolidayModeSettings'; // Import new component
 
 // Integrated Admin Pages/Tools
 import DataImporter from './DataImporter';
@@ -32,7 +33,9 @@ import {
   Database,
   MailIcon,
   List,
-  AlertCircle // New icon for Issue Reports tab
+  AlertCircle, // New icon for Issue Reports tab
+  Settings, // Icon for App Settings
+  Plane // Icon for Holiday Mode
 } from 'lucide-react';
 
 // Custom Hooks
@@ -272,7 +275,7 @@ const AdminDashboard = () => {
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5"> {/* Increased grid-cols to 5 */}
+            <TabsList className="grid w-full grid-cols-6"> {/* Increased grid-cols to 6 */}
               <TabsTrigger value="overview" className="flex items-center">
                 <List className="mr-2 h-4 w-4" /> Overview
               </TabsTrigger>
@@ -285,8 +288,11 @@ const AdminDashboard = () => {
               <TabsTrigger value="email-tools" className="flex items-center">
                 <MailIcon className="mr-2 h-4 w-4" /> Email Tools
               </TabsTrigger>
-              <TabsTrigger value="issue-reports" className="flex items-center"> {/* New tab for Issue Reports */}
+              <TabsTrigger value="issue-reports" className="flex items-center">
                 <AlertCircle className="mr-2 h-4 w-4" /> Issue Reports
+              </TabsTrigger>
+              <TabsTrigger value="app-settings" className="flex items-center"> {/* New tab */}
+                <Settings className="mr-2 h-4 w-4" /> App Settings
               </TabsTrigger>
             </TabsList>
 
@@ -371,6 +377,11 @@ const AdminDashboard = () => {
             {/* New Issue Reports Tab Content */}
             <TabsContent value="issue-reports" className="mt-6">
               <IssueReportsTabContent /> {/* Render the Issue Reports page here */}
+            </TabsContent>
+
+            {/* New App Settings Tab Content */}
+            <TabsContent value="app-settings" className="mt-6">
+              <HolidayModeSettings /> {/* Render the new HolidayModeSettings component */}
             </TabsContent>
           </Tabs>
           

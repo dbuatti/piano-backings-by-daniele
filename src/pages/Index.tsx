@@ -1,15 +1,18 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit } from "lucide-react";
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit, Plane, Loader2 } from "lucide-react"; // Import Loader2
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
+import { format } from 'date-fns';
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const { isHolidayModeActive, holidayReturnDate, isLoading: isLoadingHolidayMode } = useHolidayMode(); // Use the hook
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -34,6 +37,22 @@ const Index = () => {
     };
   }, []);
 
+  const orderButtonContent = isHolidayModeActive ? (
+    <span className="flex items-center">
+      <Plane className="mr-2 h-5 w-5" />
+      Holiday Mode Active
+    </span>
+  ) : (
+    <span className="flex items-center">
+      <Music className="mr-2 h-5 w-5" />
+      Order Custom Track
+    </span>
+  );
+
+  const holidayMessage = holidayReturnDate
+    ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}.`
+    : `We're currently on holiday.`;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -43,11 +62,27 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-[#1C0357]">Professional Piano Backing Tracks</h1>
           <p className="text-xl md:text-2xl font-light text-[#1C0357]/90 mb-8">For Musicals, Auditions & Performances</p>
-          <Link to="/form-page">
-            <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3">
-              Order Custom Track
+          
+          {isLoadingHolidayMode ? (
+            <Button disabled className="bg-[#1C0357] text-white text-lg px-8 py-3">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
             </Button>
-          </Link>
+          ) : (
+            <Link to="/form-page">
+              <Button 
+                className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
+                disabled={isHolidayModeActive}
+              >
+                {orderButtonContent}
+              </Button>
+            </Link>
+          )}
+
+          {isHolidayModeActive && (
+            <p className="mt-4 text-red-600 font-semibold text-lg">
+              {holidayMessage} New orders will be processed upon our return.
+            </p>
+          )}
         </div>
       </section>
 
@@ -96,6 +131,7 @@ const Index = () => {
                   variant="ghost" 
                   size="lg" 
                   className="bg-transparent border border-white text-white hover:bg-white/10 text-lg px-8 py-3"
+                  disabled={isHolidayModeActive} // Disable if holiday mode is active
                 >
                   Order Track Anonymously
                 </Button>
@@ -160,7 +196,7 @@ const Index = () => {
                   </p>
                 </div>
                 
-                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-4">
                     3
                   </div>

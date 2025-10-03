@@ -23,6 +23,7 @@ import TestEmailNotification from "./pages/TestEmailNotification";
 import DataImporter from "./pages/DataImporter";
 import ReportIssueButton from "./components/ReportIssueButton";
 import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice";
+import HolidayModeBanner from "./components/HolidayModeBanner"; // Import HolidayModeBanner
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <HolidayModeBanner /> {/* Render the HolidayModeBanner here */}
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/form-page" element={<FormPage />} />
