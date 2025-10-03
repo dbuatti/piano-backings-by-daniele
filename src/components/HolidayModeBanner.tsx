@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useHolidayMode } from '@/hooks/useHolidayMode';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Plane, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -41,8 +40,8 @@ const HolidayModeBanner: React.FC = () => {
   }
 
   const returnDateMessage = holidayReturnDate
-    ? `We'll be back on ${format(holidayReturnDate, 'MMMM d, yyyy')} to continue tracks.`
-    : `We'll be back soon to continue tracks.`;
+    ? `I'll be back on ${format(holidayReturnDate, 'MMMM d, yyyy')} to continue tracks.`
+    : `I'll be back soon to continue tracks.`;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4">
@@ -57,13 +56,13 @@ const HolidayModeBanner: React.FC = () => {
           <span className="sr-only">Dismiss</span>
         </Button>
 
-        <Alert className="bg-transparent border-none text-black flex flex-col items-center justify-center p-0">
+        <div className="flex flex-col items-center justify-center p-0">
           <Plane className="h-12 w-12 md:h-16 md:w-16 mb-4 text-[#F538BC] flex-shrink-0" />
-          <AlertTitle className="text-3xl md:text-5xl font-extrabold tracking-wide mb-3 text-[#1C0357]">Holiday Mode Active!</AlertTitle>
-          <AlertDescription className="text-lg md:text-xl font-medium tracking-wide text-gray-700">
-            We're currently on holiday. {returnDateMessage} Thank you for your understanding!
-          </AlertDescription>
-        </Alert>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-wide mb-3 text-[#1C0357]">Daniele is on Holiday!</h2>
+          <p className="text-lg md:text-xl font-medium tracking-wide text-gray-700">
+            I'm currently taking a break. {returnDateMessage} Thank you for your understanding!
+          </p>
+        </div>
         <CardContent className="mt-6 p-0">
           <Button 
             onClick={() => setIsDismissed(true)}
