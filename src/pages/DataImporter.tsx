@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { calculateRequestCost } from '@/utils/pricing';
 import { cn } from '@/lib/utils'; // Import cn for conditional classNames
@@ -21,14 +21,15 @@ interface ParsedRequest {
   track_purpose?: string;
   delivery_date?: string;
   special_requests?: string;
-  backing_type?: string[]; // Changed to array
+  backing_type?: string[];
   additional_services?: string[];
   track_type?: string;
   song_key?: string;
   different_key?: string;
   key_for_track?: string;
   cost?: number;
-  additional_links?: string; // Added new field
+  additional_links?: string;
+  created_at?: string; // Added created_at for explicit import date
 }
 
 const DataImporter = () => {
@@ -73,40 +74,61 @@ const DataImporter = () => {
       throw new Error('No data found. Please paste header and at least one row.');
     }
 
-    // Use the robust parser for headers
     const rawHeaders = parseCSVLine(lines[0]);
     const headersMap: { [key: string]: string } = {
       'Email Address': 'email',
+      'Email': 'email', // Alternative
       'Name': 'name',
+      'Client Name': 'name', // Alternative
       'Song Title': 'song_title',
       'Musical or artist': 'musical_or_artist',
-      'Please upload your sheet music as a PDF': 'sheet_music_url',
-      'Voice Memo (optional)': 'voice_memo',
+      'Musical/Artist': 'musical_or_artist', // Alternative
+      'Sheet Music URL': 'sheet_music_url', // Explicit URL field
+      'Please upload your sheet music as a PDF': 'sheet_music_url', // Old form field
+      'Voice Memo URL': 'voice_memo', // Explicit URL field
+      'Voice Memo (optional)': 'voice_memo', // Old form field
       'YouTube URL for tempo reference': 'youtube_link',
+      'YouTube Link': 'youtube_link', // Alternative
       'Is there anything else you\'d like to add?': 'special_requests',
-      'Additional links?': 'additional_links', // Mapped to the new field
+      'Special Requests': 'special_requests', // Alternative
+      'Additional links?': 'additional_links',
+      'Additional Links': 'additional_links', // Alternative
       'When do you need your track for?': 'delivery_date',
+      'Delivery Date': 'delivery_date', // Alternative
       'This track is for...': 'track_purpose',
-      'What do you need?': 'backing_type',
+      'Track Purpose': 'track_purpose', // Alternative
+      'What do you need?': 'backing_type', // Old form field
+      'Backing Type': 'backing_type', // Alternative
       'Which type of backing track do you need?': 'backing_type_alt', // Alternative for backing_type
       'Additional Services': 'additional_services',
       'What key is your song in? (Don\'t worry if you\'re unsure)': 'song_key',
+      'Song Key': 'song_key', // Alternative
       'Do you require it in a different key?': 'different_key',
-      'Which key?': 'key_for_track', // Added key_for_track
-      'Which type of backing track do you need? (Rough Cut)': 'track_type', // Assuming this is the header for track_type
+      'Different Key': 'different_key', // Alternative
+      'Which key?': 'key_for_track',
+      'Key for Track': 'key_for_track', // Alternative
+      'Which type of backing track do you need? (Rough Cut)': 'track_type', // Old form field
+      'Track Type': 'track_type', // Alternative
+      'Order Date': 'created_at', // Explicit created_at field
     };
 
-    const mappedHeaders = rawHeaders.map(h => headersMap[h] || h);
+    const mappedHeaders = rawHeaders.map(h => headersMap[h.trim()] || h.trim());
+
+    // Validate essential headers
+    const requiredHeaders = ['email', 'song_title', 'musical_or_artist'];
+    const missingHeaders = requiredHeaders.filter(rh => !mappedHeaders.includes(rh));
+    if (missingHeaders.length > 0) {
+      throw new Error(`Missing required CSV headers: ${missingHeaders.join(', ')}. Please ensure your sheet includes these columns.`);
+    }
 
     const records: ParsedRequest[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]); // Use the robust parser for values
+      const values = parseCSVLine(lines[i]);
       const record: Record<string, string> = {};
 
-      // Ensure all mappedHeaders are considered, even if values array is shorter
       mappedHeaders.forEach((header, index) => {
-        record[header] = values[index] !== undefined ? values[index] : ''; // Assign empty string if value is missing
+        record[header] = values[index] !== undefined ? values[index] : '';
       });
 
       // Helper to extract first URL from a comma-separated string
@@ -125,14 +147,18 @@ const DataImporter = () => {
         return undefined;
       };
 
-      const mapBackingType = (text: string): string[] => {
+      const mapListField = (text: string): string[] => {
         if (!text) return [];
-        const types: string[] = [];
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes('full song')) types.push('full-song');
-        if (lowerText.includes('audition cut')) types.push('audition-cut');
-        if (lowerText.includes('note/melody bash')) types.push('note-bash');
-        return types;
+        return text.split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
+      };
+
+      const mapBackingType = (text: string): string[] => {
+        const types = mapListField(text);
+        const mappedTypes: string[] = [];
+        if (types.includes('full song') || types.includes('full-song')) mappedTypes.push('full-song');
+        if (types.includes('audition cut') || types.includes('audition-cut')) mappedTypes.push('audition-cut');
+        if (types.includes('note/melody bash') || types.includes('note-bash')) mappedTypes.push('note-bash');
+        return mappedTypes;
       };
 
       const mapTrackType = (text: string) => {
@@ -145,41 +171,36 @@ const DataImporter = () => {
       };
 
       const mapAdditionalServices = (text: string) => {
-        if (!text) return [];
-        const services: string[] = [];
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes('rush order')) services.push('rush-order');
-        if (lowerText.includes('complex songs')) services.push('complex-songs');
-        if (lowerText.includes('additional edits') || lowerText.includes('revisions')) services.push('additional-edits');
-        if (lowerText.includes('exclusive ownership')) services.push('exclusive-ownership');
-        return services;
+        const services = mapListField(text);
+        const mappedServices: string[] = [];
+        if (services.includes('rush order') || services.includes('rush-order')) mappedServices.push('rush-order');
+        if (services.includes('complex songs') || services.includes('complex-songs')) mappedServices.push('complex-songs');
+        if (services.includes('additional edits') || services.includes('revisions') || services.includes('additional-edits')) mappedServices.push('additional-edits');
+        if (services.includes('exclusive ownership') || services.includes('exclusive-ownership')) mappedServices.push('exclusive-ownership');
+        return mappedServices;
       };
 
-      // Special requests no longer combine additional links
       const specialRequests = record['special_requests'] || undefined;
       const additionalLinks = record['additional_links'] || undefined;
 
-      // Robust date parsing
-      let deliveryDate: string | undefined;
-      const rawDeliveryDate = record['delivery_date'];
-      if (rawDeliveryDate) {
-        const parsedDate = new Date(rawDeliveryDate);
-        if (!isNaN(parsedDate.getTime())) { // Check if date is valid
-          deliveryDate = parsedDate.toISOString().split('T')[0];
-        } else {
-          console.warn(`Invalid delivery date found: "${rawDeliveryDate}". Setting to undefined.`);
-        }
-      }
+      // Robust date parsing for delivery_date and created_at
+      const parseDateString = (dateStr: string | undefined): string | undefined => {
+        if (!dateStr) return undefined;
+        const parsedDate = new Date(dateStr);
+        return !isNaN(parsedDate.getTime()) ? parsedDate.toISOString().split('T')[0] : undefined;
+      };
 
-      // Determine backing_type and track_type more robustly
+      const deliveryDate = parseDateString(record['delivery_date']);
+      const createdAt = parseDateString(record['created_at']);
+
       const backingType = mapBackingType(record['backing_type'] || record['backing_type_alt']);
-      const trackType = mapTrackType(record['track_type']); // Use the specific track_type column if present
+      const trackType = mapTrackType(record['track_type']);
 
       const parsedRequest: ParsedRequest = {
-        email: record['email'] || 'unknown@example.com', // Default email
+        email: record['email'] || 'unknown@example.com',
         name: record['name'] || undefined,
-        song_title: record['song_title'] || 'Unknown Song', // Default song title
-        musical_or_artist: record['musical_or_artist'] || 'Unknown Artist', // Default artist
+        song_title: record['song_title'] || 'Unknown Song',
+        musical_or_artist: record['musical_or_artist'] || 'Unknown Artist',
         sheet_music_url: getFirstUrl('sheet_music_url'),
         voice_memo: getFirstUrl('voice_memo'),
         youtube_link: record['youtube_link'] || undefined,
@@ -192,7 +213,8 @@ const DataImporter = () => {
         song_key: record['song_key'] || undefined,
         different_key: record['different_key'] || undefined,
         key_for_track: record['key_for_track'] || undefined,
-        additional_links: additionalLinks, // Assign the new field
+        additional_links: additionalLinks,
+        created_at: createdAt, // Use parsed created_at
       };
       
       // Calculate cost using the utility function
@@ -209,92 +231,99 @@ const DataImporter = () => {
     setImportErrors([]);
     setError(null);
 
+    if (!rawData.trim()) {
+      setError(new Error('No data provided. Please paste your Google Sheet data into the text area.'));
+      setIsImporting(false);
+      return;
+    }
+
+    let requestsToImport: ParsedRequest[] = [];
     try {
-      const requestsToImport = parseSheetData(rawData);
-      const results: any[] = [];
-      const errors: any[] = [];
+      requestsToImport = parseSheetData(rawData);
+      if (requestsToImport.length === 0) {
+        setError(new Error('No valid requests found after parsing. Please check your data format.'));
+        setIsImporting(false);
+        return;
+      }
+    } catch (parseError: any) {
+      setError(new Error(`Data parsing failed: ${parseError.message}`));
+      setIsImporting(false);
+      return;
+    }
 
-      for (const req of requestsToImport) {
-        try {
-          // Ensure required fields are present and not default placeholders
-          if (!req.email || req.email === 'unknown@example.com' || 
-              !req.song_title || req.song_title === 'Unknown Song' || 
-              !req.musical_or_artist || req.musical_or_artist === 'Unknown Artist') {
-            throw new Error('Missing required fields (email, song_title, musical_or_artist)');
-          }
+    const results: any[] = [];
+    const errors: any[] = [];
 
-          const { data, error: insertError } = await supabase
-            .from('backing_requests')
-            .insert([
-              {
-                email: req.email,
-                name: req.name,
-                song_title: req.song_title,
-                musical_or_artist: req.musical_or_artist,
-                sheet_music_url: req.sheet_music_url,
-                voice_memo: req.voice_memo,
-                youtube_link: req.youtube_link,
-                track_purpose: req.track_purpose,
-                delivery_date: req.delivery_date,
-                special_requests: req.special_requests,
-                backing_type: req.backing_type,
-                additional_services: req.additional_services,
-                track_type: req.track_type,
-                song_key: req.song_key,
-                different_key: req.different_key,
-                key_for_track: req.key_for_track,
-                cost: req.cost,
-                status: 'completed', // Assuming past orders are completed
-                is_paid: true, // Assuming past orders are paid
-                // Use delivery_date for created_at if valid, otherwise current date
-                created_at: req.delivery_date ? new Date(req.delivery_date).toISOString() : new Date().toISOString(),
-                additional_links: req.additional_links, // Insert the new field
-              }
-            ])
-            .select();
-
-          if (insertError) {
-            throw insertError;
-          }
-          results.push({ status: 'success', data: data[0] });
-        } catch (itemError: any) {
-          console.error('Error importing single request:', itemError);
-          errors.push({ status: 'failed', request: req, error: itemError.message });
+    for (const req of requestsToImport) {
+      try {
+        // Ensure required fields are present and not default placeholders
+        if (!req.email || req.email === 'unknown@example.com' || 
+            !req.song_title || req.song_title === 'Unknown Song' || 
+            !req.musical_or_artist || req.musical_or_artist === 'Unknown Artist') {
+          throw new Error('Missing essential fields (email, song_title, musical_or_artist) for this row.');
         }
-      }
 
-      setImportResults(results);
-      setImportErrors(errors);
+        const { data, error: insertError } = await supabase
+          .from('backing_requests')
+          .insert([
+            {
+              email: req.email,
+              name: req.name,
+              song_title: req.song_title,
+              musical_or_artist: req.musical_or_artist,
+              sheet_music_url: req.sheet_music_url,
+              voice_memo: req.voice_memo,
+              youtube_link: req.youtube_link,
+              track_purpose: req.track_purpose,
+              delivery_date: req.delivery_date,
+              special_requests: req.special_requests,
+              backing_type: req.backing_type,
+              additional_services: req.additional_services,
+              track_type: req.track_type,
+              song_key: req.song_key,
+              different_key: req.different_key,
+              key_for_track: req.key_for_track,
+              cost: req.cost,
+              status: 'completed', // Assuming past orders are completed
+              is_paid: true, // Assuming past orders are paid
+              created_at: req.created_at || new Date().toISOString(), // Use imported created_at or current date
+              additional_links: req.additional_links,
+            }
+          ])
+          .select();
 
-      if (errors.length === 0) {
-        toast({
-          title: "Import Successful",
-          description: `${results.length} requests imported successfully.`,
-        });
-      } else if (results.length > 0) {
-        toast({
-          title: "Partial Import Success",
-          description: `${results.length} requests imported, but ${errors.length} failed. See details below.`,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Import Failed",
-          description: `All ${errors.length} requests failed to import. See details below.`,
-          variant: "destructive",
-        });
+        if (insertError) {
+          throw insertError;
+        }
+        results.push({ status: 'success', data: data[0] });
+      } catch (itemError: any) {
+        console.error('Error importing single request:', itemError);
+        errors.push({ status: 'failed', request: req, error: itemError.message });
       }
-    } catch (err: any) {
-      console.error('Overall import error:', err);
-      setError(err);
+    }
+
+    setImportResults(results);
+    setImportErrors(errors);
+
+    if (errors.length === 0) {
       toast({
-        title: "Import Error",
-        description: `An error occurred during import: ${err.message}`,
+        title: "Import Successful",
+        description: `${results.length} requests imported successfully.`,
+      });
+    } else if (results.length > 0) {
+      toast({
+        title: "Partial Import Success",
+        description: `${results.length} requests imported, but ${errors.length} failed. See details below.`,
         variant: "destructive",
       });
-    } finally {
-      setIsImporting(false);
+    } else {
+      toast({
+        title: "Import Failed",
+        description: `All ${errors.length} requests failed to import. See details below.`,
+        variant: "destructive",
+      });
     }
+    setIsImporting(false);
   };
 
   return (
@@ -326,9 +355,9 @@ const DataImporter = () => {
             <div className="mt-4 p-3 bg-white border rounded-md font-mono text-xs text-gray-800 overflow-x-auto">
               <p className="font-bold mb-1">Example CSV Format:</p>
               <pre className="whitespace-pre-wrap">
-                Email Address,Name,Song Title,Musical or artist,When do you need your track for?,What do you need?,Additional Services
-                client1@example.com,John Doe,Song A,Artist X,2023-01-15,"full-song, audition-cut",rush-order
-                client2@example.com,Jane Smith,Song B,Musical Y,2023-02-20,note-bash,complex-songs
+                Email Address,Name,Song Title,Musical or artist,Order Date,Delivery Date,What do you need?,Additional Services,Track Type,Song Key,Special Requests,YouTube Link,Additional Links
+                client1@example.com,John Doe,Song A,Artist X,2023-01-10,2023-01-15,"full-song, audition-cut",rush-order,polished,C Major (0),"Please be accurate",https://youtube.com/a,https://dropbox.com/a
+                client2@example.com,Jane Smith,Song B,Musical Y,2023-02-15,2023-02-20,note-bash,complex-songs,one-take,G Major (1♯),"No special notes",https://youtube.com/b,
               </pre>
             </div>
           </div>
@@ -368,7 +397,7 @@ const DataImporter = () => {
           
           {error && (
             <div className="mt-6">
-              <ErrorDisplay error={error} title="Overall Import Error" />
+              <ErrorDisplay error={error} title="Import Error" />
             </div>
           )}
 
@@ -382,7 +411,7 @@ const DataImporter = () => {
                 <ul className="list-disc pl-5 space-y-1 text-sm">
                   {importResults.map((res, index) => (
                     <li key={index}>
-                      <strong>{res.data.song_title}</strong> by {res.data.name} ({res.data.email})
+                      <strong>{res.data.song_title}</strong> by {res.data.name || 'N/A'} ({res.data.email})
                     </li>
                   ))}
                 </ul>
@@ -405,6 +434,14 @@ const DataImporter = () => {
                   ))}
                 </ul>
               </div>
+            </div>
+          )}
+          {importResults.length === 0 && importErrors.length === 0 && !isImporting && rawData.trim() && !error && (
+            <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center">
+              <AlertTriangle className="mr-3 h-5 w-5 text-yellow-600" />
+              <p className="text-sm text-yellow-800">
+                No valid requests were found in the provided data. Please check the format and ensure all required columns are present.
+              </p>
             </div>
           )}
         </CardContent>
