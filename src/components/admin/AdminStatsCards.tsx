@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { FileAudio, Clock, DollarSign, Check, MessageSquare, AlertCircle } from 'lucide-react'; // Import new icons
 import { calculateRequestCost } from '@/utils/pricing';
+import { cn } from '@/lib/utils'; // Import cn for conditional classNames
 
 interface AdminStatsCardsProps {
   requests: any[];
@@ -34,7 +35,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               <p className="text-2xl font-bold text-[#1C0357] mt-2">{totalRequests}</p>
             </div>
             <div className="p-3 bg-[#D1AAF2]/20 rounded-full">
-              <FileAudio className="h-8 w-8 text-[#1C0357]" />
+              <FileAudio className="h-10 w-10 text-[#1C0357]" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
@@ -53,7 +54,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               </p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-full">
-              <Clock className="h-8 w-8 text-yellow-600" />
+              <Clock className="h-10 w-10 text-yellow-600" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
@@ -72,7 +73,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               </p>
             </div>
             <div className="p-3 bg-[#1C0357]/10 rounded-full">
-              <DollarSign className="h-8 w-8 text-[#1C0357]" />
+              <DollarSign className="h-10 w-10 text-[#1C0357]" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
@@ -91,7 +92,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
-              <Check className="h-8 w-8 text-green-600" />
+              <Check className="h-10 w-10 text-green-600" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
@@ -109,13 +110,16 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               <p className="text-2xl font-bold text-[#1C0357] mt-2">{totalIssueReports}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
-              <MessageSquare className="h-8 w-8 text-blue-600" />
+              <MessageSquare className="h-10 w-10 text-blue-600" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg bg-white">
+      <Card className={cn(
+        "shadow-lg bg-white",
+        unreadIssueReports > 0 && "border-2 border-red-500" // Conditional red border
+      )}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -126,7 +130,7 @@ const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
               <p className="text-2xl font-bold text-red-600 mt-2">{unreadIssueReports}</p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
-              <AlertCircle className="h-8 w-8 text-red-600" />
+              <AlertCircle className="h-10 w-10 text-red-600" /> {/* Increased icon size */}
             </div>
           </div>
         </CardContent>
