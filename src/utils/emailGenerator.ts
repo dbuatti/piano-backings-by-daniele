@@ -22,6 +22,8 @@ export interface BackingRequest {
   additional_links?: string; // Added new field
   track_url?: string; // Added track_url for completion emails
   cost?: number; // Added cost for payment reminders
+  status?: 'pending' | 'in-progress' | 'completed' | 'cancelled'; // Added status
+  created_at?: string; // Added created_at
 }
 
 // HTML Email signature template

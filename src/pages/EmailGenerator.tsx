@@ -13,14 +13,20 @@ import { generateCompletionEmail, generatePaymentReminderEmail, generateCompleti
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
-import { Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy } from 'lucide-react'; // Imported Copy
-import { calculateRequestCost } from '@/utils/pricing'; // Import pricing utility
+import { 
+  Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
+  Clock, XCircle // Imported missing icons
+} from 'lucide-react';
+import { calculateRequestCost } from '@/utils/pricing';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // Imported Dialog components
+} from "@/components/ui/dialog";
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -28,30 +34,11 @@ const EmailGenerator = () => {
   const location = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [emailData, setEmailData] = useState({ subject: '', html: '' }); // Changed body to html
+  const [emailData, setEmailData] = useState({ subject: '', html: '' });
   const [recipientEmails, setRecipientEmails] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion-payment'); // Set 'completion-payment' as default
-  const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null); // Store the fetched request
-
-  const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    email: '',
-    song_title: '',
-    musical_or_artist: '',
-    track_purpose: 'personal-practise',
-    backing_type: [] as string[],
-    delivery_date: '',
-    special_requests: '',
-    song_key: 'C Major (0)',
-    additional_services: [] as string[],
-    track_type: 'polished',
-    youtube_link: '',
-    voice_memo: '',
-    additional_links: '',
-    track_url: '' // Added track_url to formData
-  });
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion-payment');
+  const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null);
 
   // Prefill form data from request ID or passed state
   useEffect(() => {
@@ -80,26 +67,8 @@ const EmailGenerator = () => {
       }
 
       if (requestData) {
-        setCurrentRequest(requestData); // Store the fetched request
-        setFormData({
-          id: requestData.id || '',
-          name: requestData.name || '',
-          email: requestData.email || '',
-          song_title: requestData.song_title || '',
-          musical_or_artist: requestData.musical_or_artist || '',
-          track_purpose: requestData.track_purpose || 'personal-practise',
-          backing_type: Array.isArray(requestData.backing_type) ? requestData.backing_type : (requestData.backing_type ? [requestData.backing_type] : []),
-          delivery_date: requestData.delivery_date || '',
-          special_requests: requestData.special_requests || '',
-          song_key: requestData.song_key || 'C Major (0)',
-          additional_services: requestData.additional_services || [],
-          track_type: requestData.track_type || 'polished',
-          youtube_link: requestData.youtube_link || '',
-          voice_memo: requestData.voice_memo || '',
-          additional_links: requestData.additional_links || '',
-          track_url: requestData.track_url || '' // Set track_url
-        });
-        setRecipientEmails(requestData.email || ''); // Set initial recipient email
+        setCurrentRequest(requestData);
+        setRecipientEmails(requestData.email || '');
       }
     };
     
@@ -111,34 +80,7 @@ const EmailGenerator = () => {
     if (currentRequest) {
       handleGenerateEmail(templateType);
     }
-  }, [templateType, currentRequest]); // Regenerate when template or request changes
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleCheckboxChange = (service: string) => {
-    setFormData(prev => {
-      const newServices = prev.additional_services.includes(service)
-        ? prev.additional_services.filter(s => s !== service)
-        : [...prev.additional_services, service];
-      return { ...prev, additional_services: newServices };
-    });
-  };
-
-  const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
-    setFormData(prev => {
-      const newBackingTypes = checked
-        ? [...prev.backing_type, type]
-        : prev.backing_type.filter(t => t !== type);
-      return { ...prev, backing_type: newBackingTypes };
-    });
-  };
+  }, [templateType, currentRequest]);
 
   const handleGenerateEmail = async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom') => {
     if (!currentRequest) {
@@ -155,7 +97,7 @@ const EmailGenerator = () => {
       let result;
       const requestWithCost: BackingRequest = {
         ...currentRequest,
-        cost: calculateRequestCost(currentRequest).totalCost // Ensure cost is calculated
+        cost: calculateRequestCost(currentRequest).totalCost
       };
 
       if (selectedTemplateType === 'completion') {
@@ -165,7 +107,6 @@ const EmailGenerator = () => {
       } else if (selectedTemplateType === 'completion-payment') {
         result = await generateCompletionAndPaymentEmail(requestWithCost);
       } else {
-        // For 'custom', we might want to clear or keep current content
         setEmailData({ subject: '', html: '' });
         toast({
           title: "Custom Template Selected",
@@ -240,11 +181,10 @@ const EmailGenerator = () => {
         description: `Email sent to ${recipientEmails}`,
       });
       
-      // Optionally clear email fields or navigate away
       setEmailData({ subject: '', html: '' });
       setRecipientEmails('');
       setShowPreview(false);
-      setTemplateType('completion-payment'); // Reset to default template type
+      setTemplateType('completion-payment');
     } catch (err: any) {
       console.error('Error sending email:', err);
       toast({
@@ -265,23 +205,18 @@ const EmailGenerator = () => {
     });
   };
 
-  const keyOptions = [
-    { value: 'C Major (0)', label: 'C Major (0)' },
-    { value: 'G Major (1♯)', label: 'G Major (1♯)' },
-    { value: 'D Major (2♯)', label: 'D Major (2♯)' },
-    { value: 'A Major (3♯)', label: 'A Major (3♯)' },
-    { value: 'E Major (4♯)', label: 'E Major (4♯)' },
-    { value: 'B Major (5♯)', label: 'B Major (5♯)' },
-    { value: 'F♯ Major (6♯)', label: 'F♯ Major (6♯)' },
-    { value: 'C♯ Major (7♯)', label: 'C♯ Major (7♯)' },
-    { value: 'F Major (1♭)', label: 'F Major (1♭)' },
-    { value: 'B♭ Major (2♭)', label: 'B♭ Major (2♭)' },
-    { value: 'E♭ Major (3♭)', label: 'E♭ Major (3♭)' },
-    { value: 'A♭ Major (4♭)', label: 'A♭ Major (4♭)' },
-    { value: 'D♭ Major (5♭)', label: 'D♭ Major (5♭)' },
-    { value: 'G♭ Major (6♭)', label: 'G♭ Major (6♭)' },
-    { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
-  ];
+  const getStatusBadge = (status: string | undefined) => { // status can be undefined
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
+      case 'in-progress':
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -299,260 +234,63 @@ const EmailGenerator = () => {
               <CardTitle className="text-2xl text-[#1C0357]">Request Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Client Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Izzi Buckler"
-                      disabled // Disable editing if loaded from request
-                    />
+              {currentRequest ? (
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium flex items-center">
+                      <Music className="mr-2 h-4 w-4 text-gray-600" />
+                      Song: <span className="ml-1 font-bold">{currentRequest.song_title}</span>
+                    </div>
+                    {getStatusBadge(currentRequest.status)}
                   </div>
-                  <div>
-                    <Label htmlFor="email">Client Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="e.g., izzy@example.com"
-                      disabled // Disable editing if loaded from request
-                    />
+                  <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4 text-gray-600" />
+                    Client: <span className="ml-1 font-medium">{currentRequest.name || 'N/A'}</span>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="song_title">Song Title</Label>
-                    <Input
-                      id="song_title"
-                      name="song_title"
-                      value={formData.song_title}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Worth the Breath"
-                      disabled // Disable editing if loaded from request
-                    />
+                  <div className="flex items-center">
+                    <Mail className="mr-2 h-4 w-4 text-gray-600" />
+                    Email: <span className="ml-1 font-medium">{currentRequest.email}</span>
                   </div>
-                  <div>
-                    <Label htmlFor="musical_or_artist">Musical/Artist</Label>
-                    <Input
-                      id="musical_or_artist"
-                      name="musical_or_artist"
-                      value={formData.musical_or_artist}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Ben Nicholson and Nick Hedger"
-                      disabled // Disable editing if loaded from request
-                    />
+                  <div className="flex items-center">
+                    <Calendar className="mr-2 h-4 w-4 text-gray-600" />
+                    Submitted: <span className="ml-1 font-medium">{currentRequest.created_at ? format(new Date(currentRequest.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="track_purpose">Track Purpose</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={formData.track_purpose} disabled>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select purpose" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="personal-practise">Personal Practise</SelectItem>
-                        <SelectItem value="audition-backing">Audition Backing Track</SelectItem>
-                        <SelectItem value="melody-bash">Note/melody bash</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center">
+                    <Headphones className="mr-2 h-4 w-4 text-gray-600" />
+                    Type: <span className="ml-1 font-medium capitalize">
+                      {getSafeBackingTypes(currentRequest.backing_type).map(t => t.replace('-', ' ')).join(', ') || 'N/A'}
+                    </span>
                   </div>
-                  <div>
-                    <Label>Backing Type(s)</Label>
-                    <div className="space-y-2 mt-2">
-                      <div className="flex items-center">
-                        <Checkbox
-                          id="backing-full-song"
-                          checked={formData.backing_type.includes('full-song')}
-                          onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
-                          className="mr-2"
-                          disabled // Disable editing if loaded from request
-                        />
-                        <Label htmlFor="backing-full-song">Full Song Backing</Label>
+                  <div className="flex items-center">
+                    <Key className="mr-2 h-4 w-4 text-gray-600" />
+                    Key: <span className="ml-1 font-medium">{currentRequest.song_key || 'N/A'}</span>
+                  </div>
+                  {currentRequest.youtube_link && (
+                    <div className="flex items-center">
+                      <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
+                      YouTube: <a href={currentRequest.youtube_link} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{currentRequest.youtube_link}</a>
+                    </div>
+                  )}
+                  {currentRequest.special_requests && (
+                    <div>
+                      <div className="font-medium flex items-center mb-1">
+                        <FileText className="mr-2 h-4 w-4 text-gray-600" />
+                        Special Requests:
                       </div>
-                      <div className="flex items-center">
-                        <Checkbox
-                          id="backing-audition-cut"
-                          checked={formData.backing_type.includes('audition-cut')}
-                          onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
-                          className="mr-2"
-                          disabled // Disable editing if loaded from request
-                        />
-                        <Label htmlFor="backing-audition-cut">Audition Cut Backing</Label>
-                      </div>
-                      <div className="flex items-center">
-                        <Checkbox
-                          id="backing-note-bash"
-                          checked={formData.backing_type.includes('note-bash')}
-                          onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
-                          className="mr-2"
-                          disabled // Disable editing if loaded from request
-                        />
-                        <Label htmlFor="backing-note-bash">Note/Melody Bash</Label>
-                      </div>
+                      <p className="ml-6 text-gray-700 whitespace-pre-wrap">{currentRequest.special_requests}</p>
                     </div>
+                  )}
+                  <div className="pt-4">
+                    <Link to={`/admin/request/${currentRequest.id}`}>
+                      <Button variant="outline" className="w-full">
+                        <Eye className="mr-2 h-4 w-4" /> View Full Details
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="track_type">Track Type</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={formData.track_type} disabled>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select track type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="quick">Quick Reference (Voice Memo)</SelectItem>
-                        <SelectItem value="one-take">One-Take Recording</SelectItem>
-                        <SelectItem value="polished">Polished & Accurate Backing</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="song_key">Song Key</Label>
-                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={formData.song_key} disabled>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select key" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {keyOptions.map((key) => (
-                          <SelectItem key={key.value} value={key.value} className="text-sm">
-                            {key.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="delivery_date">Delivery Date</Label>
-                  <Input
-                    id="delivery_date"
-                    name="delivery_date"
-                    type="date"
-                    value={formData.delivery_date}
-                    onChange={handleInputChange}
-                    disabled // Disable editing if loaded from request
-                  />
-                </div>
-                
-                <div>
-                  <Label>Additional Services</Label>
-                  <div className="space-y-2 mt-2">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="rush-order"
-                        className="mr-2"
-                        checked={formData.additional_services.includes('rush-order')}
-                        onChange={() => handleCheckboxChange('rush-order')}
-                        disabled // Disable editing if loaded from request
-                      />
-                      <Label htmlFor="rush-order">Rush Order (+$10)</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="complex-songs"
-                        className="mr-2"
-                        checked={formData.additional_services.includes('complex-songs')}
-                        onChange={() => handleCheckboxChange('complex-songs')}
-                        disabled // Disable editing if loaded from request
-                      />
-                      <Label htmlFor="complex-songs">Complex Songs (+$7)</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="additional-edits"
-                        className="mr-2"
-                        checked={formData.additional_services.includes('additional-edits')}
-                        onChange={() => handleCheckboxChange('additional-edits')}
-                        disabled // Disable editing if loaded from request
-                      />
-                      <Label htmlFor="additional-edits">Additional Edits (+$5)</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="exclusive-ownership"
-                        className="mr-2"
-                        checked={formData.additional_services.includes('exclusive-ownership')}
-                        onChange={() => handleCheckboxChange('exclusive-ownership')}
-                        disabled // Disable editing if loaded from request
-                      />
-                      <Label htmlFor="exclusive-ownership">Exclusive Ownership (+$40)</Label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="special_requests">Special Requests</Label>
-                  <Textarea
-                    id="special_requests"
-                    name="special_requests"
-                    value={formData.special_requests}
-                    onChange={handleInputChange}
-                    placeholder="Any special requests or notes..."
-                    rows={3}
-                    disabled // Disable editing if loaded from request
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="youtube_link">YouTube Link</Label>
-                    <Input
-                      id="youtube_link"
-                      name="youtube_link"
-                      value={formData.youtube_link}
-                      onChange={handleInputChange}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      disabled // Disable editing if loaded from request
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="voice_memo">Voice Memo Link</Label>
-                    <Input
-                      id="voice_memo"
-                      name="voice_memo"
-                      value={formData.voice_memo}
-                      onChange={handleInputChange}
-                      placeholder="https://example.com/voice-memo.mp3"
-                      disabled // Disable editing if loaded from request
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="additional_links">Additional Links</Label>
-                  <Input
-                    id="additional_links"
-                    name="additional_links"
-                    value={formData.additional_links}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Dropbox link, Spotify link"
-                    disabled // Disable editing if loaded from request
-                  />
-                </div>
-                
-                <div className="flex gap-4">
-                  <Link to="/admin">
-                    <Button variant="outline">
-                      Back to Dashboard
-                    </Button>
-                  </Link>
-                </div>
-              </form>
+              ) : (
+                <p className="text-center text-gray-500 py-8">No request selected. Please navigate from the Admin Dashboard.</p>
+              )}
             </CardContent>
           </Card>
           
@@ -579,13 +317,12 @@ const EmailGenerator = () => {
 
                 <div>
                   <Label htmlFor="recipient-emails">Recipient Email(s)</Label>
-                  <Textarea
+                  <Input
                     id="recipient-emails"
                     value={recipientEmails}
                     onChange={(e) => setRecipientEmails(e.target.value)}
                     placeholder="client@example.com, another@example.com"
-                    rows={2}
-                    className="w-full p-2 border rounded-md mt-1"
+                    className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">Enter multiple emails separated by commas.</p>
                 </div>
