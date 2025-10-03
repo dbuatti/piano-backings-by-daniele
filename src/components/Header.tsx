@@ -133,28 +133,27 @@ const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
-                  <React.Fragment> {/* Wrap children in a Fragment */}
-                    <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin">
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin?tab=issue-reports">
-                        <AlertCircle className="mr-2 h-4 w-4" />
-                        Issue Reports
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild> {/* New DropdownMenuItem */}
-                      <Link to="/admin?tab=app-settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        App Settings
-                      </Link>
-                    </DropdownMenuItem>
-                  </React.Fragment>
+                  {/* Removed React.Fragment here */}
+                  <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin?tab=issue-reports">
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      Issue Reports
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin?tab=app-settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      App Settings
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
