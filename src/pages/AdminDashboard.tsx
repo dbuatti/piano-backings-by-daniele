@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom'; // Import useSearchParams
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
@@ -17,7 +17,7 @@ import RequestsCalendar from '@/components/admin/RequestsCalendar';
 import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
 import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog';
 import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs';
-import HolidayModeSettings from '@/components/admin/HolidayModeSettings'; // Import new component
+import HolidayModeSettings from '@/components/admin/HolidayModeSettings';
 
 // Integrated Admin Pages/Tools
 import DataImporter from './DataImporter';
@@ -25,18 +25,21 @@ import TestEmail from './TestEmail';
 import TestEmailNotification from './TestEmailNotification';
 import DropboxMonitor from './DropboxMonitor';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
-import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent'; // Import the renamed component
-import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent'; // Import the new IssueReportsTabContent
+import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
+import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
+import TestDropboxFunction from './TestDropboxFunction';
+import TestDropboxCredentials from './TestDropboxCredentials';
+import TestBackings from './TestBackings';
 
 import { 
-  HardDrive,
   Database,
   MailIcon,
   List,
-  AlertCircle, // New icon for Issue Reports tab
-  Settings, // Icon for App Settings
-  Plane, // Icon for Holiday Mode
-  UserPlus // Icon for Request Ownership
+  AlertCircle,
+  Settings,
+  UserPlus,
+  Wrench, // Changed from Tool to Wrench
+  Cloud 
 } from 'lucide-react';
 
 // Custom Hooks
@@ -50,15 +53,13 @@ import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [adminEmail, setAdminEmail] = useState<string | undefined>(undefined); // New state for admin email
+  const [adminEmail, setAdminEmail] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Get active tab from URL, default to 'overview'
   const activeTab = searchParams.get('tab') || 'overview';
 
-  // Custom Hooks for state and logic
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
   const { 
     searchTerm, setSearchTerm,
@@ -81,7 +82,7 @@ const AdminDashboard = () => {
     platforms, setPlatforms,
     handleUploadTrack,
     handleFileUpload,
-    handleDirectFileUpload, // Get the new direct upload handler
+    handleDirectFileUpload,
     openUploadPlatformsDialog,
     saveUploadPlatforms,
   } = useUploadDialogs(requests, setRequests);
@@ -99,7 +100,6 @@ const AdminDashboard = () => {
     openBatchDeleteDialog, confirmBatchDeleteRequests,
   } = useDeleteDialogs(requests, setRequests, selectedRequests);
 
-  // Fetch total issue reports count
   const { data: totalIssueReports = 0, isLoading: isLoadingTotalIssues } = useQuery<number, Error>({
     queryKey: ['totalIssueReports'],
     queryFn: async () => {
@@ -110,10 +110,9 @@ const AdminDashboard = () => {
       return count || 0;
     },
     enabled: isAdmin && authChecked,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch unread issue reports count
   const { data: unreadIssueReports = 0, isLoading: isLoadingUnreadIssues } = useQuery<number, Error>({
     queryKey: ['unreadIssueReportsCount'],
     queryFn: async () => {
@@ -125,8 +124,8 @@ const AdminDashboard = () => {
       return count || 0;
     },
     enabled: isAdmin && authChecked,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
 
@@ -135,8 +134,8 @@ const AdminDashboard = () => {
     
     if (!session) {
       setIsAdmin(false);
-      setAdminEmail(undefined); // Clear email on logout
-      setAuthChecked(true); // Mark auth checked even if no session, to stop loading state
+      setAdminEmail(undefined);
+      setAuthChecked(true);
       navigate('/login');
       return;
     }
@@ -145,9 +144,9 @@ const AdminDashboard = () => {
 
     if (adminEmails.includes(session.user.email)) {
       setIsAdmin(true);
-      setAdminEmail(session.user.email); // Set admin email here
+      setAdminEmail(session.user.email);
       setAuthChecked(true);
-      fetchRequests(); // Fetch requests only if admin
+      fetchRequests();
       return;
     }
     
@@ -159,10 +158,9 @@ const AdminDashboard = () => {
         .single();
       
       if (error) {
-        // Fallback check if profile fetch fails but session email is admin
         if (adminEmails.includes(session.user.email)) {
           setIsAdmin(true);
-          setAdminEmail(session.user.email); // Set admin email here
+          setAdminEmail(session.user.email);
           setAuthChecked(true);
           fetchRequests();
         } else {
@@ -181,7 +179,7 @@ const AdminDashboard = () => {
       
       if (adminEmails.includes(profile?.email)) {
         setIsAdmin(true);
-        setAdminEmail(profile?.email); // Set admin email here
+        setAdminEmail(profile?.email);
         setAuthChecked(true);
         fetchRequests();
       } else {
@@ -196,10 +194,9 @@ const AdminDashboard = () => {
         navigate('/');
       }
     } catch (error: any) {
-      // Fallback check if any error occurs during profile fetch but session email is admin
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
-        setAdminEmail(session.user.email); // Set admin email here
+        setAdminEmail(session.user.email);
         setAuthChecked(true);
         fetchRequests();
       } else {
@@ -214,16 +211,15 @@ const AdminDashboard = () => {
         navigate('/');
       }
     } finally {
-      setAuthChecked(true); // Ensure authChecked is set to true regardless of outcome
+      setAuthChecked(true);
     }
   }, [navigate, toast, fetchRequests]);
 
   useEffect(() => {
     checkAdminAccess();
 
-    // Listen for auth state changes to re-run the check if needed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      checkAdminAccess(); // Let checkAdminAccess handle all state updates, including setting authChecked to true
+      checkAdminAccess();
     });
 
     return () => {
@@ -236,7 +232,6 @@ const AdminDashboard = () => {
     navigate(`/email-generator/${request.id}`);
   };
 
-  // Handler for tab change
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
   };
@@ -272,21 +267,21 @@ const AdminDashboard = () => {
           <AdminDashboardHeader 
             title="Admin Dashboard" 
             description="Manage all backing track requests and system settings" 
-            adminEmail={adminEmail} // Pass the admin email here
+            adminEmail={adminEmail}
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-7"> {/* Increased grid-cols to 7 */}
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="overview" className="flex items-center">
                 <List className="mr-2 h-4 w-4" /> Overview
               </TabsTrigger>
-              <TabsTrigger value="system-health" className="flex items-center">
-                <HardDrive className="mr-2 h-4 w-4" /> System Health
+              <TabsTrigger value="integrations" className="flex items-center">
+                <Cloud className="mr-2 h-4 w-4" /> Integrations
               </TabsTrigger>
               <TabsTrigger value="data-management" className="flex items-center">
                 <Database className="mr-2 h-4 w-4" /> Data Management
               </TabsTrigger>
-              <TabsTrigger value="request-ownership" className="flex items-center"> {/* New tab for Request Ownership */}
+              <TabsTrigger value="request-ownership" className="flex items-center">
                 <UserPlus className="mr-2 h-4 w-4" /> Ownership
               </TabsTrigger>
               <TabsTrigger value="email-tools" className="flex items-center">
@@ -295,12 +290,14 @@ const AdminDashboard = () => {
               <TabsTrigger value="issue-reports" className="flex items-center">
                 <AlertCircle className="mr-2 h-4 w-4" /> Issue Reports
               </TabsTrigger>
-              <TabsTrigger value="app-settings" className="flex items-center"> {/* New tab */}
+              <TabsTrigger value="app-settings" className="flex items-center">
                 <Settings className="mr-2 h-4 w-4" /> App Settings
+              </TabsTrigger>
+              <TabsTrigger value="tools-testing" className="flex items-center">
+                <Wrench className="mr-2 h-4 w-4" /> Tools & Testing
               </TabsTrigger>
             </TabsList>
 
-            {/* Overview Tab Content */}
             <TabsContent value="overview">
               <AdminStatsCards 
                 requests={requests} 
@@ -328,8 +325,8 @@ const AdminDashboard = () => {
               
               {viewMode === 'calendar' && (
                 <RequestsCalendar
-                  requests={requests} // Pass all requests for tile content logic
-                  filteredRequests={filteredRequests} // Pass filtered for display
+                  requests={requests}
+                  filteredRequests={filteredRequests}
                   selectedDate={selectedDate}
                   setSelectedDate={setSelectedDate}
                   uploadTrack={handleUploadTrack}
@@ -352,44 +349,43 @@ const AdminDashboard = () => {
                   openDeleteDialog={openDeleteDialog}
                   openBatchDeleteDialog={openBatchDeleteDialog}
                   openUploadPlatformsDialog={openUploadPlatformsDialog}
-                  onDirectFileUpload={handleDirectFileUpload} // Pass the new handler
+                  onDirectFileUpload={handleDirectFileUpload}
                 />
               )}
             </TabsContent>
 
-            {/* System Health Tab Content */}
-            <TabsContent value="system-health" className="mt-6">
+            <TabsContent value="integrations" className="mt-6">
               <DropboxMonitor />
             </TabsContent>
 
-            {/* Data Management Tab Content */}
             <TabsContent value="data-management" className="mt-6 space-y-6">
               <DataImporter />
-              {/* RequestOwnershipManager is now in its own tab */}
             </TabsContent>
 
-            {/* New Request Ownership Tab Content */}
             <TabsContent value="request-ownership" className="mt-6">
               <RequestOwnershipTabContent />
             </TabsContent>
 
-            {/* Email Tools Tab Content */}
             <TabsContent value="email-tools" className="mt-6">
               <div className="grid grid-cols-1 gap-6">
-                <TestEmail />
-                <TestEmailNotification />
                 <NotificationRecipientsManager />
               </div>
             </TabsContent>
 
-            {/* New Issue Reports Tab Content */}
             <TabsContent value="issue-reports" className="mt-6">
-              <IssueReportsTabContent /> {/* Render the Issue Reports page here */}
+              <IssueReportsTabContent />
             </TabsContent>
 
-            {/* New App Settings Tab Content */}
             <TabsContent value="app-settings" className="mt-6">
-              <HolidayModeSettings /> {/* Render the new HolidayModeSettings component */}
+              <HolidayModeSettings />
+            </TabsContent>
+
+            <TabsContent value="tools-testing" className="mt-6 space-y-6">
+              <TestEmail />
+              <TestEmailNotification />
+              <TestDropboxFunction />
+              <TestDropboxCredentials />
+              <TestBackings />
             </TabsContent>
           </Tabs>
           
