@@ -24,19 +24,21 @@ import {
   Folder,
   RefreshCw,
   AlertCircle,
-  Search, // Added Search icon
-  UserPlus // Added UserPlus icon
+  Search, 
+  UserPlus,
+  Loader2 // Added Loader2 for loading states
 } from 'lucide-react';
-import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
-import { Input } from '@/components/ui/input'; // Import Input component
-import { Label } from '@/components/ui/label'; // Import Label component
-import ErrorDisplay from '@/components/ErrorDisplay'; // Import ErrorDisplay component
+import { getSafeBackingTypes } from '@/utils/helpers';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import ErrorDisplay from '@/components/ErrorDisplay';
+import { Separator } from '@/components/ui/separator'; // Import Separator
 
 interface UserProfile {
   id: string;
   email: string;
-  first_name?: string; // Added first_name
-  last_name?: string;  // Added last_name
+  first_name?: string;
+  last_name?: string;
 }
 
 const RequestDetails = () => {
@@ -53,6 +55,7 @@ const RequestDetails = () => {
   const [foundUsersForAssignment, setFoundUsersForAssignment] = useState<UserProfile[]>([]);
   const [currentOwnerProfile, setCurrentOwnerProfile] = useState<UserProfile | null>(null);
   const [assigningUser, setAssigningUser] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false); // New state for search loading
   const [ownershipError, setOwnershipError] = useState<any>(null);
 
   useEffect(() => {
@@ -64,7 +67,6 @@ const RequestDetails = () => {
         return;
       }
       
-      // Check if user is admin using their email from the session
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
       if (adminEmails.includes(session.user.email)) {
         setIsAdmin(true);
@@ -95,9 +97,8 @@ const RequestDetails = () => {
       
       setRequest(data);
       
-      // Fetch current owner profile if user_id is set
       if (data.user_id) {
-        await fetchCurrentOwnerProfile(data.user_id, data.email); // Pass request.email
+        await fetchCurrentOwnerProfile(data.user_id, data.email);
       } else {
         setCurrentOwnerProfile(null);
       }
@@ -116,10 +117,9 @@ const RequestDetails = () => {
 
   const fetchCurrentOwnerProfile = async (userId: string, requestEmail: string) => {
     try {
-      // Fetch from public.profiles table for first_name, last_name
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name') // Corrected select to match profiles table schema
+        .select('id, first_name, last_name')
         .eq('id', userId)
         .single();
       
@@ -127,7 +127,7 @@ const RequestDetails = () => {
       
       setCurrentOwnerProfile({
         id: profileData.id,
-        email: requestEmail, // Use the email from the request itself
+        email: requestEmail,
         first_name: profileData.first_name,
         last_name: profileData.last_name,
       });
@@ -141,14 +141,12 @@ const RequestDetails = () => {
     setIsTriggeringDropbox(true);
     
     try {
-      // Get the session from Supabase
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('You must be logged in to trigger this function');
       }
       
-      // Prepare the form data to match what the function expects
       const formData = {
         email: request.email,
         name: request.name,
@@ -158,7 +156,7 @@ const RequestDetails = () => {
         differentKey: request.different_key,
         keyForTrack: request.key_for_track,
         youtubeLink: request.youtube_link,
-        additionalLinks: request.additional_links, // Include the new field
+        additionalLinks: request.additional_links,
         voiceMemo: request.voice_memo,
         sheetMusicUrl: request.sheet_music_url,
         trackPurpose: request.track_purpose,
@@ -190,7 +188,6 @@ const RequestDetails = () => {
           description: "Dropbox automation triggered successfully.",
         });
         
-        // Refresh the request data to show updated information
         fetchRequest();
       } else {
         throw new Error(result.error || 'Failed to trigger Dropbox automation');
@@ -209,7 +206,7 @@ const RequestDetails = () => {
 
   // Ownership Management Functions
   const handleSearchUsersForAssignment = async () => {
-    setAssigningUser(true);
+    setSearchingUsers(true); // Set searching state
     setOwnershipError(null);
     setFoundUsersForAssignment([]);
 
@@ -219,7 +216,7 @@ const RequestDetails = () => {
         description: "Please enter an email address to search for users.",
         variant: "destructive",
       });
-      setAssigningUser(false);
+      setSearchingUsers(false);
       return;
     }
 
@@ -237,8 +234,8 @@ const RequestDetails = () => {
         const profiles: UserProfile[] = authUsers.map((user: any) => ({
           id: user.id,
           email: user.email,
-          first_name: user.raw_user_meta_data?.first_name, // Use raw_user_meta_data
-          last_name: user.raw_user_meta_data?.last_name,   // Use raw_user_meta_data
+          first_name: user.raw_user_meta_data?.first_name,
+          last_name: user.raw_user_meta_data?.last_name,
         }));
         setFoundUsersForAssignment(profiles);
       } else {
@@ -256,7 +253,7 @@ const RequestDetails = () => {
         variant: "destructive",
       });
     } finally {
-      setAssigningUser(false);
+      setSearchingUsers(false); // Clear searching state
     }
   };
 
@@ -266,7 +263,7 @@ const RequestDetails = () => {
     try {
       const { error: updateError } = await supabase
         .from('backing_requests')
-        .update({ user_id: userIdToAssign, email: userEmailToAssign }) // Also update email to match owner
+        .update({ user_id: userIdToAssign, email: userEmailToAssign })
         .eq('id', id);
 
       if (updateError) {
@@ -278,9 +275,9 @@ const RequestDetails = () => {
         title: "Owner Assigned",
         description: `Request successfully linked to ${userEmailToAssign}.`,
       });
-      setFoundUsersForAssignment([]); // Clear search results
+      setFoundUsersForAssignment([]);
       setSearchUserEmail('');
-      fetchRequest(); // Re-fetch request to update owner display
+      fetchRequest();
     } catch (err: any) {
       console.error('Error assigning owner:', err);
       setOwnershipError(err);
@@ -312,7 +309,7 @@ const RequestDetails = () => {
         title: "Owner Unlinked",
         description: "Request successfully unlinked from its owner.",
       });
-      fetchRequest(); // Re-fetch request to update owner display
+      fetchRequest();
     } catch (err: any) {
       console.error('Error unlinking owner:', err);
       setOwnershipError(err);
@@ -509,7 +506,7 @@ const RequestDetails = () => {
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Current Owner</h3>
                 {request.user_id && currentOwnerProfile ? (
@@ -529,7 +526,7 @@ const RequestDetails = () => {
                       onClick={handleUnlinkOwner} 
                       disabled={assigningUser}
                     >
-                      {assigningUser ? 'Unlinking...' : 'Unlink Owner'}
+                      {assigningUser ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlink Owner'}
                     </Button>
                   </div>
                 ) : (
@@ -537,7 +534,9 @@ const RequestDetails = () => {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-200">
+              <Separator /> {/* Visual separator */}
+
+              <div className="pt-4">
                 <h3 className="font-semibold text-lg mb-2 text-[#1C0357]">Assign New Owner</h3>
                 <Label htmlFor="search-user-email" className="text-sm mb-1">Search User by Email</Label>
                 <div className="flex gap-2 mt-1">
@@ -548,12 +547,12 @@ const RequestDetails = () => {
                     value={searchUserEmail}
                     onChange={(e) => setSearchUserEmail(e.target.value)}
                     className="flex-1"
-                    disabled={assigningUser}
+                    disabled={searchingUsers || assigningUser}
                   />
-                  <Button onClick={handleSearchUsersForAssignment} disabled={assigningUser}>
-                    {assigningUser ? (
+                  <Button onClick={handleSearchUsersForAssignment} disabled={searchingUsers || assigningUser}>
+                    {searchingUsers ? (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Searching...
                       </>
                     ) : (
@@ -587,11 +586,17 @@ const RequestDetails = () => {
                           onClick={() => handleAssignOwner(user.id, user.email)} 
                           disabled={assigningUser}
                         >
-                          Assign
+                          {assigningUser ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Assign'}
                         </Button>
                       </div>
                     ))}
                   </div>
+                )}
+                {searchingUsers && foundUsersForAssignment.length === 0 && searchUserEmail.trim() && (
+                  <p className="text-center text-gray-500 text-sm mt-4">Searching for users...</p>
+                )}
+                {!searchingUsers && foundUsersForAssignment.length === 0 && searchUserEmail.trim() && (
+                  <p className="text-center text-gray-500 text-sm mt-4">No users found matching "{searchUserEmail}".</p>
                 )}
               </div>
             </div>
@@ -764,7 +769,7 @@ const RequestDetails = () => {
                     >
                       {isTriggeringDropbox ? (
                         <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Triggering...
                         </>
                       ) : (
