@@ -38,7 +38,7 @@ import {
   AlertCircle,
   Settings,
   UserPlus,
-  Wrench, // Changed from Tool to Wrench
+  Wrench,
   Cloud 
 } from 'lucide-react';
 
