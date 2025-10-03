@@ -1,31 +1,42 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHolidayMode } from '@/hooks/useHolidayMode';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plane, Loader2 } from 'lucide-react';
+import { Plane, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 const HolidayModeBanner: React.FC = () => {
   const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useHolidayMode();
+  const [isDismissed, setIsDismissed] = useState(false);
+
+  // Reset dismissal state if holiday mode changes (e.g., turns off and then back on)
+  useEffect(() => {
+    if (isHolidayModeActive) {
+      setIsDismissed(false);
+    }
+  }, [isHolidayModeActive]);
 
   if (isLoading) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[100] bg-yellow-100 text-yellow-800 p-3 text-center flex items-center justify-center shadow-md">
-        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        <p className="text-sm">Checking holiday status...</p>
+      <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center">
+        <Card className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full relative">
+          <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-[#1C0357]" />
+          <p className="text-lg text-gray-700">Checking holiday status...</p>
+        </Card>
       </div>
     );
   }
 
   if (error) {
-    // Optionally display a subtle error or nothing if fetching fails
     console.error("Failed to load holiday mode settings for banner:", error);
-    return null;
+    return null; // Or a subtle error message if preferred
   }
 
-  if (!isHolidayModeActive) {
+  if (!isHolidayModeActive || isDismissed) {
     return null;
   }
 
@@ -34,16 +45,34 @@ const HolidayModeBanner: React.FC = () => {
     : `We'll be back soon to continue tracks.`;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-[#F538BC] to-[#FF00B3] text-white py-8 md:py-12 text-center shadow-lg min-h-[150px] flex items-center justify-center">
-      <Alert className="bg-transparent border-none text-white flex flex-col md:flex-row items-center justify-center p-0">
-        <Plane className="h-10 w-10 md:h-12 md:w-12 mr-0 md:mr-6 mb-4 md:mb-0 flex-shrink-0" />
-        <div className="flex flex-col items-center md:items-start">
-          <AlertTitle className="text-2xl md:text-4xl font-extrabold tracking-wide mb-2">Holiday Mode Active!</AlertTitle>
-          <AlertDescription className="text-lg md:text-xl font-medium tracking-wide">
+    <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4">
+      <Card className="bg-white p-8 rounded-lg shadow-xl text-center max-w-2xl w-full relative">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute top-2 right-2 text-gray-500 hover:bg-gray-100"
+          onClick={() => setIsDismissed(true)}
+        >
+          <X className="h-5 w-5" />
+          <span className="sr-only">Dismiss</span>
+        </Button>
+
+        <Alert className="bg-transparent border-none text-black flex flex-col items-center justify-center p-0">
+          <Plane className="h-12 w-12 md:h-16 md:w-16 mb-4 text-[#F538BC] flex-shrink-0" />
+          <AlertTitle className="text-3xl md:text-5xl font-extrabold tracking-wide mb-3 text-[#1C0357]">Holiday Mode Active!</AlertTitle>
+          <AlertDescription className="text-lg md:text-xl font-medium tracking-wide text-gray-700">
             We're currently on holiday. {returnDateMessage} Thank you for your understanding!
           </AlertDescription>
-        </div>
-      </Alert>
+        </Alert>
+        <CardContent className="mt-6 p-0">
+          <Button 
+            onClick={() => setIsDismissed(true)}
+            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
+          >
+            Got It!
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
