@@ -5,44 +5,28 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PricingMatrix from '@/components/PricingMatrix';
 import { useQuery } from '@tanstack/react-query';
 
-// Admin Components
-import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
-import AdminStatsCards from '@/components/admin/AdminStatsCards';
-import AdminFiltersAndViews from '@/components/admin/AdminFiltersAndViews';
-import RequestsTable from '@/components/admin/RequestsTable';
-import RequestsCalendar from '@/components/admin/RequestsCalendar';
-import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
-import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog';
-import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs';
-import HolidayModeSettings from '@/components/admin/HolidayModeSettings';
+// New Tab Content Components
+import DashboardTabContent from '@/components/admin/DashboardTabContent';
+import UsersAndDataTabContent from '@/components/admin/UsersAndDataTabContent';
+import SystemAndConfigTabContent from '@/components/admin/SystemAndConfigTabContent';
+import DevelopmentAndTestingTabContent from '@/components/admin/DevelopmentAndTestingTabContent';
 
-// Integrated Admin Pages/Tools
-import DataImporter from './DataImporter';
-import TestEmail from './TestEmail';
-import TestEmailNotification from './TestEmailNotification';
-import DropboxMonitor from './DropboxMonitor';
-import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
-import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
-import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
-import TestDropboxFunction from './TestDropboxFunction';
-import TestDropboxCredentials from './TestDropboxCredentials';
-import TestBackings from './TestBackings';
+// Admin Components (now mostly consumed by new tab content components)
+import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
+import UploadTrackDialog from '@/components/admin/UploadTrackDialog'; // Added import
+import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog'; // Added import
+import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs'; // Added import
 
 import { 
-  Database,
-  MailIcon,
-  List,
-  AlertCircle,
-  Settings,
-  UserPlus,
-  Wrench,
-  Cloud 
+  LayoutDashboard, // Icon for Dashboard
+  Users, // Icon for Users & Data
+  Settings, // Icon for System & Configuration
+  Wrench // Icon for Development & Testing
 } from 'lucide-react';
 
-// Custom Hooks
+// Custom Hooks (still used by DashboardTabContent)
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
 import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
 import { useRequestActions } from '@/hooks/admin/useRequestActions';
@@ -58,8 +42,10 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const activeTab = searchParams.get('tab') || 'overview';
+  // Default to 'dashboard' for the new structure
+  const activeTab = searchParams.get('tab') || 'dashboard';
 
+  // Custom Hooks for state and logic (props for DashboardTabContent)
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
   const { 
     searchTerm, setSearchTerm,
@@ -271,41 +257,28 @@ const AdminDashboard = () => {
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-8">
-              <TabsTrigger value="overview" className="flex items-center">
-                <List className="mr-2 h-4 w-4" /> Overview
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="dashboard" className="flex items-center">
+                <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
               </TabsTrigger>
-              <TabsTrigger value="integrations" className="flex items-center">
-                <Cloud className="mr-2 h-4 w-4" /> Integrations
+              <TabsTrigger value="users-data" className="flex items-center">
+                <Users className="mr-2 h-4 w-4" /> Users & Data
               </TabsTrigger>
-              <TabsTrigger value="data-management" className="flex items-center">
-                <Database className="mr-2 h-4 w-4" /> Data Management
+              <TabsTrigger value="system-config" className="flex items-center">
+                <Settings className="mr-2 h-4 w-4" /> System & Config
               </TabsTrigger>
-              <TabsTrigger value="request-ownership" className="flex items-center">
-                <UserPlus className="mr-2 h-4 w-4" /> Ownership
-              </TabsTrigger>
-              <TabsTrigger value="email-tools" className="flex items-center">
-                <MailIcon className="mr-2 h-4 w-4" /> Email Tools
-              </TabsTrigger>
-              <TabsTrigger value="issue-reports" className="flex items-center">
-                <AlertCircle className="mr-2 h-4 w-4" /> Issue Reports
-              </TabsTrigger>
-              <TabsTrigger value="app-settings" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" /> App Settings
-              </TabsTrigger>
-              <TabsTrigger value="tools-testing" className="flex items-center">
-                <Wrench className="mr-2 h-4 w-4" /> Tools & Testing
+              <TabsTrigger value="dev-testing" className="flex items-center">
+                <Wrench className="mr-2 h-4 w-4" /> Dev & Testing
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview">
-              <AdminStatsCards 
-                requests={requests} 
+            {/* Dashboard Tab Content */}
+            <TabsContent value="dashboard">
+              <DashboardTabContent
+                requests={requests}
+                loading={loading}
                 totalIssueReports={totalIssueReports}
                 unreadIssueReports={unreadIssueReports}
-              />
-              
-              <AdminFiltersAndViews
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 statusFilter={statusFilter}
@@ -314,78 +287,39 @@ const AdminDashboard = () => {
                 setBackingTypeFilter={setBackingTypeFilter}
                 viewMode={viewMode}
                 setViewMode={setViewMode}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                filteredRequests={filteredRequests}
                 clearFilters={clearFilters}
-                totalRequests={requests.length}
-                filteredRequestsCount={filteredRequests.length}
+                selectedRequests={selectedRequests}
+                handleSelectAll={handleSelectAll}
+                handleSelectRequest={handleSelectRequest}
+                totalCost={totalCost}
+                updateStatus={updateStatus}
+                updatePaymentStatus={updatePaymentStatus}
+                uploadTrack={handleUploadTrack}
+                shareTrack={shareTrack}
+                openEmailGenerator={openEmailGenerator}
+                openDeleteDialog={openDeleteDialog}
+                openBatchDeleteDialog={confirmBatchDeleteRequests}
+                openUploadPlatformsDialog={openUploadPlatformsDialog}
+                onDirectFileUpload={handleDirectFileUpload}
               />
-              
-              {viewMode === 'pricing' && (
-                <PricingMatrix />
-              )}
-              
-              {viewMode === 'calendar' && (
-                <RequestsCalendar
-                  requests={requests}
-                  filteredRequests={filteredRequests}
-                  selectedDate={selectedDate}
-                  setSelectedDate={setSelectedDate}
-                  uploadTrack={handleUploadTrack}
-                />
-              )}
-              
-              {viewMode === 'list' && (
-                <RequestsTable
-                  filteredRequests={filteredRequests}
-                  loading={loading}
-                  selectedRequests={selectedRequests}
-                  handleSelectAll={handleSelectAll}
-                  handleSelectRequest={handleSelectRequest}
-                  totalCost={totalCost}
-                  updateStatus={updateStatus}
-                  updatePaymentStatus={updatePaymentStatus}
-                  uploadTrack={handleUploadTrack}
-                  shareTrack={shareTrack}
-                  openEmailGenerator={openEmailGenerator}
-                  openDeleteDialog={openDeleteDialog}
-                  openBatchDeleteDialog={openBatchDeleteDialog}
-                  openUploadPlatformsDialog={openUploadPlatformsDialog}
-                  onDirectFileUpload={handleDirectFileUpload}
-                />
-              )}
             </TabsContent>
 
-            <TabsContent value="integrations" className="mt-6">
-              <DropboxMonitor />
+            {/* Users & Data Tab Content */}
+            <TabsContent value="users-data" className="mt-6">
+              <UsersAndDataTabContent />
             </TabsContent>
 
-            <TabsContent value="data-management" className="mt-6 space-y-6">
-              <DataImporter />
+            {/* System & Configuration Tab Content */}
+            <TabsContent value="system-config" className="mt-6">
+              <SystemAndConfigTabContent />
             </TabsContent>
 
-            <TabsContent value="request-ownership" className="mt-6">
-              <RequestOwnershipTabContent />
-            </TabsContent>
-
-            <TabsContent value="email-tools" className="mt-6">
-              <div className="grid grid-cols-1 gap-6">
-                <NotificationRecipientsManager />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="issue-reports" className="mt-6">
-              <IssueReportsTabContent />
-            </TabsContent>
-
-            <TabsContent value="app-settings" className="mt-6">
-              <HolidayModeSettings />
-            </TabsContent>
-
-            <TabsContent value="tools-testing" className="mt-6 space-y-6">
-              <TestEmail />
-              <TestEmailNotification />
-              <TestDropboxFunction />
-              <TestDropboxCredentials />
-              <TestBackings />
+            {/* Development & Testing Tab Content */}
+            <TabsContent value="dev-testing" className="mt-6">
+              <DevelopmentAndTestingTabContent />
             </TabsContent>
           </Tabs>
           
@@ -400,7 +334,7 @@ const AdminDashboard = () => {
           
           <UploadPlatformsDialog
             isOpen={uploadPlatformsDialogOpen}
-            onOpenChange={setUploadPlatformsDialogOpen}
+            onOpenChange={() => setUploadPlatformsDialogOpen(false)} // Simplified onOpenChange
             platforms={platforms}
             setPlatforms={setPlatforms}
             onSavePlatforms={saveUploadPlatforms}
