@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 
 interface TrackInfo {
   url: string;
@@ -537,14 +538,21 @@ const ClientTrackView = () => {
                         <p className="text-sm text-gray-500 flex items-center">
                           <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
                         </p>
-                        <a 
-                          href={request.additional_links} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:underline text-sm"
-                        >
-                          {request.additional_links}
-                        </a>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a 
+                              href={request.additional_links} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="font-medium text-blue-600 hover:underline text-sm block break-all truncate"
+                            >
+                              {request.additional_links}
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            <p>{request.additional_links}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     ) : null}
                   </div>
