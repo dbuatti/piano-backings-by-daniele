@@ -102,6 +102,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     9. Never use "Break a leg" - end with "Warmly" instead.
     10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
     11. Do NOT include pricing information in this completion email.
+    12. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -132,6 +133,7 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const trackUrl = request.track_url;
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   let downloadSection = '';
   if (trackUrl) {
@@ -166,7 +168,10 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
         <p>I'm excited to let you know that your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you.</p>
         ${downloadSection}
         <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
-        <p>Thank you so much for choosing Piano Backings by Daniele.</p>
+        <p style="margin-top: 20px;">
+          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
+          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
+        </p>
         <p style="margin-top: 20px;">Warmly,</p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
@@ -214,6 +219,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     8. Express gratitude for their business.
     9. Keep the tone professional yet friendly.
     10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    11. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -247,6 +253,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   return {
     subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
@@ -281,6 +288,10 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
         <p style="margin-top: 20px;">
           Please let me know if you have any questions or if there's anything else I can assist you with.
         </p>
+        <p style="margin-top: 20px;">
+          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
+          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
+        </p>
         <p style="margin-top: 20px;">Warmly,</p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
@@ -299,6 +310,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback completion and payment reminder template");
@@ -336,6 +348,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     11. Keep the tone professional yet friendly, showing genuine care for their success.
     12. Never use "Break a leg" - end with "Warmly" instead.
     13. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    14. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -370,6 +383,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   let trackAccessSection = '';
   if (trackUrl) {
@@ -432,6 +446,10 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
         </ul>
         <p style="margin-top: 20px;">
           Please let me know if you have any questions or if there's anything else I can assist you with.
+        </p>
+        <p style="margin-top: 20px;">
+          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
+          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
         </p>
         <p style="margin-top: 20px;">Warmly,</p>
       </div>

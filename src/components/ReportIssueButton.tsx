@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +37,7 @@ const ReportIssueButton: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
 
   // Initialize react-hook-form
   const form = useForm<IssueReportFormValues>({
@@ -63,6 +64,18 @@ const ReportIssueButton: React.FC = () => {
     };
     fetchUser();
   }, [form, dialogOpen]); // Refetch when dialog opens to ensure latest session
+
+  // NEW: Check for query parameter to open dialog automatically
+  useEffect(() => {
+    if (searchParams.get('openFeedback') === 'true') {
+      setDialogOpen(true);
+      // Remove the query parameter to prevent reopening on refresh
+      setSearchParams(prev => {
+        prev.delete('openFeedback');
+        return prev;
+      }, { replace: true }); // Use replace to avoid adding to history
+    }
+  }, [searchParams, setSearchParams]); // Depend on searchParams and setSearchParams
 
   // Mutation for submitting the issue report
   const submitIssueMutation = useMutation({
