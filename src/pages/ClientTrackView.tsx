@@ -203,8 +203,8 @@ const ClientTrackView = () => {
   // Calculate the range for display, rounding down to the nearest multiple of 5
   const rawMinCost = baseTotalCost * 0.5;
   const rawMaxCost = baseTotalCost * 1.5;
-  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); 
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2);
+  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Round UP to nearest 5
+  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round DOWN to nearest 5
 
   const trackTypeDisplayRange = request.track_type ? getTrackTypeBaseDisplayRange(request.track_type) : null;
 
