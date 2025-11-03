@@ -337,10 +337,10 @@ const ClientTrackView = () => {
                             size="lg"
                           >
                             <Download className="mr-2 h-5 w-5" />
-                            Download Your Track
+                            Download MP3
                           </Button>
                           <p className="text-sm text-gray-600 mt-2">
-                            Click the button above to download your custom backing track
+                            Click the button above to download your custom backing track in MP3 format.
                           </p>
                         </div>
                       ) : (
