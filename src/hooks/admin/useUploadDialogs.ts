@@ -13,7 +13,7 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_url?: string;
+  track_urls?: string[]; // Changed to array of strings
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
   cost?: number;
@@ -41,7 +41,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
   const performUpload = async (id: string, file: File) => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `tracks/${id}.${fileExt}`; // Use the request ID as part of the file name
+      const fileName = `tracks/${id}-${Date.now()}.${fileExt}`; // Unique file name for multiple uploads
       
       const { data: uploadData, error: uploadError } = await supabase
         .storage
@@ -60,11 +60,25 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
         .from('tracks')
         .getPublicUrl(fileName);
       
+      // Fetch current request to get existing track_urls
+      const { data: currentRequest, error: fetchError } = await supabase
+        .from('backing_requests')
+        .select('track_urls')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch current track URLs: ${fetchError.message}`);
+      }
+
+      const existingTrackUrls = currentRequest?.track_urls || [];
+      const newTrackUrls = [...existingTrackUrls, publicUrl]; // Append new URL
+
       const { error: updateError } = await supabase
         .from('backing_requests')
         .update({ 
-          track_url: publicUrl,
-          status: 'completed'
+          track_urls: newTrackUrls, // Update with the array
+          status: 'completed' // Mark as completed after upload
         })
         .eq('id', id);
       
@@ -75,7 +89,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
       setRequests(prev => prev.map(req => 
         req.id === id ? { 
           ...req, 
-          track_url: publicUrl,
+          track_urls: newTrackUrls, // Update with the new array
           status: 'completed'
         } : req
       ));

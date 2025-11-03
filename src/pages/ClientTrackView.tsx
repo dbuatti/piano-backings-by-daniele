@@ -144,9 +144,9 @@ const ClientTrackView = () => {
     }
   };
 
-  const downloadTrack = () => {
-    if (request?.track_url) {
-      window.open(request.track_url, '_blank');
+  const downloadTrack = (url: string) => {
+    if (url) {
+      window.open(url, '_blank');
     } else {
       toast({
         title: "Track Not Available",
@@ -317,7 +317,7 @@ const ClientTrackView = () => {
                     {request.status === 'completed' ? (
                       <>
                         <Play className="mr-2 h-5 w-5 text-green-600" />
-                        Your Track is Ready!
+                        Your Track(s) are Ready!
                       </>
                     ) : (
                       <>
@@ -329,18 +329,21 @@ const ClientTrackView = () => {
                   
                   {request.status === 'completed' ? (
                     <div className="mt-6">
-                      {request.track_url ? (
+                      {request.track_urls && request.track_urls.length > 0 ? (
                         <div className="space-y-4">
-                          <Button 
-                            onClick={downloadTrack}
-                            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg"
-                            size="lg"
-                          >
-                            <Download className="mr-2 h-5 w-5" />
-                            Download MP3
-                          </Button>
+                          {request.track_urls.map((url: string, index: number) => (
+                            <Button 
+                              key={index}
+                              onClick={() => downloadTrack(url)}
+                              className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg w-full md:w-auto"
+                              size="lg"
+                            >
+                              <Download className="mr-2 h-5 w-5" />
+                              Download Track {index + 1}
+                            </Button>
+                          ))}
                           <p className="text-sm text-gray-600 mt-2">
-                            Click the button above to download your custom backing track. (MP3 Audio File)
+                            Click the button(s) above to download your custom backing track(s). (MP3 Audio File)
                           </p>
                         </div>
                       ) : (
@@ -351,7 +354,7 @@ const ClientTrackView = () => {
                             </div>
                             <div className="ml-3">
                               <p className="text-sm text-yellow-700">
-                                Your track is marked as completed but the download link is not available yet. 
+                                Your track is marked as completed but no download links are available yet. 
                                 Please contact support for assistance.
                               </p>
                             </div>

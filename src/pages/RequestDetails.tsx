@@ -26,7 +26,8 @@ import {
   AlertCircle,
   Search, 
   UserPlus,
-  Loader2 // Added Loader2 for loading states
+  Loader2, // Added Loader2 for loading states
+  Download // Added Download icon
 } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
@@ -524,6 +525,29 @@ const RequestDetails = () => {
                 <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
                   {request.special_requests || 'No special requests provided'}
                 </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <Music className="mr-2 h-5 w-5" />
+                  Uploaded Tracks
+                </h3>
+                {request.track_urls && request.track_urls.length > 0 ? (
+                  <ul className="space-y-2">
+                    {request.track_urls.map((url: string, index: number) => (
+                      <li key={index} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
+                          {url.split('/').pop()}
+                        </a>
+                        <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500">No tracks uploaded yet.</p>
+                )}
               </div>
               
               <div>

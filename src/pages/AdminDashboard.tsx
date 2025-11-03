@@ -31,7 +31,8 @@ import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
 import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
 import { useRequestActions } from '@/hooks/admin/useRequestActions';
 import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
-import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
+import { useDeleteDialogs }
+ from '@/hooks/admin/useDeleteDialogs';
 import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 
 const AdminDashboard = () => {
@@ -222,6 +223,40 @@ const AdminDashboard = () => {
     setSearchParams({ tab: value });
   };
 
+  // Get existing track URLs for the currently selected request in the dialog
+  const currentRequestForUpload = requests.find(req => req.id === uploadTrackId);
+  const existingTrackUrls = currentRequestForUpload?.track_urls || [];
+
+  const handleRemoveTrack = async (urlToRemove: string) => {
+    if (!uploadTrackId) return;
+
+    try {
+      const updatedTrackUrls = existingTrackUrls.filter(url => url !== urlToRemove);
+      
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ track_urls: updatedTrackUrls })
+        .eq('id', uploadTrackId);
+      
+      if (error) throw error;
+
+      setRequests(prev => prev.map(req => 
+        req.id === uploadTrackId ? { ...req, track_urls: updatedTrackUrls } : req
+      ));
+
+      toast({
+        title: "Track Removed",
+        description: "The selected track has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to remove track: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -330,6 +365,8 @@ const AdminDashboard = () => {
             uploadFile={uploadFile}
             onFileChange={handleFileChange}
             onFileUpload={handleFileUpload}
+            existingTrackUrls={existingTrackUrls} // Pass existing tracks
+            onRemoveTrack={handleRemoveTrack} // Pass remove track handler
           />
           
           <UploadPlatformsDialog

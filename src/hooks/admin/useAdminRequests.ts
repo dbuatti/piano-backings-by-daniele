@@ -13,7 +13,7 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_url?: string;
+  track_urls?: string[]; // Changed to array of strings
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
   cost?: number; // Assuming cost might be stored or calculated
