@@ -4,6 +4,11 @@ import { calculateRequestCost } from "./pricing"; // Import the pricing utility
 // Initialize Gemini API client
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
 
+export interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 export interface BackingRequest {
   id?: string;
   name: string;
@@ -20,10 +25,11 @@ export interface BackingRequest {
   youtube_link?: string;
   voice_memo?: string;
   additional_links?: string; // Added new field
-  track_url?: string; // Added track_url for completion emails
+  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
   cost?: number; // Added cost for payment reminders
   status?: 'pending' | 'in-progress' | 'completed' | 'cancelled'; // Added status
   created_at?: string; // Added created_at
+  is_paid?: boolean; // Added is_paid
 }
 
 // HTML Email signature template
@@ -67,7 +73,7 @@ const textToHtml = (text: string) => {
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
-  const trackUrl = request.track_url; // Assuming track_url might be available
+  const trackUrl = request.track_urls && request.track_urls.length > 0 ? request.track_urls[0].url : undefined; // Use first track URL if available
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback completion template");
@@ -131,7 +137,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
 
 const generateFallbackCompletionEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
-  const trackUrl = request.track_url;
+  const trackUrl = request.track_urls && request.track_urls.length > 0 ? request.track_urls[0].url : undefined;
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
@@ -302,7 +308,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
 export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
-  const trackUrl = request.track_url;
+  const trackUrl = request.track_urls && request.track_urls.length > 0 ? request.track_urls[0].url : undefined;
   // Correctly access totalCost from the object returned by calculateRequestCost
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
   const rawMinCost = trackCost * 0.5;
@@ -377,7 +383,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
 
 const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trackCost: number) => {
   const firstName = request.name.split(' ')[0];
-  const trackUrl = request.track_url;
+  const trackUrl = request.track_urls && request.track_urls.length > 0 ? request.track_urls[0].url : undefined;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down

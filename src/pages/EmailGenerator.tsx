@@ -106,7 +106,7 @@ const EmailGenerator = () => {
       try {
         const { data, error } = await supabase
           .from('backing_requests')
-          .select('*')
+          .select('*, track_urls') // Select track_urls to infer email status
           .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -288,7 +288,23 @@ const EmailGenerator = () => {
               ) : (
                 allRequests.map((request) => (
                   <SelectItem key={request.id} value={request.id!}>
-                    {request.song_title} ({request.name || request.email})
+                    <div className="flex items-center justify-between w-full">
+                      <span className="flex-1 truncate">
+                        {request.song_title} ({request.name || request.email})
+                      </span>
+                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        {request.is_paid ? (
+                          <Badge variant="default" className="bg-green-500">PAID</Badge>
+                        ) : (
+                          <Badge variant="destructive">UNPAID</Badge>
+                        )}
+                        {request.track_urls && request.track_urls.length > 0 ? (
+                          <Badge variant="default" className="bg-blue-500">EMAILED</Badge>
+                        ) : (
+                          <Badge variant="secondary">NOT EMAILED</Badge>
+                        )}
+                      </div>
+                    </div>
                   </SelectItem>
                 ))
               )}
