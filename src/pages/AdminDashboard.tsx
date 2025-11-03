@@ -72,6 +72,7 @@ const AdminDashboard = () => {
     handleDirectFileUpload,
     openUploadPlatformsDialog,
     saveUploadPlatforms,
+    updateTrackCaption, // Destructure the new function
   } = useUploadDialogs(requests, setRequests);
   const {
     selectedRequests, setSelectedRequests,
@@ -231,7 +232,8 @@ const AdminDashboard = () => {
     if (!uploadTrackId) return;
 
     try {
-      const updatedTrackUrls = existingTrackUrls.filter(url => url !== urlToRemove);
+      // Filter by the 'url' property of the TrackInfo object
+      const updatedTrackUrls = existingTrackUrls.filter(track => track.url !== urlToRemove);
       
       const { error } = await supabase
         .from('backing_requests')
@@ -367,6 +369,7 @@ const AdminDashboard = () => {
             onFileUpload={handleFileUpload}
             existingTrackUrls={existingTrackUrls} // Pass existing tracks
             onRemoveTrack={handleRemoveTrack} // Pass remove track handler
+            onUpdateTrackCaption={updateTrackCaption} // Pass the new updateTrackCaption function
           />
           
           <UploadPlatformsDialog
