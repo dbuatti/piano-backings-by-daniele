@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane } from "lucide-react"; // Import Plane icon
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart } from "lucide-react"; // Import ShoppingCart icon
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -109,6 +109,16 @@ const Header = () => {
               </Button>
             </Link>
             
+            <Link to="/shop"> {/* New Shop Link */}
+              <Button 
+                variant="ghost" 
+                className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+              >
+                <ShoppingCart className="mr-1 h-4 w-4" />
+                Shop
+              </Button>
+            </Link>
+
             {session && (
               <Link to="/user-dashboard">
                 <Button 
@@ -241,6 +251,18 @@ const Header = () => {
                         Order Track
                       </Link>
                     </div>
+
+                    <Link 
+                      to="/shop"
+                      className={cn(
+                        "block px-4 py-3 rounded-md text-base font-medium flex items-center",
+                        "text-white hover:bg-white/20"
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <ShoppingCart className="mr-3 h-5 w-5" />
+                      Shop
+                    </Link>
                     
                     {session && (
                       <Link 
