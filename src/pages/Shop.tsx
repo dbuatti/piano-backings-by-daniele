@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import ProductCard from '@/components/ProductCard';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Store, AlertCircle, CheckCircle } from 'lucide-react'; // Added CheckCircle
-import { stripePromise } from '@/integrations/stripe/client'; // Import stripePromise
+// Removed stripePromise import as it's no longer needed for redirection
 
 interface Product {
   id: string;
@@ -92,10 +92,6 @@ const Shop: React.FC = () => {
   const handleBuyNow = async (product: Product) => {
     setIsBuying(true);
     try {
-      if (!stripePromise) {
-        throw new Error('Stripe is not initialized. Check VITE_STRIPE_PUBLISHABLE_KEY.');
-      }
-
       // Call your Supabase Edge Function to create a Stripe Checkout Session
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
@@ -114,18 +110,13 @@ const Shop: React.FC = () => {
         throw new Error(data.error || `Failed to create checkout session: ${response.status}`);
       }
 
-      const stripe = await stripePromise;
-      if (stripe) {
-        const { error: redirectToCheckoutError } = await stripe.redirectToCheckout({
-          sessionId: data.sessionId,
-        });
-
-        if (redirectToCheckoutError) {
-          throw new Error(`Error redirecting to checkout: ${redirectToCheckoutError.message}`);
-        }
+      // Redirect to the Stripe Checkout URL
+      if (data.url) {
+        window.location.href = data.url;
       } else {
-        throw new Error('Stripe.js failed to load.');
+        throw new Error('Stripe Checkout URL not received.');
       }
+      
     } catch (err: any) {
       console.error('Error during checkout:', err);
       toast({
