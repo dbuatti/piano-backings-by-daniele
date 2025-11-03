@@ -21,7 +21,8 @@ interface BackingRequest {
   track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number;
+  cost?: number; // Assuming cost might be stored or calculated
+  // Add other fields as necessary
 }
 
 interface UploadPlatformsState {
@@ -46,7 +47,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
   const performUpload = async (id: string, file: File) => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = file.name; // Use original file name for caption
+      const originalFileName = file.name; // Capture the original file name here
       const uniqueFileName = `tracks/${id}-${Date.now()}.${fileExt}`; // Unique file name for storage
       
       const { data: uploadData, error: uploadError } = await supabase
@@ -78,7 +79,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
       }
 
       const existingTrackUrls: TrackInfo[] = currentRequest?.track_urls || [];
-      const newTrackInfo: TrackInfo = { url: publicUrl, caption: fileName };
+      const newTrackInfo: TrackInfo = { url: publicUrl, caption: originalFileName }; // Use originalFileName for caption
       const newTrackUrls = [...existingTrackUrls, newTrackInfo]; // Append new TrackInfo object
 
       const { error: updateError } = await supabase
