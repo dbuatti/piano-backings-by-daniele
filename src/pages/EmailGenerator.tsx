@@ -27,7 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Import table components
+// Removed Table imports as the table is being replaced
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -42,109 +42,20 @@ const EmailGenerator = () => {
   
   const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
   const [loadingAllRequests, setLoadingAllRequests] = useState(true);
-  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]); // Will now hold at most one ID
   const [displayedRequest, setDisplayedRequest] = useState<BackingRequest | null>(null); // The request whose details are shown
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Fetch all requests on component mount
-  useEffect(() => {
-    const fetchAllRequests = async () => {
-      setLoadingAllRequests(true);
-      try {
-        const { data, error } = await supabase
-          .from('backing_requests')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setAllRequests(data || []);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: `Failed to fetch all requests: ${error.message}`,
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingAllRequests(false);
-      }
-    };
-    fetchAllRequests();
-  }, [toast]);
-
-  // Handle initial load from URL parameter or location state
-  useEffect(() => {
-    if (allRequests.length > 0) {
-      let initialRequest: BackingRequest | null = null;
-      if (id) {
-        initialRequest = allRequests.find(req => req.id === id) || null;
-      } else if (location.state?.request) {
-        initialRequest = location.state.request;
-      }
-
-      if (initialRequest) {
-        setDisplayedRequest(initialRequest);
-        setSelectedRequestIds([initialRequest.id!]);
-      }
-    }
-  }, [id, location.state, allRequests]);
-
-  // Update recipient emails and displayed request when selectedRequestIds change
-  useEffect(() => {
-    const selected = allRequests.filter(req => selectedRequestIds.includes(req.id!));
-    setRecipientEmails(selected.map(req => req.email).join(', '));
-
-    // If no ID in URL, and multiple selected, display the first one.
-    // If no ID in URL and no selection, clear displayed request.
-    if (!id) {
-      setDisplayedRequest(selected.length > 0 ? selected[0] : null);
-    }
-    
-    // Regenerate email content if displayedRequest or templateType changes
-    if (displayedRequest) {
-      handleGenerateEmail(templateType);
-    } else if (selected.length > 0 && !id) { // If no ID in URL, but requests are selected, use the first one for generation
-      handleGenerateEmail(templateType, selected[0]);
-    } else if (selected.length === 0 && !id) { // If no ID in URL and no requests selected, clear email data
-      setEmailData({ subject: '', html: '' });
-    }
-
-  }, [selectedRequestIds, allRequests, id, templateType]); // Added templateType to dependencies
-
-  const handleCheckboxChange = (requestId: string, checked: boolean | 'indeterminate') => {
-    setSelectedRequestIds(prev => {
-      if (checked) {
-        return [...prev, requestId];
-      } else {
-        return prev.filter(id => id !== requestId);
-      }
-    });
-  };
+  // Removed searchTerm state as the search input is being removed
 
   const handleGenerateEmail = useCallback(async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom', requestToUse?: BackingRequest) => {
-    let requestForGeneration = requestToUse || displayedRequest; // Changed from const to let
+    let requestForGeneration = requestToUse || displayedRequest;
 
     if (!requestForGeneration) {
-      if (selectedRequestIds.length > 0) {
-        // If no specific request is displayed, but some are selected, use the first one for generation
-        const firstSelected = allRequests.find(req => req.id === selectedRequestIds[0]);
-        if (firstSelected) {
-          requestForGeneration = firstSelected;
-        } else {
-          toast({
-            title: "Error",
-            description: "No request data available to generate email. Please select a request.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: "No request data available to generate email. Please select a request.",
-          variant: "destructive",
-        });
-        return;
-      }
+      toast({
+        title: "Error",
+        description: "No request data available to generate email. Please select a request from the dropdown.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsGenerating(true);
@@ -186,7 +97,74 @@ const EmailGenerator = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [displayedRequest, selectedRequestIds, allRequests, toast]);
+  }, [displayedRequest, selectedRequestIds, allRequests, toast]); // Added allRequests to dependencies
+
+  // Fetch all requests on component mount
+  useEffect(() => {
+    const fetchAllRequests = async () => {
+      setLoadingAllRequests(true);
+      try {
+        const { data, error } = await supabase
+          .from('backing_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setAllRequests(data || []);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: `Failed to fetch all requests: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingAllRequests(false);
+      }
+    };
+    fetchAllRequests();
+  }, [toast]);
+
+  // Handle initial load from URL parameter or location state
+  useEffect(() => {
+    if (allRequests.length > 0) {
+      let initialRequest: BackingRequest | null = null;
+      if (id) {
+        initialRequest = allRequests.find(req => req.id === id) || null;
+      } else if (location.state?.request) {
+        initialRequest = location.state.request;
+      }
+
+      if (initialRequest) {
+        setDisplayedRequest(initialRequest);
+        setSelectedRequestIds([initialRequest.id!]); // Select only this one
+      }
+    }
+  }, [id, location.state, allRequests]);
+
+  // Update recipient emails and displayed request when selectedRequestIds change
+  useEffect(() => {
+    const selected = allRequests.filter(req => selectedRequestIds.includes(req.id!));
+    // Recipient emails will now only be for the single selected request
+    setRecipientEmails(selected.map(req => req.email).join(', '));
+
+    // If no ID in URL, and a request is selected, display that one.
+    // If no ID in URL and no selection, clear displayed request.
+    if (!id) {
+      setDisplayedRequest(selected.length > 0 ? selected[0] : null);
+    }
+    
+    // Regenerate email content if displayedRequest or templateType changes
+    if (displayedRequest) {
+      handleGenerateEmail(templateType);
+    } else if (selected.length > 0 && !id) { // If no ID in URL, but requests are selected, use the first one for generation
+      handleGenerateEmail(templateType, selected[0]);
+    } else if (selected.length === 0 && !id) { // If no ID in URL and no requests selected, clear email data
+      setEmailData({ subject: '', html: '' });
+    }
+
+  }, [selectedRequestIds, allRequests, id, templateType, displayedRequest, handleGenerateEmail]); // Added handleGenerateEmail to dependencies
+
+  // Removed handleCheckboxChange as checkboxes are gone
 
   const handleSendEmail = async () => {
     setIsSending(true);
@@ -274,12 +252,7 @@ const EmailGenerator = () => {
     }
   };
 
-  const filteredRequests = allRequests.filter(req => 
-    req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.musical_or_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Removed filteredRequests as search and table are gone
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -291,9 +264,41 @@ const EmailGenerator = () => {
           <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests</p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        {/* New: Top-level dropdown for selecting a request */}
+        <div className="mb-6">
+          <Label htmlFor="select-request" className="text-lg font-semibold text-[#1C0357] flex items-center mb-2">
+            <List className="mr-2 h-5 w-5" />
+            Select a Request
+          </Label>
+          <Select
+            value={displayedRequest?.id || ''}
+            onValueChange={(requestId) => {
+              const selected = allRequests.find(req => req.id === requestId);
+              setDisplayedRequest(selected || null);
+              setSelectedRequestIds(selected ? [selected.id!] : []); // Ensure only one is selected
+            }}
+            disabled={loadingAllRequests}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={loadingAllRequests ? "Loading requests..." : "Select a request to generate email for"} />
+            </SelectTrigger>
+            <SelectContent>
+              {allRequests.length === 0 && !loadingAllRequests ? (
+                <SelectItem value="no-requests" disabled>No requests found</SelectItem>
+              ) : (
+                allRequests.map((request) => (
+                  <SelectItem key={request.id} value={request.id!}>
+                    {request.song_title} ({request.name || request.email})
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> {/* Adjusted grid to 2 columns */}
           {/* Request Details Card (Left Column) */}
-          <Card className="shadow-lg lg:col-span-1">
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">Request Details</CardTitle>
             </CardHeader>
@@ -353,13 +358,13 @@ const EmailGenerator = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Select a request from the list below to view its details.</p>
+                <p className="text-center text-gray-500 py-8">Select a request from the dropdown above to view its details.</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Generated Email Card (Middle Column) */}
-          <Card className="shadow-lg lg:col-span-1">
+          {/* Generated Email Card (Right Column) */}
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">Generated Email</CardTitle>
             </CardHeader>
@@ -386,10 +391,10 @@ const EmailGenerator = () => {
                     id="recipient-emails"
                     value={recipientEmails}
                     onChange={(e) => setRecipientEmails(e.target.value)}
-                    placeholder="client@example.com, another@example.com"
+                    placeholder="client@example.com"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Enter multiple emails separated by commas.</p>
+                  <p className="text-xs text-gray-500 mt-1">This field is automatically populated from the selected request.</p>
                 </div>
 
                 <div>
@@ -459,84 +464,6 @@ const EmailGenerator = () => {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Available Requests Card (Right Column) */}
-          <Card className="shadow-lg xl:col-span-1">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-                <List className="mr-2 h-5 w-5" />
-                Available Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search requests by song, client, email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              {loadingAllRequests ? (
-                <div className="flex items-center justify-center h-64">
-                  <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-                  <p className="ml-4 text-lg text-gray-600">Loading requests...</p>
-                </div>
-              ) : filteredRequests.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No requests found.</p>
-              ) : (
-                <div className="border rounded-md overflow-hidden max-h-[600px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="bg-[#D1AAF2]/20 sticky top-0 z-10">
-                      <TableRow>
-                        <TableHead className="w-[50px]">
-                          <Checkbox
-                            checked={selectedRequestIds.length === filteredRequests.length && filteredRequests.length > 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedRequestIds(filteredRequests.map(req => req.id!));
-                              } else {
-                                setSelectedRequestIds([]);
-                              }
-                            }}
-                          />
-                        </TableHead>
-                        <TableHead>Song / Client</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead className="w-[100px]">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredRequests.map((request) => (
-                        <TableRow 
-                          key={request.id} 
-                          className={cn(
-                            selectedRequestIds.includes(request.id!) ? "bg-[#D1AAF2]/20" : "",
-                            displayedRequest?.id === request.id ? "border-l-4 border-[#F538BC]" : ""
-                          )}
-                          onClick={() => setDisplayedRequest(request)} // Click to display details
-                        >
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedRequestIds.includes(request.id!)}
-                              onCheckedChange={(checked) => handleCheckboxChange(request.id!, checked)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{request.song_title}</div>
-                            <div className="text-sm text-gray-500">{request.name || request.musical_or_artist}</div>
-                          </TableCell>
-                          <TableCell className="text-sm">{request.email}</TableCell>
-                          <TableCell>{getStatusBadge(request.status)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
