@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
-  Clock, XCircle // Imported missing icons
+  Clock, XCircle, List, Search // Imported missing icons
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import {
@@ -27,6 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Import table components
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -38,66 +39,120 @@ const EmailGenerator = () => {
   const [recipientEmails, setRecipientEmails] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'custom'>('completion-payment');
-  const [currentRequest, setCurrentRequest] = useState<BackingRequest | null>(null);
+  
+  const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
+  const [loadingAllRequests, setLoadingAllRequests] = useState(true);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [displayedRequest, setDisplayedRequest] = useState<BackingRequest | null>(null); // The request whose details are shown
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Prefill form data from request ID or passed state
+  // Fetch all requests on component mount
   useEffect(() => {
-    const fetchRequestDetails = async () => {
-      let requestData: any = null;
-
-      if (id) {
-        try {
-          const { data, error } = await supabase
-            .from('backing_requests')
-            .select('*')
-            .eq('id', id)
-            .single();
-          
-          if (error) throw error;
-          requestData = data;
-        } catch (error: any) {
-          toast({
-            title: "Error",
-            description: `Failed to fetch request details: ${error.message}`,
-            variant: "destructive",
-          });
-        }
-      } else if (location.state?.request) {
-        requestData = location.state.request;
-      }
-
-      if (requestData) {
-        setCurrentRequest(requestData);
-        setRecipientEmails(requestData.email || '');
+    const fetchAllRequests = async () => {
+      setLoadingAllRequests(true);
+      try {
+        const { data, error } = await supabase
+          .from('backing_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setAllRequests(data || []);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: `Failed to fetch all requests: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingAllRequests(false);
       }
     };
-    
-    fetchRequestDetails();
-  }, [id, location.state, toast]);
+    fetchAllRequests();
+  }, [toast]);
 
-  // Generate email content whenever templateType or currentRequest changes
+  // Handle initial load from URL parameter or location state
   useEffect(() => {
-    if (currentRequest) {
-      handleGenerateEmail(templateType);
-    }
-  }, [templateType, currentRequest]);
+    if (allRequests.length > 0) {
+      let initialRequest: BackingRequest | null = null;
+      if (id) {
+        initialRequest = allRequests.find(req => req.id === id) || null;
+      } else if (location.state?.request) {
+        initialRequest = location.state.request;
+      }
 
-  const handleGenerateEmail = async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom') => {
-    if (!currentRequest) {
-      toast({
-        title: "Error",
-        description: "No request data available to generate email.",
-        variant: "destructive",
-      });
-      return;
+      if (initialRequest) {
+        setDisplayedRequest(initialRequest);
+        setSelectedRequestIds([initialRequest.id!]);
+      }
+    }
+  }, [id, location.state, allRequests]);
+
+  // Update recipient emails and displayed request when selectedRequestIds change
+  useEffect(() => {
+    const selected = allRequests.filter(req => selectedRequestIds.includes(req.id!));
+    setRecipientEmails(selected.map(req => req.email).join(', '));
+
+    // If no ID in URL, and multiple selected, display the first one.
+    // If no ID in URL and no selection, clear displayed request.
+    if (!id) {
+      setDisplayedRequest(selected.length > 0 ? selected[0] : null);
+    }
+    
+    // Regenerate email content if displayedRequest or templateType changes
+    if (displayedRequest) {
+      handleGenerateEmail(templateType);
+    } else if (selected.length > 0 && !id) { // If no ID in URL, but requests are selected, use the first one for generation
+      handleGenerateEmail(templateType, selected[0]);
+    } else if (selected.length === 0 && !id) { // If no ID in URL and no requests selected, clear email data
+      setEmailData({ subject: '', html: '' });
+    }
+
+  }, [selectedRequestIds, allRequests, id, templateType]); // Added templateType to dependencies
+
+  const handleCheckboxChange = (requestId: string, checked: boolean | 'indeterminate') => {
+    setSelectedRequestIds(prev => {
+      if (checked) {
+        return [...prev, requestId];
+      } else {
+        return prev.filter(id => id !== requestId);
+      }
+    });
+  };
+
+  const handleGenerateEmail = useCallback(async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'custom', requestToUse?: BackingRequest) => {
+    let requestForGeneration = requestToUse || displayedRequest; // Changed from const to let
+
+    if (!requestForGeneration) {
+      if (selectedRequestIds.length > 0) {
+        // If no specific request is displayed, but some are selected, use the first one for generation
+        const firstSelected = allRequests.find(req => req.id === selectedRequestIds[0]);
+        if (firstSelected) {
+          requestForGeneration = firstSelected;
+        } else {
+          toast({
+            title: "Error",
+            description: "No request data available to generate email. Please select a request.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "No request data available to generate email. Please select a request.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsGenerating(true);
     try {
       let result;
       const requestWithCost: BackingRequest = {
-        ...currentRequest,
-        cost: calculateRequestCost(currentRequest).totalCost
+        ...requestForGeneration,
+        cost: calculateRequestCost(requestForGeneration).totalCost
       };
 
       if (selectedTemplateType === 'completion') {
@@ -131,7 +186,7 @@ const EmailGenerator = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [displayedRequest, selectedRequestIds, allRequests, toast]);
 
   const handleSendEmail = async () => {
     setIsSending(true);
@@ -185,6 +240,7 @@ const EmailGenerator = () => {
       setRecipientEmails('');
       setShowPreview(false);
       setTemplateType('completion-payment');
+      setSelectedRequestIds([]); // Clear selected requests after sending
     } catch (err: any) {
       console.error('Error sending email:', err);
       toast({
@@ -218,70 +274,78 @@ const EmailGenerator = () => {
     }
   };
 
+  const filteredRequests = allRequests.filter(req => 
+    req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.musical_or_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
       
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
           <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests</p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="shadow-lg">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          {/* Request Details Card (Left Column) */}
+          <Card className="shadow-lg lg:col-span-1">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">Request Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {currentRequest ? (
+              {displayedRequest ? (
                 <div className="space-y-4 text-sm">
                   <div className="flex items-center justify-between">
                     <div className="font-medium flex items-center">
                       <Music className="mr-2 h-4 w-4 text-gray-600" />
-                      Song: <span className="ml-1 font-bold">{currentRequest.song_title}</span>
+                      Song: <span className="ml-1 font-bold">{displayedRequest.song_title}</span>
                     </div>
-                    {getStatusBadge(currentRequest.status)}
+                    {getStatusBadge(displayedRequest.status)}
                   </div>
                   <div className="flex items-center">
                     <User className="mr-2 h-4 w-4 text-gray-600" />
-                    Client: <span className="ml-1 font-medium">{currentRequest.name || 'N/A'}</span>
+                    Client: <span className="ml-1 font-medium">{displayedRequest.name || 'N/A'}</span>
                   </div>
                   <div className="flex items-center">
                     <Mail className="mr-2 h-4 w-4 text-gray-600" />
-                    Email: <span className="ml-1 font-medium">{currentRequest.email}</span>
+                    Email: <span className="ml-1 font-medium">{displayedRequest.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Calendar className="mr-2 h-4 w-4 text-gray-600" />
-                    Submitted: <span className="ml-1 font-medium">{currentRequest.created_at ? format(new Date(currentRequest.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
+                    Submitted: <span className="ml-1 font-medium">{displayedRequest.created_at ? format(new Date(displayedRequest.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
                   </div>
                   <div className="flex items-center">
                     <Headphones className="mr-2 h-4 w-4 text-gray-600" />
                     Type: <span className="ml-1 font-medium capitalize">
-                      {getSafeBackingTypes(currentRequest.backing_type).map(t => t.replace('-', ' ')).join(', ') || 'N/A'}
+                      {getSafeBackingTypes(displayedRequest.backing_type).map(t => t.replace('-', ' ')).join(', ') || 'N/A'}
                     </span>
                   </div>
                   <div className="flex items-center">
                     <Key className="mr-2 h-4 w-4 text-gray-600" />
-                    Key: <span className="ml-1 font-medium">{currentRequest.song_key || 'N/A'}</span>
+                    Key: <span className="ml-1 font-medium">{displayedRequest.song_key || 'N/A'}</span>
                   </div>
-                  {currentRequest.youtube_link && (
+                  {displayedRequest.youtube_link && (
                     <div className="flex items-center">
                       <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
-                      YouTube: <a href={currentRequest.youtube_link} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{currentRequest.youtube_link}</a>
+                      YouTube: <a href={displayedRequest.youtube_link} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedRequest.youtube_link}</a>
                     </div>
                   )}
-                  {currentRequest.special_requests && (
+                  {displayedRequest.special_requests && (
                     <div>
                       <div className="font-medium flex items-center mb-1">
                         <FileText className="mr-2 h-4 w-4 text-gray-600" />
                         Special Requests:
                       </div>
-                      <p className="ml-6 text-gray-700 whitespace-pre-wrap">{currentRequest.special_requests}</p>
+                      <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedRequest.special_requests}</p>
                     </div>
                   )}
                   <div className="pt-4">
-                    <Link to={`/admin/request/${currentRequest.id}`}>
+                    <Link to={`/admin/request/${displayedRequest.id}`}>
                       <Button variant="outline" className="w-full">
                         <Eye className="mr-2 h-4 w-4" /> View Full Details
                       </Button>
@@ -289,12 +353,13 @@ const EmailGenerator = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">No request selected. Please navigate from the Admin Dashboard.</p>
+                <p className="text-center text-gray-500 py-8">Select a request from the list below to view its details.</p>
               )}
             </CardContent>
           </Card>
-          
-          <Card className="shadow-lg">
+
+          {/* Generated Email Card (Middle Column) */}
+          <Card className="shadow-lg lg:col-span-1">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">Generated Email</CardTitle>
             </CardHeader>
@@ -356,7 +421,7 @@ const EmailGenerator = () => {
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleGenerateEmail(templateType)} // Regenerate current template
-                        disabled={isGenerating || templateType === 'custom'}
+                        disabled={isGenerating || templateType === 'custom' || !displayedRequest}
                         className="flex items-center"
                       >
                         {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -394,6 +459,84 @@ const EmailGenerator = () => {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Available Requests Card (Right Column) */}
+          <Card className="shadow-lg xl:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <List className="mr-2 h-5 w-5" />
+                Available Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search requests by song, client, email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {loadingAllRequests ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+                  <p className="ml-4 text-lg text-gray-600">Loading requests...</p>
+                </div>
+              ) : filteredRequests.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No requests found.</p>
+              ) : (
+                <div className="border rounded-md overflow-hidden max-h-[600px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="bg-[#D1AAF2]/20 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="w-[50px]">
+                          <Checkbox
+                            checked={selectedRequestIds.length === filteredRequests.length && filteredRequests.length > 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedRequestIds(filteredRequests.map(req => req.id!));
+                              } else {
+                                setSelectedRequestIds([]);
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead>Song / Client</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="w-[100px]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRequests.map((request) => (
+                        <TableRow 
+                          key={request.id} 
+                          className={cn(
+                            selectedRequestIds.includes(request.id!) ? "bg-[#D1AAF2]/20" : "",
+                            displayedRequest?.id === request.id ? "border-l-4 border-[#F538BC]" : ""
+                          )}
+                          onClick={() => setDisplayedRequest(request)} // Click to display details
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRequestIds.includes(request.id!)}
+                              onCheckedChange={(checked) => handleCheckboxChange(request.id!, checked)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{request.song_title}</div>
+                            <div className="text-sm text-gray-500">{request.name || request.musical_or_artist}</div>
+                          </TableCell>
+                          <TableCell className="text-sm">{request.email}</TableCell>
+                          <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
