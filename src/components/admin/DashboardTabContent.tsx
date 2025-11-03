@@ -18,6 +18,8 @@ interface DashboardTabContentProps {
   setStatusFilter: (status: string) => void;
   backingTypeFilter: string;
   setBackingTypeFilter: (type: string) => void;
+  paymentStatusFilter: string; // New prop
+  setPaymentStatusFilter: (status: string) => void; // New prop
   viewMode: 'list' | 'calendar' | 'pricing';
   setViewMode: (mode: 'list' | 'calendar' | 'pricing') => void;
   selectedDate: Date | null;
@@ -50,6 +52,8 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   setStatusFilter,
   backingTypeFilter,
   setBackingTypeFilter,
+  paymentStatusFilter, // Destructure new prop
+  setPaymentStatusFilter, // Destructure new prop
   viewMode,
   setViewMode,
   selectedDate,
@@ -85,8 +89,9 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
         setStatusFilter={setStatusFilter}
         backingTypeFilter={backingTypeFilter}
         setBackingTypeFilter={setBackingTypeFilter}
-        // Removed viewMode, setViewMode, clearFilters props as they are now handled internally
-        clearFilters={clearFilters} // Keep clearFilters as it's still relevant for the filters themselves
+        paymentStatusFilter={paymentStatusFilter} // Pass new prop
+        setPaymentStatusFilter={setPaymentStatusFilter} // Pass new prop
+        clearFilters={clearFilters}
         totalRequests={requests.length}
         filteredRequestsCount={filteredRequests.length}
       />

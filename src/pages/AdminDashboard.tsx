@@ -52,6 +52,7 @@ const AdminDashboard = () => {
     searchTerm, setSearchTerm,
     statusFilter, setStatusFilter,
     backingTypeFilter, setBackingTypeFilter,
+    paymentStatusFilter, setPaymentStatusFilter, // Destructure new filter state and setter
     viewMode, setViewMode,
     selectedDate, setSelectedDate,
     filteredRequests,
@@ -322,6 +323,8 @@ const AdminDashboard = () => {
                 setStatusFilter={setStatusFilter}
                 backingTypeFilter={backingTypeFilter}
                 setBackingTypeFilter={setBackingTypeFilter}
+                paymentStatusFilter={paymentStatusFilter} // Pass new prop
+                setPaymentStatusFilter={setPaymentStatusFilter} // Pass new prop
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 selectedDate={selectedDate}

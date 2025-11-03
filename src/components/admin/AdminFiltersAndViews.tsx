@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, MusicIcon } from 'lucide-react'; // Removed List, Calendar, Calculator icons
+import { Search, Filter, MusicIcon, DollarSign } from 'lucide-react'; // Added DollarSign icon
 
 interface AdminFiltersAndViewsProps {
   searchTerm: string;
@@ -12,7 +12,8 @@ interface AdminFiltersAndViewsProps {
   setStatusFilter: (status: string) => void;
   backingTypeFilter: string;
   setBackingTypeFilter: (type: string) => void;
-  // Removed viewMode and setViewMode props
+  paymentStatusFilter: string; // New prop
+  setPaymentStatusFilter: (status: string) => void; // New prop
   clearFilters: () => void;
   totalRequests: number;
   filteredRequestsCount: number;
@@ -25,7 +26,8 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
   setStatusFilter,
   backingTypeFilter,
   setBackingTypeFilter,
-  // Removed viewMode, setViewMode
+  paymentStatusFilter, // Destructure new prop
+  setPaymentStatusFilter, // Destructure new prop
   clearFilters,
   totalRequests,
   filteredRequestsCount,
@@ -39,7 +41,6 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
             Filters & View Options
           </span>
           <div className="flex items-center gap-2">
-            {/* Removed view mode buttons */}
             <Button 
               variant="outline" 
               onClick={clearFilters}
@@ -52,7 +53,6 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* The pricing view mode check is no longer needed here as view mode is handled by parent */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -98,12 +98,28 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
               </Select>
             </div>
           </div>
-          
-          <div className="flex items-end">
-            <p className="text-sm text-gray-500">
-              Showing {filteredRequestsCount} of {totalRequests} requests
-            </p>
+
+          {/* New Payment Status Filter */}
+          <div>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                <SelectTrigger className="pl-10">
+                  <SelectValue placeholder="Payment Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payments</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </div>
+        <div className="mt-4 text-right">
+          <p className="text-sm text-gray-500">
+            Showing {filteredRequestsCount} of {totalRequests} requests
+          </p>
         </div>
       </CardContent>
     </Card>

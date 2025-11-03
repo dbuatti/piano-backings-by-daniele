@@ -23,6 +23,7 @@ export const useRequestFilters = (allRequests: BackingRequest[]) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [backingTypeFilter, setBackingTypeFilter] = useState('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all'); // New state for payment status
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'pricing'>('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [filteredRequests, setFilteredRequests] = useState<BackingRequest[]>([]);
@@ -49,6 +50,13 @@ export const useRequestFilters = (allRequests: BackingRequest[]) => {
         getSafeBackingTypes(request.backing_type).includes(backingTypeFilter)
       );
     }
+
+    // Apply new payment status filter
+    if (paymentStatusFilter !== 'all') {
+      result = result.filter(request => 
+        paymentStatusFilter === 'paid' ? request.is_paid : !request.is_paid
+      );
+    }
     
     if (viewMode === 'calendar' && selectedDate) {
       result = result.filter(request => 
@@ -57,12 +65,13 @@ export const useRequestFilters = (allRequests: BackingRequest[]) => {
     }
     
     setFilteredRequests(result);
-  }, [searchTerm, statusFilter, backingTypeFilter, allRequests, viewMode, selectedDate]);
+  }, [searchTerm, statusFilter, backingTypeFilter, paymentStatusFilter, allRequests, viewMode, selectedDate]);
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setBackingTypeFilter('all');
+    setPaymentStatusFilter('all'); // Clear new filter
     setSelectedDate(null);
   };
 
@@ -70,6 +79,7 @@ export const useRequestFilters = (allRequests: BackingRequest[]) => {
     searchTerm, setSearchTerm,
     statusFilter, setStatusFilter,
     backingTypeFilter, setBackingTypeFilter,
+    paymentStatusFilter, setPaymentStatusFilter, // Return new filter state and setter
     viewMode, setViewMode,
     selectedDate, setSelectedDate,
     filteredRequests,
