@@ -35,6 +35,11 @@ import { Label } from '@/components/ui/label';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { Separator } from '@/components/ui/separator'; // Import Separator
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 interface UserProfile {
   id: string;
   email: string;
@@ -534,12 +539,12 @@ const RequestDetails = () => {
                 </h3>
                 {request.track_urls && request.track_urls.length > 0 ? (
                   <ul className="space-y-2">
-                    {request.track_urls.map((url: string, index: number) => (
-                      <li key={index} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
-                          {url.split('/').pop()}
+                    {request.track_urls.map((track: TrackInfo, index: number) => (
+                      <li key={track.url} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                        <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
+                          {track.caption}
                         </a>
-                        <Button variant="outline" size="sm" onClick={() => window.open(url, '_blank')}>
+                        <Button variant="outline" size="sm" onClick={() => window.open(track.url, '_blank')}>
                           <Download className="h-4 w-4" />
                         </Button>
                       </li>

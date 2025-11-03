@@ -32,6 +32,11 @@ import {
 import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 const ClientTrackView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -328,24 +333,23 @@ const ClientTrackView = () => {
                   </h3>
                   
                   {request.status === 'completed' ? (
-                    <div className="mt-6">
+                    <div className="mt-6 space-y-4"> {/* Added space-y-4 for column stacking */}
                       {request.track_urls && request.track_urls.length > 0 ? (
-                        <div className="space-y-4">
-                          {request.track_urls.map((url: string, index: number) => (
+                        request.track_urls.map((track: TrackInfo, index: number) => (
+                          <div key={track.url} className="flex flex-col items-center">
                             <Button 
-                              key={index}
-                              onClick={() => downloadTrack(url)}
+                              onClick={() => downloadTrack(track.url)}
                               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg w-full md:w-auto"
                               size="lg"
                             >
                               <Download className="mr-2 h-5 w-5" />
                               Download Track {index + 1}
                             </Button>
-                          ))}
-                          <p className="text-sm text-gray-600 mt-2">
-                            Click the button(s) above to download your custom backing track(s). (MP3 Audio File)
-                          </p>
-                        </div>
+                            <p className="text-sm text-gray-600 mt-2">
+                              {track.caption}
+                            </p>
+                          </div>
+                        ))
                       ) : (
                         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
                           <div className="flex">

@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 interface BackingRequest {
   id: string;
   created_at: string;
@@ -13,7 +18,7 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_urls?: string[]; // Changed to array of strings
+  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
   cost?: number; // Assuming cost might be stored or calculated
