@@ -5,7 +5,8 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import ProductCard from '@/components/ProductCard';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Store, AlertCircle } from 'lucide-react';
+import { Loader2, Store, AlertCircle, CheckCircle } from 'lucide-react'; // Added CheckCircle
+import { stripePromise } from '@/integrations/stripe/client'; // Import stripePromise
 
 interface Product {
   id: string;
@@ -22,6 +23,7 @@ const Shop: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBuying, setIsBuying] = useState(false); // New state for buy button loading
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,22 +55,87 @@ const Shop: React.FC = () => {
     fetchProducts();
   }, [toast]);
 
+  // Handle Stripe Checkout success/cancel redirects
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('success')) {
+      toast({
+        title: "Payment Successful!",
+        description: "Your purchase was completed successfully. Check your email for details.",
+        action: <CheckCircle className="text-green-500" />,
+      });
+      // Clear query params
+      window.history.replaceState({}, document.title, "/shop");
+    }
+
+    if (query.get('canceled')) {
+      toast({
+        title: "Payment Canceled",
+        description: "Your payment was canceled. You can try again anytime.",
+        variant: "destructive",
+        action: <AlertCircle className="text-red-500" />,
+      });
+      // Clear query params
+      window.history.replaceState({}, document.title, "/shop");
+    }
+  }, [toast]);
+
   const handleViewDetails = (product: Product) => {
     // For now, we'll just show a toast. In a real app, this would navigate to a product detail page.
     toast({
       title: `Viewing ${product.title}`,
-      description: `Details for product ID: ${product.id}. Implement navigation to product detail page here.`,
+      description: `Details for product ID: ${product.id}. This would navigate to a product detail page.`,
     });
     console.log('View details for:', product);
   };
 
-  const handleAddToCart = (product: Product) => {
-    // Placeholder for adding to cart functionality
-    toast({
-      title: `Added to Cart!`,
-      description: `${product.title} has been added to your cart.`,
-    });
-    console.log('Add to cart:', product);
+  const handleBuyNow = async (product: Product) => {
+    setIsBuying(true);
+    try {
+      if (!stripePromise) {
+        throw new Error('Stripe is not initialized. Check VITE_STRIPE_PUBLISHABLE_KEY.');
+      }
+
+      // Call your Supabase Edge Function to create a Stripe Checkout Session
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ product_id: product.id }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to create checkout session: ${response.status}`);
+      }
+
+      const stripe = await stripePromise;
+      if (stripe) {
+        const { error: redirectToCheckoutError } = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+
+        if (redirectToCheckoutError) {
+          throw new Error(`Error redirecting to checkout: ${redirectToCheckoutError.message}`);
+        }
+      } else {
+        throw new Error('Stripe.js failed to load.');
+      }
+    } catch (err: any) {
+      console.error('Error during checkout:', err);
+      toast({
+        title: "Checkout Error",
+        description: err.message || "Something went wrong during checkout. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBuying(false);
+    }
   };
 
   return (
@@ -114,7 +181,7 @@ const Shop: React.FC = () => {
                 key={product.id} 
                 product={product} 
                 onViewDetails={handleViewDetails} 
-                onAddToCart={handleAddToCart} 
+                onBuyNow={handleBuyNow} // Pass the handleBuyNow function
               />
             ))}
           </div>

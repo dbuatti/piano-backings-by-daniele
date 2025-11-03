@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye } from 'lucide-react';
+import { Music, DollarSign, Eye, ShoppingCart } from 'lucide-react'; // Added ShoppingCart icon
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -19,10 +19,10 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
-  onAddToCart?: (product: Product) => void; // Optional for future cart functionality
+  onBuyNow: (product: Product) => void; // Changed to onBuyNow
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onAddToCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow }) => {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
       <CardHeader className="p-0">
@@ -57,14 +57,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onAdd
           <Eye className="h-4 w-4 mr-2" />
           View Details
         </Button>
-        {onAddToCart && (
-          <Button 
-            onClick={() => onAddToCart(product)}
-            className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-          >
-            Add to Cart
-          </Button>
-        )}
+        <Button 
+          onClick={() => onBuyNow(product)} // Call onBuyNow
+          className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+        >
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Buy Now
+        </Button>
       </CardFooter>
     </Card>
   );
