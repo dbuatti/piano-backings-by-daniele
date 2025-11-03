@@ -192,7 +192,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
 
@@ -256,7 +256,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const firstName = request.name.split(' ')[0];
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -313,7 +313,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -386,7 +386,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const trackUrl = request.track_urls && request.track_urls.length > 0 ? request.track_urls[0].url : undefined;
   const rawMinCost = trackCost * 0.5;
   const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.floor(rawMinCost / 5) * 5).toFixed(2); // Round down
+  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
