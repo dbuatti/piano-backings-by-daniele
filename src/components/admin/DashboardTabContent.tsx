@@ -4,6 +4,8 @@ import AdminFiltersAndViews from './AdminFiltersAndViews';
 import RequestsTable from './RequestsTable';
 import RequestsCalendar from './RequestsCalendar';
 import PricingMatrix from '../PricingMatrix';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
+import { List, Calendar, Calculator } from 'lucide-react'; // Import icons for tabs
 
 interface DashboardTabContentProps {
   requests: any[];
@@ -83,46 +85,60 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
         setStatusFilter={setStatusFilter}
         backingTypeFilter={backingTypeFilter}
         setBackingTypeFilter={setBackingTypeFilter}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        clearFilters={clearFilters}
+        // Removed viewMode, setViewMode, clearFilters props as they are now handled internally
+        clearFilters={clearFilters} // Keep clearFilters as it's still relevant for the filters themselves
         totalRequests={requests.length}
         filteredRequestsCount={filteredRequests.length}
       />
       
-      {viewMode === 'pricing' && (
-        <PricingMatrix />
-      )}
-      
-      {viewMode === 'calendar' && (
-        <RequestsCalendar
-          requests={requests}
-          filteredRequests={filteredRequests}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          uploadTrack={uploadTrack}
-        />
-      )}
-      
-      {viewMode === 'list' && (
-        <RequestsTable
-          filteredRequests={filteredRequests}
-          loading={loading}
-          selectedRequests={selectedRequests}
-          handleSelectAll={handleSelectAll}
-          handleSelectRequest={handleSelectRequest}
-          totalCost={totalCost}
-          updateStatus={updateStatus}
-          updatePaymentStatus={updatePaymentStatus}
-          uploadTrack={uploadTrack}
-          shareTrack={shareTrack}
-          openEmailGenerator={openEmailGenerator}
-          openDeleteDialog={openDeleteDialog}
-          openBatchDeleteDialog={openBatchDeleteDialog}
-          openUploadPlatformsDialog={openUploadPlatformsDialog}
-          onDirectFileUpload={onDirectFileUpload}
-        />
-      )}
+      {/* Segmented Control for View Modes */}
+      <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'list' | 'calendar' | 'pricing')} className="w-full mb-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="list" className="flex items-center">
+            <List className="mr-2 h-4 w-4" /> List View
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="flex items-center">
+            <Calendar className="mr-2 h-4 w-4" /> Calendar View
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="flex items-center">
+            <Calculator className="mr-2 h-4 w-4" /> Pricing Matrix
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" className="mt-6">
+          <RequestsTable
+            filteredRequests={filteredRequests}
+            loading={loading}
+            selectedRequests={selectedRequests}
+            handleSelectAll={handleSelectAll}
+            handleSelectRequest={handleSelectRequest}
+            totalCost={totalCost}
+            updateStatus={updateStatus}
+            updatePaymentStatus={updatePaymentStatus}
+            uploadTrack={uploadTrack}
+            shareTrack={shareTrack}
+            openEmailGenerator={openEmailGenerator}
+            openDeleteDialog={openDeleteDialog}
+            openBatchDeleteDialog={openBatchDeleteDialog}
+            openUploadPlatformsDialog={openUploadPlatformsDialog}
+            onDirectFileUpload={onDirectFileUpload}
+          />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-6">
+          <RequestsCalendar
+            requests={requests}
+            filteredRequests={filteredRequests}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            uploadTrack={uploadTrack}
+          />
+        </TabsContent>
+
+        <TabsContent value="pricing" className="mt-6">
+          <PricingMatrix />
+        </TabsContent>
+      </Tabs>
     </>
   );
 };
