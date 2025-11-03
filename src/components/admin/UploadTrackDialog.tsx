@@ -107,7 +107,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
                         <Label htmlFor={`caption-${index}`} className="sr-only">Edit Caption</Label>
                         <Input
                           id={`caption-${index}`}
-                          value={editingCaption.caption}
+                          value={editingCaption?.caption || ''} // Defensive check added here
                           onChange={handleCaptionChange}
                           onBlur={handleSaveCaption} // Save on blur
                           onKeyDown={(e) => { if (e.key === 'Enter') handleSaveCaption(); }} // Save on Enter
