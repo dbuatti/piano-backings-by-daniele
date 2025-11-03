@@ -19,24 +19,14 @@ const HolidayModeBanner: React.FC = () => {
     }
   }, [isHolidayModeActive]);
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center">
-        <Card className="bg-white p-8 rounded-lg shadow-xl text-center max-w-md w-full relative">
-          <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-[#1C0357]" />
-          <p className="text-lg text-gray-700">Checking holiday status...</p>
-        </Card>
-      </div>
-    );
+  // Render nothing while loading, or if not active/dismissed
+  if (isLoading || !isHolidayModeActive || isDismissed) {
+    return null;
   }
 
   if (error) {
     console.error("Failed to load holiday mode settings for banner:", error);
     return null; // Or a subtle error message if preferred
-  }
-
-  if (!isHolidayModeActive || isDismissed) {
-    return null;
   }
 
   const returnDateMessage = holidayReturnDate

@@ -63,20 +63,20 @@ const Index = () => {
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-[#1C0357]">Professional Piano Backing Tracks</h1>
           <p className="text-xl md:text-2xl font-light text-[#1C0357]/90 mb-8">For Musicals, Auditions & Performances</p>
           
-          {isLoadingHolidayMode ? (
-            <Button disabled className="bg-[#1C0357] text-white text-lg px-8 py-3">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
+          <Link to="/form-page">
+            <Button 
+              className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
+              disabled={isHolidayModeActive || isLoadingHolidayMode} // Keep disabled while loading holiday mode
+            >
+              {isLoadingHolidayMode ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
+                </>
+              ) : (
+                orderButtonContent
+              )}
             </Button>
-          ) : (
-            <Link to="/form-page">
-              <Button 
-                className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
-                disabled={isHolidayModeActive}
-              >
-                {orderButtonContent}
-              </Button>
-            </Link>
-          )}
+          </Link>
 
           {isHolidayModeActive && (
             <p className="mt-4 text-red-600 font-semibold text-lg">
