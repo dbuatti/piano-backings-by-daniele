@@ -30,13 +30,14 @@ import {
   DollarSign // Added DollarSign icon
 } from 'lucide-react';
 import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
-import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import from new utility
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+// TrackInfo interface is now imported from helpers.ts
+// interface TrackInfo {
+//   url: string;
+//   caption: string | boolean | null | undefined;
+// }
 
 const ClientTrackView = () => {
   const { id } = useParams();
@@ -150,64 +151,8 @@ const ClientTrackView = () => {
     }
   };
 
-  const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => {
-    console.log('DEBUG: downloadTrack - Raw filenameSuggestion:', filenameSuggestion, 'Type:', typeof filenameSuggestion);
-
-    let finalFilename: string;
-
-    // Step 1: Determine the base filename
-    if (typeof filenameSuggestion === 'string' && filenameSuggestion.trim() !== '') {
-      finalFilename = filenameSuggestion;
-    } else if (typeof filenameSuggestion === 'boolean') {
-      // If it's a boolean (e.g., `true`), treat it as an invalid caption and use fallback
-      console.warn('DEBUG: downloadTrack - filenameSuggestion is a boolean, using fallback.');
-      finalFilename = 'track_download';
-    } else {
-      // Fallback for null, undefined, or empty string
-      finalFilename = 'track_download';
-    }
-
-    // Step 2: Sanitize the filename
-    finalFilename = finalFilename.replace(/[^a-zA-Z0-9\.\-_]/gi, '_');
-    console.log('DEBUG: downloadTrack - Sanitized filename:', finalFilename);
-
-    // Step 3: Handle the specific "true" string case (after sanitization)
-    if (finalFilename.toLowerCase() === 'true') {
-      console.warn('DEBUG: downloadTrack - Filename is "true" after sanitization, using fallback.');
-      finalFilename = 'track_download';
-    }
-
-    // Step 4: Add file extension if missing
-    const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-    const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
-    
-    if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-      finalFilename = `${finalFilename}.${urlExtension}`;
-    } else if (!urlExtension && !finalFilename.includes('.')) {
-      // If no extension in URL and not in filename, default to .mp3
-      finalFilename = `${finalFilename}.mp3`;
-    }
-    console.log('DEBUG: downloadTrack - Final filename with extension:', finalFilename);
-
-    if (url) {
-      const link = document.createElement('a');
-      // Append ?download=true to force download for Supabase Storage URLs
-      const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
-        ? `${url}?download=true`
-        : url;
-      link.href = downloadUrl;
-      link.setAttribute('download', finalFilename); // Use the sanitized filename
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      toast({
-        title: "Track Not Available",
-        description: "This track is not yet available for download.",
-        variant: "destructive",
-      });
-    }
-  };
+  // downloadTrack function is now imported from helpers.ts
+  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
 
   if (loading) {
     return (
@@ -609,8 +554,16 @@ const ClientTrackView = () => {
           </CardContent>
         </Card>
         
-        <div className="text-center text-sm text-gray-600">
-          <p>Thank you for choosing Piano Backings by Daniele. If you have any questions, please contact support.</p>
+        <div className="flex justify-end gap-4">
+          <Button 
+            onClick={() => navigate('/admin')} 
+            variant="outline"
+          >
+            Back to Dashboard
+          </Button>
+          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+            Edit Request
+          </Button>
         </div>
         
         <MadeWithDyad />

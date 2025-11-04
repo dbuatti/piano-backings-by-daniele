@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+// TrackInfo interface is now imported from helpers.ts
+// interface TrackInfo {
+//   url: string;
+//   caption: string | boolean | null | undefined; // Updated to be more robust
+// }
 
 interface BackingRequest {
   id: string;

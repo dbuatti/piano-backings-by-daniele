@@ -5,11 +5,13 @@ import FileInput from '@/components/FileInput';
 import { Upload, UploadCloud, FileAudio, Trash2, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+// TrackInfo interface is now imported from helpers.ts
+// interface TrackInfo {
+//   url: string;
+//   caption: string | boolean | null | undefined; // Updated to be more robust
+// }
 
 interface UploadTrackDialogProps {
   isOpen: boolean;

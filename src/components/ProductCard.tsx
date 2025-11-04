@@ -5,11 +5,13 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag } from 'lucide-react'; // Added User and Tag icons
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
+import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+// TrackInfo interface is now imported from helpers.ts
+// interface TrackInfo {
+//   url: string;
+//   caption: string | boolean | null | undefined; // Updated to be more robust
+// }
 
 interface Product {
   id: string;

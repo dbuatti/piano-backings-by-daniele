@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown, ShoppingCart } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getSafeBackingTypes } from '@/utils/helpers';
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
 import {
   Select,
   SelectContent,
@@ -26,10 +26,11 @@ interface UserProfileForAdmin {
   name: string;
 }
 
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+// TrackInfo interface is now imported from helpers.ts
+// interface TrackInfo {
+//   url: string;
+//   caption: string | boolean | null | undefined;
+// }
 
 interface Product {
   id: string; // Add id to Product interface for joining
@@ -308,64 +309,8 @@ const UserDashboard = () => {
     }
   };
 
-  const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => {
-    console.log('DEBUG: downloadTrack - Raw filenameSuggestion:', filenameSuggestion, 'Type:', typeof filenameSuggestion);
-
-    let finalFilename: string;
-
-    // Step 1: Determine the base filename
-    if (typeof filenameSuggestion === 'string' && filenameSuggestion.trim() !== '') {
-      finalFilename = filenameSuggestion;
-    } else if (typeof filenameSuggestion === 'boolean') {
-      // If it's a boolean (e.g., `true`), treat it as an invalid caption and use fallback
-      console.warn('DEBUG: downloadTrack - filenameSuggestion is a boolean, using fallback.');
-      finalFilename = 'track_download';
-    } else {
-      // Fallback for null, undefined, or empty string
-      finalFilename = 'track_download';
-    }
-
-    // Step 2: Sanitize the filename
-    finalFilename = finalFilename.replace(/[^a-zA-Z0-9\.\-_]/gi, '_');
-    console.log('DEBUG: downloadTrack - Sanitized filename:', finalFilename);
-
-    // Step 3: Handle the specific "true" string case (after sanitization)
-    if (finalFilename.toLowerCase() === 'true') {
-      console.warn('DEBUG: downloadTrack - Filename is "true" after sanitization, using fallback.');
-      finalFilename = 'track_download';
-    }
-
-    // Step 4: Add file extension if missing
-    const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-    const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
-    
-    if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-      finalFilename = `${finalFilename}.${urlExtension}`;
-    } else if (!urlExtension && !finalFilename.includes('.')) {
-      // If no extension in URL and not in filename, default to .mp3
-      finalFilename = `${finalFilename}.mp3`;
-    }
-    console.log('DEBUG: downloadTrack - Final filename with extension:', finalFilename);
-
-    if (url) {
-      const link = document.createElement('a');
-      // Append ?download=true to force download for Supabase Storage URLs
-      const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
-        ? `${url}?download=true`
-        : url;
-      link.href = downloadUrl;
-      link.setAttribute('download', finalFilename); // Use the sanitized filename
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      toast({
-        title: "Track Not Available",
-        description: "This track is not yet available for download.",
-        variant: "destructive",
-      });
-    }
-  };
+  // downloadTrack function is now imported from helpers.ts
+  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
 
   const createAccount = () => {
     navigate('/login');
