@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -62,6 +61,7 @@ interface RequestsTableProps {
   totalCost: number;
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
+  updateCost: (id: string, newCost: number | null) => void; // New prop for updating cost
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -80,6 +80,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   totalCost,
   updateStatus,
   updatePaymentStatus,
+  updateCost, // Destructure new prop
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -200,6 +201,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       handleSelectRequest={handleSelectRequest}
                       updateStatus={updateStatus}
                       updatePaymentStatus={updatePaymentStatus}
+                      updateCost={updateCost} // Pass the new updateCost function
                       uploadTrack={uploadTrack}
                       shareTrack={shareTrack}
                       openEmailGenerator={openEmailGenerator}

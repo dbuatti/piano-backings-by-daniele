@@ -73,6 +73,34 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
     }
   };
 
+  const updateCost = async (id: string, newCost: number | null) => {
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ cost: newCost })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.map(req =>
+        req.id === id ? { ...req, cost: newCost } : req
+      ));
+
+      toast({
+        title: "Cost Updated",
+        description: "Request cost has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update cost: ${error.message}`,
+        variant: "destructive",
+      });
+      // Re-fetch requests to revert to original value if update fails
+      setRequests(prev => [...prev]);
+    }
+  };
+
   const shareTrack = async (id: string) => {
     try {
       const request = requests.find(req => req.id === id);
@@ -155,6 +183,7 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
   return {
     updateStatus,
     updatePaymentStatus,
+    updateCost, // Expose the new updateCost function
     shareTrack,
     deleteRequest,
     batchDeleteRequests,

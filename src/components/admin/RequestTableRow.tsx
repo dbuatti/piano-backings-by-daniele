@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; // Added Button import
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Import Input component
 import {
   Select,
   SelectContent,
@@ -46,12 +47,13 @@ import {
   Upload, 
   User, 
   X, 
-  Youtube 
+  Youtube,
+  Loader2 // Import Loader2 for loading state
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
-import { cn } from '@/lib/utils'; // Import cn for conditional classNames
-import { useToast } from '@/hooks/use-toast'; // Import useToast for error messages
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface RequestTableRowProps {
   request: any;
@@ -59,12 +61,13 @@ interface RequestTableRowProps {
   handleSelectRequest: (id: string) => void;
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
+  updateCost: (id: string, newCost: number | null) => void; // New prop
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
   openDeleteDialog: (id: string) => void;
   openUploadPlatformsDialog: (id: string) => void;
-  onDirectFileUpload: (id: string, file: File) => void; // New prop for direct upload
+  onDirectFileUpload: (id: string, file: File) => void;
 }
 
 const RequestTableRow: React.FC<RequestTableRowProps> = ({
@@ -73,6 +76,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   handleSelectRequest,
   updateStatus,
   updatePaymentStatus,
+  updateCost, // Destructure new prop
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -81,7 +85,19 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   onDirectFileUpload,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [editingCost, setEditingCost] = useState(false);
+  const [currentCost, setCurrentCost] = useState<string>(
+    request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
+  );
+  const [isUpdatingCost, setIsUpdatingCost] = useState(false);
   const { toast } = useToast();
+
+  // Update currentCost if request.cost changes from outside (e.g., initial load or another admin edits)
+  React.useEffect(() => {
+    setCurrentCost(
+      request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
+    );
+  }, [request.cost, request]);
 
   const getBadgeVariant = (type: string) => {
     switch (type) {
@@ -148,7 +164,30 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     }
   };
 
-  const displayedCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
+  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentCost(e.target.value);
+  };
+
+  const handleCostBlur = async () => {
+    setEditingCost(false);
+    const parsedCost = parseFloat(currentCost);
+    const newCost = isNaN(parsedCost) ? null : parsedCost;
+
+    // Only update if the value has actually changed
+    const originalCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
+    if (newCost !== originalCost) {
+      setIsUpdatingCost(true);
+      await updateCost(request.id, newCost);
+      setIsUpdatingCost(false);
+    }
+  };
+
+  const handleCostKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur(); // Trigger blur to save
+    }
+  };
+
   const isCostManuallySet = request.cost !== null;
 
   return (
@@ -232,12 +271,35 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         </Select>
       </TableCell>
       <TableCell>
-        <div className="flex items-center font-medium">
-          <DollarSign className="w-4 h-4 mr-1" />
-          <span>
-            {displayedCost.toFixed(2)}
-            {isCostManuallySet && <span className="ml-1 text-xs text-gray-500">(Manual)</span>}
-          </span>
+        <div className="flex items-center font-medium relative">
+          <DollarSign className="w-4 h-4 mr-1 text-gray-500" />
+          <Input
+            type="number"
+            step="0.01"
+            value={currentCost}
+            onChange={handleCostChange}
+            onFocus={() => setEditingCost(true)}
+            onBlur={handleCostBlur}
+            onKeyDown={handleCostKeyDown}
+            className={cn(
+              "w-24 h-8 p-1 text-sm border-none focus:ring-0 focus:outline-none",
+              editingCost ? "bg-white border border-blue-300" : "bg-transparent"
+            )}
+            style={{ paddingLeft: '0.5rem' }} // Adjust padding to make space for dollar sign
+          />
+          {isUpdatingCost && (
+            <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+          )}
+          {!editingCost && isCostManuallySet && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="ml-1 text-xs text-gray-500 cursor-help">(Manual)</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>This cost was manually set.</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </TableCell>
       <TableCell>
