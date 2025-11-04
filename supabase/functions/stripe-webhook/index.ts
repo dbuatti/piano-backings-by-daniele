@@ -1,6 +1,12 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+// @ts-ignore
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
+
+// @ts-ignore // Add ts-ignore for the new local import as well, just in case local TS compiler complains
+import { generateProductDeliveryEmail, Product } from '../utils/emailGenerator.ts'; // Updated import path and imported Product interface
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
@@ -69,6 +75,7 @@ serve(async (req) => {
       const amountTotal = session.amount_total;
       const currency = session.currency;
       const paymentIntentId = session.payment_intent as string;
+      const userId = session.client_reference_id; // Extract user_id from client_reference_id
 
       if (!productId || !customerEmail || amountTotal === null || currency === null) {
         console.error('Missing essential data in checkout.session.completed event:', { productId, customerEmail, amountTotal, currency });
@@ -103,6 +110,7 @@ serve(async (req) => {
           currency: currency.toUpperCase(),
           status: 'completed', // Mark as completed on successful checkout
           payment_intent_id: paymentIntentId,
+          user_id: userId, // Store the user_id if available
         })
         .select();
 
@@ -119,8 +127,8 @@ serve(async (req) => {
           // Invoke the send-email Edge Function
           const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
           
-          // Generate email content (we'll define generateProductDeliveryEmail in emailGenerator.ts)
-          const { subject, html } = await (await import('../src/utils/emailGenerator.ts')).generateProductDeliveryEmail(product, customerEmail);
+          // Generate email content using the Deno-compatible emailGenerator
+          const { subject, html } = await generateProductDeliveryEmail(product as Product, customerEmail); // Cast to Product
 
           const emailResponse = await fetch(sendEmailUrl, {
             method: 'POST',

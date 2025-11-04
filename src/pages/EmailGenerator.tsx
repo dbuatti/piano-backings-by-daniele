@@ -15,7 +15,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
-  Clock, XCircle, List, Search // Imported missing icons
+  Clock, XCircle, List, Search, Image // Imported Image icon
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import {
