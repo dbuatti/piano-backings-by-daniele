@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch"; // Import Switch
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +30,10 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
+import FileInput from '../FileInput'; // Import FileInput
 
 interface TrackInfo {
   url: string;
@@ -85,7 +87,13 @@ const ProductManager: React.FC = () => {
     artist_name: '', // Initialize new field
     category: '', // Initialize new field
   });
+  const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // State for filtering and sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
   const truncateUrl = (url: string, maxLength: number = 40) => {
@@ -97,12 +105,49 @@ const ProductManager: React.FC = () => {
 
   // Fetch all products
   const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts'],
+    queryKey: ['shopProducts', searchTerm, categoryFilter, sortOption], // Include filters/sort in query key
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Apply search term
+      if (searchTerm) {
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
+      }
+
+      // Apply category filter
+      if (categoryFilter !== 'all') {
+        query = query.eq('category', categoryFilter);
+      }
+
+      // Apply sorting
+      switch (sortOption) {
+        case 'price_asc':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price_desc':
+          query = query.order('price', { ascending: false });
+          break;
+        case 'title_asc':
+          query = query.order('title', { ascending: true });
+          break;
+        case 'title_desc':
+          query = query.order('title', { ascending: false });
+          break;
+        case 'artist_name_asc':
+          query = query.order('artist_name', { ascending: true });
+          break;
+        case 'artist_name_desc':
+          query = query.order('artist_name', { ascending: false });
+          break;
+        case 'created_at_desc':
+        default:
+          query = query.order('created_at', { ascending: false });
+          break;
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data || [];
@@ -164,6 +209,24 @@ const ProductManager: React.FC = () => {
     }
   });
 
+  // Mutation for toggling product active status
+  const toggleProductStatusMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: is_active, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      toast({ title: "Status Updated", description: `Product marked as ${variables.is_active ? 'active' : 'inactive'}.` });
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: `Failed to update status: ${err.message}`, variant: "destructive" });
+    }
+  });
+
   const openEditDialog = (product: Product) => {
     setCurrentProduct(product);
     setProductForm({
@@ -179,6 +242,7 @@ const ProductManager: React.FC = () => {
       artist_name: product.artist_name || '', // Set new field
       category: product.category || '', // Set new field
     });
+    setImageFile(null); // Clear image file state for new edit
     setFormErrors({});
     setEditDialogOpen(true);
   };
@@ -227,6 +291,34 @@ const ProductManager: React.FC = () => {
     }));
   };
 
+  const handleImageFileChange = (file: File | null) => {
+    setImageFile(file);
+    if (file) {
+      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) })); // For immediate preview
+    } else {
+      // If file is cleared, reset image_url to original if it exists, or empty
+      setProductForm(prev => ({ ...prev, image_url: currentProduct?.image_url || '' }));
+    }
+    setFormErrors(prev => ({ ...prev, image_url: '' }));
+  };
+
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `product-images/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    return publicUrl;
+  };
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!productForm.title.trim()) errors.title = 'Title is required.';
@@ -250,13 +342,30 @@ const ProductManager: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (!validateForm()) {
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive" });
       return;
     }
     if (currentProduct) {
-      updateProductMutation.mutate(productForm);
+      let imageUrlToSave = productForm.image_url;
+      if (imageFile) {
+        try {
+          imageUrlToSave = await uploadImage(imageFile);
+        } catch (uploadError: any) {
+          toast({
+            title: "Image Upload Error",
+            description: `Failed to upload image: ${uploadError.message}`,
+            variant: "destructive",
+          });
+          return; // Stop update if image upload fails
+        }
+      } else if (productForm.image_url === '' && currentProduct.image_url) {
+        // If image_url is cleared in form but existed before, it means user wants to remove it
+        imageUrlToSave = null;
+      }
+
+      updateProductMutation.mutate({ ...productForm, image_url: imageUrlToSave });
     }
   };
 
@@ -287,6 +396,51 @@ const ProductManager: React.FC = () => {
           Edit or delete existing products in your shop.
         </p>
 
+        {/* Filter and Sort Controls for Product Manager */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <div className="relative w-full sm:w-1/3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search products by title, artist, description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="relative w-full sm:w-1/3">
+            <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="pl-10">
+                <SelectValue placeholder="Filter by Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="full-song">Full Song</SelectItem>
+                <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                <SelectItem value="note-bash">Note Bash</SelectItem>
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative w-full sm:w-1/3">
+            <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="pl-10">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
@@ -298,9 +452,9 @@ const ProductManager: React.FC = () => {
               <TableHeader className="bg-[#D1AAF2]/20">
                 <TableRow>
                   <TableHead className="w-[200px]">Title</TableHead>
-                  <TableHead className="w-[150px]">Artist</TableHead> {/* New column */}
+                  <TableHead className="w-[150px]">Artist</TableHead>
                   <TableHead className="w-[100px]">Price</TableHead>
-                  <TableHead className="w-[100px]">Category</TableHead> {/* New column */}
+                  <TableHead className="w-[100px]">Category</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Tracks</TableHead>
                   <TableHead className="text-right w-[150px]">Actions</TableHead>
@@ -310,18 +464,20 @@ const ProductManager: React.FC = () => {
                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.title}</TableCell>
-                    <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell> {/* Display new field */}
+                    <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
                         {product.currency} {product.price.toFixed(2)}
                       </div>
                     </TableCell>
-                    <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell> {/* Display new field */}
+                    <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell>
                     <TableCell>
-                      <Badge variant={product.is_active ? "default" : "secondary"} className={cn(product.is_active ? "bg-green-500" : "bg-gray-400")}>
-                        {product.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      <Switch
+                        checked={product.is_active}
+                        onCheckedChange={(checked) => toggleProductStatusMutation.mutate({ id: product.id, is_active: checked })}
+                        disabled={toggleProductStatusMutation.isPending}
+                      />
                     </TableCell>
                     <TableCell>
                       {product.track_urls && product.track_urls.length > 0 ? (
@@ -514,14 +670,22 @@ const ProductManager: React.FC = () => {
               </div>
 
               <div>
-                <Label htmlFor="edit-image-url">Image URL (optional)</Label>
-                <Input
-                  id="edit-image-url"
-                  name="image_url"
-                  value={productForm.image_url}
-                  onChange={handleFormChange}
-                  className="mt-1"
+                <FileInput
+                  id="edit-product-image-upload"
+                  label="Product Image (optional)"
+                  icon={UploadCloud}
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  note="Upload a cover image for your product. If left empty, a text-based image will be generated."
+                  error={formErrors.image_url}
                 />
+                {productForm.image_url && (
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">Image Preview:</Label>
+                    <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
+                  </div>
+                )}
+                {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox

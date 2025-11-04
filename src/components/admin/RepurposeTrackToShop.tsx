@@ -11,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle } from 'lucide-react';
+import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import ProductManager from './ProductManager';
 import { Badge } from '@/components/ui/badge'; // Added Badge import
+import FileInput from '../FileInput'; // Import FileInput
 
 interface TrackInfo {
   url: string;
@@ -78,6 +79,7 @@ const RepurposeTrackToShop: React.FC = () => {
     artist_name: '', // Initialize new field
     category: '', // Initialize new field
   });
+  const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Helper to truncate URL for display
@@ -183,6 +185,7 @@ const RepurposeTrackToShop: React.FC = () => {
         artist_name: selectedRequest.musical_or_artist, // Pre-fill artist name
         category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category
       });
+      setImageFile(null); // Clear image file when new request is selected
       setFormErrors({});
     }
   }, [selectedRequest]);
@@ -224,6 +227,33 @@ const RepurposeTrackToShop: React.FC = () => {
       ...prev,
       track_urls: prev.track_urls.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleImageFileChange = (file: File | null) => {
+    setImageFile(file);
+    if (file) {
+      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) })); // For immediate preview
+    } else {
+      setProductForm(prev => ({ ...prev, image_url: '' }));
+    }
+    setFormErrors(prev => ({ ...prev, image_url: '' }));
+  };
+
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `product-images/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    return publicUrl;
   };
 
   const validateForm = () => {
@@ -280,6 +310,7 @@ const RepurposeTrackToShop: React.FC = () => {
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', // Reset new fields
       });
+      setImageFile(null); // Clear image file
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for this component's check
@@ -293,7 +324,7 @@ const RepurposeTrackToShop: React.FC = () => {
     }
   });
 
-  const handleCreateProduct = () => {
+  const handleCreateProduct = async () => {
     if (!validateForm()) {
       toast({
         title: "Validation Error",
@@ -303,9 +334,24 @@ const RepurposeTrackToShop: React.FC = () => {
       return;
     }
 
+    let imageUrlToSave = productForm.image_url;
+    if (imageFile) {
+      try {
+        imageUrlToSave = await uploadImage(imageFile);
+      } catch (uploadError: any) {
+        toast({
+          title: "Image Upload Error",
+          description: `Failed to upload image: ${uploadError.message}`,
+          variant: "destructive",
+        });
+        return; // Stop creation if image upload fails
+      }
+    }
+
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
+      image_url: imageUrlToSave,
     };
     createProductMutation.mutate(newProduct);
   };
@@ -544,15 +590,22 @@ const RepurposeTrackToShop: React.FC = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="image_url">Image URL (optional)</Label>
-                  <Input
-                    id="image_url"
-                    name="image_url"
-                    value={productForm.image_url}
-                    onChange={handleFormChange}
-                    className="mt-1"
+                  <FileInput
+                    id="product-image-upload"
+                    label="Product Image (optional)"
+                    icon={UploadCloud}
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    note="Upload a cover image for your product. If left empty, a text-based image will be generated."
+                    error={formErrors.image_url}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty to use the auto-generated text image. Provide a URL for a custom cover image.</p>
+                  {productForm.image_url && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-500">Image Preview:</Label>
+                      <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
+                    </div>
+                  )}
+                  {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
