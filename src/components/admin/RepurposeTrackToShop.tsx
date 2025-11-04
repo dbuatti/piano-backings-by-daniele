@@ -51,7 +51,7 @@ interface BackingRequest {
 interface Product {
   id: string;
   title: string;
-  // Only need title for comparison here
+  artist_name?: string; // Added artist_name here
 }
 
 interface ProductForm {
@@ -127,7 +127,7 @@ const RepurposeTrackToShop: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title'); // Only need ID and title for this purpose
+        .select('id, title, artist_name'); // Now selecting artist_name
       
       if (error) throw error;
       return data || [];
@@ -456,7 +456,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   // MODIFICATION 2: Check if request is already in shop
                   const isAlreadyInShop = shopProducts?.some(product =>
                     product.title.toLowerCase().includes(req.song_title.toLowerCase()) &&
-                    product.title.toLowerCase().includes(req.musical_or_artist.toLowerCase())
+                    product.artist_name?.toLowerCase().includes(req.musical_or_artist.toLowerCase()) // Use artist_name
                   );
 
                   return (
