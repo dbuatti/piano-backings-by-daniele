@@ -5,14 +5,8 @@ import {
   Card, CardContent, CardHeader, CardTitle
 } from "@/components/ui/card";
 import {
-  ArrowUpDown,
   Music,
-  CheckCircle,
-  Clock,
-  Download,
-  Trash2,
-  X,
-} from 'lucide-react'; // Removed many unused icons
+} from 'lucide-react'; // Removed ArrowUpDown, CheckCircle, Clock, Download, Trash2, X
 import RequestTableRow from './RequestTableRow'; // Import the new component
 
 interface TrackInfo {
@@ -53,9 +47,9 @@ interface RequestsTableProps {
   handleDirectFileUpload: (id: string, file: File) => Promise<void>;
   selectedRequests: Set<string>;
   toggleSelectRequest: (id: string) => void;
-  toggleSelectAll: () => void;
+  toggleSelectAll: (checked: boolean) => void; // Added checked parameter
   allSelected: boolean;
-  totalCost: number;
+  // Removed totalCost as it's not used in this component
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({
@@ -72,7 +66,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   toggleSelectRequest,
   toggleSelectAll,
   allSelected,
-  totalCost,
+  // Removed totalCost from destructuring
 }) => {
   if (loading) {
     return (
@@ -104,7 +98,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                   <input
                     type="checkbox"
                     checked={allSelected}
-                    onChange={toggleSelectAll}
+                    onChange={(e) => toggleSelectAll(e.target.checked)} // Pass checked state
                     className="form-checkbox h-4 w-4 text-[#1C0357] rounded"
                   />
                 </TableHead>

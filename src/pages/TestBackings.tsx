@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { Play, Music, Folder, FileText, Youtube } from 'lucide-react';
+import { Music, FileText } from 'lucide-react'; // Removed Play, Folder, Youtube
 import { MadeWithDyad } from '@/components/made-with-dyad';
 
 const TestBackings = () => {

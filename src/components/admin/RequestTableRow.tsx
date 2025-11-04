@@ -17,16 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+// Removed unused Dialog imports
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// Removed unused Label import
 import { format } from 'date-fns';
 import {
   ArrowUpDown,
@@ -36,16 +29,17 @@ import {
   Edit,
   Eye,
   Link as LinkIcon,
-  Music,
   Share2,
   Trash2,
   Upload,
   X,
-} from 'lucide-react'; // Removed many unused icons
+  Calendar as CalendarIcon, // Re-imported CalendarIcon
+} from 'lucide-react'; // Removed Music, useUploadDialogs
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { useToast } from '@/hooks/use-toast';
-import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs'; // Import the hook
+// Removed useUploadDialogs import
 import { Link } from 'react-router-dom'; // Import Link for navigation
+import { cn } from '@/lib/utils'; // Re-imported cn
 
 interface TrackInfo {
   url: string;

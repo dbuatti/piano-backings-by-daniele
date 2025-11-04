@@ -838,7 +838,7 @@ const FormPage = () => {
                       id="sheetMusic"
                       // name="sheetMusic" // Removed name prop as it's not part of FileInputProps
                       accept=".pdf"
-                      onFileChange={(file: File | null) => handleFileInputChange(file, 'sheetMusic')} // Explicitly typed file
+                      onChange={(file: File | null) => handleFileInputChange(file, 'sheetMusic')} // Changed onFileChange to onChange
                       currentFile={formData.sheetMusic}
                       disabled={isHolidayModeActive}
                       error={errors.sheetMusic}
@@ -868,7 +868,7 @@ const FormPage = () => {
                       id="voiceMemoFile"
                       // name="voiceMemoFile" // Removed name prop as it's not part of FileInputProps
                       accept="audio/*"
-                      onFileChange={(file: File | null) => handleFileInputChange(file, 'voiceMemoFile')} // Explicitly typed file
+                      onChange={(file: File | null) => handleFileInputChange(file, 'voiceMemoFile')} // Changed onFileChange to onChange
                       currentFile={formData.voiceMemoFile}
                       disabled={isHolidayModeActive}
                     />

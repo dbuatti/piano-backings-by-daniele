@@ -6,8 +6,7 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button'; // Keep Button if used in JSX
-import { Input } from '@/components/ui/input'; // Keep Input if used in JSX
-import { Label } from '@/components/ui/label'; // Keep Label if used in JSX
+// Removed Input and Label as they were unused
 
 const Login = () => {
   const navigate = useNavigate();

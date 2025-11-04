@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react'; // Removed useEffect, useCallback
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, // Removed DialogTrigger
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Re-imported Card components
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, PlusCircle, MinusCircle } from 'lucide-react'; // Removed unused icons
+import { Loader2, Edit, Trash2, Store, PlusCircle, MinusCircle } from 'lucide-react'; // Removed DollarSign, Link
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { cn } from '@/lib/utils';
+// Removed cn import
 
 interface TrackInfo {
   url: string;

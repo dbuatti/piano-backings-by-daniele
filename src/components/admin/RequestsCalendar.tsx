@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import CalendarComponent, { Value } from 'react-calendar'; // Import Value type
+import CalendarComponent, { type Value } from 'react-calendar'; // Corrected Value import
 import 'react-calendar/dist/Calendar.css'; // Default calendar styles
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
