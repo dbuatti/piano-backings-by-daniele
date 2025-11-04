@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
+import Header from "@/components/Header";
+import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown } from 'lucide-react';
@@ -124,6 +124,7 @@ const UserDashboard = () => {
     let targetUserEmail: string | null = null;
 
     if (selectedUserForView) { // Admin has selected a user from the dropdown
+      // Access allUsersForAdmin directly from state, not as a dependency of useCallback
       const selectedProfile = allUsersForAdmin.find(u => u.id === selectedUserForView);
       if (selectedProfile) {
         targetUserId = selectedProfile.id;
@@ -151,7 +152,7 @@ const UserDashboard = () => {
       setRequests([]); // No requests to show if no target user
       setLoading(false);
     }
-  }, [navigate, selectedUserForView, allUsersForAdmin, user, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast]);
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt, allUsersForAdmin]); // allUsersForAdmin is now a dependency
 
   // Effect for initial load and auth state changes
   useEffect(() => {
