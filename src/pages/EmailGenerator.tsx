@@ -44,6 +44,7 @@ export interface Product {
   image_url?: string | null;
   track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 const EmailGenerator = () => {
@@ -159,7 +160,7 @@ const EmailGenerator = () => {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: `Failed to fetch all products: ${error.message}`,
+          description: `Failed to fetch all products: ${err.message}`,
           variant: "destructive",
         });
       } finally {
@@ -457,6 +458,12 @@ const EmailGenerator = () => {
                     </div>
                     <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedProduct.description}</p>
                   </div>
+                  {displayedProduct.vocal_ranges && displayedProduct.vocal_ranges.length > 0 && (
+                    <div className="flex items-center">
+                      <Music className="mr-2 h-4 w-4 text-gray-600" />
+                      Vocal Ranges: <span className="ml-1 font-medium">{displayedProduct.vocal_ranges.join(', ')}</span>
+                    </div>
+                  )}
                   {displayedProduct.track_urls && displayedProduct.track_urls.length > 0 && ( // Changed from track_url
                     <div className="flex items-center">
                       <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />

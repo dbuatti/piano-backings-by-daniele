@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag } from 'lucide-react'; // Added User and Tag icons
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface TrackInfo {
   url: string;
@@ -17,10 +18,11 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string;
-  track_urls?: TrackInfo[]; // Changed from track_url to track_urls (array of TrackInfo)
+  track_urls?: TrackInfo[];
   is_active: boolean;
-  artist_name?: string; // New field
-  category?: string; // New field
+  artist_name?: string;
+  category?: string;
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 interface ProductCardProps {
@@ -64,6 +66,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
             <Tag className="h-3 w-3 mr-1" /> {product.category.replace('-', ' ')}
           </p>
+        )}
+        {product.vocal_ranges && product.vocal_ranges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {product.vocal_ranges.map((range, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {range}
+              </Badge>
+            ))}
+          </div>
         )}
         <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
         <div className="flex items-center mt-3">

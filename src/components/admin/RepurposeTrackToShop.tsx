@@ -59,8 +59,9 @@ interface ProductForm {
   image_url: string;
   track_urls: TrackInfo[];
   is_active: boolean;
-  artist_name: string; // New field
-  category: string; // New field
+  artist_name: string;
+  category: string;
+  vocal_ranges: string[]; // New field for vocal ranges
 }
 
 const RepurposeTrackToShop: React.FC = () => {
@@ -76,8 +77,9 @@ const RepurposeTrackToShop: React.FC = () => {
     image_url: '',
     track_urls: [],
     is_active: true,
-    artist_name: '', // Initialize new field
-    category: '', // Initialize new field
+    artist_name: '',
+    category: '',
+    vocal_ranges: [], // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -145,10 +147,22 @@ const RepurposeTrackToShop: React.FC = () => {
   useEffect(() => {
     if (selectedRequest) {
       const firstName = selectedRequest.name ? selectedRequest.name.split(' ')[0] : selectedRequest.email.split('@')[0];
-      // MODIFICATION 1: Removed "Backing Track" from default title
-      const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist}`;
       
-      let defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}.`;
+      let autoTitle = selectedRequest.song_title;
+      let autoArtist = selectedRequest.musical_or_artist;
+
+      // Auto-populate logic: if song_title contains a hyphen, split it
+      const hyphenIndex = selectedRequest.song_title.indexOf(' - ');
+      if (hyphenIndex !== -1) {
+        autoTitle = selectedRequest.song_title.substring(0, hyphenIndex).trim();
+        autoArtist = selectedRequest.song_title.substring(hyphenIndex + 3).trim();
+      } else {
+        // If no hyphen, use musical_or_artist as artist name
+        autoTitle = selectedRequest.song_title;
+        autoArtist = selectedRequest.musical_or_artist;
+      }
+
+      let defaultDescription = `A high-quality piano backing track for "${autoTitle}" from ${autoArtist}.`;
       
       if (firstName) {
         defaultDescription += ` Originally created for ${firstName}.`;
@@ -174,7 +188,7 @@ const RepurposeTrackToShop: React.FC = () => {
       }
       
       setProductForm({
-        title: defaultTitle,
+        title: autoTitle, // Auto-populated title
         description: defaultDescription,
         price: '25.00', // Default price, user can change
         currency: 'AUD',
@@ -182,8 +196,9 @@ const RepurposeTrackToShop: React.FC = () => {
         // Map existing tracks to include 'selected: true' for the UI
         track_urls: selectedRequest.track_urls?.map(track => ({ ...track, selected: true })) || [],
         is_active: true,
-        artist_name: selectedRequest.musical_or_artist, // Pre-fill artist name
+        artist_name: autoArtist, // Auto-populated artist name
         category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category
+        vocal_ranges: [], // Initialize vocal ranges as empty
       });
       setImageFile(null); // Clear image file when new request is selected
       setFormErrors({});
@@ -205,14 +220,14 @@ const RepurposeTrackToShop: React.FC = () => {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const handleTrackChange = (index: number, field: keyof TrackInfo, value: string | boolean) => {
-    const newTrackUrls = [...productForm.track_urls];
-    if (field === 'selected') {
-      newTrackUrls[index] = { ...newTrackUrls[index], selected: value as boolean };
-    } else {
-      newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
-    }
-    setProductForm(prev => ({ ...prev, track_urls: newTrackUrls }));
+  const handleVocalRangeChange = (range: string, checked: boolean | 'indeterminate') => {
+    setProductForm(prev => {
+      const newRanges = checked
+        ? [...prev.vocal_ranges, range]
+        : prev.vocal_ranges.filter(r => r !== range);
+      setFormErrors(prevErrors => ({ ...prevErrors, vocal_ranges: '' }));
+      return { ...prev, vocal_ranges: newRanges };
+    });
   };
 
   const addTrackUrl = () => {
@@ -262,8 +277,8 @@ const RepurposeTrackToShop: React.FC = () => {
     if (!productForm.description.trim()) errors.description = 'Description is required.';
     if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
-    if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.'; // Validate new field
-    if (!productForm.category.trim()) errors.category = 'Category is required.'; // Validate new field
+    if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.';
+    if (!productForm.category.trim()) errors.category = 'Category is required.';
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
@@ -308,7 +323,7 @@ const RepurposeTrackToShop: React.FC = () => {
       setSelectedRequest(null); // Clear selection
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', // Reset new fields
+        artist_name: '', category: '', vocal_ranges: [], // Reset new fields
       });
       setImageFile(null); // Clear image file
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
@@ -460,7 +475,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
                 </div>
                 <div>
-                  <Label htmlFor="artist_name">Artist Name</Label> {/* New field */}
+                  <Label htmlFor="artist_name">Artist Name</Label>
                   <Input
                     id="artist_name"
                     name="artist_name"
@@ -514,7 +529,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="category">Category</Label> {/* New field */}
+                  <Label htmlFor="category">Category</Label>
                   <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
                     <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
                       <SelectValue placeholder="Select category" />
@@ -528,6 +543,23 @@ const RepurposeTrackToShop: React.FC = () => {
                   </Select>
                   {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
                 </div>
+
+                {/* New: Vocal Ranges Checkboxes */}
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Vocal Ranges</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {['Soprano', 'Alto', 'Tenor', 'Bass'].map(range => (
+                      <div key={range} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`vocal-range-${range}`}
+                          checked={productForm.vocal_ranges.includes(range)}
+                          onCheckedChange={(checked) => handleVocalRangeChange(range, checked)}
+                        />
+                        <Label htmlFor={`vocal-range-${range}`}>{range}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 
                 {/* Multiple Track URLs Section */}
                 <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
@@ -540,9 +572,9 @@ const RepurposeTrackToShop: React.FC = () => {
                   {productForm.track_urls.length === 0 && (
                     <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
                   )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"> {/* Adjusted grid for narrower cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {productForm.track_urls.map((track, index) => (
-                      <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm"> {/* Card for each track */}
+                      <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <Checkbox
@@ -568,7 +600,7 @@ const RepurposeTrackToShop: React.FC = () => {
                             className="block text-blue-600 hover:underline text-sm truncate mt-1"
                           >
                             <Link className="h-3 w-3 mr-1 inline-block" />
-                            {truncateUrl(track.url, 30)} {/* Truncate URL for display */}
+                            {truncateUrl(track.url, 30)}
                           </a>
                           {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                         </div>

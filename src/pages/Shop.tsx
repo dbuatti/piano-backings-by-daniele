@@ -25,8 +25,9 @@ interface Product {
   image_url?: string;
   track_urls?: TrackInfo[];
   is_active: boolean;
-  artist_name?: string; // New field
-  category?: string; // New field
+  artist_name?: string;
+  category?: string;
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 const Shop: React.FC = () => {
@@ -234,8 +235,8 @@ const Shop: React.FC = () => {
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>
                 <SelectItem value="title_asc">Title: A-Z</SelectItem>
                 <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem> {/* New sort option */}
-                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem> {/* New sort option */}
+                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
               </SelectContent>
             </Select>
           </div>

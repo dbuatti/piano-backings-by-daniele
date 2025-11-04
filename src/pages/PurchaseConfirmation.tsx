@@ -21,6 +21,7 @@ interface Product {
   title: string;
   description: string;
   track_urls?: TrackInfo[];
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 interface Order {
@@ -119,7 +120,7 @@ const PurchaseConfirmation: React.FC = () => {
         // 2. Fetch product details separately
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('id, title, description, track_urls')
+          .select('id, title, description, track_urls, vocal_ranges') // Added vocal_ranges
           .eq('id', orderData.product_id)
           .single();
 
@@ -256,6 +257,12 @@ const PurchaseConfirmation: React.FC = () => {
                       <p className="text-gray-500">Date:</p>
                       <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
                     </div>
+                    {order.products?.vocal_ranges && order.products.vocal_ranges.length > 0 && (
+                      <div>
+                        <p className="text-gray-500">Vocal Ranges:</p>
+                        <p className="font-medium">{order.products.vocal_ranges.join(', ')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

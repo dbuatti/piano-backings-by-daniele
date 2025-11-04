@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag } from 'lucide-react'; // Added User and Tag icons
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface TrackInfo {
   url: string;
@@ -25,8 +26,9 @@ interface Product {
   image_url?: string;
   track_urls?: TrackInfo[];
   is_active: boolean;
-  artist_name?: string; // New field
-  category?: string; // New field
+  artist_name?: string;
+  category?: string;
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 interface ProductDetailDialogProps {
@@ -91,6 +93,15 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <p className="text-md text-gray-600 flex items-center capitalize">
                 <Tag className="h-4 w-4 mr-2" /> {product.category.replace('-', ' ')}
               </p>
+            )}
+            {product.vocal_ranges && product.vocal_ranges.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {product.vocal_ranges.map((range, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    {range}
+                  </Badge>
+                ))}
+              </div>
             )}
             <DialogDescription className="text-lg text-gray-700">
               {product.description}

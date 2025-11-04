@@ -42,6 +42,7 @@ export interface Product {
   image_url?: string | null;
   track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
+  vocal_ranges?: string[]; // New field for vocal ranges
 }
 
 // HTML Email signature template
@@ -529,6 +530,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     - Shop Link: ${shopLink}
     - Feedback Link: ${feedbackLink}
     - Product Track List HTML: ${productTrackListHtml}
+    - Vocal Ranges: ${product.vocal_ranges && product.vocal_ranges.length > 0 ? product.vocal_ranges.join(', ') : 'None specified'}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that clearly states the purchase is confirmed and the product is ready for download.
@@ -536,11 +538,12 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     3. Confirm the purchase of "${product.title}".
     4. Include the "Product Track List HTML" directly in the email body to list all downloadable tracks.
     5. Briefly mention the product description.
-    6. Encourage them to explore other products in the shop with a link to the Shop Link.
-    7. Express gratitude for their business.
-    8. Keep the tone professional yet friendly.
-    9. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    10. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
+    6. If vocal ranges are specified, include them in a clear and concise way.
+    7. Encourage them to explore other products in the shop with a link to the Shop Link.
+    8. Express gratitude for their business.
+    9. Keep the tone professional yet friendly.
+    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    11. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -568,6 +571,10 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
 };
 
 const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, shopLink: string, feedbackLink: string, productTrackListHtml: string) => {
+  const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges:</strong> ${product.vocal_ranges.join(', ')}</p>`
+    : '';
+
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
     html: `
@@ -579,6 +586,7 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
         <p style="margin-top: 20px;">
           ${product.description}
         </p>
+        ${vocalRangesHtml}
         <p style="margin-top: 20px;">
           We hope you enjoy your new track! Feel free to browse our other offerings:
         </p>
