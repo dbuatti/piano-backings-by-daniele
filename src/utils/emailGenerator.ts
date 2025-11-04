@@ -107,6 +107,31 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   `;
 };
 
+// Helper to generate track list HTML for products
+const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
+  if (!trackUrls || trackUrls.length === 0) return '';
+  
+  const listItems = trackUrls.map(track => `
+    <li style="margin-bottom: 5px;">
+      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
+        ${track.caption}
+      </a>
+    </li>
+  `).join('');
+
+  return `
+    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
+      <ul style="list-style: none; padding: 0; margin-top: 10px;">
+        ${listItems}
+      </ul>
+      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+        Click on the track name to download.
+      </p>
+    </div>
+  `;
+};
+
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
