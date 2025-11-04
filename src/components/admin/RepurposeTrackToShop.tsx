@@ -260,7 +260,6 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="title"
                     value={productForm.title}
                     onChange={handleFormChange}
-                    placeholder="e.g., Defying Gravity - Piano Backing Track"
                     className={cn("mt-1", formErrors.title && "border-red-500")}
                   />
                   {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
@@ -272,7 +271,6 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="description"
                     value={productForm.description}
                     onChange={handleFormChange}
-                    placeholder="A detailed description of the product..."
                     rows={4}
                     className={cn("mt-1", formErrors.description && "border-red-500")}
                   />
@@ -288,7 +286,6 @@ const RepurposeTrackToShop: React.FC = () => {
                       step="0.01"
                       value={productForm.price}
                       onChange={handleFormChange}
-                      placeholder="e.g., 25.00"
                       className={cn("mt-1", formErrors.price && "border-red-500")}
                     />
                     {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
@@ -297,7 +294,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     <Label htmlFor="currency">Currency</Label>
                     <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select currency" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="AUD">AUD</SelectItem>
@@ -314,10 +311,9 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="track_url"
                     value={productForm.track_url}
                     onChange={handleFormChange}
-                    placeholder="https://your-storage.com/track.mp3"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">This is the URL for the actual track file. It can be a preview or the full track.</p>
+                  <p className="text-xs text-gray-500 mt-1">This is the URL for the actual track file that customers will download. It can be a preview or the full track.</p>
                 </div>
                 <div>
                   <Label htmlFor="image_url">Image URL (optional)</Label>
@@ -326,10 +322,9 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="image_url"
                     value={productForm.image_url}
                     onChange={handleFormChange}
-                    placeholder="https://example.com/track-cover.jpg"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">A cover image for the product card.</p>
+                  <p className="text-xs text-gray-500 mt-1">A cover image URL for the product card in the shop.</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
