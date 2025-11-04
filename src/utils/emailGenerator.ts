@@ -75,12 +75,12 @@ const EMAIL_SIGNATURE_HTML = `
 </div>
 `;
 
-// Helper function to convert plain text to basic HTML paragraphs
-const textToHtml = (text: string) => {
-  return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
-         text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
-         `</div>`;
-};
+// Helper function to convert plain text to basic HTML paragraphs (Removed as it was unused)
+// const textToHtml = (text: string) => {
+//   return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
+//          text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
+//          `</div>`;
+// };
 
 // Helper to generate track list HTML
 const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart } from "lucide-react"; // Import ShoppingCart icon
+import { Link, useNavigate } from "react-router-dom"; // Removed useLocation
+import { Menu, LogIn, Music, Shield, User, X, Settings, AlertCircle, ShoppingCart } from "lucide-react"; // Removed unused icons
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import {
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const location = useLocation();
+  // const location = useLocation(); // Removed as it was unused
   const [session, setSession] = React.useState<any>(null);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ const Header = () => {
       
       if (session) {
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
+        if (adminEmails.includes(session.user!.email!)) { // Added non-null assertion
           setIsAdmin(true);
         }
       }
@@ -39,12 +39,12 @@ const Header = () => {
     
     checkSession();
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { // Renamed event to _event
       setSession(session);
       
       if (session) {
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
+        if (adminEmails.includes(session.user!.email!)) { // Added non-null assertion
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
