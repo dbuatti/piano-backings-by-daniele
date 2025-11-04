@@ -39,6 +39,8 @@ interface BackingRequest {
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
+  track_purpose?: string; // Added for dynamic description
+  additional_services?: string[]; // Added for dynamic description
 }
 
 interface ProductForm {
@@ -102,8 +104,33 @@ const RepurposeTrackToShop: React.FC = () => {
   // Pre-fill form when a request is selected
   useEffect(() => {
     if (selectedRequest) {
+      const firstName = selectedRequest.name ? selectedRequest.name.split(' ')[0] : selectedRequest.email.split('@')[0];
       const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist} Backing Track`;
-      const defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}. Originally created for ${selectedRequest.name || selectedRequest.email}. Perfect for auditions, practice, or performance.`;
+      
+      let defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}.`;
+      
+      if (firstName) {
+        defaultDescription += ` Originally created for ${firstName}.`;
+      }
+
+      const normalizedBackingTypes = getSafeBackingTypes(selectedRequest.backing_type);
+      if (normalizedBackingTypes.length > 0) {
+        defaultDescription += ` This track is a ${normalizedBackingTypes.map(type => type.replace('-', ' ')).join(' and ')} backing.`;
+      }
+
+      if (selectedRequest.track_purpose) {
+        defaultDescription += ` It's perfect for ${selectedRequest.track_purpose.replace('-', ' ')}.`;
+      } else {
+        defaultDescription += ` It's perfect for auditions, practice, or performance.`;
+      }
+
+      if (selectedRequest.special_requests) {
+        defaultDescription += ` Special notes from the original request: "${selectedRequest.special_requests}".`;
+      }
+
+      if (selectedRequest.additional_services && selectedRequest.additional_services.length > 0) {
+        defaultDescription += ` Additional services included: ${selectedRequest.additional_services.map(service => service.replace('-', ' ')).join(', ')}.`;
+      }
       
       setProductForm({
         title: defaultTitle,
