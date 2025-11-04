@@ -453,10 +453,19 @@ const RepurposeTrackToShop: React.FC = () => {
             ) : (
               <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
                 {filteredRequests.map(req => {
-                  // MODIFICATION 2: Check if request is already in shop
+                  // MODIFICATION: Refined check if request is already in shop
+                  let derivedTitle = req.song_title;
+                  let derivedArtist = req.musical_or_artist;
+
+                  const hyphenIndex = req.song_title.indexOf(' - ');
+                  if (hyphenIndex !== -1) {
+                    derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
+                    derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
+                  }
+
                   const isAlreadyInShop = shopProducts?.some(product =>
-                    product.title.toLowerCase().includes(req.song_title.toLowerCase()) &&
-                    product.artist_name?.toLowerCase().includes(req.musical_or_artist.toLowerCase()) // Use artist_name
+                    product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
+                    product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
                   );
 
                   return (
