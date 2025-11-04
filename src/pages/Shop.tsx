@@ -5,6 +5,7 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import ProductCard from '@/components/ProductCard';
 import ProductDetailDialog from '@/components/ProductDetailDialog'; // Import the new dialog
+import ProductCardSkeleton from '@/components/ProductCardSkeleton'; // Import the new skeleton component
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -205,9 +206,10 @@ const Shop: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-            <p className="ml-4 text-lg text-gray-600">Loading products...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
           </div>
         ) : error ? (
           <Card className="border-red-300 bg-red-50 text-red-800">
