@@ -36,7 +36,7 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-      <CardHeader className="p-0 relative"> {/* Added relative positioning here */}
+      <CardHeader className="p-0 relative">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
             <img 
@@ -55,14 +55,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </div>
           )}
         </AspectRatio>
-        {product.category && (
-          <Badge 
-            variant="default" 
-            className="absolute bottom-2 left-2 bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full shadow-md"
-          >
-            {product.category.replace('-', ' ')}
-          </Badge>
-        )}
+        <div className="absolute bottom-2 left-2 flex flex-col items-start space-y-1">
+          {product.category && (
+            <Badge 
+              variant="default" 
+              className="bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full shadow-md"
+            >
+              {product.category.replace('-', ' ')}
+            </Badge>
+          )}
+          {product.track_type && (
+            <Badge 
+              variant="secondary" 
+              className="bg-gray-700 text-white capitalize text-xs px-2 py-0.5 rounded-full shadow-md"
+            >
+              {product.track_type.replace('-', ' ')}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 p-4">
         <CardTitle className="text-xl font-bold text-[#1C0357] mb-2">{product.title}</CardTitle>
@@ -84,11 +94,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               </Badge>
             ))}
           </div>
-        )}
-        {product.track_type && (
-          <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
-            <Music className="h-3 w-3 mr-1" /> {product.track_type.replace('-', ' ')}
-          </p>
         )}
         <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
         <div className="flex items-center mt-3">

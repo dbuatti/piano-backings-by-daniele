@@ -97,6 +97,12 @@ const Shop: React.FC = () => {
           case 'artist_name_desc': // New sort option
             query = query.order('artist_name', { ascending: false });
             break;
+          case 'category_asc': // New sort option
+            query = query.order('category', { ascending: true });
+            break;
+          case 'category_desc': // New sort option
+            query = query.order('category', { ascending: false });
+            break;
           case 'created_at_desc': // Newest first (default)
           default:
             query = query.order('created_at', { ascending: false });
@@ -262,6 +268,8 @@ const Shop: React.FC = () => {
                 <SelectItem value="title_desc">Title: Z-A</SelectItem>
                 <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
                 <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+                <SelectItem value="category_asc">Category: A-Z</SelectItem> {/* New sort option */}
+                <SelectItem value="category_desc">Category: Z-A</SelectItem> {/* New sort option */}
               </SelectContent>
             </Select>
           </div>
