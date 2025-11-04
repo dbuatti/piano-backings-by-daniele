@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, UploadCloud, FileText, Key, MinusCircle } from 'lucide-react';
+import { Loader2, Music, DollarSign, Image, Link, PlusCircle, UploadCloud, FileText, Key, MinusCircle, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
@@ -93,11 +93,11 @@ const CreateNewProduct: React.FC = () => {
     });
   };
 
-  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean) => {
+  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
       // Type assertion to allow dynamic field assignment for 'selected'
-      (newTrackUrls[index] as any)[field] = value;
+      (newTrackUrls[index] as any)[field] = value; 
       return { ...prev, track_urls: newTrackUrls };
     });
   };
@@ -105,7 +105,7 @@ const CreateNewProduct: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }] // Default to selected
+      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true, file: null }] // Default to selected, include file
     }));
   };
 
@@ -119,7 +119,7 @@ const CreateNewProduct: React.FC = () => {
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
     if (file) {
-      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) })); // For immediate preview
+      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
     } else {
       setProductForm(prev => ({ ...prev, image_url: '' }));
     }
@@ -164,8 +164,8 @@ const CreateNewProduct: React.FC = () => {
     if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url.trim()) {
-        errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
+      if (!track.url.trim() && !track.file) { // Require either URL or file
+        errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
       }
       if (!String(track.caption || '').trim()) {
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
@@ -182,7 +182,7 @@ const CreateNewProduct: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, ...rest }) => rest); // Destructure 'selected' here
+        .map(({ selected, file, ...rest }) => rest); // Destructure 'selected' and 'file' here
 
       const { data, error } = await supabase
         .from('products')
@@ -258,11 +258,33 @@ const CreateNewProduct: React.FC = () => {
       }
     }
 
+    // Process track_urls: upload files if present, otherwise use existing URL
+    const processedTrackUrls: TrackInfo[] = [];
+    for (const track of productForm.track_urls) {
+      if (track.selected) {
+        let trackUrlToSave = track.url;
+        if (track.file) {
+          try {
+            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
+          } catch (uploadError: any) {
+            toast({
+              title: "Track Upload Error",
+              description: `Failed to upload track "${track.file.name}": ${uploadError.message}`,
+              variant: "destructive",
+            });
+            return; // Stop product creation if any track upload fails
+          }
+        }
+        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption });
+      }
+    }
+
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
+      track_urls: processedTrackUrls, // Use processed track URLs
     };
     createProductMutation.mutate(newProduct);
   };
@@ -480,7 +502,7 @@ const CreateNewProduct: React.FC = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL</Label>
+                    <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
                     <Input
                       id={`track-url-${index}`}
                       name={`track_urls[${index}].url`}
@@ -488,9 +510,29 @@ const CreateNewProduct: React.FC = () => {
                       onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
                       placeholder="https://example.com/track.mp3"
                       className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
+                      disabled={!!track.file} // Disable if a file is selected
                     />
                     {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                   </div>
+                  
+                  {/* New FileInput for audio upload */}
+                  <FileInput
+                    id={`track-file-upload-${index}`}
+                    label="Upload Audio File (Optional)"
+                    icon={FileAudio}
+                    accept="audio/*"
+                    onChange={(file) => handleTrackChange(index, 'file', file)}
+                    note="Upload an audio file (e.g., MP3) for this track. This will override any URL above."
+                    error={formErrors[`track_urls[${index}].file`]}
+                    disabled={!!track.url} // Disable if a URL is entered
+                  />
+                  {track.file && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-500">File Selected:</Label>
+                      <p className="block text-sm truncate mt-1">{track.file.name}</p>
+                    </div>
+                  )}
+
                   <div>
                     <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
                     <Input

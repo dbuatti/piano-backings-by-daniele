@@ -3,6 +3,7 @@ export interface TrackInfo {
   url: string;
   caption: string | null | undefined; // Updated 'caption' to allow null/undefined
   selected?: boolean;
+  file?: File | null; // Added optional file property for UI state
 }
 
 // Add other helper functions or interfaces as needed
