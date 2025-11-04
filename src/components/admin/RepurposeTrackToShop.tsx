@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import ProductManager from './ProductManager';
+import { Badge } from '@/components/ui/badge'; // Added Badge import
 
 interface TrackInfo {
   url: string;
@@ -41,6 +42,12 @@ interface BackingRequest {
   additional_links?: string;
   track_purpose?: string; // Added for dynamic description
   additional_services?: string[]; // Added for dynamic description
+}
+
+interface Product {
+  id: string;
+  title: string;
+  // Only need title for comparison here
 }
 
 interface ProductForm {
@@ -93,6 +100,33 @@ const RepurposeTrackToShop: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch all shop products (only title and ID for comparison)
+  const { data: shopProducts, isLoading: isLoadingShopProducts } = useQuery<Product[], Error>({
+    queryKey: ['shopProductsForRepurpose'], // Unique query key
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, title'); // Only need ID and title for this purpose
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Create a lookup for existing product titles for quick checking
+  const [existingProductTitles, setExistingProductTitles] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (shopProducts) {
+      const titles = new Set<string>();
+      shopProducts.forEach(product => {
+        titles.add(product.title.toLowerCase());
+      });
+      setExistingProductTitles(titles);
+    }
+  }, [shopProducts]);
+
   // Filter requests based on search term
   const filteredRequests = requests?.filter(req => 
     req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,7 +139,8 @@ const RepurposeTrackToShop: React.FC = () => {
   useEffect(() => {
     if (selectedRequest) {
       const firstName = selectedRequest.name ? selectedRequest.name.split(' ')[0] : selectedRequest.email.split('@')[0];
-      const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist} Backing Track`;
+      // MODIFICATION 1: Removed "Backing Track" from default title
+      const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist}`;
       
       let defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}.`;
       
@@ -233,6 +268,7 @@ const RepurposeTrackToShop: React.FC = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
+      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for this component's check
     },
     onError: (err: any) => {
       toast({
@@ -299,31 +335,46 @@ const RepurposeTrackToShop: React.FC = () => {
               />
             </div>
 
-            {isLoadingRequests ? (
+            {isLoadingRequests || isLoadingShopProducts ? (
               <div className="flex items-center justify-center h-24">
                 <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
-                <p className="ml-2 text-gray-600">Loading completed requests...</p>
+                <p className="ml-2 text-gray-600">Loading requests...</p>
               </div>
             ) : filteredRequests.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
             ) : (
               <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
-                {filteredRequests.map(req => (
-                  <div
-                    key={req.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
-                      selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
-                    )}
-                    onClick={() => setSelectedRequest(req)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
-                      <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
+                {filteredRequests.map(req => {
+                  // MODIFICATION 2: Check if request is already in shop
+                  const isAlreadyInShop = shopProducts?.some(product =>
+                    product.title.toLowerCase().includes(req.song_title.toLowerCase()) &&
+                    product.title.toLowerCase().includes(req.musical_or_artist.toLowerCase())
+                  );
+
+                  return (
+                    <div
+                      key={req.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
+                        selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
+                      )}
+                      onClick={() => setSelectedRequest(req)}
+                    >
+                      <div>
+                        <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
+                        <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isAlreadyInShop && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700">
+                            <CheckCircle className="h-3 w-3 mr-1" /> In Shop
+                          </Badge>
+                        )}
+                        {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      </div>
                     </div>
-                    {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
