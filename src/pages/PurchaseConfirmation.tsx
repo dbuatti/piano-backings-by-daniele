@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client'; // Import constants
 
 interface Order {
   id: string;
@@ -55,8 +56,8 @@ const PurchaseConfirmation: React.FC = () => {
       // Create a temporary Supabase client instance with a custom fetch function
       // that injects the 'x-checkout-session-id' header for this specific request.
       const supabaseWithHeaders = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        SUPABASE_URL, // Use imported constant
+        SUPABASE_PUBLISHABLE_KEY, // Use imported constant
         {
           global: {
             fetch: async (input, init) => {
