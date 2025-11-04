@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
 import { format } from 'date-fns';
 import Seo from "@/components/Seo"; // Import Seo component
-import { Helmet } from 'react-helmet-async'; // Import Helmet for schema markup
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -55,28 +54,6 @@ const Index = () => {
     ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}.`
     : `We're currently on holiday.`;
 
-  // Organization Schema Markup
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "Piano Backings by Daniele",
-    "url": window.location.origin,
-    "logo": `${window.location.origin}/pasted-image-2025-09-19T05-15-20-729Z.png`,
-    "contactPoint": {
-      "@type": "ContactPoint",
-      "telephone": "+61-424-174-067", // Example phone number, replace if needed
-      "contactType": "customer service",
-      "email": "pianobackingsbydaniele@gmail.com"
-    },
-    "sameAs": [
-      "https://www.youtube.com/channel/UCVJkC6aGbh2gIeZvd2tmcIg",
-      "https://www.instagram.com/pianobackingsbydaniele/",
-      "https://www.facebook.com/PianoBackingsbyDaniele",
-      "https://buymeacoffee.com/Danielebuatti",
-      "https://www.danielebuatti.com/piano-backings"
-    ]
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Seo 
@@ -86,11 +63,6 @@ const Index = () => {
         ogImage="/pasted-image-2025-09-19T05-15-20-729Z.png"
         canonicalUrl={window.location.origin}
       />
-      <Helmet>
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
-      </Helmet>
       <Header />
       
       {/* Hero Section */}

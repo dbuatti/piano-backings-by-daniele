@@ -12,7 +12,6 @@ import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare,
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { downloadTrack, TrackInfo } from '@/utils/helpers';
-import Seo from "@/components/Seo"; // Import Seo component
 
 interface Product {
   id: string;
@@ -139,12 +138,6 @@ const PurchaseConfirmation: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo 
-        title="Purchase Confirmation - Piano Backings by Daniele"
-        description="Your purchase is confirmed! View your order details and access your downloadable tracks from Piano Backings by Daniele."
-        keywords="purchase confirmed, order details, digital download, piano backing tracks, thank you for order"
-        canonicalUrl={`${window.location.origin}/purchase-confirmation`}
-      />
       <Header />
       
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">

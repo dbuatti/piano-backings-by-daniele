@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "routes": [
-    { "src": "/sitemap.xml", "dest": "/public/sitemap.xml", "headers": { "Content-Type": "application/xml" } },
-    { "src": "/robots.txt", "dest": "/public/robots.txt", "headers": { "Content-Type": "text/plain" } },
+    { "src": "/sitemap.xml", "dest": "/sitemap.xml", "headers": { "Content-Type": "application/xml" } },
+    { "src": "/robots.txt", "dest": "/robots.txt", "headers": { "Content-Type": "text/plain" } },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

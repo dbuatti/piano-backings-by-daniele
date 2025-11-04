@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import Seo from "@/components/Seo"; // Import Seo component
 
 const Login = () => {
   const { toast } = useToast();
@@ -103,12 +102,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo 
-        title="Login - Piano Backings by Daniele"
-        description="Log in to your Piano Backings by Daniele account to manage your custom track requests and purchases."
-        keywords="login, sign in, account access, piano backing tracks, user dashboard"
-        canonicalUrl={`${window.location.origin}/login`}
-      />
       <Header />
       
       <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
