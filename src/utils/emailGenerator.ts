@@ -107,31 +107,6 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   `;
 };
 
-// Helper to generate track list HTML for products
-const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
-  if (!trackUrls || trackUrls.length === 0) return '';
-  
-  const listItems = trackUrls.map(track => `
-    <li style="margin-bottom: 5px;">
-      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
-        ${track.caption}
-      </a>
-    </li>
-  `).join('');
-
-  return `
-    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
-      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
-      <ul style="list-style: none; padding: 0; margin-top: 10px;">
-        ${listItems}
-      </ul>
-      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
-        Click on the track name to download.
-      </p>
-    </div>
-  `;
-};
-
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -148,7 +123,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
+    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
     
     Request details:
     - Client name: ${request.name}
@@ -257,7 +232,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
+    You are a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
     
     Request details:
     - Client name: ${request.name}
@@ -384,7 +359,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
+    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
     
     Request details:
     - Client name: ${request.name}
@@ -519,7 +494,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
+    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
     
     Product details:
     - Product Title: "${product.title}"
@@ -588,7 +563,7 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
           </a>
         </p>
         <p style="margin-top: 20px;">
-          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
+          We're always looking to improve! If you have a moment, we'd love to hear about your experience using the new app. 
           You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
         </p>
         <p style="margin-top: 20px;">Warmly,</p>
