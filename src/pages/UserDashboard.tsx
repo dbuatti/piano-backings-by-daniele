@@ -502,11 +502,11 @@ const UserDashboard = () => {
                               <div className="flex flex-wrap gap-2">
                                 {request.status === 'completed' && request.track_urls && request.track_urls.length > 0 && (
                                   <Button 
-                                    size="sm" 
+                                    size="icon" // Changed to icon size
                                     variant="outline" 
                                     onClick={() => downloadTrack(request.track_urls[0].url, request.track_urls[0].caption || `${request.song_title}.mp3`)}
                                   >
-                                    <Download className="w-4 h-4 mr-1" /> Download
+                                    <Download className="w-4 h-4" />
                                   </Button>
                                 )}
                                 <Link to={`/track/${request.id}`}>
@@ -601,11 +601,11 @@ const UserDashboard = () => {
                                 purchase.products.track_urls.map((track, index) => (
                                   <Button 
                                     key={index}
-                                    size="sm" 
+                                    size="icon" // Changed to icon size
                                     variant="outline" 
                                     onClick={() => downloadTrack(track.url, track.caption || `${purchase.products?.title || 'track'}.mp3`)}
                                   >
-                                    <Download className="w-4 h-4 mr-1" /> Download {track.caption ? `(${track.caption})` : ''}
+                                    <Download className="w-4 h-4" />
                                   </Button>
                                 ))
                               ) : (
