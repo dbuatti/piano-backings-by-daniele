@@ -96,11 +96,8 @@ const CreateNewProduct: React.FC = () => {
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      if (field === 'selected') {
-        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as boolean };
-      } else {
-        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
-      }
+      // Type assertion to allow dynamic field assignment for 'selected'
+      (newTrackUrls[index] as any)[field] = value;
       return { ...prev, track_urls: newTrackUrls };
     });
   };
@@ -185,7 +182,7 @@ const CreateNewProduct: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, ...rest }) => rest);
+        .map(({ selected, ...rest }) => rest); // Destructure 'selected' here
 
       const { data, error } = await supabase
         .from('products')
