@@ -204,6 +204,27 @@ const Shop: React.FC = () => {
     }
   };
 
+  // Group products by category if sorting by category
+  const groupedProducts: { [key: string]: Product[] } = {};
+  const isCategorySort = sortOption === 'category_asc' || sortOption === 'category_desc';
+
+  if (isCategorySort && products.length > 0) {
+    products.forEach(product => {
+      const categoryName = product.category || 'Uncategorized';
+      if (!groupedProducts[categoryName]) {
+        groupedProducts[categoryName] = [];
+      }
+      groupedProducts[categoryName].push(product);
+    });
+  }
+
+  const sortedCategories = Object.keys(groupedProducts).sort((a, b) => {
+    if (sortOption === 'category_desc') {
+      return b.localeCompare(a);
+    }
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -303,17 +324,40 @@ const Shop: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onViewDetails={handleViewDetails} 
-                onBuyNow={handleBuyNow}
-                isBuying={isBuying} // Pass loading state
-              />
-            ))}
-          </div>
+          <>
+            {isCategorySort ? (
+              sortedCategories.map(category => (
+                <div key={category} className="mb-8">
+                  <h2 className="text-2xl font-bold text-[#1C0357] mb-4 capitalize">
+                    {category.replace('-', ' ')}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {groupedProducts[category].map(product => (
+                      <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        onViewDetails={handleViewDetails} 
+                        onBuyNow={handleBuyNow}
+                        isBuying={isBuying} // Pass loading state
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map(product => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onViewDetails={handleViewDetails} 
+                    onBuyNow={handleBuyNow}
+                    isBuying={isBuying} // Pass loading state
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
       <MadeWithDyad />
