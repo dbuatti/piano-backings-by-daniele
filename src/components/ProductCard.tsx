@@ -50,7 +50,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
             >
               <h3 className="text-xl md:text-2xl font-bold italic leading-tight">
-                {product.title}
+                {product.title} {product.artist_name && `- ${product.artist_name}`}
               </h3>
             </div>
           )}
