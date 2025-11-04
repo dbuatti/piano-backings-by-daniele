@@ -9,7 +9,7 @@ import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown } from 'lucide-react';
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown, ShoppingCart } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getSafeBackingTypes } from '@/utils/helpers';
 import {
@@ -26,9 +26,34 @@ interface UserProfileForAdmin {
   name: string;
 }
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
+interface Product {
+  title: string;
+  description: string;
+  track_urls?: TrackInfo[];
+}
+
+interface Order {
+  id: string;
+  product_id: string;
+  customer_email: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created_at: string;
+  user_id?: string;
+  products?: Product; // Joined product details
+}
+
 const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<Order[]>([]); // New state for purchases
   const [loading, setLoading] = useState(true);
+  const [loadingPurchases, setLoadingPurchases] = useState(true); // New loading state for purchases
   const [user, setUser] = useState<any>(null); // The currently logged-in user
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const navigate = useNavigate();
@@ -65,11 +90,39 @@ const UserDashboard = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: `Failed to fetch requests: ${error.message}`,
+        description: `Failed to fetch backing requests: ${error.message}`,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
+    }
+  }, [toast]);
+
+  const fetchPurchasesForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
+    setLoadingPurchases(true);
+    try {
+      let query = supabase.from('orders').select('*, products(title, description, track_urls)').order('created_at', { ascending: false });
+
+      if (targetUserId) {
+        query = query.eq('user_id', targetUserId);
+      } else if (targetUserEmail) {
+        query = query.ilike('customer_email', targetUserEmail);
+      } else {
+        throw new Error('No target user ID or email provided for fetching purchases.');
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setPurchases(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to fetch purchases: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPurchases(false);
     }
   }, [toast]);
 
@@ -108,6 +161,8 @@ const UserDashboard = () => {
   // Main function to check user and determine which data to fetch
   const checkUserAndDetermineTarget = useCallback(async () => {
     setLoading(true);
+    setLoadingPurchases(true);
+
     const { data: { session } } = await supabase.auth.getSession();
     const loggedInUser = session?.user;
     setUser(loggedInUser);
@@ -141,6 +196,10 @@ const UserDashboard = () => {
       setShowAccountPrompt(false);
     } else if (emailFromUrl) {
       fetchGuestRequestsByEmail(emailFromUrl);
+      // For guest purchases, we'd need a similar guest-specific function if they exist without user_id
+      // For now, assume purchases are linked to user_id or require login.
+      setPurchases([]); // No guest purchases for now
+      setLoadingPurchases(false);
       setShowAccountPrompt(true);
       return;
     } else {
@@ -150,11 +209,14 @@ const UserDashboard = () => {
 
     if (targetUserId || targetUserEmail) {
       fetchRequestsForTarget(targetUserId, targetUserEmail);
+      fetchPurchasesForTarget(targetUserId, targetUserEmail);
     } else {
       setRequests([]);
+      setPurchases([]);
       setLoading(false);
+      setLoadingPurchases(false);
     }
-  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]); // Removed allUsersForAdmin from dependencies
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]); // Removed allUsersForAdmin from dependencies
 
   // Effect for initial load and auth state changes
   useEffect(() => {
@@ -218,9 +280,14 @@ const UserDashboard = () => {
     }
   };
 
-  const downloadTrack = (url: string) => {
+  const downloadTrack = (url: string, filename: string = 'download') => {
     if (url) {
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // Force download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
       toast({
         title: "Track Not Available",
@@ -335,7 +402,7 @@ const UserDashboard = () => {
             <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
               <span className="flex items-center">
                 <Music className="mr-2" />
-                Your Backing Track Requests
+                Your Custom Backing Track Requests
               </span>
               <Link to="/form-page">
                 <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
@@ -368,9 +435,9 @@ const UserDashboard = () => {
                         <TableCell colSpan={6} className="text-center py-8">
                           <div className="text-center">
                             <Music className="mx-auto h-12 w-12 text-gray-400" />
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No requests yet</h3>
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No custom requests yet</h3>
                             <p className="mt-1 text-sm text-gray-500">
-                              Get started by ordering your first backing track.
+                              Get started by ordering your first custom backing track.
                             </p>
                             <div className="mt-6">
                               <Link to="/form-page">
@@ -422,7 +489,7 @@ const UserDashboard = () => {
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    onClick={() => downloadTrack(request.track_urls[0].url)} // Assuming first track_url for download
+                                    onClick={() => downloadTrack(request.track_urls[0].url, request.track_urls[0].caption || `${request.song_title}.mp3`)}
                                   >
                                     <Download className="w-4 h-4 mr-1" /> Download
                                   </Button>
@@ -444,6 +511,102 @@ const UserDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* New Card for My Purchases */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span className="flex items-center">
+                <ShoppingCart className="mr-2" />
+                My Purchases
+              </span>
+              <Link to="/shop">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                  Browse Shop
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPurchases ? (
+              <div className="flex items-center justify-center h-64">
+                <p>Loading your purchases...</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchases.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <div className="text-center">
+                            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No purchases yet</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                              Explore our shop and find your next backing track!
+                            </p>
+                            <div className="mt-6">
+                              <Link to="/shop">
+                                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                                  Go to Shop
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      purchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell>
+                            <div className="font-medium">{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</div>
+                            <div className="text-sm text-gray-500">{format(new Date(purchase.created_at), 'HH:mm')}</div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {purchase.products?.title || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {purchase.currency} {purchase.amount.toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default" className="bg-green-500">Completed</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              {purchase.products?.track_urls && purchase.products.track_urls.length > 0 ? (
+                                purchase.products.track_urls.map((track, index) => (
+                                  <Button 
+                                    key={index}
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => downloadTrack(track.url, track.caption || `${purchase.products?.title || 'track'}.mp3`)}
+                                  >
+                                    <Download className="w-4 h-4 mr-1" /> Download {track.caption ? `(${track.caption})` : ''}
+                                  </Button>
+                                ))
+                              ) : (
+                                <Badge variant="secondary">No Download</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="shadow-lg">
@@ -458,7 +621,7 @@ const UserDashboard = () => {
                   <Download className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
                   <div>
                     <h3 className="font-semibold">Download Tracks</h3>
-                    <p className="text-sm text-gray-600">Click the Download button next to completed requests to get your backing track.</p>
+                    <p className="text-sm text-gray-600">Click the Download button next to completed requests or purchases to get your backing track.</p>
                   </div>
                 </div>
                 <div className="flex items-start">

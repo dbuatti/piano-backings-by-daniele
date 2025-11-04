@@ -150,9 +150,14 @@ const ClientTrackView = () => {
     }
   };
 
-  const downloadTrack = (url: string) => {
+  const downloadTrack = (url: string, filename: string = 'download') => {
     if (url) {
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // Force download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
       toast({
         title: "Track Not Available",
@@ -339,7 +344,7 @@ const ClientTrackView = () => {
                         request.track_urls.map((track: TrackInfo, index: number) => (
                           <div key={track.url} className="flex flex-col items-center">
                             <Button 
-                              onClick={() => downloadTrack(track.url)}
+                              onClick={() => downloadTrack(track.url, track.caption || `${request.song_title}.mp3`)}
                               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg w-full md:w-auto"
                               size="lg"
                             >
