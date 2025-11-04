@@ -58,6 +58,8 @@ interface ProductForm {
   image_url: string;
   track_urls: TrackInfo[];
   is_active: boolean;
+  artist_name: string; // New field
+  category: string; // New field
 }
 
 const RepurposeTrackToShop: React.FC = () => {
@@ -73,6 +75,8 @@ const RepurposeTrackToShop: React.FC = () => {
     image_url: '',
     track_urls: [],
     is_active: true,
+    artist_name: '', // Initialize new field
+    category: '', // Initialize new field
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -176,6 +180,8 @@ const RepurposeTrackToShop: React.FC = () => {
         // Map existing tracks to include 'selected: true' for the UI
         track_urls: selectedRequest.track_urls?.map(track => ({ ...track, selected: true })) || [],
         is_active: true,
+        artist_name: selectedRequest.musical_or_artist, // Pre-fill artist name
+        category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category
       });
       setFormErrors({});
     }
@@ -188,6 +194,11 @@ const RepurposeTrackToShop: React.FC = () => {
     } else {
       setProductForm(prev => ({ ...prev, [name]: value }));
     }
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setProductForm(prev => ({ ...prev, [name]: value }));
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -221,6 +232,8 @@ const RepurposeTrackToShop: React.FC = () => {
     if (!productForm.description.trim()) errors.description = 'Description is required.';
     if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
+    if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.'; // Validate new field
+    if (!productForm.category.trim()) errors.category = 'Category is required.'; // Validate new field
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
@@ -265,6 +278,7 @@ const RepurposeTrackToShop: React.FC = () => {
       setSelectedRequest(null); // Clear selection
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
+        artist_name: '', category: '', // Reset new fields
       });
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
@@ -400,6 +414,18 @@ const RepurposeTrackToShop: React.FC = () => {
                   {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
                 </div>
                 <div>
+                  <Label htmlFor="artist_name">Artist Name</Label> {/* New field */}
+                  <Input
+                    id="artist_name"
+                    name="artist_name"
+                    value={productForm.artist_name}
+                    onChange={handleFormChange}
+                    placeholder="e.g., Stephen Schwartz"
+                    className={cn("mt-1", formErrors.artist_name && "border-red-500")}
+                  />
+                  {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
+                </div>
+                <div>
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
@@ -429,7 +455,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   </div>
                   <div>
                     <Label htmlFor="currency">Currency</Label>
-                    <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
+                    <Select onValueChange={(value) => handleSelectChange('currency', value)} value={productForm.currency}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
@@ -440,6 +466,21 @@ const RepurposeTrackToShop: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="category">Category</Label> {/* New field */}
+                  <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
+                    <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="full-song">Full Song</SelectItem>
+                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                      <SelectItem value="note-bash">Note Bash</SelectItem>
+                      <SelectItem value="general">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
                 </div>
                 
                 {/* Multiple Track URLs Section */}

@@ -50,6 +50,8 @@ interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  artist_name?: string; // New field
+  category?: string; // New field
 }
 
 interface ProductFormState {
@@ -61,6 +63,8 @@ interface ProductFormState {
   image_url: string;
   track_urls: TrackInfo[];
   is_active: boolean;
+  artist_name: string; // New field
+  category: string; // New field
 }
 
 const ProductManager: React.FC = () => {
@@ -78,6 +82,8 @@ const ProductManager: React.FC = () => {
     image_url: '',
     track_urls: [],
     is_active: true,
+    artist_name: '', // Initialize new field
+    category: '', // Initialize new field
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -170,6 +176,8 @@ const ProductManager: React.FC = () => {
       // Map existing tracks to include 'selected: true' for the UI
       track_urls: product.track_urls?.map(track => ({ ...track, selected: true })) || [],
       is_active: product.is_active,
+      artist_name: product.artist_name || '', // Set new field
+      category: product.category || '', // Set new field
     });
     setFormErrors({});
     setEditDialogOpen(true);
@@ -187,6 +195,11 @@ const ProductManager: React.FC = () => {
     } else {
       setProductForm(prev => ({ ...prev, [name]: value }));
     }
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setProductForm(prev => ({ ...prev, [name]: value }));
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -220,6 +233,8 @@ const ProductManager: React.FC = () => {
     if (!productForm.description.trim()) errors.description = 'Description is required.';
     if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
+    if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.'; // Validate new field
+    if (!productForm.category.trim()) errors.category = 'Category is required.'; // Validate new field
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
@@ -283,7 +298,9 @@ const ProductManager: React.FC = () => {
               <TableHeader className="bg-[#D1AAF2]/20">
                 <TableRow>
                   <TableHead className="w-[200px]">Title</TableHead>
+                  <TableHead className="w-[150px]">Artist</TableHead> {/* New column */}
                   <TableHead className="w-[100px]">Price</TableHead>
+                  <TableHead className="w-[100px]">Category</TableHead> {/* New column */}
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Tracks</TableHead>
                   <TableHead className="text-right w-[150px]">Actions</TableHead>
@@ -293,12 +310,14 @@ const ProductManager: React.FC = () => {
                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.title}</TableCell>
+                    <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell> {/* Display new field */}
                     <TableCell>
                       <div className="flex items-center">
                         <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
                         {product.currency} {product.price.toFixed(2)}
                       </div>
                     </TableCell>
+                    <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell> {/* Display new field */}
                     <TableCell>
                       <Badge variant={product.is_active ? "default" : "secondary"} className={cn(product.is_active ? "bg-green-500" : "bg-gray-400")}>
                         {product.is_active ? "Active" : "Inactive"}
@@ -367,6 +386,18 @@ const ProductManager: React.FC = () => {
                 {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
               </div>
               <div>
+                <Label htmlFor="edit-artist-name">Artist Name</Label> {/* New field */}
+                <Input
+                  id="edit-artist-name"
+                  name="artist_name"
+                  value={productForm.artist_name}
+                  onChange={handleFormChange}
+                  placeholder="e.g., Stephen Schwartz"
+                  className={cn("mt-1", formErrors.artist_name && "border-red-500")}
+                />
+                {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
+              </div>
+              <div>
                 <Label htmlFor="edit-description">Description</Label>
                 <Textarea
                   id="edit-description"
@@ -394,7 +425,7 @@ const ProductManager: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="edit-currency">Currency</Label>
-                  <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
+                  <Select onValueChange={(value) => handleSelectChange('currency', value)} value={productForm.currency}>
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
@@ -405,6 +436,21 @@ const ProductManager: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-category">Category</Label> {/* New field */}
+                <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
+                  <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full-song">Full Song</SelectItem>
+                    <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                    <SelectItem value="note-bash">Note Bash</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
               </div>
               
               {/* Multiple Track URLs Section */}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2 } from 'lucide-react'; // Added Loader2 icon
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag } from 'lucide-react'; // Added User and Tag icons
 import { cn } from '@/lib/utils';
 
 interface TrackInfo {
@@ -19,6 +19,8 @@ interface Product {
   image_url?: string;
   track_urls?: TrackInfo[]; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
+  artist_name?: string; // New field
+  category?: string; // New field
 }
 
 interface ProductCardProps {
@@ -53,6 +55,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       </CardHeader>
       <CardContent className="flex-1 p-4">
         <CardTitle className="text-xl font-bold text-[#1C0357] mb-2">{product.title}</CardTitle>
+        {product.artist_name && (
+          <p className="text-sm text-gray-500 flex items-center mb-1">
+            <User className="h-3 w-3 mr-1" /> {product.artist_name}
+          </p>
+        )}
+        {product.category && (
+          <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
+            <Tag className="h-3 w-3 mr-1" /> {product.category.replace('-', ' ')}
+          </p>
+        )}
         <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
         <div className="flex items-center mt-3">
           <DollarSign className="h-4 w-4 text-gray-500 mr-1" />

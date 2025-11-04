@@ -9,7 +9,7 @@ import ProductCardSkeleton from '@/components/ProductCardSkeleton'; // Import th
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react';
+import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown, Tag, User } from 'lucide-react'; // Added Tag and User icons
 
 interface TrackInfo {
   url: string;
@@ -25,6 +25,8 @@ interface Product {
   image_url?: string;
   track_urls?: TrackInfo[];
   is_active: boolean;
+  artist_name?: string; // New field
+  category?: string; // New field
 }
 
 const Shop: React.FC = () => {
@@ -40,6 +42,7 @@ const Shop: React.FC = () => {
 
   // New state for filtering and sorting
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all'); // New filter state
   const [sortOption, setSortOption] = useState('created_at_desc'); // Default to newest first
 
   useEffect(() => {
@@ -54,7 +57,12 @@ const Shop: React.FC = () => {
 
         // Apply search term
         if (searchTerm) {
-          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
+        }
+
+        // Apply category filter
+        if (categoryFilter !== 'all') {
+          query = query.eq('category', categoryFilter);
         }
 
         // Apply sorting
@@ -70,6 +78,12 @@ const Shop: React.FC = () => {
             break;
           case 'title_desc':
             query = query.order('title', { ascending: false });
+            break;
+          case 'artist_name_asc': // New sort option
+            query = query.order('artist_name', { ascending: true });
+            break;
+          case 'artist_name_desc': // New sort option
+            query = query.order('artist_name', { ascending: false });
             break;
           case 'created_at_desc': // Newest first (default)
           default:
@@ -95,7 +109,7 @@ const Shop: React.FC = () => {
     };
 
     fetchProducts();
-  }, [toast, searchTerm, sortOption]); // Re-fetch when search term or sort option changes
+  }, [toast, searchTerm, categoryFilter, sortOption]); // Re-fetch when search term, category filter or sort option changes
 
   // Handle Stripe Checkout success/cancel redirects
   useEffect(() => {
@@ -175,14 +189,29 @@ const Shop: React.FC = () => {
 
         {/* Filter and Sort Controls */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full sm:w-1/2">
+          <div className="relative w-full sm:w-1/3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search products..."
+              placeholder="Search products by title, artist, description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+          </div>
+          <div className="relative w-full sm:w-1/3">
+            <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="pl-10">
+                <SelectValue placeholder="Filter by Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="full-song">Full Song</SelectItem>
+                <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                <SelectItem value="note-bash">Note Bash</SelectItem>
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="relative w-full sm:w-1/3">
             <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -196,6 +225,8 @@ const Shop: React.FC = () => {
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>
                 <SelectItem value="title_asc">Title: A-Z</SelectItem>
                 <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem> {/* New sort option */}
+                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem> {/* New sort option */}
               </SelectContent>
             </Select>
           </div>

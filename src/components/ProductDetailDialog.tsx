@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle } from 'lucide-react'; // Added PlayCircle icon
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag } from 'lucide-react'; // Added User and Tag icons
 import { cn } from '@/lib/utils';
 
 interface TrackInfo {
@@ -25,6 +25,8 @@ interface Product {
   image_url?: string;
   track_urls?: TrackInfo[];
   is_active: boolean;
+  artist_name?: string; // New field
+  category?: string; // New field
 }
 
 interface ProductDetailDialogProps {
@@ -80,6 +82,16 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         <div className="p-6 space-y-4">
           <DialogHeader>
             <DialogTitle className="text-3xl font-bold text-[#1C0357]">{product.title}</DialogTitle>
+            {product.artist_name && (
+              <p className="text-lg text-gray-700 flex items-center">
+                <User className="h-5 w-5 mr-2" /> {product.artist_name}
+              </p>
+            )}
+            {product.category && (
+              <p className="text-md text-gray-600 flex items-center capitalize">
+                <Tag className="h-4 w-4 mr-2" /> {product.category.replace('-', ' ')}
+              </p>
+            )}
             <DialogDescription className="text-lg text-gray-700">
               {product.description}
             </DialogDescription>
