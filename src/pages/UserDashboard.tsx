@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,8 +36,14 @@ const UserDashboard = () => {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [allUsersForAdmin, setAllUsersForAdmin] = useState<UserProfileForAdmin[]>([]);
-  const [loadingAllUsersForAdmin, setLoadingAllUsersForAdmin] = useState(false); // New loading state
-  const [selectedUserForView, setSelectedUserForView] = useState<string | null>(null); // ID of the user whose dashboard is being viewed
+  const allUsersForAdminRef = useRef<UserProfileForAdmin[]>([]); // Create a ref for allUsersForAdmin
+  const [loadingAllUsersForAdmin, setLoadingAllUsersForAdmin] = useState(false);
+  const [selectedUserForView, setSelectedUserForView] = useState<string | null>(null);
+
+  // Update the ref whenever allUsersForAdmin state changes
+  useEffect(() => {
+    allUsersForAdminRef.current = allUsersForAdmin;
+  }, [allUsersForAdmin]);
 
   const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
     setLoading(true);
@@ -49,7 +55,6 @@ const UserDashboard = () => {
       } else if (targetUserEmail) {
         query = query.ilike('email', targetUserEmail);
       } else {
-        // This case should ideally not be reached if logic is correct
         throw new Error('No target user ID or email provided for fetching requests.');
       }
 
@@ -102,10 +107,10 @@ const UserDashboard = () => {
 
   // Main function to check user and determine which data to fetch
   const checkUserAndDetermineTarget = useCallback(async () => {
-    setLoading(true); // Start loading for the main data fetch
+    setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     const loggedInUser = session?.user;
-    setUser(loggedInUser); // Update the logged-in user state
+    setUser(loggedInUser);
 
     let currentIsAdmin = false;
     if (loggedInUser?.email) {
@@ -119,60 +124,57 @@ const UserDashboard = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const emailFromUrl = urlParams.get('email');
 
-    // Determine which user's data to fetch
     let targetUserId: string | null = null;
     let targetUserEmail: string | null = null;
 
-    if (selectedUserForView) { // Admin has selected a user from the dropdown
-      // Access allUsersForAdmin directly from state, not as a dependency of useCallback
-      const selectedProfile = allUsersForAdmin.find(u => u.id === selectedUserForView);
+    if (selectedUserForView) {
+      // Use the ref here instead of the state directly
+      const selectedProfile = allUsersForAdminRef.current.find(u => u.id === selectedUserForView);
       if (selectedProfile) {
         targetUserId = selectedProfile.id;
         targetUserEmail = selectedProfile.email;
       }
-      setShowAccountPrompt(false); // No prompt when admin is viewing a specific user
-    } else if (loggedInUser) { // Regular logged-in user or admin viewing their own dashboard
+      setShowAccountPrompt(false);
+    } else if (loggedInUser) {
       targetUserId = loggedInUser.id;
       targetUserEmail = loggedInUser.email;
       setShowAccountPrompt(false);
-    } else if (emailFromUrl) { // Guest viewing via email link
+    } else if (emailFromUrl) {
       fetchGuestRequestsByEmail(emailFromUrl);
       setShowAccountPrompt(true);
-      // setLoading(false); // Handled by fetchGuestRequestsByEmail
-      return; // Exit early as guest requests are handled
-    } else { // Not logged in, no email in URL
+      return;
+    } else {
       navigate('/login');
-      // setLoading(false); // Handled by navigation
-      return; // Exit early as navigation happens
+      return;
     }
 
     if (targetUserId || targetUserEmail) {
       fetchRequestsForTarget(targetUserId, targetUserEmail);
     } else {
-      setRequests([]); // No requests to show if no target user
+      setRequests([]);
       setLoading(false);
     }
-  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt, allUsersForAdmin]); // allUsersForAdmin is now a dependency
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]); // Removed allUsersForAdmin from dependencies
 
   // Effect for initial load and auth state changes
   useEffect(() => {
     checkUserAndDetermineTarget();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkUserAndDetermineTarget(); // Re-run on auth state change
+      checkUserAndDetermineTarget();
     });
     return () => subscription.unsubscribe();
   }, [checkUserAndDetermineTarget]);
 
-  // NEW: Effect for fetching all users for admin dropdown, decoupled from main auth check
+  // Effect for fetching all users for admin dropdown, decoupled from main auth check
   useEffect(() => {
     const fetchAllUsers = async () => {
-      if (!isAdmin || !user) { // Only fetch if admin and user object is available
+      if (!isAdmin || !user) {
         setAllUsersForAdmin([]);
         return;
       }
       setLoadingAllUsersForAdmin(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession(); // Get fresh session for token
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No active session for admin user.');
 
         const response = await fetch(
@@ -181,7 +183,7 @@ const UserDashboard = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}` // Admin token
+              'Authorization': `Bearer ${session.access_token}`
             },
           }
         );
@@ -193,14 +195,14 @@ const UserDashboard = () => {
       } catch (error: any) {
         console.error('Error fetching all users for admin:', error);
         toast({ title: "Error", description: `Failed to load users for admin view: ${error.message}`, variant: "destructive" });
-        setAllUsersForAdmin([]); // Clear users on error
+        setAllUsersForAdmin([]);
       } finally {
         setLoadingAllUsersForAdmin(false);
       }
     };
 
     fetchAllUsers();
-  }, [isAdmin, user, toast]); // Dependencies: isAdmin and user (to ensure token is available)
+  }, [isAdmin, user, toast]);
 
 
   const getStatusBadge = (status: string) => {
@@ -248,7 +250,7 @@ const UserDashboard = () => {
               <Select
                 value={selectedUserForView || ''}
                 onValueChange={(value) => setSelectedUserForView(value === 'admin-self' ? null : value)}
-                disabled={loadingAllUsersForAdmin} // Disable select while loading users
+                disabled={loadingAllUsersForAdmin}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={loadingAllUsersForAdmin ? "Loading users..." : "View as user..."} />
