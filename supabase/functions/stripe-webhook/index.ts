@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // @ts-ignore
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 // @ts-ignore
-import { GoogleGenerativeAI } "https://esm.sh/@google/generative-ai@0.14.1"; // Deno compatible import
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.1"; // Deno compatible import
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
@@ -22,7 +22,7 @@ const corsHeaders = {
 // Inlined TrackInfo interface
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 // Inlined Product interface
@@ -83,7 +83,7 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   const listItems = trackUrls.map(track => `
     <li style="margin-bottom: 5px;">
       <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
-        ${track.caption}
+        ${track.caption || 'Download Track'}
       </a>
     </li>
   `).join('');

@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOU
 
 export interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 export interface BackingRequest {
@@ -90,7 +90,7 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   const listItems = trackUrls.map(track => `
     <li style="margin-bottom: 5px;">
       <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
-        ${track.caption}
+        ${track.caption || 'Download Track'}
       </a>
     </li>
   `).join('');
@@ -115,7 +115,7 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   const listItems = trackUrls.map(track => `
     <li style="margin-bottom: 5px;">
       <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
-        ${track.caption}
+        ${track.caption || 'Download Track'}
       </a>
     </li>
   `).join('');
@@ -248,6 +248,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback payment reminder template");

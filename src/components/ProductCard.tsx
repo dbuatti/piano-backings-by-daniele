@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 interface Product {

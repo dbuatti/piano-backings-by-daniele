@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 interface UploadTrackDialogProps {
@@ -70,7 +70,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
                   <li key={track.url} className="flex flex-col p-2 rounded-md border bg-white">
                     <div className="flex items-center justify-between text-sm">
                       <a href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate flex-1 mr-2">
-                        {track.caption}
+                        {String(track.caption || 'Download Track')}
                       </a>
                       <div className="flex items-center space-x-1">
                         {editingCaption?.url === track.url ? (
@@ -87,7 +87,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
                             variant="ghost" 
                             size="icon" 
                             className="h-6 w-6 text-gray-500 hover:bg-gray-100"
-                            onClick={() => setEditingCaption({ url: track.url, caption: track.caption })}
+                            onClick={() => setEditingCaption({ url: track.url, caption: String(track.caption || '') })}
                           >
                             <FileAudio className="h-3 w-3" /> {/* Using FileAudio as an 'edit' icon for now */}
                           </Button>

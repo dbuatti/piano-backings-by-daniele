@@ -35,7 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 const ClientTrackView = () => {
@@ -150,32 +150,46 @@ const ClientTrackView = () => {
     }
   };
 
-  const downloadTrack = (url: string, filenameSuggestion: string | null | undefined = 'download') => {
+  const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => {
+    console.log('DEBUG: downloadTrack - Raw filenameSuggestion:', filenameSuggestion, 'Type:', typeof filenameSuggestion);
+
+    let finalFilename: string;
+
+    // Step 1: Determine the base filename
+    if (typeof filenameSuggestion === 'string' && filenameSuggestion.trim() !== '') {
+      finalFilename = filenameSuggestion;
+    } else if (typeof filenameSuggestion === 'boolean') {
+      // If it's a boolean (e.g., `true`), treat it as an invalid caption and use fallback
+      console.warn('DEBUG: downloadTrack - filenameSuggestion is a boolean, using fallback.');
+      finalFilename = 'track_download';
+    } else {
+      // Fallback for null, undefined, or empty string
+      finalFilename = 'track_download';
+    }
+
+    // Step 2: Sanitize the filename
+    finalFilename = finalFilename.replace(/[^a-zA-Z0-9\.\-_]/gi, '_');
+    console.log('DEBUG: downloadTrack - Sanitized filename:', finalFilename);
+
+    // Step 3: Handle the specific "true" string case (after sanitization)
+    if (finalFilename.toLowerCase() === 'true') {
+      console.warn('DEBUG: downloadTrack - Filename is "true" after sanitization, using fallback.');
+      finalFilename = 'track_download';
+    }
+
+    // Step 4: Add file extension if missing
+    const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+    const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
+    
+    if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
+      finalFilename = `${finalFilename}.${urlExtension}`;
+    } else if (!urlExtension && !finalFilename.includes('.')) {
+      // If no extension in URL and not in filename, default to .mp3
+      finalFilename = `${finalFilename}.mp3`;
+    }
+    console.log('DEBUG: downloadTrack - Final filename with extension:', finalFilename);
+
     if (url) {
-      let finalFilename = String(filenameSuggestion || 'track_download'); // Ensure it's a string, provide fallback
-      
-      // Sanitize filename: replace invalid characters with underscores
-      finalFilename = finalFilename.replace(/[^a-z0-9\.\-_]/gi, '_');
-
-      // If the filename is just 'true' (e.g., from a mistaken caption), provide a better default
-      // Also handle cases where it might be 'true.mp3' or similar if the extension logic was applied first
-      if (finalFilename.toLowerCase() === 'true' || finalFilename.toLowerCase().startsWith('true.') || finalFilename.trim() === '') {
-        finalFilename = 'track_download'; // More descriptive fallback
-      }
-
-      // Add file extension if missing and URL has one
-      const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-      const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
-      
-      if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-        finalFilename = `${finalFilename}.${urlExtension}`;
-      } else if (!urlExtension && !finalFilename.includes('.')) {
-        // If no extension in URL and not in filename, default to .mp3
-        finalFilename = `${finalFilename}.mp3`;
-      }
-
-      console.log('Attempting to download with filename:', finalFilename, 'from URL:', url); // DEBUG LOG
-
       const link = document.createElement('a');
       // Append ?download=true to force download for Supabase Storage URLs
       const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')

@@ -13,7 +13,7 @@ import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown, Tag, Use
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 interface Product {

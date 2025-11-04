@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 interface BackingRequest {

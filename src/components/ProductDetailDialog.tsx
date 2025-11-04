@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
 }
 
 interface Product {
@@ -134,7 +134,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                   <li key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-md bg-gray-50">
                     <span className="font-medium text-gray-800 flex items-center mb-2 sm:mb-0">
                       <LinkIcon className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
-                      {track.caption}
+                      {String(track.caption || 'Track Sample')}
                     </span>
                     <div className="flex items-center space-x-2 w-full sm:w-auto">
                       <audio controls preload="none" className="w-full sm:w-48 h-8">

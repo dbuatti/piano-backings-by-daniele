@@ -22,7 +22,7 @@ import FileInput from '../FileInput'; // Import FileInput
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
   selected?: boolean; // Added for UI state management
 }
 
@@ -37,7 +37,7 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_urls?: { url: string; caption: string }[];
+  track_urls?: { url: string; caption: string | boolean | null | undefined }[]; // Updated here too
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
@@ -297,7 +297,7 @@ const RepurposeTrackToShop: React.FC = () => {
       if (!track.url.trim()) {
         errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
       }
-      if (!track.caption.trim()) {
+      if (!String(track.caption || '').trim()) { // Explicitly convert caption to string for validation
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
       }
     });
@@ -621,7 +621,7 @@ const RepurposeTrackToShop: React.FC = () => {
                           <Input
                             id={`track-caption-${index}`}
                             name={`track_urls[${index}].caption`}
-                            value={track.caption}
+                            value={String(track.caption || '')} // Explicitly convert caption to string
                             onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                             placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                             className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}

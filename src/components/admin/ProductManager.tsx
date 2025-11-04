@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge';
 import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
@@ -37,7 +37,7 @@ import FileInput from '../FileInput'; // Import FileInput
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined; // Updated to be more robust
   selected?: boolean; // Added for UI state management
 }
 
@@ -349,7 +349,7 @@ const ProductManager: React.FC = () => {
       if (!track.url.trim()) {
         errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
       }
-      if (!track.caption.trim()) {
+      if (!String(track.caption || '').trim()) { // Explicitly convert caption to string for validation
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`;
       }
     });
@@ -515,7 +515,7 @@ const ProductManager: React.FC = () => {
                           {product.track_urls.map((track, index) => (
                             <a key={index} href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
                               <Link className="h-3 w-3 mr-1 flex-shrink-0" />
-                              {track.caption || truncateUrl(track.url)}
+                              {String(track.caption || truncateUrl(track.url))}
                             </a>
                           ))}
                         </div>
@@ -704,7 +704,7 @@ const ProductManager: React.FC = () => {
                         <Input
                           id={`edit-track-caption-${index}`}
                           name={`track_urls[${index}].caption`}
-                          value={track.caption}
+                          value={String(track.caption || '')} // Explicitly convert caption to string
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
