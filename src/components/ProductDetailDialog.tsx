@@ -30,6 +30,7 @@ interface Product {
   key_signature?: string | null; // New field
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
+  track_type?: string; // Add track_type here
 }
 
 interface ProductDetailDialogProps {
@@ -121,6 +122,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             {product.key_signature && product.show_key_signature && ( // Conditionally display key signature
               <p className="text-md text-gray-600 flex items-center">
                 <Key className="h-4 w-4 mr-2" /> Key: {product.key_signature}
+              </p>
+            )}
+            {product.track_type && ( // Display track_type
+              <p className="text-md text-gray-600 flex items-center capitalize">
+                <Music className="h-4 w-4 mr-2" /> Type: {product.track_type.replace('-', ' ')}
               </p>
             )}
             {product.vocal_ranges && product.vocal_ranges.length > 0 && (

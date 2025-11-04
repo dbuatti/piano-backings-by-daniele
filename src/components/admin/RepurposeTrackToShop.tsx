@@ -45,6 +45,7 @@ interface BackingRequest {
   additional_services?: string[]; // Added for dynamic description
   sheet_music_url?: string; // Added for pre-filling
   song_key?: string; // Added for pre-filling
+  track_type?: string; // Add track_type here
 }
 
 interface Product {
@@ -68,6 +69,7 @@ interface ProductForm {
   key_signature: string; // New field
   show_sheet_music_url: boolean; // New field
   show_key_signature: boolean; // New field
+  track_type: string; // Add track_type here
 }
 
 const RepurposeTrackToShop: React.FC = () => {
@@ -90,6 +92,7 @@ const RepurposeTrackToShop: React.FC = () => {
     key_signature: '', // Initialize new field
     show_sheet_music_url: true, // Default to true
     show_key_signature: true, // Default to true
+    track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -213,6 +216,7 @@ const RepurposeTrackToShop: React.FC = () => {
         key_signature: selectedRequest.song_key || '', // Pre-fill key signature
         show_sheet_music_url: true, // Default to true
         show_key_signature: true, // Default to true
+        track_type: selectedRequest.track_type || '', // Pre-fill track_type from request
       });
       setImageFile(null); // Clear image file when new request is selected
       setFormErrors({});
@@ -305,6 +309,7 @@ const RepurposeTrackToShop: React.FC = () => {
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
     if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.';
     if (!productForm.category.trim()) errors.category = 'Category is required.';
+    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.'; // Add validation for track_type
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
@@ -351,6 +356,7 @@ const RepurposeTrackToShop: React.FC = () => {
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [],
         sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true,
+        track_type: '', // Reset new field
       });
       setImageFile(null); // Clear image file
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
@@ -569,6 +575,22 @@ const RepurposeTrackToShop: React.FC = () => {
                     </SelectContent>
                   </Select>
                   {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
+                </div>
+
+                {/* New: Track Type Select */}
+                <div>
+                  <Label htmlFor="track_type">Track Type</Label>
+                  <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
+                    <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
+                      <SelectValue placeholder="Select track type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="quick">Quick Reference</SelectItem>
+                      <SelectItem value="one-take">One-Take Recording</SelectItem>
+                      <SelectItem value="polished">Polished Backing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formErrors.track_type && <p className="text-red-500 text-xs mt-1">{formErrors.track_type}</p>}
                 </div>
 
                 {/* New: Vocal Ranges Checkboxes */}

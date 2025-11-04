@@ -29,6 +29,7 @@ interface Product {
   key_signature?: string | null; // New field
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
+  track_type?: string; // Add track_type here
 }
 
 interface ProductCardProps {
@@ -86,6 +87,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               </Badge>
             ))}
           </div>
+        )}
+        {product.track_type && ( // Display track_type
+          <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
+            <Music className="h-3 w-3 mr-1" /> {product.track_type.replace('-', ' ')}
+          </p>
         )}
         <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
         <div className="flex items-center mt-3">

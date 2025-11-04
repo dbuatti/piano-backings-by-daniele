@@ -32,6 +32,7 @@ interface Product {
   key_signature?: string | null; // New field
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
+  track_type?: string; // Add track_type here
 }
 
 const Shop: React.FC = () => {
@@ -48,6 +49,7 @@ const Shop: React.FC = () => {
   // New state for filtering and sorting
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all'); // New filter state
+  const [trackTypeFilter, setTrackTypeFilter] = useState('all'); // New filter state for track_type
   const [sortOption, setSortOption] = useState('created_at_desc'); // Default to newest first
 
   useEffect(() => {
@@ -68,6 +70,11 @@ const Shop: React.FC = () => {
         // Apply category filter
         if (categoryFilter !== 'all') {
           query = query.eq('category', categoryFilter);
+        }
+
+        // Apply track type filter
+        if (trackTypeFilter !== 'all') {
+          query = query.eq('track_type', trackTypeFilter);
         }
 
         // Apply sorting
@@ -114,7 +121,7 @@ const Shop: React.FC = () => {
     };
 
     fetchProducts();
-  }, [toast, searchTerm, categoryFilter, sortOption]); // Re-fetch when search term, category filter or sort option changes
+  }, [toast, searchTerm, categoryFilter, trackTypeFilter, sortOption]); // Re-fetch when search term, category filter, track type filter or sort option changes
 
   // Handle Stripe Checkout success/cancel redirects
   useEffect(() => {
@@ -224,6 +231,20 @@ const Shop: React.FC = () => {
                 <SelectItem value="audition-cut">Audition Cut</SelectItem>
                 <SelectItem value="note-bash">Note Bash</SelectItem>
                 <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative w-full sm:w-1/3">
+            <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={trackTypeFilter} onValueChange={setTrackTypeFilter}>
+              <SelectTrigger className="pl-10">
+                <SelectValue placeholder="Filter by Track Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Track Types</SelectItem>
+                <SelectItem value="quick">Quick Reference</SelectItem>
+                <SelectItem value="one-take">One-Take Recording</SelectItem>
+                <SelectItem value="polished">Polished Backing</SelectItem>
               </SelectContent>
             </Select>
           </div>

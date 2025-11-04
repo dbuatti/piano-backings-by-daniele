@@ -31,10 +31,11 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge"; // Fixed: Changed single quote to double quote
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, PlusCircle } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
+import { PlusCircle } from 'lucide-react'; // Ensure PlusCircle is imported
 
 interface TrackInfo {
   url: string;
@@ -60,6 +61,7 @@ interface Product {
   key_signature?: string | null; // New field
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
+  track_type?: string; // Add track_type here
 }
 
 interface ProductFormState {
@@ -78,6 +80,7 @@ interface ProductFormState {
   key_signature: string; // New field
   show_sheet_music_url: boolean; // New field
   show_key_signature: boolean; // New field
+  track_type: string; // Add track_type here
 }
 
 const ProductManager: React.FC = () => {
@@ -102,6 +105,7 @@ const ProductManager: React.FC = () => {
     key_signature: '', // Initialize new field
     show_sheet_music_url: true, // Default to true
     show_key_signature: true, // Default to true
+    track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -262,6 +266,7 @@ const ProductManager: React.FC = () => {
       key_signature: product.key_signature || '', // Set new field
       show_sheet_music_url: product.show_sheet_music_url ?? true, // Set new field with default
       show_key_signature: product.show_key_signature ?? true, // Set new field with default
+      track_type: product.track_type || '', // Set new field with default
     });
     setImageFile(null); // Clear image file state for new edit
     setFormErrors({});
@@ -360,6 +365,7 @@ const ProductManager: React.FC = () => {
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
     if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.';
     if (!productForm.category.trim()) errors.category = 'Category is required.';
+    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.'; // Add validation for track_type
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
@@ -491,6 +497,7 @@ const ProductManager: React.FC = () => {
                   <TableHead className="w-[120px]">Vocal Ranges</TableHead> 
                   <TableHead className="w-[100px]">Key</TableHead> {/* New Table Head */}
                   <TableHead className="w-[100px]">PDF</TableHead> {/* New Table Head */}
+                  <TableHead className="w-[100px]">Type</TableHead> {/* New Table Head for Track Type */}
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Tracks</TableHead>
                   <TableHead className="text-right w-[150px]">Actions</TableHead>
@@ -539,12 +546,8 @@ const ProductManager: React.FC = () => {
                         <span className="text-gray-500 text-xs">N/A</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={product.is_active}
-                        onCheckedChange={(checked) => toggleProductStatusMutation.mutate({ id: product.id, is_active: checked })}
-                        disabled={toggleProductStatusMutation.isPending}
-                      />
+                    <TableCell className="capitalize text-sm text-gray-700"> {/* New Table Cell for Track Type */}
+                      {product.track_type?.replace('-', ' ') || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {product.track_urls && product.track_urls.length > 0 ? (
@@ -677,6 +680,22 @@ const ProductManager: React.FC = () => {
                   </SelectContent>
                 </Select>
                 {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
+              </div>
+
+              {/* New: Track Type Select in Edit Dialog */}
+              <div>
+                <Label htmlFor="edit-track_type">Track Type</Label>
+                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
+                  <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
+                    <SelectValue placeholder="Select track type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quick">Quick Reference</SelectItem>
+                    <SelectItem value="one-take">One-Take Recording</SelectItem>
+                    <SelectItem value="polished">Polished Backing</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formErrors.track_type && <p className="text-red-500 text-xs mt-1">{formErrors.track_type}</p>}
               </div>
 
               {/* New: Vocal Ranges Checkboxes in Edit Dialog */}
