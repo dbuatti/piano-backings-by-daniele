@@ -11,6 +11,18 @@ import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare 
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client'; // Import constants
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
+interface Product {
+  id: string; // Add id to Product interface for joining
+  title: string;
+  description: string;
+  track_urls?: TrackInfo[];
+}
+
 interface Order {
   id: string;
   product_id: string;
@@ -20,11 +32,8 @@ interface Order {
   status: string;
   created_at: string;
   user_id?: string;
-  products?: {
-    title: string;
-    description: string;
-    track_urls?: { url: string; caption: string }[];
-  };
+  products?: Product;
+  checkout_session_id: string;
 }
 
 const PurchaseConfirmation: React.FC = () => {
@@ -74,19 +83,39 @@ const PurchaseConfirmation: React.FC = () => {
         const { data: { session } } = await supabase.auth.getSession();
         setUserSession(session);
 
-        // Fetch order details using the new client with custom headers
-        const { data, error: fetchError } = await supabaseWithHeaders
+        // 1. Fetch order details without embedding
+        const { data: orderData, error: fetchError } = await supabaseWithHeaders
           .from('orders')
-          .select('*, product_id!products(title, description, track_urls)') // Explicitly specify product_id for embedding
+          .select('*')
           .eq('checkout_session_id', sessionId)
           .single();
 
-        if (fetchError || !data) {
+        if (fetchError || !orderData) {
           console.error('Error fetching order:', fetchError);
           throw new Error('Order not found or could not be retrieved.');
         }
 
-        setOrder(data as Order);
+        // 2. Fetch product details separately
+        const { data: productData, error: productError } = await supabase
+          .from('products')
+          .select('id, title, description, track_urls')
+          .eq('id', orderData.product_id)
+          .single();
+
+        if (productError || !productData) {
+          console.error('Error fetching product for order:', productError);
+          // Even if product isn't found, we can still display order details
+          // but we'll log this as a warning.
+          console.warn(`Product with ID ${orderData.product_id} not found for order ${orderData.id}`);
+        }
+
+        // 3. Manually join product into order
+        const joinedOrder: Order = {
+          ...orderData,
+          products: productData || undefined,
+        };
+
+        setOrder(joinedOrder);
         toast({
           title: "Purchase Confirmed!",
           description: "Thank you for your purchase. Your order details are below.",

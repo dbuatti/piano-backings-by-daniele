@@ -32,6 +32,7 @@ interface TrackInfo {
 }
 
 interface Product {
+  id: string; // Add id to Product interface for joining
   title: string;
   description: string;
   track_urls?: TrackInfo[];
@@ -101,21 +102,48 @@ const UserDashboard = () => {
   const fetchPurchasesForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
     setLoadingPurchases(true);
     try {
-      // Explicitly specify the foreign key 'product_id' for embedding 'products'
-      let query = supabase.from('orders').select('*, product_id!orders_product_id_fkey(title, description, track_urls)').order('created_at', { ascending: false });
+      // 1. Fetch orders without embedding
+      let ordersQuery = supabase.from('orders').select('*').order('created_at', { ascending: false });
 
       if (targetUserId) {
-        query = query.eq('user_id', targetUserId);
+        ordersQuery = ordersQuery.eq('user_id', targetUserId);
       } else if (targetUserEmail) {
-        query = query.ilike('customer_email', targetUserEmail);
+        ordersQuery = ordersQuery.ilike('customer_email', targetUserEmail);
       } else {
         throw new Error('No target user ID or email provided for fetching purchases.');
       }
 
-      const { data, error } = await query;
+      const { data: ordersData, error: ordersError } = await ordersQuery;
 
-      if (error) throw error;
-      setPurchases(data || []);
+      if (ordersError) throw ordersError;
+
+      if (!ordersData || ordersData.length === 0) {
+        setPurchases([]);
+        setLoadingPurchases(false);
+        return;
+      }
+
+      // 2. Extract unique product_ids
+      const productIds = [...new Set(ordersData.map(order => order.product_id))];
+
+      // 3. Fetch products separately
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, title, description, track_urls')
+        .in('id', productIds);
+
+      if (productsError) throw productsError;
+
+      const productsMap = new Map<string, Product>();
+      productsData?.forEach(product => productsMap.set(product.id, product));
+
+      // 4. Manually join products into orders
+      const joinedPurchases: Order[] = ordersData.map(order => ({
+        ...order,
+        products: productsMap.get(order.product_id) || undefined,
+      }));
+      
+      setPurchases(joinedPurchases);
     } catch (error: any) {
       toast({
         title: "Error",
