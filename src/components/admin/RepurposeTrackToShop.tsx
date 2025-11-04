@@ -254,7 +254,7 @@ const RepurposeTrackToShop: React.FC = () => {
 
         // Extract filename from URL
         const urlParts = track.url.split('/');
-        const filenameFromUrlWithExt = urlParts[url(urlParts.length - 1)].split('?')[0]; // Get filename and remove query params
+        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0]; // Get filename and remove query params
         const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
 
         // Determine if the original caption is a generic/default one

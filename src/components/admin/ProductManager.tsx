@@ -111,6 +111,11 @@ const ProductManager: React.FC = () => {
   const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // State for search, filter, and sort
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sortOption, setSortOption] = useState('created_at_desc');
+
   // Helper to truncate URL for display
   const truncateUrl = (url: string, maxLength: number = 40) => {
     if (url.length <= maxLength) return url;
@@ -890,7 +895,6 @@ const ProductManager: React.FC = () => {
                 </>
               ) : (
                 'Save Changes'
-              </>
               )}
             </Button>
           </div>
