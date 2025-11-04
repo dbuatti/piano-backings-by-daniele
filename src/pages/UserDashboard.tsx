@@ -36,6 +36,7 @@ const UserDashboard = () => {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [allUsersForAdmin, setAllUsersForAdmin] = useState<UserProfileForAdmin[]>([]);
+  const [loadingAllUsersForAdmin, setLoadingAllUsersForAdmin] = useState(false); // New loading state
   const [selectedUserForView, setSelectedUserForView] = useState<string | null>(null); // ID of the user whose dashboard is being viewed
 
   const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
@@ -99,8 +100,9 @@ const UserDashboard = () => {
     }
   }, [toast]);
 
-  const checkUserAndFetchData = useCallback(async () => {
-    setLoading(true);
+  // Main function to check user and determine which data to fetch
+  const checkUserAndDetermineTarget = useCallback(async () => {
+    setLoading(true); // Start loading for the main data fetch
     const { data: { session } } = await supabase.auth.getSession();
     const loggedInUser = session?.user;
     setUser(loggedInUser); // Update the logged-in user state
@@ -112,30 +114,6 @@ const UserDashboard = () => {
       setIsAdmin(currentIsAdmin);
     } else {
       setIsAdmin(false);
-    }
-
-    if (currentIsAdmin) {
-      // Fetch all users for admin dropdown
-      try {
-        const response = await fetch(
-          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/list-all-users`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.access_token}` // Admin token
-            },
-          }
-        );
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || `Failed to load all users: ${response.status}`);
-        }
-        setAllUsersForAdmin(result.users || []);
-      } catch (error: any) {
-        console.error('Error fetching all users for admin:', error);
-        toast({ title: "Error", description: `Failed to load users for admin view: ${error.message}`, variant: "destructive" });
-      }
     }
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -159,11 +137,11 @@ const UserDashboard = () => {
     } else if (emailFromUrl) { // Guest viewing via email link
       fetchGuestRequestsByEmail(emailFromUrl);
       setShowAccountPrompt(true);
-      setLoading(false); // Set loading to false here as guest requests are handled separately
+      // setLoading(false); // Handled by fetchGuestRequestsByEmail
       return; // Exit early as guest requests are handled
     } else { // Not logged in, no email in URL
       navigate('/login');
-      setLoading(false); // Set loading to false here as navigation happens
+      // setLoading(false); // Handled by navigation
       return; // Exit early as navigation happens
     }
 
@@ -175,13 +153,54 @@ const UserDashboard = () => {
     }
   }, [navigate, selectedUserForView, allUsersForAdmin, user, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast]);
 
+  // Effect for initial load and auth state changes
   useEffect(() => {
-    checkUserAndFetchData();
+    checkUserAndDetermineTarget();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkUserAndFetchData(); // Re-run on auth state change
+      checkUserAndDetermineTarget(); // Re-run on auth state change
     });
     return () => subscription.unsubscribe();
-  }, [checkUserAndFetchData]);
+  }, [checkUserAndDetermineTarget]);
+
+  // NEW: Effect for fetching all users for admin dropdown, decoupled from main auth check
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      if (!isAdmin || !user) { // Only fetch if admin and user object is available
+        setAllUsersForAdmin([]);
+        return;
+      }
+      setLoadingAllUsersForAdmin(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession(); // Get fresh session for token
+        if (!session) throw new Error('No active session for admin user.');
+
+        const response = await fetch(
+          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/list-all-users`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}` // Admin token
+            },
+          }
+        );
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to load all users: ${response.status}`);
+        }
+        setAllUsersForAdmin(result.users || []);
+      } catch (error: any) {
+        console.error('Error fetching all users for admin:', error);
+        toast({ title: "Error", description: `Failed to load users for admin view: ${error.message}`, variant: "destructive" });
+        setAllUsersForAdmin([]); // Clear users on error
+      } finally {
+        setLoadingAllUsersForAdmin(false);
+      }
+    };
+
+    fetchAllUsers();
+  }, [isAdmin, user, toast]); // Dependencies: isAdmin and user (to ensure token is available)
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -228,9 +247,10 @@ const UserDashboard = () => {
               <Select
                 value={selectedUserForView || ''}
                 onValueChange={(value) => setSelectedUserForView(value === 'admin-self' ? null : value)}
+                disabled={loadingAllUsersForAdmin} // Disable select while loading users
               >
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="View as user..." />
+                  <SelectValue placeholder={loadingAllUsersForAdmin ? "Loading users..." : "View as user..."} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin-self">View My Own Dashboard</SelectItem>
