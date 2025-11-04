@@ -27,10 +27,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, // Import DialogDescription
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge"; // Fixed: Changed single quote to double quote
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, PlusCircle } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
@@ -593,6 +594,9 @@ const ProductManager: React.FC = () => {
               <Edit className="mr-2 h-5 w-5" />
               Edit Product: {currentProduct?.title}
             </DialogTitle>
+            <DialogDescription>
+              Make changes to the product details, pricing, and associated tracks.
+            </DialogDescription>
           </DialogHeader>
           {currentProduct && (
             <div className="space-y-4 py-4">
