@@ -76,7 +76,7 @@ const PurchaseConfirmation: React.FC = () => {
         // Fetch order details using the new client with custom headers
         const { data, error: fetchError } = await supabaseWithHeaders
           .from('orders')
-          .select('*, products(title, description, track_urls)') // Select product details
+          .select('*, product_id!products(title, description, track_urls)') // Explicitly specify product_id for embedding
           .eq('checkout_session_id', sessionId)
           .single();
 

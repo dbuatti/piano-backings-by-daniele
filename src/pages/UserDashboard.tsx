@@ -101,7 +101,8 @@ const UserDashboard = () => {
   const fetchPurchasesForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
     setLoadingPurchases(true);
     try {
-      let query = supabase.from('orders').select('*, products(title, description, track_urls)').order('created_at', { ascending: false });
+      // Explicitly specify the foreign key 'product_id' for embedding 'products'
+      let query = supabase.from('orders').select('*, product_id!products(title, description, track_urls)').order('created_at', { ascending: false });
 
       if (targetUserId) {
         query = query.eq('user_id', targetUserId);
