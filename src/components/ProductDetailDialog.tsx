@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, Download, ShoppingCart, X, Link as LinkIcon } from 'lucide-react';
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle } from 'lucide-react'; // Added PlayCircle icon
 import { cn } from '@/lib/utils';
 
 interface TrackInfo {
@@ -43,10 +43,6 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   isBuying,
 }) => {
   if (!product) return null;
-
-  const handleDownload = (url: string) => {
-    window.open(url, '_blank');
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -112,24 +108,22 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               </h4>
               <ul className="space-y-2">
                 {product.track_urls.map((track, index) => (
-                  <li key={index} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                    <span className="font-medium text-gray-800 flex items-center">
-                      <LinkIcon className="h-4 w-4 mr-2 text-gray-500" />
+                  <li key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-md bg-gray-50">
+                    <span className="font-medium text-gray-800 flex items-center mb-2 sm:mb-0">
+                      <LinkIcon className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
                       {track.caption}
                     </span>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDownload(track.url)}
-                      className="bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <audio controls preload="none" className="w-full sm:w-48 h-8">
+                        <source src={track.url} type="audio/mpeg" />
+                        Your browser does not support the audio element.
+                      </audio>
+                      <span className="text-sm text-gray-500 whitespace-nowrap">(10-sec sample)</span>
+                    </div>
                   </li>
                 ))}
               </ul>
-              <p className="text-sm text-gray-600">Note: These are preview downloads. Full access is granted upon purchase.</p>
+              <p className="text-sm text-gray-600">Note: These are 10-second audio samples. Full access is granted upon purchase.</p>
             </div>
           )}
         </div>
