@@ -44,6 +44,8 @@ export interface Product {
   track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
   vocal_ranges?: string[]; // New field for vocal ranges
+  key_signature?: string | null; // Added new field
+  sheet_music_url?: string | null; // Added new field
 }
 
 // HTML Email signature template
