@@ -309,15 +309,36 @@ const UserDashboard = () => {
     }
   };
 
-  const downloadTrack = (url: string, filename: string = 'download') => {
+  const downloadTrack = (url: string, filenameSuggestion: string | null | undefined = 'download') => {
     if (url) {
+      let finalFilename = String(filenameSuggestion || 'downloaded_file'); // Ensure it's a string, provide fallback
+      
+      // Sanitize filename: replace invalid characters with underscores
+      finalFilename = finalFilename.replace(/[^a-z0-9\.\-_]/gi, '_');
+
+      // If the filename is just 'true' (e.g., from a mistaken caption), provide a better default
+      if (finalFilename.toLowerCase() === 'true' || finalFilename.trim() === '') {
+        finalFilename = 'downloaded_file';
+      }
+
+      // Add file extension if missing and URL has one
+      const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+      const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
+      
+      if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
+        finalFilename = `${finalFilename}.${urlExtension}`;
+      } else if (!urlExtension && !finalFilename.includes('.')) {
+        // If no extension in URL and not in filename, default to .mp3
+        finalFilename = `${finalFilename}.mp3`;
+      }
+
       const link = document.createElement('a');
       // Append ?download=true to force download for Supabase Storage URLs
       const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
         ? `${url}?download=true`
         : url;
       link.href = downloadUrl;
-      link.setAttribute('download', filename); // Force download
+      link.setAttribute('download', finalFilename); // Use the sanitized filename
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
