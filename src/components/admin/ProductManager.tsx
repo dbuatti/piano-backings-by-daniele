@@ -471,7 +471,7 @@ const ProductManager: React.FC = () => {
                   <TableHead className="w-[150px]">Artist</TableHead>
                   <TableHead className="w-[100px]">Price</TableHead>
                   <TableHead className="w-[100px]">Category</TableHead>
-                  <TableHead className="w-[120px]">Vocal Ranges</TableHead> {/* New Table Head */}
+                  <TableHead className="w-[120px]">Vocal Ranges</TableHead> 
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Tracks</TableHead>
                   <TableHead className="text-right w-[150px]">Actions</TableHead>
@@ -489,7 +489,7 @@ const ProductManager: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell>
-                    <TableCell> {/* New Table Cell for Vocal Ranges */}
+                    <TableCell> 
                       {product.vocal_ranges && product.vocal_ranges.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {product.vocal_ranges.map((range, index) => (
