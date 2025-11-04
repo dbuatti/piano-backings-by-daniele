@@ -18,7 +18,7 @@ const Seo: React.FC<SeoProps> = ({
   keywords = "piano backing tracks, musical theatre, audition tracks, custom piano tracks, Daniele Buatti, performance tracks, sheet music, vocal ranges",
   ogTitle,
   ogDescription,
-  ogImage,
+  ogImage = "/pasted-image-2025-09-19T05-15-20-729Z.png", // Default OG image
   ogUrl,
   canonicalUrl,
 }) => {
