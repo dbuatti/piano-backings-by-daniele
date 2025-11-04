@@ -48,9 +48,9 @@ const Shop: React.FC = () => {
 
   // New state for filtering and sorting
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all'); // New filter state
+  const [categoryFilter, setCategoryFilter] = useState('all'); // Default to 'all' to show all categories initially
   const [trackTypeFilter, setTrackTypeFilter] = useState('all'); // New filter state for track_type
-  const [sortOption, setSortOption] = useState('created_at_desc'); // Default to newest first
+  const [sortOption, setSortOption] = useState('category_asc'); // Default to category_asc for grouping
 
   useEffect(() => {
     const fetchProducts = async () => {
