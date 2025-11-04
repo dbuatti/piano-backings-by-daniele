@@ -200,7 +200,7 @@ const PurchaseConfirmation: React.FC = () => {
                           className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
                           onClick={() => downloadTrack(track.url, track.caption || `${order.products?.title || 'track'}.mp3`)}
                         >
-                          <Download className="w-5 h-5 mr-2" /> Download {track.caption ? `(${track.caption})` : ''}
+                          <Download className="w-5 h-5" />
                         </Button>
                       ))}
                     </div>
@@ -218,7 +218,7 @@ const PurchaseConfirmation: React.FC = () => {
                       className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
                       onClick={() => window.open(order.products?.sheet_music_url || '', '_blank')}
                     >
-                      <FileText className="h-5 w-5 mr-2" /> View Sheet Music (PDF)
+                      <FileText className="h-5 w-5" />
                     </Button>
                   </div>
                 )}
