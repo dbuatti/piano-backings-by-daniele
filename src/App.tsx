@@ -25,7 +25,8 @@ import ReportIssueButton from "./components/ReportIssueButton";
 import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice";
 import HolidayModeBanner from "./components/HolidayModeBanner";
 import Shop from "./pages/Shop";
-import PurchaseConfirmation from "./pages/PurchaseConfirmation"; // Import the new page
+import PurchaseConfirmation from "./pages/PurchaseConfirmation";
+import EditRequest from "./pages/EditRequest"; // Import the new EditRequest component
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/form-page" element={<FormPage />} />
           <Route path="/shop" element={<Shop />} />
-          <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} /> {/* New Route */}
+          <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
           <Route path="/test-function" element={<TestFunction />} />
           <Route path="/test-backings" element={<TestBackings />} />
           <Route path="/test-email" element={<TestEmail />} />
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/request/:id" element={<RequestDetails />} />
+          <Route path="/admin/request/:id/edit" element={<EditRequest />} /> {/* New Route for editing */}
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/track/:id" element={<ClientTrackView />} />
           <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />

@@ -26,14 +26,15 @@ import {
   AlertCircle,
   Search, 
   UserPlus,
-  Loader2, // Added Loader2 for loading states
-  Download // Added Download icon
+  Loader2,
+  Download,
+  Edit // Import Edit icon
 } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import { Separator } from '@/components/ui/separator';
 
 interface TrackInfo {
   url: string;
@@ -55,10 +56,6 @@ const RequestDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
-
-  // State for ownership management (removed from here, now in RequestOwnershipTabContent)
-  const [ownershipError, setOwnershipError] = useState<any>(null);
-
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -84,7 +81,7 @@ const RequestDetails = () => {
     };
     
     checkAdminAccess();
-  }, [navigate, toast]);
+  }, [navigate, toast, id]);
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -98,14 +95,6 @@ const RequestDetails = () => {
       if (error) throw error;
       
       setRequest(data);
-      
-      // Removed current owner profile fetch as it's no longer needed here
-      // if (data.user_id) {
-      //   await fetchCurrentOwnerProfile(data.user_id, data.email);
-      // } else {
-      //   setCurrentOwnerProfile(null);
-      // }
-
     } catch (error: any) {
       toast({
         title: "Error",
@@ -117,29 +106,6 @@ const RequestDetails = () => {
       setLoading(false);
     }
   };
-
-  // Removed fetchCurrentOwnerProfile as it's no longer needed here
-  // const fetchCurrentOwnerProfile = async (userId: string, requestEmail: string) => {
-  //   try {
-  //     const { data: profileData, error: profileError } = await supabase
-  //       .from('profiles')
-  //       .select('id, first_name, last_name')
-  //       .eq('id', userId)
-  //       .single();
-      
-  //     if (profileError) throw profileError;
-      
-  //     setCurrentOwnerProfile({
-  //       id: profileData.id,
-  //       email: requestEmail,
-  //       first_name: profileData.first_name,
-  //       last_name: profileData.last_name,
-  //     });
-  //   } catch (error: any) {
-  //     console.error('Error fetching current owner profile:', error);
-  //     setCurrentOwnerProfile(null);
-  //   }
-  // };
 
   const triggerDropboxAutomation = async () => {
     setIsTriggeringDropbox(true);
@@ -207,12 +173,6 @@ const RequestDetails = () => {
       setIsTriggeringDropbox(false);
     }
   };
-
-  // Removed Ownership Management Functions from here
-  // const handleSearchUsersForAssignment = async () => { ... }
-  // const handleAssignOwner = async (userIdToAssign: string, userEmailToAssign: string) => { ... }
-  // const handleUnlinkOwner = async () => { ... }
-
 
   if (!isAdmin) {
     return (
@@ -380,8 +340,6 @@ const RequestDetails = () => {
             </div>
           </CardContent>
         </Card>
-        
-        {/* Removed Manage Track Ownership section from here */}
         
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
@@ -606,8 +564,11 @@ const RequestDetails = () => {
           >
             Back to Dashboard
           </Button>
-          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-            Edit Request
+          <Button 
+            onClick={() => navigate(`/admin/request/${id}/edit`)} // Navigate to the new edit page
+            className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+          >
+            <Edit className="mr-2 h-4 w-4" /> Edit Request
           </Button>
         </div>
         
