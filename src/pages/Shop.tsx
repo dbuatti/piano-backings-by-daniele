@@ -140,14 +140,23 @@ const Shop: React.FC = () => {
   const handleBuyNow = async (product: Product) => {
     setIsBuying(true);
     try {
+      // Get current session to pass auth token to Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       // Call your Supabase Edge Function to create a Stripe Checkout Session
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: headers, // Use the headers object
           body: JSON.stringify({ product_id: product.id }),
         }
       );
