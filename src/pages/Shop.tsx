@@ -23,9 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import ProductCard from '@/components/shop/ProductCard';
-import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
+import ProductCard from '@/components/shop/ProductCard'; // Ensure this path is correct
+import ProductDetailDialog from '@/components/shop/ProductDetailDialog'; // Ensure this path is correct
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
+import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Label } from '@/components/ui/label'; // Import Label
 
 // Define the Product interface, ensuring it uses the imported TrackInfo
 interface Product {
