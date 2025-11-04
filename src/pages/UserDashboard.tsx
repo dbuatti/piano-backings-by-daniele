@@ -9,7 +9,7 @@ import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ShoppingCart as ShoppingCartIcon } from 'lucide-react'; // Removed Play, Share2, ChevronDown
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getSafeBackingTypes } from '@/utils/helpers';
 import {
@@ -19,8 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"; // Import Tabs components
-import MyPurchasesTabContent from '@/components/user/MyPurchasesTabContent'; // Import new component - forcing re-evaluation
 
 interface UserProfileForAdmin {
   id: string;
@@ -41,7 +39,6 @@ const UserDashboard = () => {
   const allUsersForAdminRef = useRef<UserProfileForAdmin[]>([]); // Create a ref for allUsersForAdmin
   const [loadingAllUsersForAdmin, setLoadingAllUsersForAdmin] = useState(false);
   const [selectedUserForView, setSelectedUserForView] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('my-requests'); // New state for active tab
 
   // Update the ref whenever allUsersForAdmin state changes
   useEffect(() => {
@@ -118,7 +115,7 @@ const UserDashboard = () => {
     let currentIsAdmin = false;
     if (loggedInUser?.email) {
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      currentIsAdmin = adminEmails.includes(loggedInUser.email!); // Added non-null assertion
+      currentIsAdmin = adminEmails.includes(loggedInUser.email);
       setIsAdmin(currentIsAdmin);
     } else {
       setIsAdmin(false);
@@ -140,7 +137,7 @@ const UserDashboard = () => {
       setShowAccountPrompt(false);
     } else if (loggedInUser) {
       targetUserId = loggedInUser.id;
-      targetUserEmail = loggedInUser.email!; // Added non-null assertion
+      targetUserEmail = loggedInUser.email;
       setShowAccountPrompt(false);
     } else if (emailFromUrl) {
       fetchGuestRequestsByEmail(emailFromUrl);
@@ -162,7 +159,7 @@ const UserDashboard = () => {
   // Effect for initial load and auth state changes
   useEffect(() => {
     checkUserAndDetermineTarget();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, _session) => { // Renamed session to _session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       checkUserAndDetermineTarget();
     });
     return () => subscription.unsubscribe();
@@ -333,153 +330,120 @@ const UserDashboard = () => {
           </Card>
         </div>
         
-        {/* Tabs for My Requests and My Purchases */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="my-requests" className="flex items-center">
-              <Music className="mr-2 h-4 w-4" /> My Backing Requests
-            </TabsTrigger>
-            <TabsTrigger value="my-purchases" className="flex items-center" disabled={!user}>
-              <ShoppingCartIcon className="mr-2 h-4 w-4" /> My Purchases
-            </TabsTrigger>
-          </TabsList>
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span className="flex items-center">
+                <Music className="mr-2" />
+                Your Backing Track Requests
+              </span>
+              <Link to="/form-page">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                  Order New Track
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <p>Loading your requests...</p>
+              </div>
+            ) : (
+              <div className=" rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Song</TableHead>
+                      <TableHead>Backing Type</TableHead>
+                      <TableHead>Delivery Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requests.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="text-center">
+                            <Music className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No requests yet</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                              Get started by ordering your first backing track.
+                            </p>
+                            <div className="mt-6">
+                              <Link to="/form-page">
+                                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                                  Order Your First Track
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      requests.map((request) => {
+                        const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
-          <TabsContent value="my-requests" className="mt-6">
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-                  <span className="flex items-center">
-                    <Music className="mr-2" />
-                    Your Backing Track Requests
-                  </span>
-                  <Link to="/form-page">
-                    <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-                      Order New Track
-                    </Button>
-                  </Link>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <p>Loading your requests...</p>
-                  </div>
-                ) : (
-                  <div className=" rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Song</TableHead>
-                          <TableHead>Backing Type</TableHead>
-                          <TableHead>Delivery Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {requests.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8">
-                              <div className="text-center">
-                                <Music className="mx-auto h-12 w-12 text-gray-400" />
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No requests yet</h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  Get started by ordering your first backing track.
-                                </p>
-                                <div className="mt-6">
-                                  <Link to="/form-page">
-                                    <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-                                      Order Your First Track
-                                    </Button>
-                                  </Link>
-                                </div>
+                        return (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
+                              <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div>{request.song_title}</div>
+                              <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                  <Badge key={index} variant="outline" className="capitalize">
+                                    {type.replace('-', ' ')}
+                                  </Badge>
+                                )) : <Badge variant="outline">Not specified</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                                {request.delivery_date 
+                                  ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
+                                  : 'Not specified'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(request.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {request.status === 'completed' && request.track_urls && request.track_urls.length > 0 && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => downloadTrack(request.track_urls[0].url)} // Assuming first track_url for download
+                                  >
+                                    <Download className="w-4 h-4 mr-1" /> Download
+                                  </Button>
+                                )}
+                                <Link to={`/track/${request.id}`}>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="w-4 h-4 mr-1" /> View Details
+                                  </Button>
+                                </Link>
                               </div>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          requests.map((request) => {
-                            const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-
-                            return (
-                              <TableRow key={request.id}>
-                                <TableCell>
-                                  <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
-                                  <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  <div>{request.song_title}</div>
-                                  <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
-                                      <Badge key={index} variant="outline" className="capitalize">
-                                        {type.replace('-', ' ')}
-                                      </Badge>
-                                    )) : <Badge variant="outline">Not specified</Badge>}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center">
-                                    <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                                    {request.delivery_date 
-                                      ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
-                                      : 'Not specified'}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {getStatusBadge(request.status)}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-2">
-                                    {request.status === 'completed' && request.track_urls && request.track_urls.length > 0 && (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        onClick={() => downloadTrack(request.track_urls[0].url)} // Assuming first track_url for download
-                                      >
-                                        <Download className="w-4 h-4 mr-1" /> Download
-                                      </Button>
-                                    )}
-                                    <Link to={`/track/${request.id}`}>
-                                      <Button variant="outline" size="sm">
-                                        <Eye className="w-4 h-4 mr-1" /> View Details
-                                      </Button>
-                                    </Link>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="my-purchases" className="mt-6">
-            {user?.id ? (
-              <MyPurchasesTabContent userId={user.id} />
-            ) : (
-              <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 p-8">
-                <UserPlus className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                <h3 className="mt-4 text-2xl font-semibold text-gray-900">Login to View Purchases</h3>
-                <p className="mt-2 text-lg text-gray-600">
-                  Please log in to see your purchased products from the shop.
-                </p>
-                <div className="mt-6">
-                  <Button onClick={() => navigate('/login')} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-                    Go to Login
-                  </Button>
-                </div>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="shadow-lg">

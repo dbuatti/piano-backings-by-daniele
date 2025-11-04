@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon } from 'lucide-react'; // Removed PlayCircle
-// import { cn } from '@/lib/utils'; // Removed as it was unused
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle } from 'lucide-react'; // Added PlayCircle icon
+import { cn } from '@/lib/utils';
 
 interface TrackInfo {
   url: string;

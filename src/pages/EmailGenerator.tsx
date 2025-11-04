@@ -1,158 +1,256 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Checkbox } from "@/components/ui/checkbox"; // Removed as it was unused
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import {
-  Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Key, Link as LinkIcon, FileText, // Removed Target
-  Clock, XCircle, List, Image // Removed Search
+import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest, Product } from "@/utils/emailGenerator";
+import { supabase } from '@/integrations/supabase/client';
+import { useParams, useLocation, Link } from 'react-router-dom';
+import { cn } from "@/lib/utils";
+import { 
+  Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
+  Clock, XCircle, List, Search, Image // Imported Image icon
 } from 'lucide-react';
+import { calculateRequestCost } from '@/utils/pricing';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail } from '@/utils/emailGenerator';
-import GmailOAuthButton from '@/components/GmailOAuthButton';
-import { useQuery } from '@tanstack/react-query';
-
-interface TrackInfo {
-  url: string;
-  caption: string;
-}
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[];
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number;
-  track_purpose: string;
-  special_requests: string;
-  song_key: string;
-  different_key: string;
-  key_for_track: string;
-  voice_memo: string;
-  voice_memo_file_url?: string;
-  sheet_music_url?: string;
-  youtube_link?: string;
-  additional_links?: string;
-  additional_services: string[];
-  track_type: string;
-}
+import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
+// Removed Table imports as the table is being replaced
 
 const EmailGenerator = () => {
-  const [requestId, setRequestId] = useState('');
-  const [emailType, setEmailType] = useState<'completion' | 'payment-reminder' | 'completion-and-payment'>('completion');
-  const [generatedSubject, setGeneratedSubject] = useState('');
-  const [generatedHtml, setGeneratedHtml] = useState('');
-  const [loadingEmail, setLoadingEmail] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+  const { id } = useParams<{ id?: string }>();
+  const location = useLocation();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [emailData, setEmailData] = useState({ subject: '', html: '' });
+  const [recipientEmails, setRecipientEmails] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom'>('completion-payment');
+  
+  const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
+  const [loadingAllRequests, setLoadingAllRequests] = useState(true);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]); // Will now hold at most one ID
+  const [displayedRequest, setDisplayedRequest] = useState<BackingRequest | null>(null); // The request whose details are shown
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // New state for products
+  const [loadingAllProducts, setLoadingAllProducts] = useState(true);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null); // New state for selected product
+  const [displayedProduct, setDisplayedProduct] = useState<Product | null>(null); // The product whose details are shown
 
-  const fetchRequest = useCallback(async () => {
-    if (!requestId) return null;
-    const { data, error } = await supabase
-      .from('backing_requests')
-      .select('*')
-      .eq('id', requestId)
-      .single();
-    if (error) throw error;
-    return data;
-  }, [requestId]);
-
-  const { data: request, isLoading: isLoadingRequest, error: requestError, refetch } = useQuery<BackingRequest, Error>({
-    queryKey: ['emailGeneratorRequest', requestId],
-    queryFn: fetchRequest,
-    enabled: !!requestId,
-  });
-
-  const generateEmailContent = useCallback(async () => {
-    if (!request) {
-      setGeneratedSubject('');
-      setGeneratedHtml('');
-      return;
-    }
-
-    setLoadingEmail(true);
+  const handleGenerateEmail = useCallback(async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom', itemToUse?: BackingRequest | Product) => {
+    setIsGenerating(true);
     try {
-      let emailContent;
-      if (emailType === 'completion') {
-        emailContent = await generateCompletionEmail(request);
-      } else if (emailType === 'payment-reminder') {
-        emailContent = await generatePaymentReminderEmail(request);
-      } else if (emailType === 'completion-and-payment') {
-        emailContent = await generateCompletionAndPaymentEmail(request);
-      }
+      let result;
+      
+      if (selectedTemplateType === 'product-delivery') {
+        const productForGeneration = itemToUse as Product || displayedProduct;
+        if (!productForGeneration) {
+          throw new Error("No product data available to generate email. Please select a product from the dropdown.");
+        }
+        result = await generateProductDeliveryEmail(productForGeneration, productForGeneration.id); // Using product ID as customer email for now, will be replaced by actual customer email in webhook
+      } else {
+        const requestForGeneration = itemToUse as BackingRequest || displayedRequest;
+        if (!requestForGeneration) {
+          throw new Error("No request data available to generate email. Please select a request from the dropdown.");
+        }
+        const requestWithCost: BackingRequest = {
+          ...requestForGeneration,
+          cost: calculateRequestCost(requestForGeneration).totalCost
+        };
 
-      setGeneratedSubject(emailContent?.subject || 'Generated Email');
-      setGeneratedHtml(emailContent?.html || 'Failed to generate email content.');
+        if (selectedTemplateType === 'completion') {
+          result = await generateCompletionEmail(requestWithCost);
+        } else if (selectedTemplateType === 'payment-reminder') {
+          result = await generatePaymentReminderEmail(requestWithCost);
+        } else if (selectedTemplateType === 'completion-payment') {
+          result = await generateCompletionAndPaymentEmail(requestWithCost);
+        } else {
+          setEmailData({ subject: '', html: '' });
+          toast({
+            title: "Custom Template Selected",
+            description: "You can now write your custom email.",
+          });
+          setIsGenerating(false);
+          return;
+        }
+      }
+      
+      setEmailData({ subject: result.subject, html: result.html });
+      
       toast({
         title: "Email Generated",
-        description: "Email content has been successfully generated.",
+        description: "Your email copy has been generated successfully.",
       });
-    } catch (err: any) {
-      console.error('Error generating email content:', err);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: `Failed to generate email: ${err.message}`,
+        description: `Failed to generate email: ${error.message}`,
         variant: "destructive",
       });
-      setGeneratedSubject('Error Generating Email');
-      setGeneratedHtml(`<p style="color: red;">Failed to generate email content: ${err.message}</p>`);
     } finally {
-      setLoadingEmail(false);
+      setIsGenerating(false);
     }
-  }, [request, emailType, toast]);
+  }, [displayedRequest, displayedProduct, templateType, toast]);
 
+  // Fetch all requests on component mount
   useEffect(() => {
-    generateEmailContent();
-  }, [generateEmailContent]);
+    const fetchAllRequests = async () => {
+      setLoadingAllRequests(true);
+      try {
+        const { data, error } = await supabase
+          .from('backing_requests')
+          .select('*, track_urls') // Select track_urls to infer email status
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setAllRequests(data || []);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: `Failed to fetch all requests: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingAllRequests(false);
+      }
+    };
+    fetchAllRequests();
 
-  const sendEmail = async () => {
-    if (!request || !generatedSubject || !generatedHtml) {
-      toast({
-        title: "Error",
-        description: "No email content to send or request details missing.",
-        variant: "destructive",
-      });
-      return;
-    }
+    const fetchAllProducts = async () => {
+      setLoadingAllProducts(true);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setAllProducts(data || []);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: `Failed to fetch all products: ${error.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingAllProducts(false);
+      }
+    };
+    fetchAllProducts();
+  }, [toast]);
 
-    setIsSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: request.email,
-          subject: generatedSubject,
-          html: generatedHtml,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message);
+  // Handle initial load from URL parameter or location state for requests
+  useEffect(() => {
+    if (allRequests.length > 0) {
+      let initialRequest: BackingRequest | null = null;
+      if (id) {
+        initialRequest = allRequests.find(req => req.id === id) || null;
+      } else if (location.state?.request) {
+        initialRequest = location.state.request;
       }
 
+      if (initialRequest) {
+        setDisplayedRequest(initialRequest);
+        setSelectedRequestIds([initialRequest.id!]); // Select only this one
+      }
+    }
+  }, [id, location.state, allRequests]);
+
+  // Update recipient emails and displayed item when selected item changes
+  useEffect(() => {
+    if (templateType === 'product-delivery') {
+      const selected = allProducts.find(prod => prod.id === selectedProductId);
+      setDisplayedProduct(selected || null);
+      setRecipientEmails(selected ? selected.id : ''); // Use product ID as placeholder for email
+      if (selected) {
+        handleGenerateEmail(templateType, selected);
+      } else {
+        setEmailData({ subject: '', html: '' });
+      }
+    } else {
+      const selected = allRequests.filter(req => selectedRequestIds.includes(req.id!));
+      setDisplayedRequest(selected.length > 0 ? selected[0] : null);
+      setRecipientEmails(selected.map(req => req.email).join(', '));
+      if (displayedRequest) {
+        handleGenerateEmail(templateType);
+      } else if (selected.length > 0 && !id) {
+        handleGenerateEmail(templateType, selected[0]);
+      } else if (selected.length === 0 && !id) {
+        setEmailData({ subject: '', html: '' });
+      }
+    }
+  }, [selectedRequestIds, selectedProductId, allRequests, allProducts, id, templateType, displayedRequest, displayedProduct, handleGenerateEmail]);
+
+  const handleSendEmail = async () => {
+    setIsSending(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to send emails');
+      }
+
+      if (!recipientEmails.trim()) {
+        throw new Error('Recipient email address(es) cannot be empty.');
+      }
+      if (!emailData.subject.trim()) {
+        throw new Error('Email subject cannot be empty.');
+      }
+      if (!emailData.html.trim()) {
+        throw new Error('Email body cannot be empty.');
+      }
+
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            to: recipientEmails,
+            subject: emailData.subject,
+            html: emailData.html,
+            senderEmail: 'pianobackingsbydaniele@gmail.com'
+          }),
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to send email: ${response.status} ${response.statusText}`);
+      }
+      
       toast({
         title: "Email Sent",
-        description: `Email successfully sent to ${request.email}.`,
+        description: `Email sent to ${recipientEmails}`,
       });
+      
+      setEmailData({ subject: '', html: '' });
+      setRecipientEmails('');
+      setShowPreview(false);
+      setTemplateType('completion-payment');
+      setSelectedRequestIds([]); // Clear selected requests after sending
+      setSelectedProductId(null); // Clear selected product after sending
     } catch (err: any) {
       console.error('Error sending email:', err);
       toast({
-        title: "Error Sending Email",
+        title: "Error",
         description: `Failed to send email: ${err.message}`,
         variant: "destructive",
       });
@@ -161,131 +259,371 @@ const EmailGenerator = () => {
     }
   };
 
-  const copyToClipboard = (text: string, message: string) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Copied!",
-      description: message,
+      title: "Copied to Clipboard",
+      description: "Text copied to clipboard successfully.",
     });
+  };
+
+  const getStatusBadge = (status: string | undefined) => { // status can be undefined
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
+      case 'in-progress':
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <Card className="shadow-lg">
-          <CardHeader className="bg-[#1C0357] text-white">
-            <CardTitle className="text-2xl flex items-center">
-              <Mail className="mr-2" />
-              Email Generator
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label htmlFor="requestId" className="flex items-center text-sm mb-1">
-                  Request ID
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="requestId"
-                    type="text"
-                    value={requestId}
-                    onChange={(e) => setRequestId(e.target.value)}
-                    placeholder="Enter Request ID"
-                    className="pl-8 py-2 text-sm"
-                  />
-                  <Music className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                </div>
-                {isLoadingRequest && <p className="text-sm text-gray-500 mt-1">Loading request...</p>}
-                {requestError && <p className="text-sm text-red-500 mt-1">Error: {requestError.message}</p>}
-                {request && (
-                  <div className="mt-2 p-3 border rounded-md bg-blue-50">
-                    <p className="font-medium text-[#1C0357]">{request.song_title} by {request.musical_or_artist}</p>
-                    <p className="text-sm text-gray-600">To: {request.name} ({request.email})</p>
-                    <p className="text-sm text-gray-600">Status: {request.status} | Paid: {request.is_paid ? 'Yes' : 'No'}</p>
-                  </div>
+      
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
+          <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests and product deliveries</p>
+        </div>
+        
+        {/* New: Top-level dropdown for selecting a request or product */}
+        <div className="mb-6">
+          <Label htmlFor="template-type" className="text-lg font-semibold text-[#1C0357] flex items-center mb-2">
+            <List className="mr-2 h-5 w-5" />
+            Select Template Type
+          </Label>
+          <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom') => setTemplateType(value)} value={templateType}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select an email template" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="completion">Completion Email (for Requests)</SelectItem>
+              <SelectItem value="payment-reminder">Payment Reminder (for Requests)</SelectItem>
+              <SelectItem value="completion-payment">Completion & Payment Reminder (for Requests)</SelectItem>
+              <SelectItem value="product-delivery">Product Delivery Email (for Shop Products)</SelectItem>
+              <SelectItem value="custom">Custom Email</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {templateType !== 'product-delivery' && templateType !== 'custom' && (
+          <div className="mb-6">
+            <Label htmlFor="select-request" className="text-lg font-semibold text-[#1C0357] flex items-center mb-2">
+              <List className="mr-2 h-5 w-5" />
+              Select a Request
+            </Label>
+            <Select
+              value={displayedRequest?.id || ''}
+              onValueChange={(requestId) => {
+                const selected = allRequests.find(req => req.id === requestId);
+                setDisplayedRequest(selected || null);
+                setSelectedRequestIds(selected ? [selected.id!] : []);
+              }}
+              disabled={loadingAllRequests}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={loadingAllRequests ? "Loading requests..." : "Select a request to generate email for"} />
+              </SelectTrigger>
+              <SelectContent>
+                {allRequests.length === 0 && !loadingAllRequests ? (
+                  <SelectItem value="no-requests" disabled>No requests found</SelectItem>
+                ) : (
+                  allRequests.map((request) => (
+                    <SelectItem key={request.id} value={request.id!}>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="flex-1 truncate">
+                          {request.song_title} ({request.name || request.email})
+                        </span>
+                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                          {request.is_paid ? (
+                            <Badge variant="default" className="bg-green-500">PAID</Badge>
+                          ) : (
+                            <Badge variant="destructive">UNPAID</Badge>
+                          )}
+                          {request.track_urls && request.track_urls.length > 0 ? (
+                            <Badge variant="default" className="bg-blue-500">TRACK UPLOADED</Badge>
+                          ) : (
+                            <Badge variant="secondary">NO TRACK</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))
                 )}
-              </div>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-              <div>
-                <Label htmlFor="emailType" className="flex items-center text-sm mb-1">
-                  Email Type
-                </Label>
-                <div className="relative">
-                  <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'completion-and-payment') => setEmailType(value)} value={emailType}>
-                    <SelectTrigger className="pl-8 py-2 text-sm">
-                      <SelectValue placeholder="Select email type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="completion">Completion Email</SelectItem>
-                      <SelectItem value="payment-reminder">Payment Reminder</SelectItem>
-                      <SelectItem value="completion-and-payment">Completion & Payment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <List className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+        {templateType === 'product-delivery' && (
+          <div className="mb-6">
+            <Label htmlFor="select-product" className="text-lg font-semibold text-[#1C0357] flex items-center mb-2">
+              <List className="mr-2 h-5 w-5" />
+              Select a Product
+            </Label>
+            <Select
+              value={displayedProduct?.id || ''}
+              onValueChange={(productId) => {
+                const selected = allProducts.find(prod => prod.id === productId);
+                setDisplayedProduct(selected || null);
+                setSelectedProductId(selected ? selected.id : null);
+              }}
+              disabled={loadingAllProducts}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={loadingAllProducts ? "Loading products..." : "Select a product to generate email for"} />
+              </SelectTrigger>
+              <SelectContent>
+                {allProducts.length === 0 && !loadingAllProducts ? (
+                  <SelectItem value="no-products" disabled>No products found</SelectItem>
+                ) : (
+                  allProducts.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="flex-1 truncate">
+                          {product.title} ({product.currency} {product.price.toFixed(2)})
+                        </span>
+                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                          {product.track_url ? (
+                            <Badge variant="default" className="bg-blue-500">TRACK LINKED</Badge>
+                          ) : (
+                            <Badge variant="destructive">NO TRACK LINK</Badge>
+                          )}
+                          {product.is_active ? (
+                            <Badge variant="default" className="bg-green-500">ACTIVE</Badge>
+                          ) : (
+                            <Badge variant="secondary">INACTIVE</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> {/* Adjusted grid to 2 columns */}
+          {/* Item Details Card (Left Column) */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357]">
+                {templateType === 'product-delivery' ? 'Product Details' : 'Request Details'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {templateType === 'product-delivery' && displayedProduct ? (
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium flex items-center">
+                      <Music className="mr-2 h-4 w-4 text-gray-600" />
+                      Product: <span className="ml-1 font-bold">{displayedProduct.title}</span>
+                    </div>
+                    <Badge variant={displayedProduct.is_active ? "default" : "secondary"} className={cn(displayedProduct.is_active ? "bg-green-500" : "bg-gray-400")}>
+                      {displayedProduct.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center">
+                    <DollarSign className="mr-2 h-4 w-4 text-gray-600" />
+                    Price: <span className="ml-1 font-medium">{displayedProduct.currency} {displayedProduct.price.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <div className="font-medium flex items-center mb-1">
+                      <FileText className="mr-2 h-4 w-4 text-gray-600" />
+                      Description:
+                    </div>
+                    <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedProduct.description}</p>
+                  </div>
+                  {displayedProduct.track_url && (
+                    <div className="flex items-center">
+                      <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
+                      Track URL: <a href={displayedProduct.track_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.track_url}</a>
+                    </div>
+                  )}
+                  {displayedProduct.image_url && (
+                    <div className="flex items-center">
+                      <Image className="mr-2 h-4 w-4 text-gray-600" />
+                      Image URL: <a href={displayedProduct.image_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.image_url}</a>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-
-            <Button onClick={generateEmailContent} disabled={!requestId || isLoadingRequest || loadingEmail} className="w-full bg-[#F538BC] hover:bg-[#F538BC]/90">
-              {loadingEmail ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
-                </>
+              ) : displayedRequest ? (
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium flex items-center">
+                      <Music className="mr-2 h-4 w-4 text-gray-600" />
+                      Song: <span className="ml-1 font-bold">{displayedRequest.song_title}</span>
+                    </div>
+                    {getStatusBadge(displayedRequest.status)}
+                  </div>
+                  <div className="flex items-center">
+                    <User className="mr-2 h-4 w-4 text-gray-600" />
+                    Client: <span className="ml-1 font-medium">{displayedRequest.name || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Mail className="mr-2 h-4 w-4 text-gray-600" />
+                    Email: <span className="ml-1 font-medium">{displayedRequest.email}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Calendar className="mr-2 h-4 w-4 text-gray-600" />
+                    Submitted: <span className="ml-1 font-medium">{displayedRequest.created_at ? format(new Date(displayedRequest.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Headphones className="mr-2 h-4 w-4 text-gray-600" />
+                    Type: <span className="ml-1 font-medium capitalize">
+                      {getSafeBackingTypes(displayedRequest.backing_type).map(t => t.replace('-', ' ')).join(', ') || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <Key className="mr-2 h-4 w-4 text-gray-600" />
+                    Key: <span className="ml-1 font-medium">{displayedRequest.song_key || 'N/A'}</span>
+                  </div>
+                  {displayedRequest.youtube_link && (
+                    <div className="flex items-center">
+                      <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
+                      YouTube: <a href={displayedRequest.youtube_link} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedRequest.youtube_link}</a>
+                    </div>
+                  )}
+                  {displayedRequest.special_requests && (
+                    <div>
+                      <div className="font-medium flex items-center mb-1">
+                        <FileText className="mr-2 h-4 w-4 text-gray-600" />
+                        Special Requests:
+                      </div>
+                      <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedRequest.special_requests}</p>
+                    </div>
+                  )}
+                  <div className="pt-4">
+                    <Link to={`/admin/request/${displayedRequest.id}`}>
+                      <Button variant="outline" className="w-full">
+                        <Eye className="mr-2 h-4 w-4" /> View Full Details
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Generate Email
-                </>
+                <p className="text-center text-gray-500 py-8">Select an item from the dropdown above to view its details.</p>
               )}
-            </Button>
+            </CardContent>
+          </Card>
 
-            {generatedSubject && (
-              <div className="space-y-4 mt-6">
+          {/* Generated Email Card (Right Column) */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357]">Generated Email</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
                 <div>
-                  <Label htmlFor="subject" className="flex items-center text-sm mb-1">
-                    Subject
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(generatedSubject, "Subject copied to clipboard!")} className="ml-2 h-6 w-6 p-0">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </Label>
-                  <Input id="subject" value={generatedSubject} readOnly className="py-2 text-sm" />
+                  <Label htmlFor="recipient-emails">Recipient Email(s)</Label>
+                  <Input
+                    id="recipient-emails"
+                    value={recipientEmails}
+                    onChange={(e) => setRecipientEmails(e.target.value)}
+                    placeholder="client@example.com"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This field is automatically populated from the selected item.</p>
                 </div>
 
                 <div>
-                  <Label htmlFor="htmlContent" className="flex items-center text-sm mb-1">
-                    HTML Content
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(generatedHtml, "HTML content copied to clipboard!")} className="ml-2 h-6 w-6 p-0">
+                  <Label htmlFor="subject">Subject</Label>
+                  <div className="mt-1 relative">
+                    <Input
+                      id="subject"
+                      value={emailData.subject}
+                      onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
+                      placeholder="Email Subject"
+                      className="pr-10"
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => copyToClipboard(emailData.subject)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                    >
                       <Copy className="h-4 w-4" />
                     </Button>
-                  </Label>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <Label htmlFor="html-content">Email Body (HTML)</Label>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleGenerateEmail(templateType)} // Regenerate current template
+                        disabled={isGenerating || templateType === 'custom' || (!displayedRequest && !displayedProduct)}
+                        className="flex items-center"
+                      >
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Generate
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowPreview(true)}
+                        className="flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea
-                    id="htmlContent"
-                    value={generatedHtml}
-                    readOnly
-                    rows={15}
-                    className="font-mono text-sm"
+                    id="html-content"
+                    value={emailData.html}
+                    onChange={(e) => setEmailData(prev => ({ ...prev, html: e.target.value }))}
+                    placeholder="Enter your HTML email content here..."
+                    rows={12}
+                    className="mt-1 font-mono text-sm"
                   />
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button onClick={sendEmail} disabled={isSending || !request} className="w-full sm:w-auto bg-[#1C0357] hover:bg-[#1C0357]/90">
-                    {isSending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" /> Send Email
-                      </>
-                    )}
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    onClick={handleSendEmail}
+                    disabled={isSending || !recipientEmails.trim() || !emailData.subject.trim() || !emailData.html.trim()}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {isSending ? 'Sending...' : 'Send Email'}
                   </Button>
-                  <GmailOAuthButton className="w-full sm:w-auto" />
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Email Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <Eye className="mr-2 h-5 w-5" />
+                Email Preview
+              </DialogTitle>
+            </DialogHeader>
+            <div className="border rounded-md p-4 bg-gray-50 min-h-[200px]">
+              <h3 className="font-semibold mb-2">Subject: {emailData.subject}</h3>
+              <div 
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: emailData.html }} 
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowPreview(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
         <MadeWithDyad />
       </div>
     </div>

@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import Header from "@/components/Header";
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import Header from '@/components/Header';
+import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Store, AlertCircle, CheckCircle, Search, ArrowUpDown
-} from 'lucide-react'; // Removed Loader2
 import ProductCard from '@/components/ProductCard';
-import ProductDetailDialog from '@/components/ProductDetailDialog';
-import { useQuery } from '@tanstack/react-query';
-import { Input } from '@/components/ui/input';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
+import ProductDetailDialog from '@/components/ProductDetailDialog'; // Import the new dialog
+import ProductCardSkeleton from '@/components/ProductCardSkeleton'; // Import the new skeleton component
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react';
 
 interface TrackInfo {
   url: string;
@@ -32,180 +27,235 @@ interface Product {
   is_active: boolean;
 }
 
-const Shop = () => {
-  const { toast } = useToast();
-  const [isProductDetailDialogOpen, setIsProductDetailDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+const Shop: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isBuying, setIsBuying] = useState(false);
+  const { toast } = useToast();
+
+  // State for Product Detail Dialog
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
+
+  // New state for filtering and sorting
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('title-asc'); // Default sort by title ascending
+  const [sortOption, setSortOption] = useState('created_at_desc'); // Default to newest first
 
-  const fetchProducts = async (): Promise<Product[]> => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true) // Only fetch active products
-      .order('title', { ascending: true }); // Default order
-    if (error) throw error;
-    return data;
-  };
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        let query = supabase
+          .from('products')
+          .select('*')
+          .eq('is_active', true); // Only fetch active products
 
-  const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts'],
-    queryFn: fetchProducts,
-  });
+        // Apply search term
+        if (searchTerm) {
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        }
+
+        // Apply sorting
+        switch (sortOption) {
+          case 'price_asc':
+            query = query.order('price', { ascending: true });
+            break;
+          case 'price_desc':
+            query = query.order('price', { ascending: false });
+            break;
+          case 'title_asc':
+            query = query.order('title', { ascending: true });
+            break;
+          case 'title_desc':
+            query = query.order('title', { ascending: false });
+            break;
+          case 'created_at_desc': // Newest first (default)
+          default:
+            query = query.order('created_at', { ascending: false });
+            break;
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        setProducts(data || []);
+      } catch (err: any) {
+        console.error('Error fetching products:', err);
+        setError(err.message || 'Failed to load products.');
+        toast({
+          title: "Error",
+          description: `Failed to load products: ${err.message}`,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [toast, searchTerm, sortOption]); // Re-fetch when search term or sort option changes
+
+  // Handle Stripe Checkout success/cancel redirects
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('success')) {
+      toast({
+        title: "Payment Successful!",
+        description: "Your purchase was completed successfully. Check your email for details.",
+        action: <CheckCircle className="text-green-500" />,
+      });
+      // Clear query params
+      window.history.replaceState({}, document.title, "/shop");
+    }
+
+    if (query.get('canceled')) {
+      toast({
+        title: "Payment Canceled",
+        description: "Your payment was canceled. You can try again anytime.",
+        variant: "destructive",
+        action: <AlertCircle className="text-red-500" />,
+      });
+      // Clear query params
+      window.history.replaceState({}, document.title, "/shop");
+    }
+  }, [toast]);
 
   const handleViewDetails = (product: Product) => {
-    setSelectedProduct(product);
-    setIsProductDetailDialogOpen(true);
+    setSelectedProductForDetail(product);
+    setIsDetailDialogOpen(true);
   };
 
   const handleBuyNow = async (product: Product) => {
     setIsBuying(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
-      const customerEmail = session?.user?.email || 'guest@example.com'; // Fallback for guest
+      // Call your Supabase Edge Function to create a Stripe Checkout Session
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ product_id: product.id }),
+        }
+      );
 
-      const { data, error } = await supabase.functions.invoke('create-order', {
-        body: {
-          productId: product.id,
-          userId: userId,
-          customerEmail: customerEmail,
-          amount: product.price,
-          currency: product.currency,
-        },
-      });
+      const data = await response.json();
 
-      if (error) throw error;
-
-      toast({
-        title: "Purchase Successful!",
-        description: `You have successfully purchased "${product.title}". Check your email for download links or your dashboard if logged in.`,
-        variant: "default",
-      });
-
-      // Optionally redirect to user dashboard or a confirmation page
-      if (userId) {
-        // navigate('/user-dashboard?tab=my-purchases');
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to create checkout session: ${response.status}`);
       }
 
+      // Redirect to the Stripe Checkout URL
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('Stripe Checkout URL not received.');
+      }
+      
     } catch (err: any) {
-      console.error('Error during purchase:', err);
+      console.error('Error during checkout:', err);
       toast({
-        title: "Purchase Failed",
-        description: err.message || "There was an error processing your purchase. Please try again.",
+        title: "Checkout Error",
+        description: err.message || "Something went wrong during checkout. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsBuying(false);
-      setIsProductDetailDialogOpen(false);
     }
   };
-
-  const sortedAndFilteredProducts = (products || [])
-    .filter(product =>
-      product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === 'title-asc') {
-        return a.title.localeCompare(b.title);
-      } else if (sortBy === 'title-desc') {
-        return b.title.localeCompare(a.title);
-      } else if (sortBy === 'price-asc') {
-        return a.price - b.price;
-      } else if (sortBy === 'price-desc') {
-        return b.price - a.price;
-      }
-      return 0;
-    });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Our Shop</h1>
-          <p className="text-xl font-light text-[#1C0357]/90">Browse and purchase high-quality backing tracks</p>
+      
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Our Shop</h1>
+          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Browse our available backing tracks and resources</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+        {/* Filter and Sort Controls */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-1/2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              type="text"
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-md w-full"
+              className="pl-10"
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           </div>
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <span className="text-gray-700 text-sm">Sort by:</span>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
+          <div className="relative w-full sm:w-1/3">
+            <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="pl-10">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="title-asc">Title (A-Z)</SelectItem>
-                <SelectItem value="title-desc">Title (Z-A)</SelectItem>
-                <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                <SelectItem value="price-desc">Price (High to Low)</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="title_desc">Title: Z-A</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <p>Loading products...</p>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
           </div>
-        ) : isError ? (
+        ) : error ? (
           <Card className="border-red-300 bg-red-50 text-red-800">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <AlertCircle className="mr-2 h-5 w-5" />
-                Error Loading Products
+                Error Loading Shop
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p>{error?.message || 'Failed to load products.'}</p>
-              <p className="mt-2 text-sm">Please try again later.</p>
+              <p>{error}</p>
+              <p className="mt-2 text-sm">Please try again later or contact support.</p>
             </CardContent>
           </Card>
-        ) : sortedAndFilteredProducts.length === 0 ? (
+        ) : products.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 p-8">
             <Store className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-            <h3 className="mt-4 text-2xl font-semibold text-gray-900">No Products Found</h3>
+            <h3 className="mt-4 text-2xl font-semibold text-gray-900">No Products Available</h3>
             <p className="mt-2 text-lg text-gray-600">
-              We couldn't find any products matching your criteria.
+              It looks like there are no active products in the shop right now. Please check back later!
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {sortedAndFilteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onViewDetails={handleViewDetails}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map(product => (
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onViewDetails={handleViewDetails} 
                 onBuyNow={handleBuyNow}
-                isBuying={isBuying}
+                isBuying={isBuying} // Pass loading state
               />
             ))}
           </div>
         )}
-
-        <ProductDetailDialog
-          isOpen={isProductDetailDialogOpen}
-          onOpenChange={setIsProductDetailDialogOpen}
-          product={selectedProduct}
-          onBuyNow={handleBuyNow}
-          isBuying={isBuying}
-        />
-
-        <MadeWithDyad />
       </div>
+      <MadeWithDyad />
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        isOpen={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        product={selectedProductForDetail}
+        onBuyNow={handleBuyNow}
+        isBuying={isBuying}
+      />
     </div>
   );
 };

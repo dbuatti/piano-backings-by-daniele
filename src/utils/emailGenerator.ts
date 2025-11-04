@@ -75,12 +75,12 @@ const EMAIL_SIGNATURE_HTML = `
 </div>
 `;
 
-// Helper function to convert plain text to basic HTML paragraphs (Removed as it was unused)
-// const textToHtml = (text: string) => {
-//   return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
-//          text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
-//          `</div>`;
-// };
+// Helper function to convert plain text to basic HTML paragraphs
+const textToHtml = (text: string) => {
+  return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
+         text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
+         `</div>`;
+};
 
 // Helper to generate track list HTML
 const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
@@ -110,10 +110,8 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  // @ts-ignore
   const firstName = request.name.split(' ')[0];
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  // @ts-ignore
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -215,7 +213,6 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
 
 export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  // @ts-ignore
   const firstName = request.name.split(' ')[0];
   // Correctly access totalCost from the object returned by calculateRequestCost
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
@@ -224,7 +221,6 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  // @ts-ignore
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -343,7 +339,6 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
 
 export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  // @ts-ignore
   const firstName = request.name.split(' ')[0];
   // Correctly access totalCost from the object returned by calculateRequestCost
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
@@ -352,7 +347,6 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  // @ts-ignore
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {

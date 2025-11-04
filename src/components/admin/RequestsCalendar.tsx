@@ -1,189 +1,224 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import CalendarComponent, { type Value } from 'react-calendar'; // Corrected Value import
-import 'react-calendar/dist/Calendar.css'; // Default calendar styles
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { format, isSameDay, parseISO } from 'date-fns';
-import { Calendar as CalendarIcon, Music, Loader2, AlertCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  song_title: string;
-  musical_or_artist: string;
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-}
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import CalendarComponent from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import { format, isSameDay } from 'date-fns';
+import { Calendar, Eye, Music, Upload, User, Check, Clock, X } from 'lucide-react'; // Imported Check, Clock, X
+import { getSafeBackingTypes } from '@/utils/helpers';
 
 interface RequestsCalendarProps {
-  onSelectRequest: (requestId: string) => void;
+  requests: any[];
+  filteredRequests: any[];
+  selectedDate: Date | null;
+  setSelectedDate: (date: Date | null) => void;
+  uploadTrack: (id: string) => void;
 }
 
-const RequestsCalendar: React.FC<RequestsCalendarProps> = ({ onSelectRequest }) => {
-  const [selectedDate, setSelectedDate] = useState<Value>(new Date());
-  const [requests, setRequests] = useState<BackingRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+const RequestsCalendar: React.FC<RequestsCalendarProps> = ({
+  requests,
+  filteredRequests,
+  selectedDate,
+  setSelectedDate,
+  uploadTrack,
+}) => {
 
-  const fetchRequests = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase
-        .from('backing_requests')
-        .select('id, created_at, song_title, musical_or_artist, delivery_date, status')
-        .order('delivery_date', { ascending: true });
-
-      if (error) throw error;
-      setRequests(data || []);
-    } catch (err: any) {
-      console.error('Error fetching requests for calendar:', err);
-      setError(err.message);
-      toast({
-        title: "Error",
-        description: `Failed to load requests for calendar: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  const getBadgeVariant = (type: string) => {
+    switch (type) {
+      case 'full-song': return 'default';
+      case 'audition-cut': return 'secondary';
+      case 'note-bash': return 'outline';
+      default: return 'default';
     }
-  }, [toast]);
-
-  useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
-
-  const handleDateChange = (value: Value) => { // Use Value type here
-    setSelectedDate(value);
   };
 
-  const getRequestsForDate = (date: Date) => {
-    return requests.filter(req => {
-      if (!req.delivery_date) return false;
-      const deliveryDate = parseISO(req.delivery_date);
-      return isSameDay(deliveryDate, date);
-    });
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="bg-green-500"><Check className="w-3 h-3 mr-1" /> Completed</Badge>;
+      case 'in-progress':
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive"><X className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
+  };
+
+  const handleDateChange = (value: Date | [Date, Date] | null) => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    } else if (value === null) {
+      setSelectedDate(null);
+    }
   };
 
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
-    if (view === 'month') {
-      const dayRequests = getRequestsForDate(date);
-      if (dayRequests.length > 0) {
-        const pendingCount = dayRequests.filter(r => r.status === 'pending' || r.status === 'in-progress').length;
-        const completedCount = dayRequests.filter(r => r.status === 'completed').length;
-
-        return (
-          <div className="flex flex-col items-center justify-center text-xs mt-1">
-            {pendingCount > 0 && (
-              <span className="bg-yellow-500 text-white rounded-full h-4 w-4 flex items-center justify-center leading-none">
-                {pendingCount}
-              </span>
-            )}
-            {completedCount > 0 && (
-              <span className="bg-green-500 text-white rounded-full h-4 w-4 flex items-center justify-center leading-none mt-0.5">
-                {completedCount}
-              </span>
-            )}
-          </div>
-        );
-      }
-    }
-    return null;
+    if (view !== 'month') return null;
+    
+    const requestsForDate = requests.filter(request => 
+      request.delivery_date && isSameDay(new Date(request.delivery_date), date)
+    );
+    
+    if (requestsForDate.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap justify-center gap-1 mt-1">
+        {requestsForDate.slice(0, 3).map((request, index) => (
+          <div 
+            key={index} 
+            className={`w-2 h-2 rounded-full ${
+              request.status === 'completed' ? 'bg-green-500' :
+              request.status === 'in-progress' ? 'bg-yellow-500' :
+              request.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-400'
+            }`}
+          />
+        ))}
+        {requestsForDate.length > 3 && (
+          <div className="text-xs">+{requestsForDate.length - 3}</div>
+        )}
+      </div>
+    );
   };
 
   const tileClassName = ({ date, view }: { date: Date; view: string }) => {
-    if (view === 'month') {
-      const dayRequests = getRequestsForDate(date);
-      if (dayRequests.length > 0) {
-        const hasPending = dayRequests.some(r => r.status === 'pending' || r.status === 'in-progress');
-        const hasCompleted = dayRequests.some(r => r.status === 'completed');
-
-        if (hasPending && hasCompleted) return 'has-both-requests';
-        if (hasPending) return 'has-pending-requests';
-        if (hasCompleted) return 'has-completed-requests';
-      }
-    }
-    return null;
+    if (view !== 'month') return '';
+    
+    const requestsForDate = requests.filter(request => 
+      request.delivery_date && isSameDay(new Date(request.delivery_date), date)
+    );
+    
+    if (requestsForDate.length === 0) return '';
+    
+    return 'bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50';
   };
 
-  const selectedDayRequests = Array.isArray(selectedDate) || selectedDate === null
-    ? []
-    : getRequestsForDate(selectedDate as Date);
-
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg mb-6 bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-          <CalendarIcon className="mr-2" />
-          Delivery Calendar
+        <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+          <span className="flex items-center">
+            <Calendar className="mr-2 h-5 w-5" />
+            Delivery Calendar
+          </span>
+          {selectedDate && (
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedDate(null)}
+              className="text-sm"
+              size="sm"
+            >
+              Clear Date Selection
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-            <p className="ml-4 text-lg text-gray-600">Loading calendar...</p>
+      <CardContent>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-2/3">
+            <CalendarComponent
+              onChange={handleDateChange}
+              value={selectedDate}
+              tileContent={tileContent}
+              tileClassName={tileClassName}
+              className="border rounded-lg p-4 w-full"
+            />
           </div>
-        ) : error ? (
-          <div className="text-center py-8 text-red-600">
-            <AlertCircle className="mx-auto h-12 w-12 mb-4" />
-            <p>Error loading calendar: {error}</p>
+          <div className="lg:w-1/3">
+            <Card className="bg-white">
+              <CardHeader>
+                <CardTitle className="text-lg text-[#1C0357]">
+                  {selectedDate 
+                    ? `Requests for ${format(selectedDate, 'MMMM d, yyyy')}` 
+                    : 'Select a date to view requests'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedDate ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {filteredRequests.length > 0 ? (
+                      filteredRequests.map((request) => {
+                        const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+
+                        return (
+                          <div 
+                            key={request.id} 
+                            className="border rounded-lg p-4 hover:bg-[#D1AAF2]/20 transition-colors"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className="font-bold">{request.song_title}</h3>
+                                <p className="text-sm text-gray-600 flex items-center mt-1">
+                                  <User className="w-3 h-3 mr-1" />
+                                  {request.name || request.email}
+                                </p>
+                                <p className="text-sm text-gray-600 flex items-center">
+                                  <Music className="w-3 h-3 mr-1" />
+                                  {request.musical_or_artist}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                  <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+                                    {type.replace('-', ' ')}
+                                  </Badge>
+                                )) : <Badge variant="outline">Not specified</Badge>}
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-between items-center">
+                              <div className="flex items-center text-sm">
+                                <Calendar className="w-3 h-3 mr-1 text-gray-500" />
+                                <span>
+                                  {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+                                </span>
+                              </div>
+                              {getStatusBadge(request.status || 'pending')}
+                            </div>
+                            <div className="mt-3 flex justify-end space-x-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                    <Upload className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Upload Track</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Link to={`/track/${request.id}`}>
+                                    <Button variant="outline" size="sm">
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Client Page</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-center text-gray-500 py-4">
+                        No requests scheduled for this date
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4">
+                    Select a date on the calendar to view requests
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row gap-6">
-            <div className="flex-1">
-              <CalendarComponent
-                onChange={handleDateChange}
-                value={selectedDate}
-                tileContent={tileContent}
-                tileClassName={tileClassName}
-                className="react-calendar-custom"
-              />
-            </div>
-            <div className="flex-1 lg:max-h-[400px] overflow-y-auto p-4 border rounded-md bg-gray-50">
-              <h3 className="text-lg font-semibold text-[#1C0357] mb-4 flex items-center">
-                <Music className="mr-2 h-5 w-5" />
-                Requests for {Array.isArray(selectedDate) || selectedDate === null ? 'Selected Date' : format(selectedDate as Date, 'MMM dd, yyyy')}
-              </h3>
-              {selectedDayRequests.length === 0 ? (
-                <p className="text-gray-600">No requests scheduled for this date.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {selectedDayRequests.map(req => (
-                    <li key={req.id} className="p-3 border rounded-md bg-white shadow-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-gray-800">{req.song_title}</span>
-                        <Badge
-                          className={cn(
-                            req.status === 'completed' && 'bg-green-500',
-                            (req.status === 'pending' || req.status === 'in-progress') && 'bg-yellow-500 text-yellow-900',
-                            req.status === 'cancelled' && 'bg-red-500'
-                          )}
-                        >
-                          {req.status.replace('-', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">{req.musical_or_artist}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 w-full"
-                        onClick={() => onSelectRequest(req.id)}
-                      >
-                        View Details
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

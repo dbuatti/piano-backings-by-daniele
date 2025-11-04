@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { isPast } from 'date-fns';
 
 interface AppSettings {
@@ -18,7 +19,7 @@ interface HolidayModeState {
 }
 
 export const useHolidayMode = (): HolidayModeState => {
-  // const { toast } = useToast(); // Removed as it was unused
+  const { toast } = useToast();
   const [isHolidayModeActive, setIsHolidayModeActive] = useState(false);
   const [holidayReturnDate, setHolidayReturnDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);

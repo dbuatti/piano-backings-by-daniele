@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music, UserCheck, Lock, Eye, Edit, Plane, Loader2, Youtube, Instagram, Facebook, Mail } from "lucide-react"; // Re-imported used icons, removed ShoppingCart
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit, Plane, Loader2 } from "lucide-react"; // Import Loader2
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -50,8 +50,8 @@ const Index = () => {
   );
 
   const holidayMessage = holidayReturnDate
-    ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}. New orders will be processed upon our return.`
-    : `We're currently on holiday. New orders will be processed upon our return.`;
+    ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}.`
+    : `We're currently on holiday.`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">

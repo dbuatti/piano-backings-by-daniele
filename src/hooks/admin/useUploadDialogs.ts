@@ -50,7 +50,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
       const originalFileName = file.name; // Capture the original file name here
       const uniqueFileName = `tracks/${id}-${Date.now()}.${fileExt}`; // Unique file name for storage
       
-      const { error: uploadError } = await supabase // Removed 'data: uploadData'
+      const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('tracks')
         .upload(uniqueFileName, file, {

@@ -1,27 +1,42 @@
-import React, { useState } from 'react'; // Removed useEffect, useCallback
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table";
+"use client";
+
+import React, { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, // Removed DialogTrigger
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Re-imported Card components
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, PlusCircle, MinusCircle } from 'lucide-react'; // Removed DollarSign, Link
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-// Removed cn import
+import { cn } from '@/lib/utils';
 
 interface TrackInfo {
   url: string;
   caption: string;
+  selected?: boolean; // Added for UI state management
 }
 
 interface Product {
@@ -31,7 +46,20 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string | null;
-  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
+  track_urls?: TrackInfo[] | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ProductFormState {
+  id?: string;
+  title: string;
+  description: string;
+  price: string;
+  currency: string;
+  image_url: string;
+  track_urls: TrackInfo[];
   is_active: boolean;
 }
 
@@ -39,324 +67,480 @@ const ProductManager: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [newTrackUrl, setNewTrackUrl] = useState('');
-  const [newTrackCaption, setNewTrackCaption] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormState>({
+    title: '',
+    description: '',
+    price: '',
+    currency: 'AUD',
+    image_url: '',
+    track_urls: [],
+    is_active: true,
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const fetchProducts = async (): Promise<Product[]> => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('title', { ascending: true });
-    if (error) throw error;
-    return data;
+  // Helper to truncate URL for display
+  const truncateUrl = (url: string, maxLength: number = 40) => {
+    if (url.length <= maxLength) return url;
+    const start = url.substring(0, maxLength / 2 - 2);
+    const end = url.substring(url.length - maxLength / 2 + 2);
+    return `${start}...${end}`;
   };
 
-  const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
-    queryKey: ['products'],
-    queryFn: fetchProducts,
-  });
-
-  const addProductMutation = useMutation<Product, Error, Omit<Product, 'id'>>({
-    mutationFn: async (newProduct) => {
+  // Fetch all products
+  const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
+    queryKey: ['shopProducts'],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .insert(newProduct)
-        .select()
-        .single();
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Mutation for updating a product
+  const updateProductMutation = useMutation({
+    mutationFn: async (updatedProduct: ProductFormState) => {
+      const { id, track_urls, ...fieldsToUpdate } = updatedProduct;
+      
+      // Filter out unselected tracks and remove the 'selected' property for DB storage
+      const tracksToSave = track_urls
+        .filter(track => track.selected)
+        .map(({ selected, ...rest }) => rest);
+
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          ...fieldsToUpdate,
+          price: parseFloat(fieldsToUpdate.price),
+          track_urls: tracksToSave, // Save filtered tracks
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select();
+      
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: "Product Added", description: "New product created successfully." });
-      setIsDialogOpen(false);
-      setEditingProduct(null);
-    },
-    onError: (err) => {
-      toast({ title: "Error", description: `Failed to add product: ${err.message}`, variant: "destructive" });
-    },
-  });
-
-  const updateProductMutation = useMutation<Product, Error, Product>({
-    mutationFn: async (updatedProduct) => {
-      const { data, error } = await supabase
-        .from('products')
-        .update(updatedProduct)
-        .eq('id', updatedProduct.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast({ title: "Product Updated", description: "Product details saved successfully." });
-      setIsDialogOpen(false);
-      setEditingProduct(null);
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      setEditDialogOpen(false);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error", description: `Failed to update product: ${err.message}`, variant: "destructive" });
-    },
+    }
   });
 
-  const deleteProductMutation = useMutation<void, Error, string>({
-    mutationFn: async (id) => {
+  // Mutation for deleting a product
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: string) => {
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', id);
+        .eq('id', productId);
+      
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: "Product Deleted", description: "Product removed successfully." });
+      toast({ title: "Product Deleted", description: "Product has been permanently removed." });
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      setDeleteDialogOpen(false);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast({ title: "Error", description: `Failed to delete product: ${err.message}`, variant: "destructive" });
-    },
+    }
   });
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setIsDialogOpen(true);
+  const openEditDialog = (product: Product) => {
+    setCurrentProduct(product);
+    setProductForm({
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      price: product.price.toFixed(2),
+      currency: product.currency,
+      image_url: product.image_url || '',
+      // Map existing tracks to include 'selected: true' for the UI
+      track_urls: product.track_urls?.map(track => ({ ...track, selected: true })) || [],
+      is_active: product.is_active,
+    });
+    setFormErrors({});
+    setEditDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-      deleteProductMutation.mutate(id);
-    }
+  const openDeleteDialog = (product: Product) => {
+    setCurrentProduct(product);
+    setDeleteDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingProduct) {
-      if (!editingProduct.title || !editingProduct.description || !editingProduct.price || !editingProduct.currency) {
-        toast({ title: "Validation Error", description: "Please fill in all required fields.", variant: "destructive" });
-        return;
-      }
-      if (editingProduct.id) {
-        updateProductMutation.mutate(editingProduct);
-      } else {
-        addProductMutation.mutate(editingProduct);
-      }
-    }
-  };
-
-  const handleAddTrack = () => {
-    if (editingProduct && newTrackUrl && newTrackCaption) {
-      const updatedTracks = [...(editingProduct.track_urls || []), { url: newTrackUrl, caption: newTrackCaption }];
-      setEditingProduct({ ...editingProduct, track_urls: updatedTracks });
-      setNewTrackUrl('');
-      setNewTrackCaption('');
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      setProductForm(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
     } else {
-      toast({ title: "Validation Error", description: "Please provide both URL and caption for the track.", variant: "destructive" });
+      setProductForm(prev => ({ ...prev, [name]: value }));
+    }
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleTrackChange = (index: number, field: keyof TrackInfo, value: string | boolean) => {
+    const newTrackUrls = [...productForm.track_urls];
+    if (field === 'selected') {
+      newTrackUrls[index] = { ...newTrackUrls[index], selected: value as boolean };
+    } else {
+      newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
+    }
+    setProductForm(prev => ({ ...prev, track_urls: newTrackUrls }));
+  };
+
+  const addTrackUrl = () => {
+    setProductForm(prev => ({
+      ...prev,
+      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }] // Default to selected
+    }));
+  };
+
+  const removeTrackUrl = (index: number) => {
+    setProductForm(prev => ({
+      ...prev,
+      track_urls: prev.track_urls.filter((_, i) => i !== index)
+    }));
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!productForm.title.trim()) errors.title = 'Title is required.';
+    if (!productForm.description.trim()) errors.description = 'Description is required.';
+    if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
+    if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
+    
+    // Validate only selected tracks
+    productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
+      if (!track.url.trim()) {
+        errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
+      }
+      if (!track.caption.trim()) {
+        errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`;
+      }
+    });
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdateProduct = () => {
+    if (!validateForm()) {
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive" });
+      return;
+    }
+    if (currentProduct) {
+      updateProductMutation.mutate(productForm);
     }
   };
 
-  const handleRemoveTrack = (indexToRemove: number) => {
-    if (editingProduct) {
-      const updatedTracks = editingProduct.track_urls?.filter((_, index) => index !== indexToRemove) || [];
-      setEditingProduct({ ...editingProduct, track_urls: updatedTracks });
+  const handleDeleteProduct = () => {
+    if (currentProduct?.id) {
+      deleteProductMutation.mutate(currentProduct.id);
     }
   };
 
-  if (isLoading) {
+  if (isError) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-        <p className="ml-4 text-lg text-gray-600">Loading products...</p>
+      <div className="container mx-auto py-8">
+        <ErrorDisplay error={fetchError} title="Failed to Load Shop Products" />
       </div>
     );
   }
 
-  if (isError) {
-    return <ErrorDisplay message={error?.message || "Failed to load products."} />;
-  }
-
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg bg-white">
       <CardHeader>
-        <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-          <span className="flex items-center">
-            <Store className="mr-2" />
-            Product Manager
-          </span>
-          <Button onClick={() => { setEditingProduct({ id: '', title: '', description: '', price: 0, currency: 'AUD', is_active: true, track_urls: [] }); setIsDialogOpen(true); }} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
-          </Button>
+        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+          <Store className="mr-2 h-5 w-5" />
+          Manage Shop Products
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Active</TableHead>
-                <TableHead>Tracks</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products?.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.title}</TableCell>
-                  <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">{product.description}</TableCell>
-                  <TableCell>{product.currency} {product.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge variant={product.is_active ? "default" : "destructive"} className={product.is_active ? "bg-green-500" : "bg-red-500"}>
-                      {product.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {product.track_urls && product.track_urls.length > 0 ? (
-                      <ul className="list-disc list-inside text-sm text-gray-600">
-                        {product.track_urls.map((track, index) => (
-                          <li key={index} className="truncate">{track.caption}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="text-gray-500 text-sm">No tracks</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(product)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(product.id)} className="text-red-600">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+        <p className="text-sm text-gray-600 mb-4">
+          Edit or delete existing products in your shop.
+        </p>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-48">
+            <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
+            <p className="ml-3 text-lg text-gray-600">Loading products...</p>
+          </div>
+        ) : products && products.length > 0 ? (
+          <div className="border rounded-md overflow-hidden">
+            <Table>
+              <TableHeader className="bg-[#D1AAF2]/20">
+                <TableRow>
+                  <TableHead className="w-[200px]">Title</TableHead>
+                  <TableHead className="w-[100px]">Price</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead>Tracks</TableHead>
+                  <TableHead className="text-right w-[150px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.title}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                        {product.currency} {product.price.toFixed(2)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={product.is_active ? "default" : "secondary"} className={cn(product.is_active ? "bg-green-500" : "bg-gray-400")}>
+                        {product.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {product.track_urls && product.track_urls.length > 0 ? (
+                        <div className="flex flex-col space-y-1">
+                          {product.track_urls.map((track, index) => (
+                            <a key={index} href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
+                              <Link className="h-3 w-3 mr-1 flex-shrink-0" />
+                              {track.caption || truncateUrl(track.url)}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-sm">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button size="sm" variant="outline" onClick={() => openEditDialog(product)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(product)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Store className="mx-auto h-16 w-16 text-gray-300" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900">No Products in Shop</h3>
+            <p className="mt-1 text-gray-500">
+              Add products using the "Repurpose Tracks" section above or manually.
+            </p>
+          </div>
+        )}
       </CardContent>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+      {/* Edit Product Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg"> {/* Adjusted max-width */}
           <DialogHeader>
-            <DialogTitle>{editingProduct?.id ? 'Edit Product' : 'Add New Product'}</DialogTitle>
-            <DialogDescription>
-              {editingProduct?.id ? 'Make changes to your product here.' : 'Create a new product to sell in the shop.'}
-            </DialogDescription>
+            <DialogTitle className="flex items-center">
+              <Edit className="mr-2 h-5 w-5" />
+              Edit Product: {currentProduct?.title}
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">
-                Title
-              </Label>
-              <Input
-                id="title"
-                value={editingProduct?.title || ''}
-                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, title: e.target.value } : null)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={editingProduct?.description || ''}
-                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, description: e.target.value } : null)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="price" className="text-right">
-                Price
-              </Label>
-              <Input
-                id="price"
-                type="number"
-                value={editingProduct?.price || 0}
-                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, price: parseFloat(e.target.value) || 0 } : null)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currency" className="text-right">
-                Currency
-              </Label>
-              <Input
-                id="currency"
-                value={editingProduct?.currency || 'AUD'}
-                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, currency: e.target.value } : null)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="image_url" className="text-right">
-                Image URL
-              </Label>
-              <Input
-                id="image_url"
-                value={editingProduct?.image_url || ''}
-                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, image_url: e.target.value } : null)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="is_active" className="text-right">
-                Active
-              </Label>
-              <Checkbox
-                id="is_active"
-                checked={editingProduct?.is_active || false}
-                onCheckedChange={(checked) => setEditingProduct(prev => prev ? { ...prev, is_active: checked as boolean } : null)}
-                className="col-span-3"
-              />
-            </div>
-
-            {/* Track URLs Section */}
-            <div className="col-span-4 border-t pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-2">Tracks</h3>
-              {editingProduct?.track_urls?.map((track, index) => (
-                <div key={index} className="flex items-center space-x-2 mb-2">
-                  <Input value={track.caption} readOnly className="flex-1" />
-                  <Input value={track.url} readOnly className="flex-1" />
-                  <Button variant="destructive" size="icon" onClick={() => handleRemoveTrack(index)}>
-                    <MinusCircle className="h-4 w-4" />
+          {currentProduct && (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="edit-title">Product Title</Label>
+                <Input
+                  id="edit-title"
+                  name="title"
+                  value={productForm.title}
+                  onChange={handleFormChange}
+                  className={cn("mt-1", formErrors.title && "border-red-500")}
+                />
+                {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  name="description"
+                  value={productForm.description}
+                  onChange={handleFormChange}
+                  rows={4}
+                  className={cn("mt-1", formErrors.description && "border-red-500")}
+                />
+                {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-price">Price</Label>
+                  <Input
+                    id="edit-price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    value={productForm.price}
+                    onChange={handleFormChange}
+                    className={cn("mt-1", formErrors.price && "border-red-500")}
+                  />
+                  {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="edit-currency">Currency</Label>
+                  <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Multiple Track URLs Section */}
+              <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Product Tracks</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
+                    <PlusCircle className="h-4 w-4 mr-2" /> Add Track
                   </Button>
                 </div>
-              ))}
-              <div className="flex items-center space-x-2 mt-4">
+                {productForm.track_urls.length === 0 && (
+                  <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"> {/* Adjusted grid for narrower cards */}
+                  {productForm.track_urls.map((track, index) => (
+                    <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm"> {/* Card for each track */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-track-selected-${index}`}
+                            checked={track.selected}
+                            onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
+                          />
+                          <Label htmlFor={`edit-track-selected-${index}`} className="font-semibold text-sm">
+                            Track {index + 1}
+                          </Label>
+                        </div>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
+                          <MinusCircle className="h-4 w-4" /> Remove
+                        </Button>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor={`edit-track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
+                        <a 
+                          href={track.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block text-blue-600 hover:underline text-sm truncate mt-1"
+                        >
+                          <Link className="h-3 w-3 mr-1 inline-block" />
+                          {truncateUrl(track.url, 30)} {/* Truncate URL for display */}
+                        </a>
+                        {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor={`edit-track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
+                        <Input
+                          id={`edit-track-caption-${index}`}
+                          name={`track_urls[${index}].caption`}
+                          value={track.caption}
+                          onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
+                          placeholder="Track Caption (e.g., Main Mix, Instrumental)"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                        />
+                        {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-image-url">Image URL (optional)</Label>
                 <Input
-                  placeholder="Track Caption"
-                  value={newTrackCaption}
-                  onChange={(e) => setNewTrackCaption(e.target.value)}
-                  className="flex-1"
+                  id="edit-image-url"
+                  name="image_url"
+                  value={productForm.image_url}
+                  onChange={handleFormChange}
+                  className="mt-1"
                 />
-                <Input
-                  placeholder="Track URL"
-                  value={newTrackUrl}
-                  onChange={(e) => setNewTrackUrl(e.target.value)}
-                  className="flex-1"
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-is-active"
+                  name="is_active"
+                  checked={productForm.is_active}
+                  onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
                 />
-                <Button onClick={handleAddTrack} size="icon">
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
+                <Label htmlFor="edit-is-active">Active in Shop</Label>
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={addProductMutation.isPending || updateProductMutation.isPending}>
-              {addProductMutation.isPending || updateProductMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateProduct}
+              disabled={updateProductMutation.isPending}
+              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+            >
+              {updateProductMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
               ) : (
                 'Save Changes'
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Product Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <Trash2 className="mr-2 h-5 w-5 text-red-600" />
+              Confirm Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{currentProduct?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteProduct}
+              disabled={deleteProductMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteProductMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

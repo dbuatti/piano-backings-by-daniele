@@ -1,107 +1,153 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import ErrorDisplay from '@/components/ErrorDisplay';
 
-const GmailOAuthCallback: React.FC = () => {
+const GmailOAuthCallback = () => {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Processing Gmail authentication...');
+  const [status, setStatus] = useState('Processing OAuth callback...');
+  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          throw new Error(`Session error: ${sessionError.message}`);
-        }
-
-        if (!session) {
-          throw new Error('No active session found after OAuth callback.');
-        }
-
-        // Verify if the user is an admin
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (!adminEmails.includes(session.user!.email!)) { // Added non-null assertion
-          throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
-        }
-
-        // Exchange the code for a refresh token and store it securely
-        const { data, error: tokenError } = await supabase.functions.invoke('exchange-gmail-token', {
-          body: { access_token: session.provider_token },
-        });
-
-        if (tokenError) {
-          throw new Error(`Token exchange failed: ${tokenError.message}`);
-        }
-
-        // const result = await response.json(); // Removed as it was unused
-
-        setStatus('success');
-        setMessage('Gmail account successfully connected!');
+    const handleOAuthCallback = async () => {
+      const code = searchParams.get('code');
+      const errorParam = searchParams.get('error');
+      
+      if (errorParam) {
+        const errorMessage = errorParam === 'access_denied' 
+          ? 'Access denied. You need to grant permission to connect your Gmail account.' 
+          : errorParam;
+        
+        setStatus(`OAuth error: ${errorMessage}`);
+        setError(new Error(errorMessage));
         toast({
-          title: "Gmail Connected",
-          description: "Your Gmail account is now connected for sending emails.",
-          variant: "default",
-        });
-        setTimeout(() => navigate('/admin?tab=app-settings'), 2000); // Redirect to admin settings
-      } catch (error: any) {
-        console.error('Gmail OAuth Callback Error:', error);
-        setStatus('error');
-        setMessage(`Failed to connect Gmail: ${error.message}`);
-        toast({
-          title: "Gmail Connection Failed",
-          description: error.message,
+          title: "OAuth Error",
+          description: errorMessage,
           variant: "destructive",
         });
-        setTimeout(() => navigate('/admin?tab=app-settings'), 3000); // Redirect to admin settings
+        return;
+      }
+      
+      if (!code) {
+        const errorMessage = 'No authorization code found in callback';
+        setStatus(errorMessage);
+        setError(new Error(errorMessage));
+        toast({
+          title: "OAuth Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      try {
+        setStatus('Exchanging authorization code for tokens...');
+        
+        // Get current session for auth token (this is the Supabase user)
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          throw new Error('You must be logged into the application as an admin to complete this OAuth flow');
+        }
+        
+        // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        if (!adminEmails.includes(session.user.email)) {
+          throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
+        }
+        
+        // Call our Edge Function to exchange the code for tokens
+        const response = await fetch(
+          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/gmail-oauth-callback`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ code })
+          }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to exchange code for tokens');
+        }
+        
+        const result = await response.json();
+        
+        setStatus('OAuth completed successfully!');
+        toast({
+          title: "Success",
+          description: "Gmail OAuth completed successfully. You can now send emails.",
+        });
+        
+        // Redirect to admin dashboard after a short delay
+        setTimeout(() => {
+          navigate('/admin');
+        }, 2000);
+      } catch (err: any) {
+        console.error('Error in OAuth callback:', err);
+        setStatus(`Error: ${err.message}`);
+        setError(err);
+        toast({
+          title: "Error",
+          description: `Failed to complete OAuth: ${err.message}`,
+          variant: "destructive",
+        });
       }
     };
-
-    handleCallback();
-  }, [navigate, toast]);
+    
+    handleOAuthCallback();
+  }, [searchParams, navigate, toast]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <div className="flex-grow flex items-center justify-center w-full px-4">
-        <Card className="w-full max-w-md mx-auto shadow-lg text-center">
-          <CardHeader className="bg-[#1C0357] text-white">
-            <CardTitle className="text-2xl">Gmail OAuth Status</CardTitle>
-            <CardDescription className="text-gray-200">Connecting your Gmail account...</CardDescription>
+      
+      <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-[#1C0357]">Gmail OAuth Callback</h1>
+          <p className="text-lg text-[#1C0357]/90">Completing Gmail authorization</p>
+        </div>
+        
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1C0357]">Processing Authorization</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            {status === 'loading' && (
-              <div className="flex flex-col items-center">
-                <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
-                <p className="text-lg text-gray-700">{message}</p>
-              </div>
-            )}
-            {status === 'success' && (
-              <div className="flex flex-col items-center">
-                <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                <p className="text-lg text-green-700">{message}</p>
-              </div>
-            )}
-            {status === 'error' && (
-              <div className="flex flex-col items-center">
-                <XCircle className="h-12 w-12 text-red-500 mb-4" />
-                <p className="text-lg text-red-700">{message}</p>
-                <Button onClick={() => navigate('/admin?tab=app-settings')} className="mt-4 bg-red-600 hover:bg-red-700">
-                  Go to App Settings
-                </Button>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1C0357] mb-4"></div>
+              <p className="text-lg">{status}</p>
+            </div>
+            
+            {error && (
+              <div className="mt-6">
+                <ErrorDisplay error={error} title="OAuth Error" />
               </div>
             )}
           </CardContent>
         </Card>
+        
+        <div className="mt-8 text-center">
+          <Button 
+            onClick={() => navigate('/admin')}
+            variant="outline"
+            className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10"
+          >
+            Return to Admin Dashboard
+          </Button>
+        </div>
+        
+        <MadeWithDyad />
       </div>
-      <MadeWithDyad />
     </div>
   );
 };
