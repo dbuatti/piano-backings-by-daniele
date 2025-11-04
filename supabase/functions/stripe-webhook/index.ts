@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
 // @ts-ignore
-import { generateProductDeliveryEmail, Product } from './emailGenerator.ts'; // Updated import path
+import { generateProductDeliveryEmail, Product } from './emailGenerator.ts'; // Corrected import path
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
