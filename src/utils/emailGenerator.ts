@@ -82,10 +82,37 @@ const textToHtml = (text: string) => {
          `</div>`;
 };
 
+// Helper to generate track list HTML
+const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
+  if (!trackUrls || trackUrls.length === 0) return '';
+  
+  const listItems = trackUrls.map(track => `
+    <li style="margin-bottom: 5px;">
+      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
+        ${track.caption}
+      </a>
+    </li>
+  `).join('');
+
+  return `
+    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Completed Track(s):</p>
+      <ul style="list-style: none; padding: 0; margin-top: 10px;">
+        ${listItems}
+      </ul>
+      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+        Click on the track name to download.
+      </p>
+    </div>
+  `;
+};
+
+
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback completion template");
@@ -106,19 +133,20 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     - Backing type(s): ${request.backing_type.join(', ') || 'N/A'}
     - Special requests: ${request.special_requests || 'None'}
     - Client Portal Link: ${clientPortalLink}
+    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that immediately tells the client their track is ready.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
-    4. Provide a prominent call-to-action button to "View Your Track Details" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
-    5. Proactively offer adjustments or revisions to ensure satisfaction.
-    6. Express gratitude for their business.
-    7. Keep the tone professional yet friendly, showing genuine care for their success.
-    8. Never use "Break a leg" - end with "Warmly" instead.
-    9. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    10. Do NOT include pricing information in this completion email.
-    11. Do NOT include a direct download button or link in the email. All track access should be via the client portal.
+    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
+    5. Provide a prominent call-to-action button to "View Your Track Details" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
+    6. Proactively offer adjustments or revisions to ensure satisfaction.
+    7. Express gratitude for their business.
+    8. Keep the tone professional yet friendly, showing genuine care for their success.
+    9. Never use "Break a leg" - end with "Warmly" instead.
+    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    11. Do NOT include pricing information in this completion email.
     12. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
@@ -150,9 +178,11 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = generateTrackListHtml(request.track_urls);
 
   const trackAccessSection = `
     <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
+    ${trackListHtml}
     <p style="margin-top: 20px;">You can view your request and access your track on your dedicated client page:</p>
     <p style="text-align: center; margin: 30px 0;">
       <a href="${clientPortalLink}" 
@@ -191,6 +221,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback payment reminder template");
@@ -209,19 +240,22 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     - Musical/Artist: ${request.musical_or_artist}
     - Estimated cost: $${minCost} - $${maxCost}
     - Client Portal Link: ${clientPortalLink}
+    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
+    - Request Status: ${request.status}
     
     Instructions for crafting the email:
     1. Create a clear subject line indicating it's a payment reminder for their track.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Clearly state that it's a friendly reminder for their backing track request.
-    4. Prominently display the estimated cost for their track as a range.
-    5. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
-    6. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
-    7. Offer assistance if they have any questions.
-    8. Express gratitude for their business.
-    9. Keep the tone professional yet friendly.
-    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    11. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
+    4. If 'Request Status' is 'completed' AND 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently.
+    5. Prominently display the estimated cost for their track as a range.
+    6. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
+    7. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
+    8. Offer assistance if they have any questions.
+    9. Express gratitude for their business.
+    10. Keep the tone professional yet friendly.
+    11. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    12. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -256,6 +290,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
   return {
     subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
@@ -264,6 +299,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
         <p>Hi ${firstName},</p>
         <p>I hope you're having a good week!</p>
         <p>This is a friendly reminder regarding your recent piano backing track request for <strong>"${request.song_title}"</strong>.</p>
+        ${trackListHtml}
         <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
           The estimated cost for your track is: $${minCost} - $${maxCost}
         </p>
@@ -333,13 +369,14 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     - Special requests: ${request.special_requests || 'None'}
     - Estimated cost: $${minCost} - $${maxCost}
     - Client Portal Link: ${clientPortalLink}
+    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that clearly states the track is ready and includes payment information.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
-    4. Provide a prominent call-to-action button to "View Request & Make Payment" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
-    5. Do NOT include a direct download button or link in the email. All track access should be via the client portal.
+    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
+    5. Provide a prominent call-to-action button to "View Request & Make Payment" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
     6. Clearly state the estimated cost for their track as a range.
     7. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
     8. Proactively offer adjustments or revisions to ensure satisfaction.
@@ -382,9 +419,11 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = generateTrackListHtml(request.track_urls);
 
   const trackAccessSection = `
     <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
+    ${trackListHtml}
     <p style="margin-top: 20px;">You can view all your request details, including payment information, and access your track on your dedicated client page:</p>
     <p style="text-align: center; margin: 30px 0;">
       <a href="${clientPortalLink}" 
@@ -535,58 +574,4 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
       ${EMAIL_SIGNATURE_HTML}
     `
   };
-};
-
-// Helper functions for pricing (kept for fallback logic)
-const getBasePriceForType = (type: string) => {
-  switch (type) {
-    case 'full-song': return '30';
-    case 'audition-cut': return '15';
-    case 'note-bash': return '10';
-    default: return '20'; // Default if type is unknown
-  }
-};
-
-const getServicePrice = (service: string) => {
-  switch (service) {
-    case 'rush-order': return '10';
-    case 'complex-songs': return '7';
-    case 'additional-edits': return '5';
-    case 'exclusive-ownership': return '40';
-    default: return '0';
-  }
-};
-
-const calculateTotal = (backingTypes: string[], additionalServices: string[]) => {
-  let total = 0;
-  
-  // Add base price for each selected backing type
-  backingTypes.forEach(type => {
-    switch (type) {
-      case 'full-song': total += 30; break;
-      case 'audition-cut': total += 15; break;
-      case 'note-bash': total += 10; break;
-      default: total += 20;
-    }
-  });
-  
-  // Add additional service costs
-  additionalServices.forEach(service => {
-    switch (service) {
-      case 'rush-order':
-        total += 10;
-        break;
-      case 'complex-songs':
-        total += 7;
-        break;
-      case 'additional-edits':
-        total += 5;
-        break;
-      case 'exclusive-ownership':
-        total += 40;
-        break;
-    }
-  });
-  
-  return total.toFixed(2);
 };
