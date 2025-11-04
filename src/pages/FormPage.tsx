@@ -72,6 +72,7 @@ const FormPage = () => {
     trackType: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({}); // State for validation errors
+  const [consentChecked, setConsentChecked] = useState(false); // New state for consent checkbox
 
   // Check user session on component mount
   useEffect(() => {
@@ -217,6 +218,7 @@ const FormPage = () => {
       trackType: 'polished'
     });
     setErrors({}); // Clear any existing errors
+    setConsentChecked(true); // Also check consent for dummy data
     
     toast({
       title: "Sample Data Filled",
@@ -247,13 +249,14 @@ const FormPage = () => {
     if (!formData.trackType) newErrors.trackType = 'Track Type is required.';
     if (formData.backingType.length === 0) newErrors.backingType = 'At least one backing type is required.';
     if (!formData.sheetMusic) newErrors.sheetMusic = 'Sheet music is required. Please upload a PDF file.';
+    if (!consentChecked) newErrors.consent = 'You must agree to the terms to submit your request.'; // New consent validation
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields and agree to the terms.",
         variant: "destructive",
       });
       return;
@@ -441,6 +444,7 @@ const FormPage = () => {
         trackType: ''
       });
       setErrors({}); // Clear any existing errors
+      setConsentChecked(false); // Clear consent checkbox
       
       // Show account prompt if user is not logged in
       if (!session) {
@@ -1163,10 +1167,38 @@ const FormPage = () => {
                 </div>
               </div>
 
+              {/* Section 7: Consent */}
+              <div className="pb-4">
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">7</span>
+                  Consent
+                </h2>
+                <div className={cn(
+                  "flex items-start space-x-2 p-4 border rounded-md bg-gray-50",
+                  errors.consent && "border-red-500 bg-red-50"
+                )}>
+                  <Checkbox
+                    id="consent-checkbox"
+                    checked={consentChecked}
+                    onCheckedChange={(checked) => {
+                      setConsentChecked(checked as boolean);
+                      setErrors(prev => ({ ...prev, consent: '' })); // Clear error on change
+                    }}
+                    className="mt-1"
+                    disabled={isHolidayModeActive}
+                  />
+                  <Label htmlFor="consent-checkbox" className="text-sm leading-relaxed cursor-pointer">
+                    I understand that to keep costs low and tracks accessible, Piano Backings by Daniele may sell this track to other artists and/or upload it to public platforms like YouTube.
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                </div>
+                {errors.consent && <p className="text-red-500 text-xs mt-1">{errors.consent}</p>}
+              </div>
+
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting || isHolidayModeActive}
+                  disabled={isSubmitting || isHolidayModeActive || !consentChecked}
                   className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Request'}
