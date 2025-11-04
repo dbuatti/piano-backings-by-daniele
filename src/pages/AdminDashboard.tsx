@@ -12,6 +12,7 @@ import DashboardTabContent from '@/components/admin/DashboardTabContent';
 import UsersAndDataTabContent from '@/components/admin/UsersAndDataTabContent';
 import SystemAndConfigTabContent from '@/components/admin/SystemAndConfigTabContent';
 import DevelopmentAndTestingTabContent from '@/components/admin/DevelopmentAndTestingTabContent';
+import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop'; // Import the new component
 
 // Admin Components (now mostly consumed by new tab content components)
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
@@ -23,7 +24,8 @@ import {
   LayoutDashboard, // Icon for Dashboard
   Users, // Icon for Users & Data
   Settings, // Icon for System & Configuration
-  Wrench // Icon for Development & Testing
+  Wrench, // Icon for Development & Testing
+  ShoppingCart // Icon for Shop Management
 } from 'lucide-react';
 
 // Custom Hooks (still used by DashboardTabContent)
@@ -295,9 +297,12 @@ const AdminDashboard = () => {
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5"> {/* Increased grid columns to 5 */}
               <TabsTrigger value="dashboard" className="flex items-center">
                 <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="shop-management" className="flex items-center"> {/* New Tab */}
+                <ShoppingCart className="mr-2 h-4 w-4" /> Shop Management
               </TabsTrigger>
               <TabsTrigger value="users-data" className="flex items-center">
                 <Users className="mr-2 h-4 w-4" /> Users & Data
@@ -345,6 +350,11 @@ const AdminDashboard = () => {
                 openUploadPlatformsDialog={openUploadPlatformsDialog}
                 onDirectFileUpload={handleDirectFileUpload}
               />
+            </TabsContent>
+
+            {/* New Shop Management Tab Content */}
+            <TabsContent value="shop-management" className="mt-6">
+              <RepurposeTrackToShop />
             </TabsContent>
 
             {/* Users & Data Tab Content */}
