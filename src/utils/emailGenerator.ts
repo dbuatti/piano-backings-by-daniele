@@ -107,6 +107,31 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   `;
 };
 
+// Helper to generate track list HTML for products
+const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
+  if (!trackUrls || trackUrls.length === 0) return '';
+  
+  const listItems = trackUrls.map(track => `
+    <li style="margin-bottom: 5px;">
+      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
+        ${track.caption}
+      </a>
+    </li>
+  `).join('');
+
+  return `
+    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
+      <ul style="list-style: none; padding: 0; margin-top: 10px;">
+        ${listItems}
+      </ul>
+      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+        Click on the track name to download.
+      </p>
+    </div>
+  `;
+};
+
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -139,7 +164,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     1. Create a compelling subject line that immediately tells the client their track is ready.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
-    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
+    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently.
     5. Provide a prominent call-to-action button to "View Your Track Details" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
     6. Proactively offer adjustments or revisions to ensure satisfaction.
     7. Express gratitude for their business.
@@ -222,6 +247,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback payment reminder template");
