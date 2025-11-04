@@ -113,7 +113,7 @@ const UserDashboard = () => {
         throw new Error('No target user ID or email provided for fetching purchases.');
       }
 
-      const { data: ordersData, error: ordersError } = ordersQuery;
+      const { data: ordersData, error: ordersError } = await ordersQuery; // Fixed: Await the query
 
       if (ordersError) throw ordersError;
 

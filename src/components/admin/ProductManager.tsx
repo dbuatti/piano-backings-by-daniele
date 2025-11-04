@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge';
+import { Badge } from "@/components/ui/badge"; // Fixed: Changed single quote to double quote
 import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
