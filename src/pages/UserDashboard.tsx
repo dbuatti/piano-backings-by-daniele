@@ -102,7 +102,8 @@ const UserDashboard = () => {
     setLoadingPurchases(true);
     try {
       // Explicitly specify the foreign key 'product_id' for embedding 'products'
-      let query = supabase.from('orders').select('*, product_id!products(title, description, track_urls)').order('created_at', { ascending: false });
+      // Changed from product_id!products to just products
+      let query = supabase.from('orders').select('*, products(title, description, track_urls)').order('created_at', { ascending: false });
 
       if (targetUserId) {
         query = query.eq('user_id', targetUserId);
