@@ -7,7 +7,7 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download } from 'lucide-react'; // Added Download icon
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client'; // Import constants
 
@@ -44,6 +44,27 @@ const PurchaseConfirmation: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<any>(null);
   const [userSession, setUserSession] = useState<any>(null);
+
+  const downloadTrack = (url: string, filename: string = 'download') => {
+    if (url) {
+      const link = document.createElement('a');
+      // Append ?download=true to force download for Supabase Storage URLs
+      const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
+        ? `${url}?download=true`
+        : url;
+      link.href = downloadUrl;
+      link.setAttribute('download', filename); // Force download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast({
+        title: "Track Not Available",
+        description: "This track is not yet available for download.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchConfirmationDetails = async () => {
@@ -191,6 +212,27 @@ const PurchaseConfirmation: React.FC = () => {
                     Please check your spam or junk folder if you don't see it in your inbox within a few minutes.
                   </p>
                 </div>
+
+                {order.products?.track_urls && order.products.track_urls.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6 space-y-4">
+                    <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
+                      <Download className="mr-2 h-5 w-5" />
+                      Your Downloadable Tracks
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                      {order.products.track_urls.map((track, index) => (
+                        <Button 
+                          key={index}
+                          size="lg" 
+                          className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                          onClick={() => downloadTrack(track.url, track.caption || `${order.products?.title || 'track'}.mp3`)}
+                        >
+                          <Download className="w-5 h-5 mr-2" /> Download {track.caption ? `(${track.caption})` : ''}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-200 pt-6 space-y-4">
                   <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">

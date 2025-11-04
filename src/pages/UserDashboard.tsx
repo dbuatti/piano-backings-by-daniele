@@ -312,7 +312,11 @@ const UserDashboard = () => {
   const downloadTrack = (url: string, filename: string = 'download') => {
     if (url) {
       const link = document.createElement('a');
-      link.href = url;
+      // Append ?download=true to force download for Supabase Storage URLs
+      const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
+        ? `${url}?download=true`
+        : url;
+      link.href = downloadUrl;
       link.setAttribute('download', filename); // Force download
       document.body.appendChild(link);
       link.click();
