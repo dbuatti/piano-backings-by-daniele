@@ -56,7 +56,17 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const handlePreviewPdf = () => {
     if (product.sheet_music_url) {
-      window.open(product.sheet_music_url, '_blank');
+      // Create a de-identified filename
+      const deidentifiedFilename = `${product.title} - ${product.artist_name || 'Sheet Music'}.pdf`;
+      let previewUrl = product.sheet_music_url;
+
+      // If it's a Supabase Storage URL, append a download parameter to suggest the de-identified filename
+      if (product.sheet_music_url.includes('supabase.co/storage')) {
+        const baseUrl = product.sheet_music_url.split('?')[0]; // Remove any existing query parameters
+        previewUrl = `${baseUrl}?download=${encodeURIComponent(deidentifiedFilename)}`;
+      }
+      
+      window.open(previewUrl, '_blank');
     }
   };
 
