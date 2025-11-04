@@ -67,6 +67,7 @@ const AdminDashboard = () => {
   const {
     uploadTrackId, setUploadTrackId,
     uploadFile, handleFileChange,
+    uploadCaption, setUploadCaption, // Destructure new props
     uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen,
     selectedRequestForPlatforms, setSelectedRequestForPlatforms,
     platforms, setPlatforms,
@@ -379,6 +380,8 @@ const AdminDashboard = () => {
             uploadTrackId={uploadTrackId}
             uploadFile={uploadFile}
             onFileChange={handleFileChange}
+            uploadCaption={uploadCaption} // Pass the new prop
+            setUploadCaption={setUploadCaption} // Pass the new prop setter
             onFileUpload={handleFileUpload}
             existingTrackUrls={existingTrackUrls} // Pass existing tracks
             onRemoveTrack={handleRemoveTrack} // Pass remove track handler

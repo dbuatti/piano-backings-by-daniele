@@ -19,6 +19,8 @@ interface UploadTrackDialogProps {
   uploadTrackId: string | null;
   uploadFile: File | null;
   onFileChange: (file: File | null) => void;
+  uploadCaption: string; // New prop for upload caption
+  setUploadCaption: (caption: string) => void; // New prop setter for upload caption
   onFileUpload: () => void;
   existingTrackUrls: TrackInfo[]; // Changed to array of TrackInfo objects
   onRemoveTrack: (urlToRemove: string) => void;
@@ -31,6 +33,8 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
   uploadTrackId,
   uploadFile,
   onFileChange,
+  uploadCaption, // Destructure new prop
+  setUploadCaption, // Destructure new prop
   onFileUpload,
   existingTrackUrls,
   onRemoveTrack,
@@ -132,13 +136,28 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
             onChange={onFileChange}
             note="Drag and drop your MP3 file here, or click to browse. You can upload multiple tracks per request."
           />
+
+          {uploadFile && (
+            <div>
+              <Label htmlFor="upload-caption">Track Caption (for download filename)</Label>
+              <Input
+                id="upload-caption"
+                value={uploadCaption}
+                onChange={(e) => setUploadCaption(e.target.value)}
+                placeholder="e.g., Defying Gravity - Full Mix"
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">This will be the suggested filename when users download the track.</p>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button 
               onClick={onFileUpload}
-              disabled={!uploadFile}
+              disabled={!uploadFile || !uploadCaption.trim()} // Disable if no file or no caption
               className="bg-[#1C0357] hover:bg-[#1C0357]/90"
             >
               Upload Track

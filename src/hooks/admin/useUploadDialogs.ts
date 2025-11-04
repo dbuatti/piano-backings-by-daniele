@@ -38,6 +38,7 @@ interface UploadPlatformsState {
 export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.Dispatch<React.SetStateAction<BackingRequest[]>>) => {
   const [uploadTrackId, setUploadTrackId] = useState<string | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCaption, setUploadCaption] = useState<string>(''); // New state for upload caption
   const [uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen] = useState(false);
   const [selectedRequestForPlatforms, setSelectedRequestForPlatforms] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<UploadPlatformsState>({
@@ -46,10 +47,9 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
   const { toast } = useToast();
 
   // Core upload logic, now reusable for both dialog and direct upload
-  const performUpload = async (id: string, file: File) => {
+  const performUpload = async (id: string, file: File, caption: string) => {
     try {
       const fileExt = file.name.split('.').pop();
-      const originalFileName = file.name; // Capture the original file name here
       const uniqueFileName = `tracks/${id}-${Date.now()}.${fileExt}`; // Unique file name for storage
       
       const { data: uploadData, error: uploadError } = await supabase
@@ -81,7 +81,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
       }
 
       const existingTrackUrls: TrackInfo[] = currentRequest?.track_urls || [];
-      const newTrackInfo: TrackInfo = { url: publicUrl, caption: originalFileName }; // Use originalFileName for caption
+      const newTrackInfo: TrackInfo = { url: publicUrl, caption: caption }; // Use provided caption
       const newTrackUrls = [...existingTrackUrls, newTrackInfo]; // Append new TrackInfo object
 
       const { error: updateError } = await supabase
@@ -156,25 +156,36 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
 
   const handleUploadTrack = (id: string) => {
     setUploadTrackId(id);
+    setUploadCaption(''); // Reset caption when opening dialog
   };
 
   const handleFileChange = (file: File | null) => {
     setUploadFile(file);
+    if (file) {
+      // Suggest a default caption based on the file name, without extension
+      const fileNameWithoutExt = file.name.split('.').slice(0, -1).join('.');
+      setUploadCaption(fileNameWithoutExt);
+    } else {
+      setUploadCaption('');
+    }
   };
 
   // Function for dialog upload
   const handleFileUpload = async () => {
     if (!uploadTrackId || !uploadFile) return;
-    const success = await performUpload(uploadTrackId, uploadFile);
+    const success = await performUpload(uploadTrackId, uploadFile, uploadCaption);
     if (success) {
       setUploadTrackId(null);
       setUploadFile(null);
+      setUploadCaption(''); // Clear caption after successful upload
     }
   };
 
   // Function for direct drag-and-drop upload
   const handleDirectFileUpload = async (id: string, file: File) => {
-    await performUpload(id, file);
+    // For direct upload, use the filename without extension as default caption
+    const fileNameWithoutExt = file.name.split('.').slice(0, -1).join('.');
+    await performUpload(id, file, fileNameWithoutExt);
   };
 
   const openUploadPlatformsDialog = (id: string) => {
@@ -234,6 +245,7 @@ export const useUploadDialogs = (requests: BackingRequest[], setRequests: React.
   return {
     uploadTrackId, setUploadTrackId,
     uploadFile, handleFileChange,
+    uploadCaption, setUploadCaption, // Expose new caption state
     uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen,
     selectedRequestForPlatforms, setSelectedRequestForPlatforms,
     platforms, setPlatforms,
