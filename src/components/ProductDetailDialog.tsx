@@ -12,12 +12,7 @@ import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User,
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-
-// TrackInfo interface is now imported from helpers.ts
-// interface TrackInfo {
-//   url: string;
-//   caption: string | boolean | null | undefined; // Updated to be more robust
-// }
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface Product {
   id: string;
@@ -52,21 +47,28 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onBuyNow,
   isBuying,
 }) => {
+  const { toast } = useToast(); // Initialize useToast
   if (!product) return null;
 
   const handlePreviewPdf = () => {
     if (product.sheet_music_url) {
-      // Create a de-identified filename
       const deidentifiedFilename = `${product.title} - ${product.artist_name || 'Sheet Music'}.pdf`;
       let previewUrl = product.sheet_music_url;
 
-      // If it's a Supabase Storage URL, append a download parameter to suggest the de-identified filename
+      // Check if the URL is a Supabase Storage URL
       if (product.sheet_music_url.includes('supabase.co/storage')) {
         const baseUrl = product.sheet_music_url.split('?')[0]; // Remove any existing query parameters
         previewUrl = `${baseUrl}?download=${encodeURIComponent(deidentifiedFilename)}`;
+        window.open(previewUrl, '_blank');
+      } else {
+        // For external links (like Google Drive), we cannot control the filename
+        window.open(previewUrl, '_blank');
+        toast({
+          title: "External PDF Viewer",
+          description: "The PDF is hosted externally. The filename displayed in the new tab cannot be de-identified by this application.",
+          variant: "default",
+        });
       }
-      
-      window.open(previewUrl, '_blank');
     }
   };
 
