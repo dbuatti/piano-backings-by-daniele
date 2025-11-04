@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud } from 'lucide-react';
+import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
@@ -43,6 +43,8 @@ interface BackingRequest {
   additional_links?: string;
   track_purpose?: string; // Added for dynamic description
   additional_services?: string[]; // Added for dynamic description
+  sheet_music_url?: string; // Added for pre-filling
+  song_key?: string; // Added for pre-filling
 }
 
 interface Product {
@@ -61,7 +63,11 @@ interface ProductForm {
   is_active: boolean;
   artist_name: string;
   category: string;
-  vocal_ranges: string[]; // New field for vocal ranges
+  vocal_ranges: string[];
+  sheet_music_url: string; // New field
+  key_signature: string; // New field
+  show_sheet_music_url: boolean; // New field
+  show_key_signature: boolean; // New field
 }
 
 const RepurposeTrackToShop: React.FC = () => {
@@ -79,7 +85,11 @@ const RepurposeTrackToShop: React.FC = () => {
     is_active: true,
     artist_name: '',
     category: '',
-    vocal_ranges: [], // Initialize new field
+    vocal_ranges: [],
+    sheet_music_url: '', // Initialize new field
+    key_signature: '', // Initialize new field
+    show_sheet_music_url: true, // Default to true
+    show_key_signature: true, // Default to true
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -199,6 +209,10 @@ const RepurposeTrackToShop: React.FC = () => {
         artist_name: autoArtist, // Auto-populated artist name
         category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category
         vocal_ranges: [], // Initialize vocal ranges as empty
+        sheet_music_url: selectedRequest.sheet_music_url || '', // Pre-fill sheet music URL
+        key_signature: selectedRequest.song_key || '', // Pre-fill key signature
+        show_sheet_music_url: true, // Default to true
+        show_key_signature: true, // Default to true
       });
       setImageFile(null); // Clear image file when new request is selected
       setFormErrors({});
@@ -335,7 +349,8 @@ const RepurposeTrackToShop: React.FC = () => {
       setSelectedRequest(null); // Clear selection
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [], // Reset new fields
+        artist_name: '', category: '', vocal_ranges: [],
+        sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true,
       });
       setImageFile(null); // Clear image file
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
@@ -570,6 +585,58 @@ const RepurposeTrackToShop: React.FC = () => {
                         <Label htmlFor={`vocal-range-${range}`}>{range}</Label>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* New: Sheet Music URL and Key Signature */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sheet_music_url" className="flex items-center">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Sheet Music URL (PDF)
+                    </Label>
+                    <Input
+                      id="sheet_music_url"
+                      name="sheet_music_url"
+                      value={productForm.sheet_music_url}
+                      onChange={handleFormChange}
+                      placeholder="https://example.com/sheet-music.pdf"
+                      className={cn("mt-1", formErrors.sheet_music_url && "border-red-500")}
+                    />
+                    {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Checkbox
+                        id="show_sheet_music_url"
+                        name="show_sheet_music_url"
+                        checked={productForm.show_sheet_music_url}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_sheet_music_url: checked as boolean }))}
+                      />
+                      <Label htmlFor="show_sheet_music_url">Show PDF in Shop</Label>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="key_signature" className="flex items-center">
+                      <Key className="mr-2 h-4 w-4" />
+                      Key Signature
+                    </Label>
+                    <Input
+                      id="key_signature"
+                      name="key_signature"
+                      value={productForm.key_signature}
+                      onChange={handleFormChange}
+                      placeholder="e.g., C Major, A Minor"
+                      className={cn("mt-1", formErrors.key_signature && "border-red-500")}
+                    />
+                    {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Checkbox
+                        id="show_key_signature"
+                        name="show_key_signature"
+                        checked={productForm.show_key_signature}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_key_signature: checked as boolean }))}
+                      />
+                      <Label htmlFor="show_key_signature">Show Key in Shop</Label>
+                    </div>
                   </div>
                 </div>
                 

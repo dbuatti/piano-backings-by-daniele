@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag } from 'lucide-react'; // Added User and Tag icons
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key } from 'lucide-react'; // Added Key icon
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
@@ -24,7 +24,11 @@ interface Product {
   is_active: boolean;
   artist_name?: string;
   category?: string;
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
+  sheet_music_url?: string | null; // New field
+  key_signature?: string | null; // New field
+  show_sheet_music_url?: boolean; // New field
+  show_key_signature?: boolean; // New field
 }
 
 interface ProductCardProps {
@@ -65,8 +69,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           </p>
         )}
         {product.category && (
-          <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
+          <p className="text-xs text-gray-500 flex items-center mb-1 capitalize">
             <Tag className="h-3 w-3 mr-1" /> {product.category.replace('-', ' ')}
+          </p>
+        )}
+        {product.key_signature && product.show_key_signature && ( // Conditionally display key signature
+          <p className="text-xs text-gray-500 flex items-center mb-2">
+            <Key className="h-3 w-3 mr-1" /> {product.key_signature}
           </p>
         )}
         {product.vocal_ranges && product.vocal_ranges.length > 0 && (

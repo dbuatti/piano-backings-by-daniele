@@ -75,7 +75,7 @@ serve(async (req) => {
     // Fetch product details from Supabase
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .select('id, title, description, price, currency, image_url, vocal_ranges') // Added vocal_ranges
+      .select('id, title, description, price, currency, image_url, vocal_ranges, sheet_music_url, key_signature') // Added sheet_music_url and key_signature
       .eq('id', product_id)
       .single();
 
@@ -94,8 +94,10 @@ serve(async (req) => {
               name: product.title,
               description: product.description,
               images: product.image_url ? [product.image_url] : [],
-              metadata: { // Add vocal_ranges to product_data metadata
+              metadata: { // Add vocal_ranges, key_signature, sheet_music_url to product_data metadata
                 vocal_ranges: product.vocal_ranges ? product.vocal_ranges.join(', ') : 'N/A',
+                key_signature: product.key_signature || 'N/A',
+                sheet_music_url: product.sheet_music_url || 'N/A',
               },
             },
             unit_amount: Math.round(product.price * 100), // Stripe expects amount in cents

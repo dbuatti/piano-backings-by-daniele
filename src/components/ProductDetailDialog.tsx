@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag } from 'lucide-react'; // Added User and Tag icons
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag, Key, FileText } from 'lucide-react'; // Added Key and FileText icons
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
@@ -30,7 +30,11 @@ interface Product {
   is_active: boolean;
   artist_name?: string;
   category?: string;
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
+  sheet_music_url?: string | null; // New field
+  key_signature?: string | null; // New field
+  show_sheet_music_url?: boolean; // New field
+  show_key_signature?: boolean; // New field
 }
 
 interface ProductDetailDialogProps {
@@ -49,6 +53,12 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   isBuying,
 }) => {
   if (!product) return null;
+
+  const handlePreviewPdf = () => {
+    if (product.sheet_music_url) {
+      window.open(product.sheet_music_url, '_blank');
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -96,6 +106,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 <Tag className="h-4 w-4 mr-2" /> {product.category.replace('-', ' ')}
               </p>
             )}
+            {product.key_signature && product.show_key_signature && ( // Conditionally display key signature
+              <p className="text-md text-gray-600 flex items-center">
+                <Key className="h-4 w-4 mr-2" /> Key: {product.key_signature}
+              </p>
+            )}
             {product.vocal_ranges && product.vocal_ranges.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {product.vocal_ranges.map((range, index) => (
@@ -109,6 +124,18 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               {product.description}
             </DialogDescription>
           </DialogHeader>
+
+          {product.sheet_music_url && product.show_sheet_music_url && ( // Conditionally display PDF preview button
+            <div className="border-t pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handlePreviewPdf}
+                className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
+              >
+                <FileText className="h-4 w-4 mr-2" /> Preview Sheet Music (PDF)
+              </Button>
+            </div>
+          )}
 
           <div className="flex items-center justify-between border-t border-b py-3">
             <div className="flex items-center">

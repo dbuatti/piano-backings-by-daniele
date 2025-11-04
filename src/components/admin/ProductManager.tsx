@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge"; // Fixed: Changed single quote to double quote
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, Eye, PlusCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
@@ -54,7 +54,11 @@ interface Product {
   updated_at: string;
   artist_name?: string;
   category?: string;
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
+  sheet_music_url?: string | null; // New field
+  key_signature?: string | null; // New field
+  show_sheet_music_url?: boolean; // New field
+  show_key_signature?: boolean; // New field
 }
 
 interface ProductFormState {
@@ -68,7 +72,11 @@ interface ProductFormState {
   is_active: boolean;
   artist_name: string;
   category: string;
-  vocal_ranges: string[]; // New field for vocal ranges
+  vocal_ranges: string[];
+  sheet_music_url: string; // New field
+  key_signature: string; // New field
+  show_sheet_music_url: boolean; // New field
+  show_key_signature: boolean; // New field
 }
 
 const ProductManager: React.FC = () => {
@@ -88,7 +96,11 @@ const ProductManager: React.FC = () => {
     is_active: true,
     artist_name: '',
     category: '',
-    vocal_ranges: [], // Initialize new field
+    vocal_ranges: [],
+    sheet_music_url: '', // Initialize new field
+    key_signature: '', // Initialize new field
+    show_sheet_music_url: true, // Default to true
+    show_key_signature: true, // Default to true
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -244,7 +256,11 @@ const ProductManager: React.FC = () => {
       is_active: product.is_active,
       artist_name: product.artist_name || '',
       category: product.category || '',
-      vocal_ranges: product.vocal_ranges || [], // Set new field
+      vocal_ranges: product.vocal_ranges || [],
+      sheet_music_url: product.sheet_music_url || '', // Set new field
+      key_signature: product.key_signature || '', // Set new field
+      show_sheet_music_url: product.show_sheet_music_url ?? true, // Set new field with default
+      show_key_signature: product.show_key_signature ?? true, // Set new field with default
     });
     setImageFile(null); // Clear image file state for new edit
     setFormErrors({});
@@ -472,6 +488,8 @@ const ProductManager: React.FC = () => {
                   <TableHead className="w-[100px]">Price</TableHead>
                   <TableHead className="w-[100px]">Category</TableHead>
                   <TableHead className="w-[120px]">Vocal Ranges</TableHead> 
+                  <TableHead className="w-[100px]">Key</TableHead> {/* New Table Head */}
+                  <TableHead className="w-[100px]">PDF</TableHead> {/* New Table Head */}
                   <TableHead className="w-[100px]">Status</TableHead>
                   <TableHead>Tracks</TableHead>
                   <TableHead className="text-right w-[150px]">Actions</TableHead>
@@ -498,6 +516,24 @@ const ProductManager: React.FC = () => {
                             </Badge>
                           ))}
                         </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell> {/* New Table Cell for Key Signature */}
+                      {product.key_signature && product.show_key_signature ? (
+                        <Badge variant="outline" className="text-xs">
+                          {product.key_signature}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-500 text-xs">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell> {/* New Table Cell for Sheet Music URL */}
+                      {product.sheet_music_url && product.show_sheet_music_url ? (
+                        <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm">
+                          <FileText className="h-3 w-3 mr-1" /> PDF
+                        </a>
                       ) : (
                         <span className="text-gray-500 text-xs">N/A</span>
                       )}
@@ -653,6 +689,58 @@ const ProductManager: React.FC = () => {
                       <Label htmlFor={`edit-vocal-range-${range}`}>{range}</Label>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* New: Sheet Music URL and Key Signature in Edit Dialog */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-sheet_music_url" className="flex items-center">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Sheet Music URL (PDF)
+                  </Label>
+                  <Input
+                    id="edit-sheet_music_url"
+                    name="sheet_music_url"
+                    value={productForm.sheet_music_url}
+                    onChange={handleFormChange}
+                    placeholder="https://example.com/sheet-music.pdf"
+                    className={cn("mt-1", formErrors.sheet_music_url && "border-red-500")}
+                  />
+                  {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="edit-show_sheet_music_url"
+                      name="show_sheet_music_url"
+                      checked={productForm.show_sheet_music_url}
+                      onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_sheet_music_url: checked as boolean }))}
+                    />
+                    <Label htmlFor="edit-show_sheet_music_url">Show PDF in Shop</Label>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-key_signature" className="flex items-center">
+                    <Key className="mr-2 h-4 w-4" />
+                    Key Signature
+                  </Label>
+                  <Input
+                    id="edit-key_signature"
+                    name="key_signature"
+                    value={productForm.key_signature}
+                    onChange={handleFormChange}
+                    placeholder="e.g., C Major, A Minor"
+                    className={cn("mt-1", formErrors.key_signature && "border-red-500")}
+                  />
+                  {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="edit-show_key_signature"
+                      name="show_key_signature"
+                      checked={productForm.show_key_signature}
+                      onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_key_signature: checked as boolean }))}
+                    />
+                    <Label htmlFor="edit-show_key_signature">Show Key in Shop</Label>
+                  </div>
                 </div>
               </div>
               

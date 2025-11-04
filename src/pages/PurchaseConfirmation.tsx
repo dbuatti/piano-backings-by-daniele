@@ -23,7 +23,11 @@ interface Product {
   title: string;
   description: string;
   track_urls?: TrackInfo[];
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
+  sheet_music_url?: string | null; // New field
+  key_signature?: string | null; // New field
+  show_sheet_music_url?: boolean; // New field
+  show_key_signature?: boolean; // New field
 }
 
 interface Order {
@@ -104,7 +108,7 @@ const PurchaseConfirmation: React.FC = () => {
         // 2. Fetch product details separately
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('id, title, description, track_urls, vocal_ranges') // Added vocal_ranges
+          .select('id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature') // Added new fields
           .eq('id', orderData.product_id)
           .single();
 
@@ -216,6 +220,22 @@ const PurchaseConfirmation: React.FC = () => {
                         </Button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {order.products?.sheet_music_url && order.products?.show_sheet_music_url && (
+                  <div className="border-t border-gray-200 pt-6 space-y-4">
+                    <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
+                      <FileText className="mr-2 h-5 w-5" />
+                      Sheet Music
+                    </h3>
+                    <Button 
+                      size="lg" 
+                      className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
+                      onClick={() => window.open(order.products?.sheet_music_url || '', '_blank')}
+                    >
+                      <FileText className="h-5 w-5 mr-2" /> View Sheet Music (PDF)
+                    </Button>
                   </div>
                 )}
 

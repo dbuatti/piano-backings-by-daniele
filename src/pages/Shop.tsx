@@ -27,7 +27,11 @@ interface Product {
   is_active: boolean;
   artist_name?: string;
   category?: string;
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
+  sheet_music_url?: string | null; // New field
+  key_signature?: string | null; // New field
+  show_sheet_music_url?: boolean; // New field
+  show_key_signature?: boolean; // New field
 }
 
 const Shop: React.FC = () => {
