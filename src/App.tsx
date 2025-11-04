@@ -24,7 +24,8 @@ import DataImporter from "./pages/DataImporter";
 import ReportIssueButton from "./components/ReportIssueButton";
 import UnreadIssueReportsNotice from "./components/UnreadIssueReportsNotice";
 import HolidayModeBanner from "./components/HolidayModeBanner";
-import Shop from "./pages/Shop"; // Import the new Shop page
+import Shop from "./pages/Shop";
+import PurchaseConfirmation from "./pages/PurchaseConfirmation"; // Import the new page
 
 const queryClient = new QueryClient();
 
@@ -38,7 +39,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/form-page" element={<FormPage />} />
-          <Route path="/shop" element={<Shop />} /> {/* New Shop Route */}
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} /> {/* New Route */}
           <Route path="/test-function" element={<TestFunction />} />
           <Route path="/test-backings" element={<TestBackings />} />
           <Route path="/test-email" element={<TestEmail />} />

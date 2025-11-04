@@ -101,12 +101,8 @@ const Shop: React.FC = () => {
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     if (query.get('success')) {
-      toast({
-        title: "Payment Successful!",
-        description: "Your purchase was completed successfully. Check your email for details.",
-        action: <CheckCircle className="text-green-500" />,
-      });
-      // Clear query params
+      // The success message is now handled by PurchaseConfirmation page
+      // Clear query params to prevent re-triggering toast on refresh
       window.history.replaceState({}, document.title, "/shop");
     }
 

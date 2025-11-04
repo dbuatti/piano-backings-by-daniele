@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest, Product } from "@/utils/emailGenerator";
+import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
@@ -28,6 +28,23 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
 // Removed Table imports as the table is being replaced
+
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
+// New interface for Product (updated to use track_urls)
+export interface Product {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  image_url?: string | null;
+  track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
+  is_active: boolean;
+}
 
 const EmailGenerator = () => {
   const { toast } = useToast();
@@ -59,7 +76,8 @@ const EmailGenerator = () => {
         if (!productForGeneration) {
           throw new Error("No product data available to generate email. Please select a product from the dropdown.");
         }
-        result = await generateProductDeliveryEmail(productForGeneration, productForGeneration.id); // Using product ID as customer email for now, will be replaced by actual customer email in webhook
+        // Use recipientEmails as customerEmail for generation on this page
+        result = await generateProductDeliveryEmail(productForGeneration, recipientEmails || 'test@example.com');
       } else {
         const requestForGeneration = itemToUse as BackingRequest || displayedRequest;
         if (!requestForGeneration) {
@@ -102,7 +120,7 @@ const EmailGenerator = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [displayedRequest, displayedProduct, templateType, toast]);
+  }, [displayedRequest, displayedProduct, templateType, toast, recipientEmails]);
 
   // Fetch all requests on component mount
   useEffect(() => {
@@ -388,7 +406,7 @@ const EmailGenerator = () => {
                           {product.title} ({product.currency} {product.price.toFixed(2)})
                         </span>
                         <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                          {product.track_url ? (
+                          {product.track_urls && product.track_urls.length > 0 ? ( // Changed from track_url
                             <Badge variant="default" className="bg-blue-500">TRACK LINKED</Badge>
                           ) : (
                             <Badge variant="destructive">NO TRACK LINK</Badge>
@@ -439,10 +457,10 @@ const EmailGenerator = () => {
                     </div>
                     <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedProduct.description}</p>
                   </div>
-                  {displayedProduct.track_url && (
+                  {displayedProduct.track_urls && displayedProduct.track_urls.length > 0 && ( // Changed from track_url
                     <div className="flex items-center">
                       <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
-                      Track URL: <a href={displayedProduct.track_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.track_url}</a>
+                      Track URL: <a href={displayedProduct.track_urls[0].url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.track_urls[0].url}</a>
                     </div>
                   )}
                   {displayedProduct.image_url && (

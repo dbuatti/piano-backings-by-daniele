@@ -26,7 +26,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-    let siteUrl = Deno.env.get('SITE_URL'); // Use let to allow modification
+    const siteUrl = Deno.env.get('SITE_URL');
 
     if (!stripeSecretKey) {
       throw new Error('STRIPE_SECRET_KEY is not configured in Supabase secrets.');
@@ -34,9 +34,6 @@ serve(async (req) => {
     if (!siteUrl) {
       throw new Error('SITE_URL is not configured in Supabase secrets.');
     }
-
-    // Normalize siteUrl to remove any trailing slash
-    siteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const stripe = new Stripe(stripeSecretKey, {
@@ -82,7 +79,7 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      success_url: `${siteUrl}/shop?success=true`,
+      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`, // Redirect to new confirmation page
       cancel_url: `${siteUrl}/shop?canceled=true`,
       metadata: {
         product_id: product.id,

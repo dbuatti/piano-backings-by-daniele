@@ -40,7 +40,7 @@ export interface Product {
   price: number;
   currency: string;
   image_url?: string | null;
-  track_url?: string | null;
+  track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
 }
 
@@ -348,6 +348,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const trackListHtml = generateTrackListHtml(request.track_urls);
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback completion and payment reminder template");
@@ -475,17 +476,18 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
 export const generateProductDeliveryEmail = async (product: Product, customerEmail: string) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
-  const downloadLink = product.track_url;
-  const shopLink = `${window.location.origin}/shop`;
-  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
+  const siteUrl = window.location.origin; // Use window.location.origin for client-side
+  const shopLink = `${siteUrl}/shop`;
+  const feedbackLink = `${siteUrl}/?openFeedback=true`;
+  const productTrackListHtml = generateProductTrackListHtml(product.track_urls); // Use product.track_urls
 
-  if (!downloadLink) {
-    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have a track_url for delivery.`);
+  if (!product.track_urls || product.track_urls.length === 0) { // Check for track_urls array
+    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
   }
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback product delivery template");
-    return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
   }
 
   try {
@@ -497,16 +499,16 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     Product details:
     - Product Title: "${product.title}"
     - Product Description: ${product.description}
-    - Download Link: ${downloadLink}
     - Customer Email: ${customerEmail}
     - Shop Link: ${shopLink}
     - Feedback Link: ${feedbackLink}
+    - Product Track List HTML: ${productTrackListHtml}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that clearly states the purchase is confirmed and the product is ready for download.
     2. Open with a warm, personalized greeting using the customer's first name (derived from their email if no name is available).
     3. Confirm the purchase of "${product.title}".
-    4. Provide a prominent call-to-action button to "Download Your Track" linking directly to the Download Link.
+    4. Include the "Product Track List HTML" directly in the email body to list all downloadable tracks.
     5. Briefly mention the product description.
     6. Encourage them to explore other products in the shop with a link to the Shop Link.
     7. Express gratitude for their business.
@@ -531,15 +533,15 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
       return emailData;
     } catch (parseError) {
       console.error('Error parsing Gemini response for product delivery email:', parseError);
-      return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+      return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
     }
   } catch (error) {
     console.error('Error generating product delivery email copy with Gemini:', error);
-    return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
   }
 };
 
-const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, downloadLink: string, shopLink: string, feedbackLink: string) => {
+const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, shopLink: string, feedbackLink: string, productTrackListHtml: string) => {
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
     html: `
@@ -547,12 +549,7 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
         <p>Hi ${firstName},</p>
         <p>Thank you for your recent purchase from Piano Backings by Daniele!</p>
         <p>Your digital product, <strong>"${product.title}"</strong>, is now ready for download.</p>
-        <p style="margin-top: 20px; text-align: center;">
-          <a href="${downloadLink}" 
-             style="background-color: #F538BC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-            Download Your Track
-          </a>
-        </p>
+        ${productTrackListHtml}
         <p style="margin-top: 20px;">
           ${product.description}
         </p>

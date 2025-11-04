@@ -261,9 +261,10 @@ serve(async (req) => {
       const currency = session.currency;
       const paymentIntentId = session.payment_intent as string;
       const userId = session.client_reference_id; // Extract user_id from client_reference_id
+      const checkoutSessionId = session.id; // Get the checkout session ID
 
-      if (!productId || !customerEmail || amountTotal === null || currency === null) {
-        console.error('Missing essential data in checkout.session.completed event:', { productId, customerEmail, amountTotal, currency });
+      if (!productId || !customerEmail || amountTotal === null || currency === null || !checkoutSessionId) {
+        console.error('Missing essential data in checkout.session.completed event:', { productId, customerEmail, amountTotal, currency, checkoutSessionId });
         return new Response(JSON.stringify({ error: 'Missing essential data in checkout session.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -296,6 +297,7 @@ serve(async (req) => {
           status: 'completed', // Mark as completed on successful checkout
           payment_intent_id: paymentIntentId,
           user_id: userId, // Store the user_id if available
+          checkout_session_id: checkoutSessionId, // Store the checkout session ID
         })
         .select();
 
