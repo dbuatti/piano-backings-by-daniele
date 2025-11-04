@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown, Tag, User } from 'lucide-react'; // Added Tag and User icons
+import Seo from "@/components/Seo"; // Import Seo component
 
 interface TrackInfo {
   url: string;
@@ -227,6 +228,13 @@ const Shop: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Seo 
+        title="Shop - Piano Backings by Daniele"
+        description="Browse and purchase high-quality piano backing tracks for instant download. Find tracks for musicals, auditions, and practice."
+        keywords="piano backing tracks shop, buy backing tracks, digital music, audition music, performance tracks, sheet music, vocal ranges"
+        ogImage="/pasted-image-2025-09-19T05-15-20-729Z.png"
+        canonicalUrl={`${window.location.origin}/shop`}
+      />
       <Header />
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">

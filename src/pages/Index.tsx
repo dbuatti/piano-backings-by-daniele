@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
 import { format } from 'date-fns';
+import Seo from "@/components/Seo"; // Import Seo component
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -55,6 +56,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Seo 
+        title="Piano Backings by Daniele - Custom Tracks for Musicals, Auditions & Performances"
+        description="Get high-quality custom piano backing tracks for musicals, auditions, and performances. Order personalized tracks or browse our shop for instant downloads."
+        keywords="piano backing tracks, musical theatre, audition tracks, custom piano tracks, Daniele Buatti, performance tracks, sheet music, vocal ranges"
+        ogImage="/pasted-image-2025-09-19T05-15-20-729Z.png"
+        canonicalUrl={window.location.origin}
+      />
       <Header />
       
       {/* Hero Section */}

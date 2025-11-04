@@ -88,7 +88,7 @@ const Header = () => {
               <img 
                 className="h-16 w-auto rounded-lg" 
                 src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
-                alt="Piano Backings By Daniele Logo" 
+                alt="Piano Backings By Daniele Logo" // Added alt attribute
               />
             </Link>
           </div>
@@ -222,7 +222,7 @@ const Header = () => {
                       <img 
                         className="h-12 w-auto rounded-lg" 
                         src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
-                        alt="Piano Backings By Daniele Logo" 
+                        alt="Piano Backings By Daniele Logo" // Added alt attribute
                       />
                     </div>
                     <Button 
