@@ -148,7 +148,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
     
     Request details:
     - Client name: ${request.name}
@@ -164,7 +164,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     1. Create a compelling subject line that immediately tells the client their track is ready.
     2. Open with a warm, personalized greeting using the client's first name.
     3. Announce that the track is complete and ready.
-    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently.
+    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
     5. Provide a prominent call-to-action button to "View Your Track Details" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
     6. Proactively offer adjustments or revisions to ensure satisfaction.
     7. Express gratitude for their business.
@@ -247,7 +247,6 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
-  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
     console.log("Gemini API key not configured, using fallback payment reminder template");
@@ -258,7 +257,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
     
     Request details:
     - Client name: ${request.name}
@@ -385,7 +384,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
     
     Request details:
     - Client name: ${request.name}
@@ -505,6 +504,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   const siteUrl = window.location.origin; // Use window.location.origin for client-side
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
+  // generateProductTrackListHtml is defined in this file and should be accessible.
   const productTrackListHtml = generateProductTrackListHtml(product.track_urls); // Use product.track_urls
 
   if (!product.track_urls || product.track_urls.length === 0) { // Check for track_urls array
@@ -520,7 +520,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
-    You are a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
+    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
     
     Product details:
     - Product Title: "${product.title}"
@@ -589,7 +589,7 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
           </a>
         </p>
         <p style="margin-top: 20px;">
-          We're always looking to improve! If you have a moment, we'd love to hear about your experience using the new app. 
+          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
           You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
         </p>
         <p style="margin-top: 20px;">Warmly,</p>
