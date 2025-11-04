@@ -160,7 +160,7 @@ const EmailGenerator = () => {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: `Failed to fetch all products: ${err.message}`,
+          description: `Failed to fetch all products: ${error.message}`, // Fix: changed err.message to error.message
           variant: "destructive",
         });
       } finally {

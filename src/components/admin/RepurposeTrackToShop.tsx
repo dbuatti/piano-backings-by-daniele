@@ -230,6 +230,18 @@ const RepurposeTrackToShop: React.FC = () => {
     });
   };
 
+  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean) => {
+    setProductForm(prev => {
+      const newTrackUrls = [...prev.track_urls];
+      if (field === 'selected') {
+        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as boolean };
+      } else {
+        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
+      }
+      return { ...prev, track_urls: newTrackUrls };
+    });
+  };
+
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
