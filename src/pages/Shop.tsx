@@ -4,10 +4,11 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import ProductCard from '@/components/ProductCard';
+import ProductDetailDialog from '@/components/ProductDetailDialog'; // Import the new dialog
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input"; // Import Input for search
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select for sorting
-import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react'; // Added Search and ArrowUpDown icons
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react';
 
 interface TrackInfo {
   url: string;
@@ -21,7 +22,7 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string;
-  track_urls?: TrackInfo[]; // Changed from track_url to track_urls (array of TrackInfo)
+  track_urls?: TrackInfo[];
   is_active: boolean;
 }
 
@@ -31,6 +32,10 @@ const Shop: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const { toast } = useToast();
+
+  // State for Product Detail Dialog
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
 
   // New state for filtering and sorting
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,12 +122,8 @@ const Shop: React.FC = () => {
   }, [toast]);
 
   const handleViewDetails = (product: Product) => {
-    // For now, we'll just show a toast. In a real app, this would navigate to a product detail page.
-    toast({
-      title: `Viewing ${product.title}`,
-      description: `Details for product ID: ${product.id}. This would navigate to a product detail page.`,
-    });
-    console.log('View details for:', product);
+    setSelectedProductForDetail(product);
+    setIsDetailDialogOpen(true);
   };
 
   const handleBuyNow = async (product: Product) => {
@@ -222,10 +223,10 @@ const Shop: React.FC = () => {
             </CardContent>
           </Card>
         ) : products.length === 0 ? (
-          <div className="text-center py-12">
-            <Store className="mx-auto h-16 w-16 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No Products Available</h3>
-            <p className="mt-1 text-gray-500">
+          <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 p-8">
+            <Store className="mx-auto h-20 w-20 text-gray-400 mb-4" />
+            <h3 className="mt-4 text-2xl font-semibold text-gray-900">No Products Available</h3>
+            <p className="mt-2 text-lg text-gray-600">
               It looks like there are no active products in the shop right now. Please check back later!
             </p>
           </div>
@@ -237,12 +238,22 @@ const Shop: React.FC = () => {
                 product={product} 
                 onViewDetails={handleViewDetails} 
                 onBuyNow={handleBuyNow}
+                isBuying={isBuying} // Pass loading state
               />
             ))}
           </div>
         )}
       </div>
       <MadeWithDyad />
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        isOpen={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        product={selectedProductForDetail}
+        onBuyNow={handleBuyNow}
+        isBuying={isBuying}
+      />
     </div>
   );
 };

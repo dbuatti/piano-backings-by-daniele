@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart } from 'lucide-react'; // Added ShoppingCart icon
+import { Music, DollarSign, Eye, ShoppingCart, Loader2 } from 'lucide-react'; // Added Loader2 icon
 import { cn } from '@/lib/utils';
 
 interface TrackInfo {
@@ -24,10 +24,11 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
-  onBuyNow: (product: Product) => void; // Changed to onBuyNow
+  onBuyNow: (product: Product) => void;
+  isBuying: boolean; // New prop for loading state
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
       <CardHeader className="p-0">
@@ -68,11 +69,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           View Details
         </Button>
         <Button 
-          onClick={() => onBuyNow(product)} // Call onBuyNow
+          onClick={() => onBuyNow(product)}
+          disabled={isBuying} // Disable button when buying
           className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
         >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Buy Now
+          {isBuying ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Buying...
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Buy Now
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>
