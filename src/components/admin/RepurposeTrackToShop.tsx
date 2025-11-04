@@ -251,8 +251,19 @@ const RepurposeTrackToShop: React.FC = () => {
         const originalCaption = String(track.caption || '');
         let captionToUse = originalCaption;
 
-        // Check if the original caption is a UUID or a generic storage filename
-        if (isUUID(originalCaption) || isGenericStorageFilename(originalCaption) || originalCaption.includes('tracks/')) {
+        // Extract filename from URL
+        const urlParts = track.url.split('/');
+        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0]; // Get filename and remove query params
+        const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
+
+        // Determine if the original caption is a generic/default one
+        const isGenericCaption = 
+          originalCaption === '' || 
+          originalCaption.toLowerCase() === 'true' || // Handle old boolean captions
+          originalCaption === filenameFromUrlWithExt ||
+          originalCaption === filenameFromUrlWithoutExt;
+
+        if (isGenericCaption) {
           captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
         }
         
