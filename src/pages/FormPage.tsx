@@ -37,6 +37,7 @@ import FileInput from "@/components/FileInput"; // Import the new FileInput comp
 import AccountPromptCard from '@/components/AccountPromptCard'; // Import the new AccountPromptCard
 import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
 import { format } from 'date-fns';
+import Seo from "@/components/Seo"; // Import Seo component
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -501,6 +502,12 @@ const FormPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Seo 
+        title="Order Custom Piano Backing Track - Piano Backings by Daniele"
+        description="Submit your custom piano backing track request for auditions, practice, or performances. Provide sheet music, YouTube links, and special requests."
+        keywords="order custom backing track, piano backing track request, musical theatre backing, audition track order, personalized piano accompaniment"
+        canonicalUrl={`${window.location.origin}/form-page`}
+      />
       <Header />
 
       <div className="max-w-4xl mx-auto py-4 px-4 sm:px-6">

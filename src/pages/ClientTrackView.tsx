@@ -32,6 +32,7 @@ import {
 import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import from new utility
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
+import Seo from "@/components/Seo"; // Import Seo component
 
 // TrackInfo interface is now imported from helpers.ts
 // interface TrackInfo {
@@ -205,6 +206,12 @@ const ClientTrackView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Seo 
+        title={`${request.song_title} - Track Details | Piano Backings by Daniele`}
+        description={`View details and download your custom piano backing track for "${request.song_title}" by ${request.musical_or_artist}.`}
+        keywords={`piano backing track, ${request.song_title}, ${request.musical_or_artist}, custom track download, audition track, performance track`}
+        canonicalUrl={`${window.location.origin}/track/${id}`}
+      />
       <Header />
       
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
