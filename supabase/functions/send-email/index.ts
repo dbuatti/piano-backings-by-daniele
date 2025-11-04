@@ -1,5 +1,5 @@
 // @ts-ignore
-import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -128,7 +128,7 @@ serve(async (req) => {
         if (profileError) {
           console.log(`Profile not found for ${emailToFetchTokenFor}, trying alternative method`);
           // If profile doesn't exist, we'll try to find the user ID in gmail_tokens
-          // by checking if any entry has an email that matches
+          // by checking if any entry has an an email that matches
           // This is a workaround since we can't directly query auth.users
         }
         
