@@ -1,33 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { createClient } from '@supabase/supabase-js'; // Import createClient
+import { createClient } from '@supabase/supabase-js';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download } from 'lucide-react'; // Added Download icon
+// The 'FileText' import is already present here.
+import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client'; // Import constants
-import { downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
-
-// TrackInfo interface is now imported from helpers.ts
-// interface TrackInfo {
-//   url: string;
-//   caption: string | boolean | null | undefined;
-// }
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { downloadTrack, TrackInfo } from '@/utils/helpers';
 
 interface Product {
-  id: string; // Add id to Product interface for joining
+  id: string;
   title: string;
   description: string;
   track_urls?: TrackInfo[];
   vocal_ranges?: string[];
-  sheet_music_url?: string | null; // New field
-  key_signature?: string | null; // New field
-  show_sheet_music_url?: boolean; // New field
-  show_key_signature?: boolean; // New field
+  sheet_music_url?: string | null;
+  key_signature?: string | null;
+  show_sheet_music_url?: boolean;
+  show_key_signature?: boolean;
 }
 
 interface Order {
@@ -52,9 +47,6 @@ const PurchaseConfirmation: React.FC = () => {
   const [error, setError] = useState<any>(null);
   const [userSession, setUserSession] = useState<any>(null);
 
-  // downloadTrack function is now imported from helpers.ts
-  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
-
   useEffect(() => {
     const fetchConfirmationDetails = async () => {
       setLoading(true);
@@ -72,11 +64,9 @@ const PurchaseConfirmation: React.FC = () => {
         return;
       }
 
-      // Create a temporary Supabase client instance with a custom fetch function
-      // that injects the 'x-checkout-session-id' header for this specific request.
       const supabaseWithHeaders = createClient(
-        SUPABASE_URL, // Use imported constant
-        SUPABASE_PUBLISHABLE_KEY, // Use imported constant
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY,
         {
           global: {
             fetch: async (input, init) => {
@@ -89,11 +79,9 @@ const PurchaseConfirmation: React.FC = () => {
       );
 
       try {
-        // Check user session using the original supabase client (auth doesn't need custom headers for RLS)
         const { data: { session } } = await supabase.auth.getSession();
         setUserSession(session);
 
-        // 1. Fetch order details without embedding
         const { data: orderData, error: fetchError } = await supabaseWithHeaders
           .from('orders')
           .select('*')
@@ -105,21 +93,17 @@ const PurchaseConfirmation: React.FC = () => {
           throw new Error('Order not found or could not be retrieved.');
         }
 
-        // 2. Fetch product details separately
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature') // Added new fields
+          .select('id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature')
           .eq('id', orderData.product_id)
           .single();
 
         if (productError || !productData) {
           console.error('Error fetching product for order:', productError);
-          // Even if product isn't found, we can still display order details
-          // but we'll log this as a warning.
           console.warn(`Product with ID ${orderData.product_id} not found for order ${orderData.id}`);
         }
 
-        // 3. Manually join product into order
         const joinedOrder: Order = {
           ...orderData,
           products: productData || undefined,
@@ -149,7 +133,7 @@ const PurchaseConfirmation: React.FC = () => {
   }, [searchParams, toast]);
 
   const handleReportIssue = () => {
-    navigate('/?openFeedback=true'); // Navigate to homepage with query param to open feedback dialog
+    navigate('/?openFeedback=true');
   };
 
   return (
