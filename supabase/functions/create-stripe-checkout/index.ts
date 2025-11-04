@@ -50,6 +50,28 @@ serve(async (req) => {
       });
     }
 
+    // Get the user from the Authorization header
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+
+    console.log('create-stripe-checkout: Auth header received:', authHeader ? 'Present' : 'Not Present');
+
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      console.log('create-stripe-checkout: Attempting to get user with token:', token ? 'Token Present' : 'Token Missing');
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+      if (userError) {
+        console.error('create-stripe-checkout: Error fetching user:', userError.message);
+      } else if (user) {
+        userId = user.id;
+        console.log('create-stripe-checkout: User ID found for checkout session:', userId);
+      } else {
+        console.log('create-stripe-checkout: No user found for provided token.');
+      }
+    } else {
+      console.log('create-stripe-checkout: No Authorization header, proceeding without user_id.');
+    }
+
     // Fetch product details from Supabase
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
@@ -84,7 +106,11 @@ serve(async (req) => {
       metadata: {
         product_id: product.id,
       },
+      // Pass the user ID if available
+      client_reference_id: userId || undefined,
     });
+
+    console.log('create-stripe-checkout: Stripe session created with client_reference_id:', session.client_reference_id);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
