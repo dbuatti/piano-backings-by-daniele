@@ -34,8 +34,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               className="w-full h-full object-cover" 
             />
           ) : (
-            <div className="flex items-center justify-center w-full h-full bg-gray-100 text-gray-400">
-              <Music className="h-12 w-12" />
+            <div 
+              className="flex items-center justify-center w-full h-full text-white p-4 text-center"
+              style={{ backgroundColor: '#2596be', fontFamily: '"Playfair Display", serif' }}
+            >
+              <h3 className="text-xl md:text-2xl font-bold italic leading-tight">
+                {product.title}
+              </h3>
             </div>
           )}
         </AspectRatio>
