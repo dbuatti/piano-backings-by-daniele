@@ -46,6 +46,7 @@ interface BackingRequest {
   sheet_music_url?: string; // Added for pre-filling
   song_key?: string; // Added for pre-filling
   track_type?: string; // Add track_type here
+  category?: string; // Added category
 }
 
 interface Product {
@@ -71,6 +72,51 @@ interface ProductForm {
   show_key_signature: boolean; // New field
   track_type: string; // Add track_type here
 }
+
+// Helper function to determine if a string is a UUID
+const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+
+// Helper function to determine if a string is a generic storage filename (e.g., UUID.mp3)
+const isGenericStorageFilename = (str: string) => /^[0-9a-fA-F]{32}\.[a-zA-Z0-9]+$/.test(str);
+
+// Function to generate a descriptive caption
+const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string, trackUrl: string): string => {
+  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+  const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
+
+  const parts = [];
+  if (request.song_title) parts.push(request.song_title);
+  if (request.musical_or_artist) parts.push(request.musical_or_artist);
+
+  let descriptiveDetails = [];
+  if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
+  if (request.song_key) descriptiveDetails.push(request.song_key);
+  if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
+
+  let newCaption = '';
+  if (parts.length > 0) {
+    newCaption = parts.join(' - ');
+    if (descriptiveDetails.length > 0) {
+      newCaption += ` (${descriptiveDetails.join(', ')})`;
+    }
+  } else {
+    newCaption = 'Untitled Track';
+  }
+
+  // Add file extension if it's an audio file and not already present
+  const urlExtensionMatch = trackUrl.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+  const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
+  
+  if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
+    newCaption += `.${urlExtension}`;
+  } else if (!urlExtension && trackUrl.includes('/tracks/') && !newCaption.includes('.')) {
+    // If it's a track URL from our storage but no extension in URL or caption, default to .mp3
+    newCaption += '.mp3';
+  }
+
+  return newCaption;
+};
+
 
 const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
@@ -200,14 +246,26 @@ const RepurposeTrackToShop: React.FC = () => {
         defaultDescription += ` Additional services included: ${selectedRequest.additional_services.map(service => service.replace('-', ' ')).join(', ')}.`;
       }
       
+      // Generate descriptive captions for track_urls
+      const newTrackUrls = selectedRequest.track_urls?.map(track => {
+        const originalCaption = String(track.caption || '');
+        let captionToUse = originalCaption;
+
+        // Check if the original caption is a UUID or a generic storage filename
+        if (isUUID(originalCaption) || isGenericStorageFilename(originalCaption) || originalCaption.includes('tracks/')) {
+          captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
+        }
+        
+        return { ...track, caption: captionToUse, selected: true };
+      }) || [];
+
       setProductForm({
         title: autoTitle, // Auto-populated title
         description: defaultDescription,
         price: '25.00', // Default price, user can change
         currency: 'AUD',
         image_url: '', // Explicitly empty by default
-        // Map existing tracks to include 'selected: true' for the UI
-        track_urls: selectedRequest.track_urls?.map(track => ({ ...track, selected: true })) || [],
+        track_urls: newTrackUrls, // Use the newly generated captions
         is_active: true,
         artist_name: autoArtist, // Auto-populated artist name
         category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category

@@ -30,6 +30,7 @@ export interface BackingRequest {
   status?: 'pending' | 'in-progress' | 'completed' | 'cancelled'; // Added status
   created_at?: string; // Added created_at
   is_paid?: boolean; // Added is_paid
+  category?: string; // Added category
 }
 
 // New interface for Product
@@ -532,6 +533,8 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     - Feedback Link: ${feedbackLink}
     - Product Track List HTML: ${productTrackListHtml}
     - Vocal Ranges: ${product.vocal_ranges && product.vocal_ranges.length > 0 ? product.vocal_ranges.join(', ') : 'None specified'}
+    - Key Signature: ${product.key_signature || 'None specified'}
+    - Sheet Music URL: ${product.sheet_music_url || 'None provided'}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that clearly states the purchase is confirmed and the product is ready for download.
@@ -540,11 +543,13 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     4. Include the "Product Track List HTML" directly in the email body to list all downloadable tracks.
     5. Briefly mention the product description.
     6. If vocal ranges are specified, include them in a clear and concise way.
-    7. Encourage them to explore other products in the shop with a link to the Shop Link.
-    8. Express gratitude for their business.
-    9. Keep the tone professional yet friendly.
-    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    11. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
+    7. If a key signature is specified, include it.
+    8. If a sheet music URL is provided, include a link to it.
+    9. Encourage them to explore other products in the shop with a link to the Shop Link.
+    10. Express gratitude for their business.
+    11. Keep the tone professional yet friendly.
+    12. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
+    13. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
     
     Format the response as JSON with two fields:
     {
@@ -575,6 +580,14 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
   const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
     ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges:</strong> ${product.vocal_ranges.join(', ')}</p>`
     : '';
+  
+  const keySignatureHtml = product.key_signature
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature:</strong> ${product.key_signature}</p>`
+    : '';
+
+  const sheetMusicHtml = product.sheet_music_url
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music:</strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
+    : '';
 
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
@@ -588,6 +601,8 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
           ${product.description}
         </p>
         ${vocalRangesHtml}
+        ${keySignatureHtml}
+        ${sheetMusicHtml}
         <p style="margin-top: 20px;">
           We hope you enjoy your new track! Feel free to browse our other offerings:
         </p>
