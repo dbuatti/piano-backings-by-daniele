@@ -78,6 +78,7 @@ const AdminDashboard = () => {
     openUploadPlatformsDialog,
     saveUploadPlatforms,
     updateTrackCaption, // Destructure the new function
+    isUploading, // Destructure isUploading from useUploadDialogs
   } = useUploadDialogs(requests, setRequests);
   const {
     selectedRequests, setSelectedRequests,
@@ -380,7 +381,7 @@ const AdminDashboard = () => {
           <UploadTrackDialog
             isOpen={!!uploadTrackId}
             onOpenChange={() => { setUploadTrackId(null); handleFileChange(null); }}
-            uploadTrackId={uploadTrackId}
+            requestId={uploadTrackId} // Changed prop name from uploadTrackId to requestId
             uploadFile={uploadFile}
             onFileChange={handleFileChange}
             uploadCaption={uploadCaption} // Pass the new prop
@@ -389,11 +390,13 @@ const AdminDashboard = () => {
             existingTrackUrls={existingTrackUrls} // Pass existing tracks
             onRemoveTrack={handleRemoveTrack} // Pass remove track handler
             onUpdateTrackCaption={updateTrackCaption} // Pass the new updateTrackCaption function
+            isUploading={isUploading} // Pass isUploading
           />
           
           <UploadPlatformsDialog
             isOpen={uploadPlatformsDialogOpen}
             onOpenChange={() => setUploadPlatformsDialogOpen(false)} // Simplified onOpenChange
+            requestId={selectedRequestForPlatforms} // Added requestId prop
             platforms={platforms}
             setPlatforms={setPlatforms}
             onSavePlatforms={saveUploadPlatforms}

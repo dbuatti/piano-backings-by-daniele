@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 
 interface UploadTrackDialogProps {
-  requestId: string;
+  requestId: string | null; // Changed to string | null
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   uploadFile: File | null;
@@ -20,6 +20,7 @@ interface UploadTrackDialogProps {
   existingTrackUrls: TrackInfo[];
   onRemoveTrack: (urlToRemove: string) => Promise<void>;
   onUpdateTrackCaption: (requestId: string, trackUrl: string, newCaption: string) => Promise<boolean>;
+  isUploading: boolean; // Added isUploading prop
 }
 
 const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({ 
@@ -34,6 +35,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
   existingTrackUrls,
   onRemoveTrack,
   onUpdateTrackCaption,
+  isUploading, // Destructure isUploading
 }) => {
   const [isEditingCaption, setIsEditingCaption] = useState<string | null>(null); // Track which caption is being edited
   const [currentEditCaption, setCurrentEditCaption] = useState<string>(''); // Value of the caption being edited
@@ -54,6 +56,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
   };
 
   const handleSaveCaption = async (trackUrl: string) => {
+    if (!requestId) return; // Ensure requestId is not null for update
     setIsUpdatingCaption(true);
     const success = await onUpdateTrackCaption(requestId, trackUrl, currentEditCaption);
     if (success) {
@@ -70,7 +73,7 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">Uploading track for request ID: <span className="font-medium">{requestId.substring(0, 8)}</span></p>
+      <p className="text-sm text-gray-500">Uploading track for request ID: <span className="font-medium">{requestId?.substring(0, 8) || 'N/A'}</span></p>
       
       {/* Existing Tracks Section */}
       {existingTrackUrls.length > 0 && (

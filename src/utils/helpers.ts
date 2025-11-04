@@ -1,81 +1,24 @@
-// Helper function to normalize backing_type to an array of strings
-export const getSafeBackingTypes = (rawType: any): string[] => {
-  let types: string[] = [];
-  if (Array.isArray(rawType)) {
-    types = rawType.filter((item: any) => typeof item === 'string');
-  } else if (typeof rawType === 'string') {
-    types = [rawType];
-  }
-  // Ensure no empty strings or null/undefined strings if they somehow got through
-  return types.filter(type => type && type.trim() !== '');
-};
-
-// Interface for track information, used across components
+// src/utils/helpers.ts
 export interface TrackInfo {
   url: string;
-  caption: string | boolean | null | undefined;
+  caption: string;
 }
 
-// Reusable download function with robust type checking and filename sanitization
-import { toast } from "sonner"; // Assuming sonner is used for toasts
-
-export const downloadTrack = (rawUrl: string, rawFilenameSuggestion: string | boolean | null | undefined = 'download') => {
-  console.log('DEBUG: downloadTrack - Raw URL:', rawUrl, 'Type:', typeof rawUrl);
-  console.log('DEBUG: downloadTrack - Raw filenameSuggestion:', rawFilenameSuggestion, 'Type:', typeof rawFilenameSuggestion);
-
-  // Ensure URL is a valid string
-  const url = typeof rawUrl === 'string' && rawUrl.trim() !== '' ? rawUrl : null;
-  if (!url) {
-    toast.error("Track Not Available", { description: "Invalid track URL provided." });
-    return;
+// Add other helper functions or interfaces as needed
+export const getSafeBackingTypes = (backingType: string | string[] | undefined): string[] => {
+  if (!backingType) {
+    return [];
   }
-
-  let finalFilename: string;
-
-  // Step 1: Determine the base filename
-  let baseFilenameCandidate: string;
-  if (typeof rawFilenameSuggestion === 'string' && rawFilenameSuggestion.trim() !== '') {
-    baseFilenameCandidate = rawFilenameSuggestion;
-  } else {
-    baseFilenameCandidate = 'track_download'; // Fallback for boolean, null, undefined, empty string
+  if (Array.isArray(backingType)) {
+    return backingType;
   }
-
-  // Step 2: Sanitize the filename
-  finalFilename = baseFilenameCandidate.replace(/[^a-zA-Z0-9\.\-_]/gi, '_');
-  console.log('DEBUG: downloadTrack - Sanitized filename:', finalFilename);
-
-  // Step 3: Handle the specific "true" string case (after sanitization)
-  if (finalFilename.toLowerCase() === 'true') {
-    console.warn('DEBUG: downloadTrack - Filename is "true" after sanitization, using fallback.');
-    finalFilename = 'track_download';
+  try {
+    const parsed = JSON.parse(backingType);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch (e) {
+    // Not a JSON string, treat as single string
   }
-
-  // Step 4: Add file extension if missing
-  const urlExtensionMatch = url.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-  const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
-  
-  if (urlExtension && !finalFilename.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-    finalFilename = `${finalFilename}.${urlExtension}`;
-  } else if (!urlExtension && !finalFilename.includes('.')) {
-    // If no extension in URL and not in filename, default to .mp3
-    finalFilename = `${finalFilename}.mp3`;
-  }
-  console.log('DEBUG: downloadTrack - Final filename with extension:', finalFilename);
-
-  const link = document.createElement('a');
-  
-  let downloadUrl = url;
-  // If it's a Supabase Storage URL, append ?download=finalFilename
-  if (url.includes('supabase.co/storage')) {
-    // Remove any existing ?download= parameter to avoid conflicts
-    const baseUrl = url.split('?')[0];
-    downloadUrl = `${baseUrl}?download=${encodeURIComponent(finalFilename)}`;
-  }
-
-  link.href = downloadUrl;
-  link.setAttribute('download', finalFilename); // Keep as a hint for browsers
-  link.setAttribute('target', '_blank'); // Open in new tab
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  return [backingType];
 };

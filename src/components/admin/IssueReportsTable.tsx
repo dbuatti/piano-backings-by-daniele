@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, Eye, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, MessageSquare, Trash2 } from 'lucide-react'; // Added Trash2
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
