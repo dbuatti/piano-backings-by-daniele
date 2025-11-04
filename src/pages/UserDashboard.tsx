@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,53 +9,52 @@ import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye } from 'lucide-react';
+import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getSafeBackingTypes } from '@/utils/helpers'; // Import from new utility
+import { getSafeBackingTypes } from '@/utils/helpers';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface UserProfileForAdmin {
+  id: string;
+  email: string;
+  name: string;
+}
 
 const UserDashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null); // The currently logged-in user
   const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        // Check if user has requests via email (for non-logged-in users)
-        const urlParams = new URLSearchParams(window.location.search);
-        const email = urlParams.get('email');
-        
-        if (email) {
-          fetchGuestRequestsByEmail(email); // Use the new function for guests
-          setShowAccountPrompt(true);
-        } else {
-          navigate('/login');
-        }
-        return;
-      }
-      
-      setUser(session.user);
-      fetchUserRequests(session.user.id);
-    };
-    
-    checkUser();
-  }, [navigate]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [allUsersForAdmin, setAllUsersForAdmin] = useState<UserProfileForAdmin[]>([]);
+  const [selectedUserForView, setSelectedUserForView] = useState<string | null>(null); // ID of the user whose dashboard is being viewed
 
-  const fetchUserRequests = async (userId: string) => {
+  const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
+    setLoading(true);
     try {
-      // For authenticated users, RLS should handle filtering by user_id or auth.email()
-      const { data, error } = await supabase
-        .from('backing_requests')
-        .select('*')
-        .order('created_at', { ascending: false }); // RLS will filter this based on auth.uid() and auth.email()
-      
+      let query = supabase.from('backing_requests').select('*').order('created_at', { ascending: false });
+
+      if (targetUserId) {
+        query = query.eq('user_id', targetUserId);
+      } else if (targetUserEmail) {
+        query = query.ilike('email', targetUserEmail);
+      } else {
+        // This case should ideally not be reached if logic is correct
+        throw new Error('No target user ID or email provided for fetching requests.');
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      
       setRequests(data || []);
     } catch (error: any) {
       toast({
@@ -66,10 +65,10 @@ const UserDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  // New function to fetch requests for unauthenticated guests via Edge Function
-  const fetchGuestRequestsByEmail = async (email: string) => {
+  const fetchGuestRequestsByEmail = useCallback(async (email: string) => {
+    setLoading(true);
     try {
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-requests-by-email`,
@@ -77,7 +76,6 @@ const UserDashboard = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // No Authorization header for unauthenticated access, as the Edge Function uses service_role_key
           },
           body: JSON.stringify({ email }),
         }
@@ -99,7 +97,91 @@ const UserDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  const checkUserAndFetchData = useCallback(async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const loggedInUser = session?.user;
+    setUser(loggedInUser); // Update the logged-in user state
+
+    let currentIsAdmin = false;
+    if (loggedInUser?.email) {
+      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+      currentIsAdmin = adminEmails.includes(loggedInUser.email);
+      setIsAdmin(currentIsAdmin);
+    } else {
+      setIsAdmin(false);
+    }
+
+    if (currentIsAdmin) {
+      // Fetch all users for admin dropdown
+      try {
+        const response = await fetch(
+          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/list-all-users`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}` // Admin token
+            },
+          }
+        );
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to load all users: ${response.status}`);
+        }
+        setAllUsersForAdmin(result.users || []);
+      } catch (error: any) {
+        console.error('Error fetching all users for admin:', error);
+        toast({ title: "Error", description: `Failed to load users for admin view: ${error.message}`, variant: "destructive" });
+      }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailFromUrl = urlParams.get('email');
+
+    // Determine which user's data to fetch
+    let targetUserId: string | null = null;
+    let targetUserEmail: string | null = null;
+
+    if (selectedUserForView) { // Admin has selected a user from the dropdown
+      const selectedProfile = allUsersForAdmin.find(u => u.id === selectedUserForView);
+      if (selectedProfile) {
+        targetUserId = selectedProfile.id;
+        targetUserEmail = selectedProfile.email;
+      }
+      setShowAccountPrompt(false); // No prompt when admin is viewing a specific user
+    } else if (loggedInUser) { // Regular logged-in user or admin viewing their own dashboard
+      targetUserId = loggedInUser.id;
+      targetUserEmail = loggedInUser.email;
+      setShowAccountPrompt(false);
+    } else if (emailFromUrl) { // Guest viewing via email link
+      fetchGuestRequestsByEmail(emailFromUrl);
+      setShowAccountPrompt(true);
+      setLoading(false); // Set loading to false here as guest requests are handled separately
+      return; // Exit early as guest requests are handled
+    } else { // Not logged in, no email in URL
+      navigate('/login');
+      setLoading(false); // Set loading to false here as navigation happens
+      return; // Exit early as navigation happens
+    }
+
+    if (targetUserId || targetUserEmail) {
+      fetchRequestsForTarget(targetUserId, targetUserEmail);
+    } else {
+      setRequests([]); // No requests to show if no target user
+      setLoading(false);
+    }
+  }, [navigate, selectedUserForView, allUsersForAdmin, user, fetchRequestsForTarget, fetchGuestRequestsByEmail, toast]);
+
+  useEffect(() => {
+    checkUserAndFetchData();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      checkUserAndFetchData(); // Re-run on auth state change
+    });
+    return () => subscription.unsubscribe();
+  }, [checkUserAndFetchData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -135,9 +217,32 @@ const UserDashboard = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#1C0357]">Your Tracks Dashboard</h1>
-          <p className="text-lg text-[#1C0357]/90">Access your backing tracks and request history</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-[#1C0357]">Your Tracks Dashboard</h1>
+            <p className="text-lg text-[#1C0357]/90">Access your backing tracks and request history</p>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center space-x-2">
+              <UserIcon className="h-5 w-5 text-[#1C0357]" />
+              <Select
+                value={selectedUserForView || ''}
+                onValueChange={(value) => setSelectedUserForView(value === 'admin-self' ? null : value)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="View as user..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin-self">View My Own Dashboard</SelectItem>
+                  {allUsersForAdmin.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         
         {showAccountPrompt && (
@@ -290,11 +395,11 @@ const UserDashboard = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
-                                {request.status === 'completed' && request.track_url && (
+                                {request.status === 'completed' && request.track_urls && request.track_urls.length > 0 && (
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
-                                    onClick={() => downloadTrack(request.track_url)}
+                                    onClick={() => downloadTrack(request.track_urls[0].url)} // Assuming first track_url for download
                                   >
                                     <Download className="w-4 h-4 mr-1" /> Download
                                   </Button>
