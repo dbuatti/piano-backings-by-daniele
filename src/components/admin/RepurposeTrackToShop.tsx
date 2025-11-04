@@ -141,6 +141,7 @@ const RepurposeTrackToShop: React.FC = () => {
     track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
+  const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Helper to truncate URL for display
@@ -253,7 +254,7 @@ const RepurposeTrackToShop: React.FC = () => {
 
         // Extract filename from URL
         const urlParts = track.url.split('/');
-        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0]; // Get filename and remove query params
+        const filenameFromUrlWithExt = urlParts[url(urlParts.length - 1)].split('?')[0]; // Get filename and remove query params
         const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
 
         // Determine if the original caption is a generic/default one
@@ -288,6 +289,7 @@ const RepurposeTrackToShop: React.FC = () => {
         track_type: selectedRequest.track_type || '', // Pre-fill track_type from request
       });
       setImageFile(null); // Clear image file when new request is selected
+      setSheetMusicFile(null); // Clear sheet music file when new request is selected
       setFormErrors({});
     }
   }, [selectedRequest]);
@@ -353,12 +355,24 @@ const RepurposeTrackToShop: React.FC = () => {
     setFormErrors(prev => ({ ...prev, image_url: '' }));
   };
 
-  const uploadImage = async (file: File) => {
+  const handleSheetMusicFileChange = (file: File | null) => {
+    setSheetMusicFile(file);
+    if (file) {
+      // For immediate preview, use a temporary URL. Actual upload happens on form submission.
+      setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
+    } else {
+      // If file is cleared, reset sheet_music_url to original if it existed in selectedRequest, or empty
+      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequest?.sheet_music_url || '' }));
+    }
+    setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
+  };
+
+  const uploadFileToStorage = async (file: File, bucketName: string, folderName: string) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `product-images/${Date.now()}.${fileExt}`;
+    const fileName = `${folderName}/${Date.now()}.${fileExt}`;
     
     const { data, error } = await supabase.storage
-      .from('product-images')
+      .from(bucketName)
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false,
@@ -366,7 +380,7 @@ const RepurposeTrackToShop: React.FC = () => {
 
     if (error) throw error;
     
-    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
     return publicUrl;
   };
 
@@ -428,6 +442,7 @@ const RepurposeTrackToShop: React.FC = () => {
         track_type: '', // Reset new field
       });
       setImageFile(null); // Clear image file
+      setSheetMusicFile(null); // Clear sheet music file
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for this component's check
@@ -454,7 +469,7 @@ const RepurposeTrackToShop: React.FC = () => {
     let imageUrlToSave = productForm.image_url;
     if (imageFile) {
       try {
-        imageUrlToSave = await uploadImage(imageFile);
+        imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
       } catch (uploadError: any) {
         toast({
           title: "Image Upload Error",
@@ -465,10 +480,29 @@ const RepurposeTrackToShop: React.FC = () => {
       }
     }
 
+    let sheetMusicUrlToSave = productForm.sheet_music_url;
+    if (sheetMusicFile) {
+      try {
+        sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
+      } catch (uploadError: any) {
+        toast({
+          title: "Sheet Music Upload Error",
+          description: `Failed to upload sheet music: ${uploadError.message}`,
+          variant: "destructive",
+        });
+        return; // Stop creation if sheet music upload fails
+      }
+    } else if (productForm.sheet_music_url === '' && selectedRequest?.sheet_music_url) {
+      // If sheet_music_url was pre-filled from request but cleared in form, set to null
+      sheetMusicUrlToSave = null;
+    }
+
+
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
+      sheet_music_url: sheetMusicUrlToSave,
     };
     createProductMutation.mutate(newProduct);
   };
@@ -688,21 +722,26 @@ const RepurposeTrackToShop: React.FC = () => {
                   </div>
                 </div>
 
-                {/* New: Sheet Music URL and Key Signature */}
+                {/* New: Sheet Music Upload and Key Signature */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="sheet_music_url" className="flex items-center">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Sheet Music URL (PDF)
-                    </Label>
-                    <Input
-                      id="sheet_music_url"
-                      name="sheet_music_url"
-                      value={productForm.sheet_music_url}
-                      onChange={handleFormChange}
-                      placeholder="https://example.com/sheet-music.pdf"
-                      className={cn("mt-1", formErrors.sheet_music_url && "border-red-500")}
+                    <FileInput
+                      id="sheet_music_file_upload"
+                      label="Sheet Music (PDF)"
+                      icon={FileText}
+                      accept=".pdf"
+                      onChange={handleSheetMusicFileChange}
+                      note="Upload a PDF for the sheet music. This will override any existing URL."
+                      error={formErrors.sheet_music_url}
                     />
+                    {productForm.sheet_music_url && !sheetMusicFile && (
+                      <div className="mt-2">
+                        <Label className="text-xs text-gray-500">Existing URL:</Label>
+                        <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                          {truncateUrl(productForm.sheet_music_url, 30)}
+                        </a>
+                      </div>
+                    )}
                     {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
                     <div className="flex items-center space-x-2 mt-2">
                       <Checkbox

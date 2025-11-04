@@ -108,12 +108,8 @@ const ProductManager: React.FC = () => {
     track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
+  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  // State for filtering and sorting
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
   const truncateUrl = (url: string, maxLength: number = 40) => {
@@ -269,6 +265,7 @@ const ProductManager: React.FC = () => {
       track_type: product.track_type || '', // Set new field with default
     });
     setImageFile(null); // Clear image file state for new edit
+    setEditSheetMusicFile(null); // Clear sheet music file state for new edit
     setFormErrors({});
     setEditDialogOpen(true);
   };
@@ -340,12 +337,23 @@ const ProductManager: React.FC = () => {
     setFormErrors(prev => ({ ...prev, image_url: '' }));
   };
 
-  const uploadImage = async (file: File) => {
+  const handleEditSheetMusicFileChange = (file: File | null) => {
+    setEditSheetMusicFile(file);
+    if (file) {
+      setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) })); // For immediate preview
+    } else {
+      // If file is cleared, reset sheet_music_url to original if it exists, or empty
+      setProductForm(prev => ({ ...prev, sheet_music_url: currentProduct?.sheet_music_url || '' }));
+    }
+    setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
+  };
+
+  const uploadFileToStorage = async (file: File, bucketName: string, folderName: string) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `product-images/${Date.now()}.${fileExt}`;
+    const fileName = `${folderName}/${Date.now()}.${fileExt}`;
     
     const { data, error } = await supabase.storage
-      .from('product-images')
+      .from(bucketName)
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false,
@@ -353,7 +361,7 @@ const ProductManager: React.FC = () => {
 
     if (error) throw error;
     
-    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    const { data: { publicUrl } } = supabase.storage.from(bucketName).getPublicUrl(fileName);
     return publicUrl;
   };
 
@@ -390,7 +398,7 @@ const ProductManager: React.FC = () => {
       let imageUrlToSave = productForm.image_url;
       if (imageFile) {
         try {
-          imageUrlToSave = await uploadImage(imageFile);
+          imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
         } catch (uploadError: any) {
           toast({
             title: "Image Upload Error",
@@ -404,7 +412,24 @@ const ProductManager: React.FC = () => {
         imageUrlToSave = null;
       }
 
-      updateProductMutation.mutate({ ...productForm, image_url: imageUrlToSave });
+      let sheetMusicUrlToSave = productForm.sheet_music_url;
+      if (editSheetMusicFile) {
+        try {
+          sheetMusicUrlToSave = await uploadFileToStorage(editSheetMusicFile, 'sheet-music', 'shop-sheet-music');
+        } catch (uploadError: any) {
+          toast({
+            title: "Sheet Music Upload Error",
+            description: `Failed to upload sheet music: ${uploadError.message}`,
+            variant: "destructive",
+          });
+          return; // Stop update if sheet music upload fails
+        }
+      } else if (productForm.sheet_music_url === '' && currentProduct.sheet_music_url) {
+        // If sheet_music_url is cleared in form but existed before, it means user wants to remove it
+        sheetMusicUrlToSave = null;
+      }
+
+      updateProductMutation.mutate({ ...productForm, image_url: imageUrlToSave, sheet_music_url: sheetMusicUrlToSave });
     }
   };
 
@@ -703,21 +728,26 @@ const ProductManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* New: Sheet Music URL and Key Signature in Edit Dialog */}
+              {/* New: Sheet Music Upload and Key Signature in Edit Dialog */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-sheet_music_url" className="flex items-center">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Sheet Music URL (PDF)
-                  </Label>
-                  <Input
-                    id="edit-sheet_music_url"
-                    name="sheet_music_url"
-                    value={productForm.sheet_music_url}
-                    onChange={handleFormChange}
-                    placeholder="https://example.com/sheet-music.pdf"
-                    className={cn("mt-1", formErrors.sheet_music_url && "border-red-500")}
+                  <FileInput
+                    id="edit-sheet_music_file_upload"
+                    label="Sheet Music (PDF)"
+                    icon={FileText}
+                    accept=".pdf"
+                    onChange={handleEditSheetMusicFileChange}
+                    note="Upload a PDF for the sheet music. This will override any existing URL."
+                    error={formErrors.sheet_music_url}
                   />
+                  {productForm.sheet_music_url && !editSheetMusicFile && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-500">Existing URL:</Label>
+                      <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                        {truncateUrl(productForm.sheet_music_url, 30)}
+                      </a>
+                    </div>
+                  )}
                   {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
                   <div className="flex items-center space-x-2 mt-2">
                     <Checkbox
@@ -860,6 +890,7 @@ const ProductManager: React.FC = () => {
                 </>
               ) : (
                 'Save Changes'
+              </>
               )}
             </Button>
           </div>
