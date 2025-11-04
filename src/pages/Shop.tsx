@@ -5,8 +5,9 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import ProductCard from '@/components/ProductCard';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Store, AlertCircle, CheckCircle } from 'lucide-react'; // Added CheckCircle
-// Removed stripePromise import as it's no longer needed for redirection
+import { Input } from "@/components/ui/input"; // Import Input for search
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select for sorting
+import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react'; // Added Search and ArrowUpDown icons
 
 interface Product {
   id: string;
@@ -23,19 +24,49 @@ const Shop: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBuying, setIsBuying] = useState(false); // New state for buy button loading
+  const [isBuying, setIsBuying] = useState(false);
   const { toast } = useToast();
+
+  // New state for filtering and sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState('created_at_desc'); // Default to newest first
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('products')
           .select('*')
-          .eq('is_active', true) // Only fetch active products
-          .order('created_at', { ascending: false });
+          .eq('is_active', true); // Only fetch active products
+
+        // Apply search term
+        if (searchTerm) {
+          query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        }
+
+        // Apply sorting
+        switch (sortOption) {
+          case 'price_asc':
+            query = query.order('price', { ascending: true });
+            break;
+          case 'price_desc':
+            query = query.order('price', { ascending: false });
+            break;
+          case 'title_asc':
+            query = query.order('title', { ascending: true });
+            break;
+          case 'title_desc':
+            query = query.order('title', { ascending: false });
+            break;
+          case 'created_at_desc': // Newest first (default)
+          default:
+            query = query.order('created_at', { ascending: false });
+            break;
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         setProducts(data || []);
@@ -53,7 +84,7 @@ const Shop: React.FC = () => {
     };
 
     fetchProducts();
-  }, [toast]);
+  }, [toast, searchTerm, sortOption]); // Re-fetch when search term or sort option changes
 
   // Handle Stripe Checkout success/cancel redirects
   useEffect(() => {
@@ -139,6 +170,34 @@ const Shop: React.FC = () => {
           <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">Browse our available backing tracks and resources</p>
         </div>
 
+        {/* Filter and Sort Controls */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <div className="relative w-full sm:w-1/2">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="relative w-full sm:w-1/3">
+            <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="pl-10">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="title_desc">Title: Z-A</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
@@ -172,7 +231,7 @@ const Shop: React.FC = () => {
                 key={product.id} 
                 product={product} 
                 onViewDetails={handleViewDetails} 
-                onBuyNow={handleBuyNow} // Pass the handleBuyNow function
+                onBuyNow={handleBuyNow}
               />
             ))}
           </div>
