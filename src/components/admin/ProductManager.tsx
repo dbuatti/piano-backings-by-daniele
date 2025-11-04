@@ -489,19 +489,7 @@ const ProductManager: React.FC = () => {
           <div className="border rounded-md overflow-hidden">
             <Table>
               <TableHeader className="bg-[#D1AAF2]/20">
-                <TableRow>
-                  <TableHead className="w-[200px]">Title</TableHead>
-                  <TableHead className="w-[150px]">Artist</TableHead>
-                  <TableHead className="w-[100px]">Price</TableHead>
-                  <TableHead className="w-[100px]">Category</TableHead>
-                  <TableHead className="w-[120px]">Vocal Ranges</TableHead> 
-                  <TableHead className="w-[100px]">Key</TableHead> {/* New Table Head */}
-                  <TableHead className="w-[100px]">PDF</TableHead> {/* New Table Head */}
-                  <TableHead className="w-[100px]">Type</TableHead> {/* New Table Head for Track Type */}
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead>Tracks</TableHead>
-                  <TableHead className="text-right w-[150px]">Actions</TableHead>
-                </TableRow>
+                <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead className="w-[100px]">Status</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((product) => (
