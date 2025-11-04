@@ -5,6 +5,11 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Music, DollarSign, Eye, ShoppingCart } from 'lucide-react'; // Added ShoppingCart icon
 import { cn } from '@/lib/utils';
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 interface Product {
   id: string;
   title: string;
@@ -12,7 +17,7 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string;
-  track_url?: string; // Assuming this might be a preview or full track
+  track_urls?: TrackInfo[]; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
 }
 

@@ -9,6 +9,11 @@ import { Input } from "@/components/ui/input"; // Import Input for search
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select for sorting
 import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown } from 'lucide-react'; // Added Search and ArrowUpDown icons
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 interface Product {
   id: string;
   title: string;
@@ -16,7 +21,7 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string;
-  track_url?: string;
+  track_urls?: TrackInfo[]; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
 }
 

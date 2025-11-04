@@ -11,12 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle } from 'lucide-react'; // Added MinusCircle
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import ProductManager from './ProductManager'; // Import the new ProductManager
+
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
 
 interface BackingRequest {
   id: string;
@@ -41,7 +46,7 @@ interface ProductForm {
   price: string; // Use string for input, convert to number for DB
   currency: string;
   image_url: string;
-  track_url: string;
+  track_urls: TrackInfo[]; // Changed to array of TrackInfo
   is_active: boolean;
 }
 
@@ -56,7 +61,7 @@ const RepurposeTrackToShop: React.FC = () => {
     price: '',
     currency: 'AUD',
     image_url: '',
-    track_url: '',
+    track_urls: [], // Initialize as empty array
     is_active: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -90,17 +95,14 @@ const RepurposeTrackToShop: React.FC = () => {
     if (selectedRequest) {
       const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist} Backing Track`;
       const defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}. Originally created for ${selectedRequest.name || selectedRequest.email}. Perfect for auditions, practice, or performance.`;
-      const defaultTrackUrl = selectedRequest.track_urls && selectedRequest.track_urls.length > 0 
-        ? selectedRequest.track_urls[0].url 
-        : '';
-
+      
       setProductForm({
         title: defaultTitle,
         description: defaultDescription,
         price: '25.00', // Default price, user can change
         currency: 'AUD',
         image_url: '', // Explicitly empty by default
-        track_url: defaultTrackUrl,
+        track_urls: selectedRequest.track_urls || [], // Pre-fill with existing track_urls
         is_active: true,
       });
       setFormErrors({});
@@ -117,14 +119,42 @@ const RepurposeTrackToShop: React.FC = () => {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  const handleTrackUrlChange = (index: number, field: keyof TrackInfo, value: string) => {
+    const newTrackUrls = [...productForm.track_urls];
+    newTrackUrls[index] = { ...newTrackUrls[index], [field]: value };
+    setProductForm(prev => ({ ...prev, track_urls: newTrackUrls }));
+  };
+
+  const addTrackUrl = () => {
+    setProductForm(prev => ({
+      ...prev,
+      track_urls: [...prev.track_urls, { url: '', caption: '' }]
+    }));
+  };
+
+  const removeTrackUrl = (index: number) => {
+    setProductForm(prev => ({
+      ...prev,
+      track_urls: prev.track_urls.filter((_, i) => i !== index)
+    }));
+  };
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!productForm.title.trim()) errors.title = 'Title is required.';
     if (!productForm.description.trim()) errors.description = 'Description is required.';
     if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
-    // track_url is optional for now, as it might be a preview or full track
-    // if (!productForm.track_url.trim()) errors.track_url = 'Track URL is required.';
+    
+    productForm.track_urls.forEach((track, index) => {
+      if (!track.url.trim()) {
+        errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
+      }
+      if (!track.caption.trim()) {
+        errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
+      }
+    });
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -147,7 +177,7 @@ const RepurposeTrackToShop: React.FC = () => {
       });
       setSelectedRequest(null); // Clear selection
       setProductForm({ // Reset form
-        title: '', description: '', price: '', currency: 'AUD', image_url: '', track_url: '', is_active: true,
+        title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
       });
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
@@ -308,17 +338,54 @@ const RepurposeTrackToShop: React.FC = () => {
                     </Select>
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="track_url">Track URL (for direct download/preview)</Label>
-                  <Input
-                    id="track_url"
-                    name="track_url"
-                    value={productForm.track_url}
-                    onChange={handleFormChange}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">This is the URL for the actual track file that customers will download. It can be a preview or the full track.</p>
+                
+                {/* Multiple Track URLs Section */}
+                <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">Track URLs</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
+                      <PlusCircle className="h-4 w-4 mr-2" /> Add Track
+                    </Button>
+                  </div>
+                  {productForm.track_urls.length === 0 && (
+                    <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
+                  )}
+                  {productForm.track_urls.map((track, index) => (
+                    <div key={index} className="flex flex-col gap-2 p-3 border rounded-md bg-white">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-sm">Track {index + 1}</span>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
+                          <MinusCircle className="h-4 w-4" /> Remove
+                        </Button>
+                      </div>
+                      <div>
+                        <Label htmlFor={`track-url-${index}`} className="sr-only">Track URL</Label>
+                        <Input
+                          id={`track-url-${index}`}
+                          name={`track_urls[${index}].url`}
+                          value={track.url}
+                          onChange={(e) => handleTrackUrlChange(index, 'url', e.target.value)}
+                          placeholder="Track URL"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
+                        />
+                        {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor={`track-caption-${index}`} className="sr-only">Caption</Label>
+                        <Input
+                          id={`track-caption-${index}`}
+                          name={`track_urls[${index}].caption`}
+                          value={track.caption}
+                          onChange={(e) => handleTrackUrlChange(index, 'caption', e.target.value)}
+                          placeholder="Track Caption (e.g., Main Mix, Instrumental)"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                        />
+                        {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
                 <div>
                   <Label htmlFor="image_url">Image URL (optional)</Label>
                   <Input

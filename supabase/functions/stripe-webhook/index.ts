@@ -19,6 +19,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Inlined TrackInfo interface
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 // Inlined Product interface
 export interface Product {
   id: string;
@@ -27,7 +33,7 @@ export interface Product {
   price: number;
   currency: string;
   image_url?: string | null;
-  track_url?: string | null;
+  track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
   is_active: boolean;
 }
 
@@ -69,22 +75,48 @@ const textToHtml = (text: string) => {
          `</div>`;
 };
 
+// Inlined Helper to generate track list HTML for products
+const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
+  if (!trackUrls || trackUrls.length === 0) return '';
+  
+  const listItems = trackUrls.map(track => `
+    <li style="margin-bottom: 5px;">
+      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
+        ${track.caption}
+      </a>
+    </li>
+  `).join('');
+
+  return `
+    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
+      <ul style="list-style: none; padding: 0; margin-top: 10px;">
+        ${listItems}
+      </ul>
+      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+        Click on the track name to download.
+      </p>
+    </div>
+  `;
+};
+
 // Inlined generateProductDeliveryEmail function
 export const generateProductDeliveryEmail = async (product: Product, customerEmail: string) => {
   const apiKey = Deno.env.get('GEMINI_API_KEY'); // Use Deno.env.get for Edge Functions
   const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
-  const downloadLink = product.track_url;
   const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000'; // Use SITE_URL from Deno env
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
+  const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
 
-  if (!downloadLink) {
-    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have a track_url for delivery.`);
+
+  if (!product.track_urls || product.track_urls.length === 0) {
+    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
   }
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") { // Check for placeholder
     console.log("Gemini API key not configured, using fallback product delivery template");
-    return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
   }
 
   try {
@@ -97,16 +129,16 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     Product details:
     - Product Title: "${product.title}"
     - Product Description: ${product.description}
-    - Download Link: ${downloadLink}
     - Customer Email: ${customerEmail}
     - Shop Link: ${shopLink}
     - Feedback Link: ${feedbackLink}
+    - Product Track List HTML: ${productTrackListHtml}
     
     Instructions for crafting the email:
     1. Create a compelling subject line that clearly states the purchase is confirmed and the product is ready for download.
     2. Open with a warm, personalized greeting using the customer's first name (derived from their email if no name is available).
     3. Confirm the purchase of "${product.title}".
-    4. Provide a prominent call-to-action button to "Download Your Track" linking directly to the Download Link.
+    4. Include the "Product Track List HTML" directly in the email body to list all downloadable tracks.
     5. Briefly mention the product description.
     6. Encourage them to explore other products in the shop with a link to the Shop Link.
     7. Express gratitude for their business.
@@ -131,15 +163,15 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
       return emailData;
     } catch (parseError) {
       console.error('Error parsing Gemini response for product delivery email:', parseError);
-      return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+      return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
     }
   } catch (error) {
     console.error('Error generating product delivery email copy with Gemini:', error);
-    return generateFallbackProductDeliveryEmail(product, firstName, downloadLink, shopLink, feedbackLink);
+    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
   }
 };
 
-const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, downloadLink: string, shopLink: string, feedbackLink: string) => {
+const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, shopLink: string, feedbackLink: string, productTrackListHtml: string) => {
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
     html: `
@@ -147,12 +179,7 @@ const generateFallbackProductDeliveryEmail = (product: Product, firstName: strin
         <p>Hi ${firstName},</p>
         <p>Thank you for your recent purchase from Piano Backings by Daniele!</p>
         <p>Your digital product, <strong>"${product.title}"</strong>, is now ready for download.</p>
-        <p style="margin-top: 20px; text-align: center;">
-          <a href="${downloadLink}" 
-             style="background-color: #F538BC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-            Download Your Track
-          </a>
-        </p>
+        ${productTrackListHtml}
         <p style="margin-top: 20px;">
           ${product.description}
         </p>
@@ -243,10 +270,10 @@ serve(async (req) => {
         });
       }
 
-      // Fetch product details to ensure it exists and get its price and track_url
+      // Fetch product details to ensure it exists and get its price and track_urls
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
-        .select('id, title, description, price, track_url') // Select track_url
+        .select('id, title, description, price, track_urls') // Changed to track_urls
         .eq('id', productId)
         .single();
 
@@ -280,7 +307,7 @@ serve(async (req) => {
       console.log('Order created successfully:', order);
 
       // Implement digital product delivery here (send download link via email)
-      if (product.track_url) {
+      if (product.track_urls && product.track_urls.length > 0) { // Check for track_urls array
         try {
           // Invoke the send-email Edge Function
           const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
@@ -353,7 +380,7 @@ serve(async (req) => {
             ]);
         }
       } else {
-        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_url. No delivery email sent.`);
+        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_urls. No delivery email sent.`);
         // Optionally, log a notification that a product without a track_url was purchased
         await supabaseAdmin
           .from('notifications')
@@ -361,8 +388,8 @@ serve(async (req) => {
             {
               recipient: defaultSenderEmail, // Notify admin
               sender: 'system@pianobackings.com',
-              subject: `Warning: Product purchased without track_url - ${product.title}`,
-              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_url was set for delivery. Manual intervention required.`,
+              subject: `Warning: Product purchased without track_urls - ${product.title}`,
+              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_urls was set for delivery. Manual intervention required.`,
               status: 'warning',
               type: 'system_alert'
             }
