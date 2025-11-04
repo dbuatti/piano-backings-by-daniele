@@ -35,18 +35,18 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   return (
-    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-      <CardHeader className="p-0 relative">
+    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
+      <CardHeader className="p-0 relative overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
             <img 
               src={product.image_url} 
               alt={product.title} 
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
             />
           ) : (
             <div 
-              className="flex items-center justify-center w-full h-full text-white p-4 text-center"
+              className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
               style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
             >
               <h3 className="text-xl md:text-2xl font-bold italic leading-tight">
@@ -55,7 +55,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </div>
           )}
         </AspectRatio>
-        <div className="absolute bottom-2 left-2 flex flex-col items-start space-y-1">
+        <div className="absolute top-2 left-2 flex flex-col items-start space-y-1">
           {product.category && (
             <Badge 
               variant="default" 
@@ -82,7 +82,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           </p>
         )}
         {product.key_signature && product.show_key_signature && (
-          <p className="text-xs text-gray-500 flex items-center mb-2">
+          <p className="text-xs text-gray-500 flex items-center mb-1">
             <Key className="h-3 w-3 mr-1" /> {product.key_signature}
           </p>
         )}
@@ -97,13 +97,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         )}
         <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
         <div className="flex items-center mt-3">
-          <DollarSign className="h-4 w-4 text-gray-500 mr-1" />
-          <span className="text-lg font-semibold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+          <DollarSign className="h-5 w-5 text-[#1C0357] mr-1" />
+          <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
         </div>
       </CardContent>
       <CardFooter className="p-4 border-t bg-gray-50 flex justify-between items-center">
         <Button 
-          variant="outline" 
+          variant="secondary" 
           onClick={() => onViewDetails(product)}
           className="flex-1 mr-2 bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
         >
