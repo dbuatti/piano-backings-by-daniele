@@ -36,7 +36,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           ) : (
             <div 
               className="flex items-center justify-center w-full h-full text-white p-4 text-center"
-              style={{ backgroundColor: '#2596be', fontFamily: '"Playfair Display", serif' }}
+              style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
             >
               <h3 className="text-xl md:text-2xl font-bold italic leading-tight">
                 {product.title}
