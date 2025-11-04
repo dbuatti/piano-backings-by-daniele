@@ -63,13 +63,18 @@ export const downloadTrack = (rawUrl: string, rawFilenameSuggestion: string | bo
   console.log('DEBUG: downloadTrack - Final filename with extension:', finalFilename);
 
   const link = document.createElement('a');
-  // Append ?download=true to force download for Supabase Storage URLs
-  const downloadUrl = url.includes('supabase.co/storage') && !url.includes('?download=')
-    ? `${url}?download=true`
-    : url;
+  
+  let downloadUrl = url;
+  // If it's a Supabase Storage URL, append ?download=finalFilename
+  if (url.includes('supabase.co/storage')) {
+    // Remove any existing ?download= parameter to avoid conflicts
+    const baseUrl = url.split('?')[0];
+    downloadUrl = `${baseUrl}?download=${encodeURIComponent(finalFilename)}`;
+  }
+
   link.href = downloadUrl;
-  link.setAttribute('download', finalFilename);
-  link.setAttribute('target', '_blank'); // Add target="_blank" to open in a new tab
+  link.setAttribute('download', finalFilename); // Keep as a hint for browsers
+  link.setAttribute('target', '_blank'); // Open in new tab
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
