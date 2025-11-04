@@ -12,7 +12,9 @@ import DashboardTabContent from '@/components/admin/DashboardTabContent';
 import UsersAndDataTabContent from '@/components/admin/UsersAndDataTabContent';
 import SystemAndConfigTabContent from '@/components/admin/SystemAndConfigTabContent';
 import DevelopmentAndTestingTabContent from '@/components/admin/DevelopmentAndTestingTabContent';
-import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop'; // Import the new component
+import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop'; // Import the repurpose component
+import CreateNewProduct from '@/components/admin/CreateNewProduct'; // Import the new component
+import ProductManager from '@/components/admin/ProductManager'; // Import ProductManager
 
 // Admin Components (now mostly consumed by new tab content components)
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
@@ -300,11 +302,11 @@ const AdminDashboard = () => {
           />
           
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5"> {/* Increased grid columns to 5 */}
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="dashboard" className="flex items-center">
                 <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
               </TabsTrigger>
-              <TabsTrigger value="shop-management" className="flex items-center"> {/* New Tab */}
+              <TabsTrigger value="shop-management" className="flex items-center">
                 <ShoppingCart className="mr-2 h-4 w-4" /> Shop Management
               </TabsTrigger>
               <TabsTrigger value="users-data" className="flex items-center">
@@ -331,8 +333,8 @@ const AdminDashboard = () => {
                 setStatusFilter={setStatusFilter}
                 backingTypeFilter={backingTypeFilter}
                 setBackingTypeFilter={setBackingTypeFilter}
-                paymentStatusFilter={paymentStatusFilter} // Pass new prop
-                setPaymentStatusFilter={setPaymentStatusFilter} // Pass new prop
+                paymentStatusFilter={paymentStatusFilter}
+                setPaymentStatusFilter={setPaymentStatusFilter}
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 selectedDate={selectedDate}
@@ -353,13 +355,15 @@ const AdminDashboard = () => {
                 openUploadPlatformsDialog={openUploadPlatformsDialog}
                 onDirectFileUpload={handleDirectFileUpload}
                 updateTrackCaption={updateTrackCaption}
-                updateCost={updateCost} // Pass updateCost
+                updateCost={updateCost}
               />
             </TabsContent>
 
             {/* New Shop Management Tab Content */}
-            <TabsContent value="shop-management" className="mt-6">
-              <RepurposeTrackToShop />
+            <TabsContent value="shop-management" className="mt-6 space-y-8">
+              <CreateNewProduct /> {/* New component for creating products */}
+              <RepurposeTrackToShop /> {/* Existing component for repurposing */}
+              <ProductManager /> {/* Existing component for managing products */}
             </TabsContent>
 
             {/* Users & Data Tab Content */}
@@ -381,22 +385,22 @@ const AdminDashboard = () => {
           <UploadTrackDialog
             isOpen={!!uploadTrackId}
             onOpenChange={() => { setUploadTrackId(null); handleFileChange(null); }}
-            requestId={uploadTrackId} // Changed prop name from uploadTrackId to requestId
+            requestId={uploadTrackId}
             uploadFile={uploadFile}
             onFileChange={handleFileChange}
-            uploadCaption={uploadCaption} // Pass the new prop
-            setUploadCaption={setUploadCaption} // Pass the new prop setter
+            uploadCaption={uploadCaption}
+            setUploadCaption={setUploadCaption}
             onFileUpload={handleFileUpload}
-            existingTrackUrls={existingTrackUrls} // Pass existing tracks
-            onRemoveTrack={handleRemoveTrack} // Pass remove track handler
-            onUpdateTrackCaption={updateTrackCaption} // Pass the new updateTrackCaption function
-            isUploading={isUploading} // Pass isUploading
+            existingTrackUrls={existingTrackUrls}
+            onRemoveTrack={handleRemoveTrack}
+            onUpdateTrackCaption={updateTrackCaption}
+            isUploading={isUploading}
           />
           
           <UploadPlatformsDialog
             isOpen={uploadPlatformsDialogOpen}
-            onOpenChange={() => setUploadPlatformsDialogOpen(false)} // Simplified onOpenChange
-            requestId={selectedRequestForPlatforms} // Added requestId prop
+            onOpenChange={() => setUploadPlatformsDialogOpen(false)}
+            requestId={selectedRequestForPlatforms}
             platforms={platforms}
             setPlatforms={setPlatforms}
             onSavePlatforms={saveUploadPlatforms}

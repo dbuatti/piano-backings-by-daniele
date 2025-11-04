@@ -16,15 +16,9 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import ProductManager from './ProductManager';
-import { Badge } from '@/components/ui/badge'; // Added Badge import
-import FileInput from '../FileInput'; // Import FileInput
-
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-  selected?: boolean; // Added for UI state management
-}
+import { Badge } from '@/components/ui/badge';
+import FileInput from '../FileInput';
+import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 
 interface BackingRequest {
   id: string;
@@ -37,22 +31,22 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_urls?: { url: string; caption: string | boolean | null | undefined }[]; // Updated here too
+  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
-  track_purpose?: string; // Added for dynamic description
-  additional_services?: string[]; // Added for dynamic description
-  sheet_music_url?: string; // Added for pre-filling
-  song_key?: string; // Added for pre-filling
-  track_type?: string; // Add track_type here
-  category?: string; // Added category
+  track_purpose?: string;
+  additional_services?: string[];
+  sheet_music_url?: string;
+  song_key?: string;
+  track_type?: string;
+  category?: string;
 }
 
 interface Product {
   id: string;
   title: string;
-  artist_name?: string; // Added artist_name here
+  artist_name?: string;
 }
 
 interface ProductForm {
@@ -66,57 +60,12 @@ interface ProductForm {
   artist_name: string;
   category: string;
   vocal_ranges: string[];
-  sheet_music_url: string; // New field
-  key_signature: string; // New field
-  show_sheet_music_url: boolean; // New field
-  show_key_signature: boolean; // New field
-  track_type: string; // Add track_type here
+  sheet_music_url: string;
+  key_signature: string;
+  show_sheet_music_url: boolean;
+  show_key_signature: boolean;
+  track_type: string;
 }
-
-// Helper function to determine if a string is a UUID
-const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
-
-// Helper function to determine if a string is a generic storage filename (e.g., UUID.mp3)
-const isGenericStorageFilename = (str: string) => /^[0-9a-fA-F]{32}\.[a-zA-Z0-9]+$/.test(str);
-
-// Function to generate a descriptive caption
-const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string, trackUrl: string): string => {
-  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
-
-  const parts = [];
-  if (request.song_title) parts.push(request.song_title);
-  if (request.musical_or_artist) parts.push(request.musical_or_artist);
-
-  let descriptiveDetails = [];
-  if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
-  if (request.song_key) descriptiveDetails.push(request.song_key);
-  if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
-
-  let newCaption = '';
-  if (parts.length > 0) {
-    newCaption = parts.join(' - ');
-    if (descriptiveDetails.length > 0) {
-      newCaption += ` (${descriptiveDetails.join(', ')})`;
-    }
-  } else {
-    newCaption = 'Untitled Track';
-  }
-
-  // Add file extension if it's an audio file and not already present
-  const urlExtensionMatch = trackUrl.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-  const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
-  
-  if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-    newCaption += `.${urlExtension}`;
-  } else if (!urlExtension && trackUrl.includes('/tracks/') && !newCaption.includes('.')) {
-    // If it's a track URL from our storage but no extension in URL or caption, default to .mp3
-    newCaption += '.mp3';
-  }
-
-  return newCaption;
-};
-
 
 const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
@@ -134,14 +83,14 @@ const RepurposeTrackToShop: React.FC = () => {
     artist_name: '',
     category: '',
     vocal_ranges: [],
-    sheet_music_url: '', // Initialize new field
-    key_signature: '', // Initialize new field
-    show_sheet_music_url: true, // Default to true
-    show_key_signature: true, // Default to true
-    track_type: '', // Initialize new field
+    sheet_music_url: '',
+    key_signature: '',
+    show_sheet_music_url: true,
+    show_key_signature: true,
+    track_type: '',
   });
-  const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload
-  const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Helper to truncate URL for display
@@ -151,6 +100,43 @@ const RepurposeTrackToShop: React.FC = () => {
     const end = url.substring(url.length - maxLength / 2 + 2);
     return `${start}...${end}`;
   };
+
+  // Function to generate a descriptive caption
+  const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string, trackUrl: string): string => {
+    const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+    const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
+
+    const parts = [];
+    if (request.song_title) parts.push(request.song_title);
+    if (request.musical_or_artist) parts.push(request.musical_or_artist);
+
+    let descriptiveDetails = [];
+    if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
+    if (request.song_key) descriptiveDetails.push(request.song_key);
+    if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
+
+    let newCaption = '';
+    if (parts.length > 0) {
+      newCaption = parts.join(' - ');
+      if (descriptiveDetails.length > 0) {
+        newCaption += ` (${descriptiveDetails.join(', ')})`;
+      }
+    } else {
+      newCaption = 'Untitled Track';
+    }
+
+    const urlExtensionMatch = trackUrl.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+    const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
+    
+    if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
+      newCaption += `.${urlExtension}`;
+    } else if (!urlExtension && trackUrl.includes('/tracks/') && !newCaption.includes('.')) {
+      newCaption += '.mp3';
+    }
+
+    return newCaption;
+  };
+
 
   // Fetch completed backing requests
   const { data: requests, isLoading: isLoadingRequests, isError: isErrorRequests, error: requestsError } = useQuery<BackingRequest[], Error>({
@@ -170,16 +156,16 @@ const RepurposeTrackToShop: React.FC = () => {
 
   // Fetch all shop products (only title and ID for comparison)
   const { data: shopProducts, isLoading: isLoadingShopProducts } = useQuery<Product[], Error>({
-    queryKey: ['shopProductsForRepurpose'], // Unique query key
+    queryKey: ['shopProductsForRepurpose'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, artist_name'); // Now selecting artist_name
+        .select('id, title, artist_name');
       
       if (error) throw error;
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   // Create a lookup for existing product titles for quick checking
@@ -211,13 +197,11 @@ const RepurposeTrackToShop: React.FC = () => {
       let autoTitle = selectedRequest.song_title;
       let autoArtist = selectedRequest.musical_or_artist;
 
-      // Auto-populate logic: if song_title contains a hyphen, split it
       const hyphenIndex = selectedRequest.song_title.indexOf(' - ');
       if (hyphenIndex !== -1) {
         autoTitle = selectedRequest.song_title.substring(0, hyphenIndex).trim();
         autoArtist = selectedRequest.song_title.substring(hyphenIndex + 3).trim();
       } else {
-        // If no hyphen, use musical_or_artist as artist name
         autoTitle = selectedRequest.song_title;
         autoArtist = selectedRequest.musical_or_artist;
       }
@@ -247,20 +231,17 @@ const RepurposeTrackToShop: React.FC = () => {
         defaultDescription += ` Additional services included: ${selectedRequest.additional_services.map(service => service.replace('-', ' ')).join(', ')}.`;
       }
       
-      // Generate descriptive captions for track_urls
       const newTrackUrls = selectedRequest.track_urls?.map(track => {
         const originalCaption = String(track.caption || '');
         let captionToUse = originalCaption;
 
-        // Extract filename from URL
         const urlParts = track.url.split('/');
-        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0]; // Get filename and remove query params
+        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0];
         const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
 
-        // Determine if the original caption is a generic/default one
         const isGenericCaption = 
           originalCaption === '' || 
-          originalCaption.toLowerCase() === 'true' || // Handle old boolean captions
+          originalCaption.toLowerCase() === 'true' ||
           originalCaption === filenameFromUrlWithExt ||
           originalCaption === filenameFromUrlWithoutExt;
 
@@ -268,28 +249,28 @@ const RepurposeTrackToShop: React.FC = () => {
           captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
         }
         
-        return { ...track, caption: captionToUse, selected: true };
+        return { url: track.url, caption: captionToUse, selected: true };
       }) || [];
 
       setProductForm({
-        title: autoTitle, // Auto-populated title
+        title: autoTitle,
         description: defaultDescription,
-        price: '25.00', // Default price, user can change
+        price: '25.00',
         currency: 'AUD',
-        image_url: '', // Explicitly empty by default
-        track_urls: newTrackUrls, // Use the newly generated captions
+        image_url: '',
+        track_urls: newTrackUrls,
         is_active: true,
-        artist_name: autoArtist, // Auto-populated artist name
-        category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general', // Pre-fill category
-        vocal_ranges: [], // Initialize vocal ranges as empty
-        sheet_music_url: selectedRequest.sheet_music_url || '', // Pre-fill sheet music URL
-        key_signature: selectedRequest.song_key || '', // Pre-fill key signature
-        show_sheet_music_url: true, // Default to true
-        show_key_signature: true, // Default to true
-        track_type: selectedRequest.track_type || '', // Pre-fill track_type from request
+        artist_name: autoArtist,
+        category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general',
+        vocal_ranges: [],
+        sheet_music_url: selectedRequest.sheet_music_url || '',
+        key_signature: selectedRequest.song_key || '',
+        show_sheet_music_url: true,
+        show_key_signature: true,
+        track_type: selectedRequest.track_type || '',
       });
-      setImageFile(null); // Clear image file when new request is selected
-      setSheetMusicFile(null); // Clear sheet music file when new request is selected
+      setImageFile(null);
+      setSheetMusicFile(null);
       setFormErrors({});
     }
   }, [selectedRequest]);
@@ -334,7 +315,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }] // Default to selected
+      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }]
     }));
   };
 
@@ -348,7 +329,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
     if (file) {
-      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) })); // For immediate preview
+      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
     } else {
       setProductForm(prev => ({ ...prev, image_url: '' }));
     }
@@ -358,10 +339,8 @@ const RepurposeTrackToShop: React.FC = () => {
   const handleSheetMusicFileChange = (file: File | null) => {
     setSheetMusicFile(file);
     if (file) {
-      // For immediate preview, use a temporary URL. Actual upload happens on form submission.
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      // If file is cleared, reset sheet_music_url to original if it existed in selectedRequest, or empty
       setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequest?.sheet_music_url || '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
@@ -392,14 +371,13 @@ const RepurposeTrackToShop: React.FC = () => {
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
     if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.';
     if (!productForm.category.trim()) errors.category = 'Category is required.';
-    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.'; // Add validation for track_type
+    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
-    // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
       if (!track.url.trim()) {
         errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
       }
-      if (!String(track.caption || '').trim()) { // Explicitly convert caption to string for validation
+      if (!String(track.caption || '').trim()) {
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
       }
     });
@@ -408,12 +386,10 @@ const RepurposeTrackToShop: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Mutation to create a new product
   const createProductMutation = useMutation({
     mutationFn: async (newProduct: Omit<ProductForm, 'price'> & { price: number }) => {
       const { track_urls, ...fieldsToCreate } = newProduct;
 
-      // Filter out unselected tracks and remove the 'selected' property for DB storage
       const tracksToSave = track_urls
         .filter(track => track.selected)
         .map(({ selected, ...rest }) => rest);
@@ -422,7 +398,7 @@ const RepurposeTrackToShop: React.FC = () => {
         .from('products')
         .insert([{
           ...fieldsToCreate,
-          track_urls: tracksToSave, // Save filtered tracks
+          track_urls: tracksToSave,
         }])
         .select();
       
@@ -434,18 +410,18 @@ const RepurposeTrackToShop: React.FC = () => {
         title: "Product Added",
         description: `${productForm.title} has been added to the shop!`,
       });
-      setSelectedRequest(null); // Clear selection
-      setProductForm({ // Reset form
+      setSelectedRequest(null);
+      setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [],
         sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true,
-        track_type: '', // Reset new field
+        track_type: '',
       });
-      setImageFile(null); // Clear image file
-      setSheetMusicFile(null); // Clear sheet music file
-      queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
-      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for this component's check
+      setImageFile(null);
+      setSheetMusicFile(null);
+      queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
     },
     onError: (err: any) => {
       toast({
@@ -476,7 +452,7 @@ const RepurposeTrackToShop: React.FC = () => {
           description: `Failed to upload image: ${uploadError.message}`,
           variant: "destructive",
         });
-        return; // Stop creation if image upload fails
+        return;
       }
     }
 
@@ -490,10 +466,9 @@ const RepurposeTrackToShop: React.FC = () => {
           description: `Failed to upload sheet music: ${uploadError.message}`,
           variant: "destructive",
         });
-        return; // Stop creation if sheet music upload fails
+        return;
       }
     } else if (productForm.sheet_music_url === '' && selectedRequest?.sheet_music_url) {
-      // If sheet_music_url was pre-filled from request but cleared in form, set to null
       sheetMusicUrlToSave = null;
     }
 
@@ -516,385 +491,369 @@ const RepurposeTrackToShop: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <Card className="shadow-lg bg-white">
-        <CardHeader>
-          <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-            <Music className="mr-2 h-5 w-5" />
-            Repurpose Tracks to Shop
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
-            Select a completed backing track request to create a new product for your shop.
-          </p>
+    <Card className="shadow-lg bg-white">
+      <CardHeader>
+        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+          <Music className="mr-2 h-5 w-5" />
+          Repurpose Tracks to Shop
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-gray-600 mb-4">
+          Select a completed backing track request to create a new product for your shop.
+        </p>
 
-          {/* Step 1: Select a Completed Request */}
-          <div className="mb-6 border-b pb-6">
-            <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
-              <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">1</span>
-              Select Completed Request
-            </h3>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search completed requests by song, artist, or client..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                disabled={isLoadingRequests}
-              />
-            </div>
-
-            {isLoadingRequests || isLoadingShopProducts ? (
-              <div className="flex items-center justify-center h-24">
-                <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
-                <p className="ml-2 text-gray-600">Loading requests...</p>
-              </div>
-            ) : filteredRequests.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
-            ) : (
-              <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
-                {filteredRequests.map(req => {
-                  // MODIFICATION: Refined check if request is already in shop
-                  let derivedTitle = req.song_title;
-                  let derivedArtist = req.musical_or_artist;
-
-                  const hyphenIndex = req.song_title.indexOf(' - ');
-                  if (hyphenIndex !== -1) {
-                    derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
-                    derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
-                  }
-
-                  const isAlreadyInShop = shopProducts?.some(product =>
-                    product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
-                    product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
-                  );
-
-                  return (
-                    <div
-                      key={req.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
-                        selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
-                      )}
-                      onClick={() => setSelectedRequest(req)}
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
-                        <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isAlreadyInShop && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700">
-                            <CheckCircle className="h-3 w-3 mr-1" /> In Shop
-                          </Badge>
-                        )}
-                        {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        <div className="mb-6 border-b pb-6">
+          <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
+            <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">1</span>
+            Select Completed Request
+          </h3>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search completed requests by song, artist, or client..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              disabled={isLoadingRequests}
+            />
           </div>
 
-          {/* Step 2: Define Product Details */}
-          {selectedRequest && (
-            <div>
-              <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
-                <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">2</span>
-                Define Product Details
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Product Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={productForm.title}
-                    onChange={handleFormChange}
-                    placeholder="e.g., Defying Gravity - Piano Backing Track"
-                    className={cn("mt-1", formErrors.title && "border-red-500")}
-                  />
-                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="artist_name">Artist Name</Label>
-                  <Input
-                    id="artist_name"
-                    name="artist_name"
-                    value={productForm.artist_name}
-                    onChange={handleFormChange}
-                    placeholder="e.g., Stephen Schwartz"
-                    className={cn("mt-1", formErrors.artist_name && "border-red-500")}
-                  />
-                  {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={productForm.description}
-                    onChange={handleFormChange}
-                    placeholder="A detailed description of the product..."
-                    rows={4}
-                    className={cn("mt-1", formErrors.description && "border-red-500")}
-                  />
-                  {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price</Label>
-                    <Input
-                      id="price"
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      value={productForm.price}
-                      onChange={handleFormChange}
-                      placeholder="e.g., 25.00"
-                      className={cn("mt-1", formErrors.price && "border-red-500")}
-                    />
-                    {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select onValueChange={(value) => handleSelectChange('currency', value)} value={productForm.currency}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AUD">AUD</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
-                    <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full-song">Full Song</SelectItem>
-                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                      <SelectItem value="note-bash">Note Bash</SelectItem>
-                      <SelectItem value="general">General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
-                </div>
+          {isLoadingRequests || isLoadingShopProducts ? (
+            <div className="flex items-center justify-center h-24">
+              <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
+              <p className="ml-2 text-gray-600">Loading requests...</p>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
+              {filteredRequests.map(req => {
+                let derivedTitle = req.song_title;
+                let derivedArtist = req.musical_or_artist;
 
-                {/* New: Track Type Select */}
-                <div>
-                  <Label htmlFor="track_type">Track Type</Label>
-                  <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
-                    <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
-                      <SelectValue placeholder="Select track type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="quick">Quick Reference</SelectItem>
-                      <SelectItem value="one-take">One-Take Recording</SelectItem>
-                      <SelectItem value="polished">Polished Backing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {formErrors.track_type && <p className="text-red-500 text-xs mt-1">{formErrors.track_type}</p>}
-                </div>
+                const hyphenIndex = req.song_title.indexOf(' - ');
+                if (hyphenIndex !== -1) {
+                  derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
+                  derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
+                }
 
-                {/* New: Vocal Ranges Checkboxes */}
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">Vocal Ranges</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {['Soprano', 'Alto', 'Tenor', 'Bass'].map(range => (
-                      <div key={range} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`vocal-range-${range}`}
-                          checked={productForm.vocal_ranges.includes(range)}
-                          onCheckedChange={(checked) => handleVocalRangeChange(range, checked)}
-                        />
-                        <Label htmlFor={`vocal-range-${range}`}>{range}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                const isAlreadyInShop = shopProducts?.some(product =>
+                  product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
+                  product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
+                );
 
-                {/* New: Sheet Music Upload and Key Signature */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <FileInput
-                      id="sheet_music_file_upload"
-                      label="Sheet Music (PDF)"
-                      icon={FileText}
-                      accept=".pdf"
-                      onChange={handleSheetMusicFileChange}
-                      note="Upload a PDF for the sheet music. This will override any existing URL."
-                      error={formErrors.sheet_music_url}
-                    />
-                    {productForm.sheet_music_url && !sheetMusicFile && (
-                      <div className="mt-2">
-                        <Label className="text-xs text-gray-500">Existing URL:</Label>
-                        <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
-                          {truncateUrl(productForm.sheet_music_url, 30)}
-                        </a>
-                      </div>
+                return (
+                  <div
+                    key={req.id}
+                    className={cn(
+                      "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
+                      selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
                     )}
-                    {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
-                    <div className="flex items-center space-x-2 mt-2">
-                      <Checkbox
-                        id="show_sheet_music_url"
-                        name="show_sheet_music_url"
-                        checked={productForm.show_sheet_music_url}
-                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_sheet_music_url: checked as boolean }))}
-                      />
-                      <Label htmlFor="show_sheet_music_url">Show PDF in Shop</Label>
+                    onClick={() => setSelectedRequest(req)}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
+                      <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isAlreadyInShop && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-700">
+                          <CheckCircle className="h-3 w-3 mr-1" /> In Shop
+                        </Badge>
+                      )}
+                      {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="key_signature" className="flex items-center">
-                      <Key className="mr-2 h-4 w-4" />
-                      Key Signature
-                    </Label>
-                    <Input
-                      id="key_signature"
-                      name="key_signature"
-                      value={productForm.key_signature}
-                      onChange={handleFormChange}
-                      placeholder="e.g., C Major, A Minor"
-                      className={cn("mt-1", formErrors.key_signature && "border-red-500")}
-                    />
-                    {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
-                    <div className="flex items-center space-x-2 mt-2">
-                      <Checkbox
-                        id="show_key_signature"
-                        name="show_key_signature"
-                        checked={productForm.show_key_signature}
-                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_key_signature: checked as boolean }))}
-                      />
-                      <Label htmlFor="show_key_signature">Show Key in Shop</Label>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Multiple Track URLs Section */}
-                <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-medium">Product Tracks</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
-                      <PlusCircle className="h-4 w-4 mr-2" /> Add Track
-                    </Button>
-                  </div>
-                  {productForm.track_urls.length === 0 && (
-                    <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {productForm.track_urls.map((track, index) => (
-                      <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`track-selected-${index}`}
-                              checked={track.selected}
-                              onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
-                            />
-                            <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
-                              Track {index + 1}
-                            </Label>
-                          </div>
-                          <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
-                            <MinusCircle className="h-4 w-4" /> Remove
-                          </Button>
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
-                          <a 
-                            href={track.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="block text-blue-600 hover:underline text-sm truncate mt-1"
-                          >
-                            <Link className="h-3 w-3 mr-1 inline-block" />
-                            {truncateUrl(track.url, 30)}
-                          </a>
-                          {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
-                          <Input
-                            id={`track-caption-${index}`}
-                            name={`track_urls[${index}].caption`}
-                            value={String(track.caption || '')} // Explicitly convert caption to string
-                            onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
-                            placeholder="Track Caption (e.g., Main Mix, Instrumental)"
-                            className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
-                          />
-                          {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <FileInput
-                    id="product-image-upload"
-                    label="Product Image (optional)"
-                    icon={UploadCloud}
-                    accept="image/*"
-                    onChange={handleImageFileChange}
-                    note="Upload a cover image for your product. If left empty, a text-based image will be generated."
-                    error={formErrors.image_url}
-                  />
-                  {productForm.image_url && (
-                    <div className="mt-2">
-                      <Label className="text-xs text-gray-500">Image Preview:</Label>
-                      <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
-                    </div>
-                  )}
-                  {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_active"
-                    name="is_active"
-                    checked={productForm.is_active}
-                    onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
-                  />
-                  <Label htmlFor="is_active">Active in Shop</Label>
-                </div>
-              </div>
-              <div className="flex justify-end mt-6">
-                <Button
-                  onClick={handleCreateProduct}
-                  disabled={createProductMutation.isPending}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  {createProductMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding Product...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add to Shop
-                    </>
-                  )}
-                </Button>
-              </div>
+                );
+              })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Product Manager Section */}
-      <ProductManager />
-    </div>
-  );
-};
+        {selectedRequest && (
+          <div>
+            <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
+              <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">2</span>
+              Define Product Details
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">Product Title</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={productForm.title}
+                  onChange={handleFormChange}
+                  placeholder="e.g., Defying Gravity - Piano Backing Track"
+                  className={cn("mt-1", formErrors.title && "border-red-500")}
+                />
+                {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+              </div>
+              <div>
+                <Label htmlFor="artist_name">Artist Name</Label>
+                <Input
+                  id="artist_name"
+                  name="artist_name"
+                  value={productForm.artist_name}
+                  onChange={handleFormChange}
+                  placeholder="e.g., Stephen Schwartz"
+                  className={cn("mt-1", formErrors.artist_name && "border-red-500")}
+                />
+                {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={productForm.description}
+                  onChange={handleFormChange}
+                  placeholder="A detailed description of the product..."
+                  rows={4}
+                  className={cn("mt-1", formErrors.description && "border-red-500")}
+                />
+                {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="price">Price</Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    value={productForm.price}
+                    onChange={handleFormChange}
+                    placeholder="e.g., 25.00"
+                    className={cn("mt-1", formErrors.price && "border-red-500")}
+                  />
+                  {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="currency">Currency</Label>
+                  <Select onValueChange={(value) => handleSelectChange('currency', value)} value={productForm.currency}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
+                  <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full-song">Full Song</SelectItem>
+                    <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                    <SelectItem value="note-bash">Note Bash</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
+              </div>
 
-export default RepurposeTrackToShop;
+              <div>
+                <Label htmlFor="track_type">Track Type</Label>
+                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
+                  <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
+                    <SelectValue placeholder="Select track type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quick">Quick Reference</SelectItem>
+                    <SelectItem value="one-take">One-Take Recording</SelectItem>
+                    <SelectItem value="polished">Polished Backing</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formErrors.track_type && <p className="text-red-500 text-xs mt-1">{formErrors.track_type}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Vocal Ranges</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['Soprano', 'Alto', 'Tenor', 'Bass'].map(range => (
+                    <div key={range} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`vocal-range-${range}`}
+                        checked={productForm.vocal_ranges.includes(range)}
+                        onCheckedChange={(checked) => handleVocalRangeChange(range, checked)}
+                      />
+                      <Label htmlFor={`vocal-range-${range}`}>{range}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <FileInput
+                    id="sheet_music_file_upload"
+                    label="Sheet Music (PDF)"
+                    icon={FileText}
+                    accept=".pdf"
+                    onChange={handleSheetMusicFileChange}
+                    note="Upload a PDF for the sheet music. This will override any existing URL."
+                    error={formErrors.sheet_music_url}
+                  />
+                  {productForm.sheet_music_url && !sheetMusicFile && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-500">Existing URL:</Label>
+                      <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                        {truncateUrl(productForm.sheet_music_url, 30)}
+                      </a>
+                    </div>
+                  )}
+                  {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="show_sheet_music_url"
+                      name="show_sheet_music_url"
+                      checked={productForm.show_sheet_music_url}
+                      onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_sheet_music_url: checked as boolean }))}
+                    />
+                    <Label htmlFor="show_sheet_music_url">Show PDF in Shop</Label>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="key_signature" className="flex items-center">
+                    <Key className="mr-2 h-4 w-4" />
+                    Key Signature
+                  </Label>
+                  <Input
+                    id="key_signature"
+                    name="key_signature"
+                    value={productForm.key_signature}
+                    onChange={handleFormChange}
+                    placeholder="e.g., C Major, A Minor"
+                    className={cn("mt-1", formErrors.key_signature && "border-red-500")}
+                  />
+                  {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="show_key_signature"
+                      name="show_key_signature"
+                      checked={productForm.show_key_signature}
+                      onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, show_key_signature: checked as boolean }))}
+                    />
+                    <Label htmlFor="show_key_signature">Show Key in Shop</Label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Product Tracks</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
+                    <PlusCircle className="h-4 w-4 mr-2" /> Add Track
+                  </Button>
+                </div>
+                {productForm.track_urls.length === 0 && (
+                  <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {productForm.track_urls.map((track, index) => (
+                    <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`track-selected-${index}`}
+                            checked={track.selected}
+                            onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
+                          />
+                          <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
+                            Track {index + 1}
+                          </Label>
+                        </div>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
+                          <MinusCircle className="h-4 w-4" /> Remove
+                        </Button>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
+                        <a 
+                          href={track.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block text-blue-600 hover:underline text-sm truncate mt-1"
+                        >
+                          <Link className="h-3 w-3 mr-1 inline-block" />
+                          {truncateUrl(track.url, 30)}
+                        </a>
+                        {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
+                        <Input
+                          id={`track-caption-${index}`}
+                          name={`track_urls[${index}].caption`}
+                          value={String(track.caption || '')}
+                          onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
+                          placeholder="Track Caption (e.g., Main Mix, Instrumental)"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                        />
+                        {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <FileInput
+                  id="product-image-upload"
+                  label="Product Image (optional)"
+                  icon={UploadCloud}
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  note="Upload a cover image for your product. If left empty, a text-based image will be generated."
+                  error={formErrors.image_url}
+                />
+                {productForm.image_url && (
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">Image Preview:</Label>
+                    <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
+                  </div>
+                )}
+                {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_active"
+                  name="is_active"
+                  checked={productForm.is_active}
+                  onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
+                />
+                <Label htmlFor="is_active">Active in Shop</Label>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <Button
+                onClick={handleCreateProduct}
+                disabled={createProductMutation.isPending}
+                className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+              >
+                {createProductMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding Product...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add to Shop
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
