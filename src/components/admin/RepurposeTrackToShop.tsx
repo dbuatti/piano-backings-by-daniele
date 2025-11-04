@@ -16,6 +16,7 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
+import ProductManager from './ProductManager'; // Import the new ProductManager
 
 interface BackingRequest {
   id: string;
@@ -149,7 +150,7 @@ const RepurposeTrackToShop: React.FC = () => {
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_url: '', is_active: true,
       });
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
-      // Optionally, invalidate shop products query if you have one
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
     },
     onError: (err: any) => {
       toast({
@@ -186,8 +187,8 @@ const RepurposeTrackToShop: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <Card className="shadow-lg mb-6 bg-white">
+    <div className="container mx-auto py-8 space-y-8"> {/* Added space-y-8 for spacing between sections */}
+      <Card className="shadow-lg bg-white">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
             <Music className="mr-2 h-5 w-5" />
@@ -260,6 +261,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="title"
                     value={productForm.title}
                     onChange={handleFormChange}
+                    placeholder="e.g., Defying Gravity - Piano Backing Track"
                     className={cn("mt-1", formErrors.title && "border-red-500")}
                   />
                   {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
@@ -271,6 +273,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="description"
                     value={productForm.description}
                     onChange={handleFormChange}
+                    placeholder="A detailed description of the product..."
                     rows={4}
                     className={cn("mt-1", formErrors.description && "border-red-500")}
                   />
@@ -286,6 +289,7 @@ const RepurposeTrackToShop: React.FC = () => {
                       step="0.01"
                       value={productForm.price}
                       onChange={handleFormChange}
+                      placeholder="e.g., 25.00"
                       className={cn("mt-1", formErrors.price && "border-red-500")}
                     />
                     {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
@@ -294,7 +298,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     <Label htmlFor="currency">Currency</Label>
                     <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
                       <SelectTrigger className="mt-1">
-                        <SelectValue />
+                        <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="AUD">AUD</SelectItem>
@@ -311,6 +315,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="track_url"
                     value={productForm.track_url}
                     onChange={handleFormChange}
+                    placeholder="https://your-storage.com/track.mp3"
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">This is the URL for the actual track file that customers will download. It can be a preview or the full track.</p>
@@ -322,9 +327,10 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="image_url"
                     value={productForm.image_url}
                     onChange={handleFormChange}
+                    placeholder="https://example.com/track-cover.jpg"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">A cover image URL for the product card in the shop.</p>
+                  <p className="text-xs text-gray-500 mt-1">A cover image for the product card.</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -359,6 +365,9 @@ const RepurposeTrackToShop: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Product Manager Section */}
+      <ProductManager />
     </div>
   );
 };
