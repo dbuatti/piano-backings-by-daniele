@@ -57,11 +57,16 @@ const PurchaseConfirmation: React.FC = () => {
         setUserSession(session);
 
         // Fetch order details using the checkout_session_id
+        // Pass the sessionId as a custom header for RLS policy
         const { data, error: fetchError } = await supabase
           .from('orders')
           .select('*, products(title, description, track_urls)') // Select product details
           .eq('checkout_session_id', sessionId)
-          .single();
+          .single({
+            headers: {
+              'x-checkout-session-id': sessionId, // Pass the session ID as a custom header for RLS
+            },
+          });
 
         if (fetchError || !data) {
           console.error('Error fetching order:', fetchError);
