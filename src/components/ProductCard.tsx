@@ -2,16 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key } from 'lucide-react'; // Added Key icon
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge'; // Import Badge
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-
-// TrackInfo interface is now imported from helpers.ts
-// interface TrackInfo {
-//   url: string;
-//   caption: string | boolean | null | undefined; // Updated to be more robust
-// }
+import { Badge } from '@/components/ui/badge';
+import { TrackInfo } from '@/utils/helpers';
 
 interface Product {
   id: string;
@@ -25,24 +19,24 @@ interface Product {
   artist_name?: string;
   category?: string;
   vocal_ranges?: string[];
-  sheet_music_url?: string | null; // New field
-  key_signature?: string | null; // New field
-  show_sheet_music_url?: boolean; // New field
-  show_key_signature?: boolean; // New field
-  track_type?: string; // Add track_type here
+  sheet_music_url?: string | null;
+  key_signature?: string | null;
+  show_sheet_music_url?: boolean;
+  show_key_signature?: boolean;
+  track_type?: string;
 }
 
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
   onBuyNow: (product: Product) => void;
-  isBuying: boolean; // New prop for loading state
+  isBuying: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
-      <CardHeader className="p-0">
+      <CardHeader className="p-0 relative"> {/* Added relative positioning here */}
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
             <img 
@@ -61,6 +55,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </div>
           )}
         </AspectRatio>
+        {product.category && (
+          <Badge 
+            variant="default" 
+            className="absolute bottom-2 left-2 bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full shadow-md"
+          >
+            {product.category.replace('-', ' ')}
+          </Badge>
+        )}
       </CardHeader>
       <CardContent className="flex-1 p-4">
         <CardTitle className="text-xl font-bold text-[#1C0357] mb-2">{product.title}</CardTitle>
@@ -69,12 +71,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             <User className="h-3 w-3 mr-1" /> {product.artist_name}
           </p>
         )}
-        {product.category && (
-          <p className="text-xs text-gray-500 flex items-center mb-1 capitalize">
-            <Tag className="h-3 w-3 mr-1" /> {product.category.replace('-', ' ')}
-          </p>
-        )}
-        {product.key_signature && product.show_key_signature && ( // Conditionally display key signature
+        {product.key_signature && product.show_key_signature && (
           <p className="text-xs text-gray-500 flex items-center mb-2">
             <Key className="h-3 w-3 mr-1" /> {product.key_signature}
           </p>
@@ -88,7 +85,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             ))}
           </div>
         )}
-        {product.track_type && ( // Display track_type
+        {product.track_type && (
           <p className="text-xs text-gray-500 flex items-center mb-2 capitalize">
             <Music className="h-3 w-3 mr-1" /> {product.track_type.replace('-', ' ')}
           </p>
@@ -110,7 +107,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         </Button>
         <Button 
           onClick={() => onBuyNow(product)}
-          disabled={isBuying} // Disable button when buying
+          disabled={isBuying}
           className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
         >
           {isBuying ? (
