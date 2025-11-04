@@ -183,7 +183,7 @@ const UserDashboard = () => {
     let targetUserEmail: string | null = null;
 
     if (selectedUserForView) {
-      // Use the ref here instead of the state directly
+      // Admin viewing another user
       const selectedProfile = allUsersForAdminRef.current.find(u => u.id === selectedUserForView);
       if (selectedProfile) {
         targetUserId = selectedProfile.id;
@@ -191,18 +191,18 @@ const UserDashboard = () => {
       }
       setShowAccountPrompt(false);
     } else if (loggedInUser) {
+      // Logged-in user viewing their own dashboard
       targetUserId = loggedInUser.id;
       targetUserEmail = loggedInUser.email;
       setShowAccountPrompt(false);
     } else if (emailFromUrl) {
+      // Guest viewing via email link
       fetchGuestRequestsByEmail(emailFromUrl);
-      // For guest purchases, we'd need a similar guest-specific function if they exist without user_id
-      // For now, assume purchases are linked to user_id or require login.
-      setPurchases([]); // No guest purchases for now
-      setLoadingPurchases(false);
+      fetchPurchasesForTarget(null, emailFromUrl); // Fetch purchases for guests too
       setShowAccountPrompt(true);
       return;
     } else {
+      // Not logged in, no email in URL
       navigate('/login');
       return;
     }
@@ -216,7 +216,7 @@ const UserDashboard = () => {
       setLoading(false);
       setLoadingPurchases(false);
     }
-  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]); // Removed allUsersForAdmin from dependencies
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]);
 
   // Effect for initial load and auth state changes
   useEffect(() => {
