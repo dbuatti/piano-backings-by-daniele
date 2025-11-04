@@ -48,14 +48,15 @@ const PurchaseConfirmation: React.FC = () => {
 
   const downloadTrack = (url: string, filenameSuggestion: string | null | undefined = 'download') => {
     if (url) {
-      let finalFilename = String(filenameSuggestion || 'downloaded_file'); // Ensure it's a string, provide fallback
+      let finalFilename = String(filenameSuggestion || 'track_download'); // Ensure it's a string, provide fallback
       
       // Sanitize filename: replace invalid characters with underscores
       finalFilename = finalFilename.replace(/[^a-z0-9\.\-_]/gi, '_');
 
       // If the filename is just 'true' (e.g., from a mistaken caption), provide a better default
-      if (finalFilename.toLowerCase() === 'true' || finalFilename.trim() === '') {
-        finalFilename = 'downloaded_file';
+      // Also handle cases where it might be 'true.mp3' or similar if the extension logic was applied first
+      if (finalFilename.toLowerCase() === 'true' || finalFilename.toLowerCase().startsWith('true.') || finalFilename.trim() === '') {
+        finalFilename = 'track_download'; // More descriptive fallback
       }
 
       // Add file extension if missing and URL has one
@@ -68,6 +69,8 @@ const PurchaseConfirmation: React.FC = () => {
         // If no extension in URL and not in filename, default to .mp3
         finalFilename = `${finalFilename}.mp3`;
       }
+
+      console.log('Attempting to download with filename:', finalFilename, 'from URL:', url); // DEBUG LOG
 
       const link = document.createElement('a');
       // Append ?download=true to force download for Supabase Storage URLs
