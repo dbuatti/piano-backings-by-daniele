@@ -1,171 +1,122 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import FileInput from '@/components/FileInput';
-import { Upload, UploadCloud, FileAudio, Trash2, Save } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-
-// TrackInfo interface is now imported from helpers.ts
-// interface TrackInfo {
-//   url: string;
-//   caption: string | boolean | null | undefined; // Updated to be more robust
-// }
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { uploadFileToSupabase } from '@/utils/supabase-client';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UploadTrackDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  uploadTrackId: string | null;
-  uploadFile: File | null;
-  onFileChange: (file: File | null) => void;
-  uploadCaption: string; // New prop for upload caption
-  setUploadCaption: (caption: string) => void; // New prop setter for upload caption
-  onFileUpload: () => void;
-  existingTrackUrls: TrackInfo[]; // Changed to array of TrackInfo objects
-  onRemoveTrack: (urlToRemove: string) => void;
-  onUpdateTrackCaption: (requestId: string, trackUrl: string, newCaption: string) => void; // New prop
+  requestId: string;
+  isOpen: boolean; // Added prop
+  onOpenChange: (isOpen: boolean) => void; // Changed from onClose
 }
 
-const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
-  isOpen,
-  onOpenChange,
-  uploadTrackId,
-  uploadFile,
-  onFileChange,
-  uploadCaption, // Destructure new prop
-  setUploadCaption, // Destructure new prop
-  onFileUpload,
-  existingTrackUrls,
-  onRemoveTrack,
-  onUpdateTrackCaption,
-}) => {
-  const [editingCaption, setEditingCaption] = useState<{ url: string; caption: string } | null>(null);
+const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({ requestId, isOpen, onOpenChange }) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
-  const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (editingCaption) {
-      setEditingCaption({ ...editingCaption, caption: e.target.value });
+  // Reset state when dialog opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedFile(null);
+      setCaption('');
+    }
+  }, [isOpen]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      setSelectedFile(event.target.files[0]);
+      setCaption(event.target.files[0].name); // Pre-fill caption with file name
+    } else {
+      setSelectedFile(null);
+      setCaption('');
     }
   };
 
-  const handleSaveCaption = async () => {
-    if (uploadTrackId && editingCaption) {
-      await onUpdateTrackCaption(uploadTrackId, editingCaption.url, editingCaption.caption);
-      setEditingCaption(null); // Exit editing mode
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select an audio file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { data: uploadData, error: uploadError } = await uploadFileToSupabase(selectedFile, `tracks/${requestId}/`);
+      if (uploadError) throw uploadError;
+
+      const newTrackUrl = uploadData?.path;
+      if (!newTrackUrl) throw new Error("Failed to get uploaded file path.");
+
+      // Fetch existing track_urls
+      const { data: existingRequest, error: fetchError } = await supabase
+        .from('backing_requests')
+        .select('track_urls')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentTrackUrls = existingRequest?.track_urls || [];
+      const updatedTrackUrls = [...currentTrackUrls, { url: newTrackUrl, caption: caption || selectedFile.name }];
+
+      // Update the backing_request with the new track_urls array
+      const { error: updateError } = await supabase
+        .from('backing_requests')
+        .update({ track_urls: updatedTrackUrls })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Upload Successful",
+        description: `${selectedFile.name} has been uploaded and linked to request ${requestId}.`,
+      });
+      onOpenChange(false); // Close dialog and trigger refresh in parent
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Upload Failed",
+        description: `Could not upload ${selectedFile.name}: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Upload className="mr-2 h-5 w-5" />
-            Upload Track(s)
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {existingTrackUrls && existingTrackUrls.length > 0 && (
-            <div className="border rounded-md p-3 bg-gray-50">
-              <h3 className="font-semibold text-sm mb-2 flex items-center">
-                <FileAudio className="mr-2 h-4 w-4" />
-                Uploaded Tracks ({existingTrackUrls.length})
-              </h3>
-              <ul className="space-y-2">
-                {existingTrackUrls.map((track, index) => (
-                  <li key={track.url} className="flex flex-col p-2 rounded-md border bg-white">
-                    <div className="flex items-center justify-between text-sm">
-                      <a href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate flex-1 mr-2">
-                        {String(track.caption || 'Download Track')}
-                      </a>
-                      <div className="flex items-center space-x-1">
-                        {editingCaption?.url === track.url ? (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-green-600 hover:bg-green-100"
-                            onClick={handleSaveCaption}
-                          >
-                            <Save className="h-3 w-3" />
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-gray-500 hover:bg-gray-100"
-                            onClick={() => setEditingCaption({ url: track.url, caption: String(track.caption || '') })}
-                          >
-                            <FileAudio className="h-3 w-3" /> {/* Using FileAudio as an 'edit' icon for now */}
-                          </Button>
-                        )}
-                        <Button 
-                          variant="destructive" 
-                          size="icon" 
-                          className="h-6 w-6 flex-shrink-0"
-                          onClick={() => onRemoveTrack(track.url)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    {editingCaption?.url === track.url && (
-                      <div className="mt-2">
-                        <Label htmlFor={`caption-${index}`} className="sr-only">Edit Caption</Label>
-                        <Input
-                          id={`caption-${index}`}
-                          value={editingCaption?.caption || ''} // Defensive check added here
-                          onChange={handleCaptionChange}
-                          onBlur={handleSaveCaption} // Save on blur
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveCaption(); }} // Save on Enter
-                          placeholder="Enter track caption"
-                          className="h-8 text-xs"
-                        />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">Uploading track for request ID: <span className="font-medium">{requestId.substring(0, 8)}</span></p>
+      <div>
+        <Label htmlFor="track-file">Select Audio File</Label>
+        <Input id="track-file" type="file" accept="audio/*" onChange={handleFileChange} />
+      </div>
+      <div>
+        <Label htmlFor="caption">Track Caption (optional)</Label>
+        <Input id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="e.g., Final Mix, Version 2" />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>Cancel</Button>
+        <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
+          {isUploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            "Upload Track"
           )}
-
-          <FileInput
-            id="track-file-upload"
-            label="Select MP3 File to Upload"
-            icon={UploadCloud}
-            accept="audio/mp3,audio/mpeg"
-            onChange={onFileChange}
-            note="Drag and drop your MP3 file here, or click to browse. You can upload multiple tracks per request."
-          />
-
-          {uploadFile && (
-            <div>
-              <Label htmlFor="upload-caption">Track Caption (for download filename)</Label>
-              <Input
-                id="upload-caption"
-                value={uploadCaption}
-                onChange={(e) => setUploadCaption(e.target.value)}
-                placeholder="e.g., Defying Gravity - Full Mix"
-                className="mt-1"
-              />
-              <p className="text-xs text-gray-500 mt-1">This will be the suggested filename when users download the track.</p>
-            </div>
-          )}
-
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={onFileUpload}
-              disabled={!uploadFile || !uploadCaption.trim()} // Disable if no file or no caption
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-            >
-              Upload Track
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </Button>
+      </div>
+    </div>
   );
 };
 

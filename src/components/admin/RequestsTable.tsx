@@ -51,6 +51,7 @@ import {
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import RequestTableRow from './RequestTableRow'; // Import the new component
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added missing import
 
 interface RequestsTableProps {
   filteredRequests: any[];
