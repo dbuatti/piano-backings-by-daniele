@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; // Added Button import
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,192 +18,184 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
-import { 
-  Calendar, 
-  CalendarDays, 
-  Check, 
-  Clock, 
-  CreditCard, 
-  DollarSign, 
-  Eye, 
-  ExternalLink, 
-  Facebook, 
-  FileAudio, 
-  Hash, 
-  Instagram, 
-  Mail, 
-  MoreHorizontal, 
-  Music, 
-  Share2, 
-  Tag, 
-  Trash2, 
-  Upload, 
-  User, 
-  X, 
-  Youtube 
-} from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing';
+import {
+  ArrowUpDown,
+  CheckCircle,
+  Clock,
+  Download,
+  Edit,
+  Eye,
+  Link as LinkIcon,
+  Music,
+  Share2,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react'; // Removed many unused icons
 import { getSafeBackingTypes } from '@/utils/helpers';
-import { cn } from '@/lib/utils'; // Import cn for conditional classNames
-import { useToast } from '@/hooks/use-toast'; // Import useToast for error messages
+import { useToast } from '@/hooks/use-toast';
+import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs'; // Import the hook
+import { Link } from 'react-router-dom'; // Import Link for navigation
+
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
+interface BackingRequest {
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  song_title: string;
+  musical_or_artist: string;
+  backing_type: string | string[];
+  delivery_date: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  is_paid: boolean;
+  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
+  shared_link?: string;
+  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
+  cost?: number;
+  sheet_music_url?: string; // Added sheet music URL
+  voice_memo_url?: string; // Added voice memo URL
+  youtube_link?: string; // Added youtube link
+  additional_links?: string; // Added additional links
+}
 
 interface RequestTableRowProps {
-  request: any;
-  selectedRequests: string[];
-  handleSelectRequest: (id: string) => void;
-  updateStatus: (id: string, status: string) => void;
-  updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  uploadTrack: (id: string) => void;
-  shareTrack: (id: string) => void;
-  openEmailGenerator: (request: any) => void;
-  openDeleteDialog: (id: string) => void;
+  request: BackingRequest;
+  updateStatus: (id: string, status: BackingRequest['status']) => Promise<void>;
+  updatePaymentStatus: (id: string, isPaid: boolean) => Promise<void>;
+  shareTrack: (id: string) => Promise<void>;
+  deleteRequest: (id: string) => Promise<void>;
   openUploadPlatformsDialog: (id: string) => void;
-  onDirectFileUpload: (id: string, file: File) => void; // New prop for direct upload
+  updateTrackCaption: (requestId: string, trackUrl: string, newCaption: string) => Promise<boolean>;
+  handleDirectFileUpload: (id: string, file: File) => Promise<void>;
 }
 
 const RequestTableRow: React.FC<RequestTableRowProps> = ({
   request,
-  selectedRequests,
-  handleSelectRequest,
   updateStatus,
   updatePaymentStatus,
-  uploadTrack,
   shareTrack,
-  openEmailGenerator,
-  openDeleteDialog,
+  deleteRequest,
   openUploadPlatformsDialog,
-  onDirectFileUpload,
+  updateTrackCaption,
+  handleDirectFileUpload,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
+  const [isEditingCaption, setIsEditingCaption] = useState<string | null>(null); // Stores track URL being edited
+  const [newCaption, setNewCaption] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
-  const getBadgeVariant = (type: string) => {
-    switch (type) {
-      case 'full-song': return 'default';
-      case 'audition-cut': return 'secondary';
-      case 'note-bash': return 'outline';
-      default: return 'default';
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
+      case 'in-progress':
+        return <Badge variant="secondary" className="bg-yellow-500 text-yellow-900"><Clock className="w-3 h-3 mr-1" /> In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive"><X className="w-3 h-3 mr-1" /> Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
     }
   };
 
-  const getPlatformIcons = (platforms: any) => {
-    if (!platforms) return null;
-    
-    let platformsObj = platforms;
-    if (typeof platforms === 'string') {
-      try {
-        platformsObj = JSON.parse(platforms);
-      } catch (e) {
-        return null;
-      }
-    }
-    
-    const icons = [];
-    if (platformsObj.youtube) icons.push(<Youtube key="youtube" className="w-4 h-4 text-red-600" />);
-    if (platformsObj.tiktok) icons.push(<Music key="tiktok" className="w-4 h-4 text-black" />);
-    if (platformsObj.facebook) icons.push(<Facebook key="facebook" className="w-4 h-4 text-blue-600" />);
-    if (platformsObj.instagram) icons.push(<Instagram key="instagram" className="w-4 h-4 text-pink-500" />);
-    if (platformsObj.gumroad) icons.push(<ExternalLink key="gumroad" className="w-4 h-4 text-purple-600" />);
-    
-    return (
-      <div className="flex gap-1">
-        {icons}
-      </div>
+  const getPaymentBadge = (isPaid: boolean) => {
+    return isPaid ? (
+      <Badge variant="default" className="bg-blue-500">Paid</Badge>
+    ) : (
+      <Badge variant="destructive">Unpaid</Badge>
     );
   };
 
-  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+  const handleCaptionEdit = (trackUrl: string, currentCaption: string) => {
+    setIsEditingCaption(trackUrl);
+    setNewCaption(currentCaption);
+  };
 
-  const handleDragOver = (event: React.DragEvent<HTMLTableRowElement>) => {
-    event.preventDefault();
+  const saveCaption = async (trackUrl: string) => {
+    const success = await updateTrackCaption(request.id, trackUrl, newCaption);
+    if (success) {
+      setIsEditingCaption(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLTableRowElement>) => {
-    event.preventDefault();
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
     setIsDragging(false);
   };
 
-  const handleDrop = (event: React.DragEvent<HTMLTableRowElement>) => {
-    event.preventDefault();
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
     setIsDragging(false);
-    const files = event.dataTransfer.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      if (file.type.startsWith('audio/')) { // Only accept audio files
-        onDirectFileUpload(request.id, file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('audio/')) {
+        await handleDirectFileUpload(request.id, file);
       } else {
         toast({
           title: "Invalid File Type",
-          description: "Only audio files (e.g., MP3) can be uploaded here.",
+          description: "Only audio files can be dropped here.",
           variant: "destructive",
         });
       }
     }
   };
 
+  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+
   return (
-    <TableRow 
-      key={request.id} 
-      className={cn(
-        `hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
-        isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : ""
-      )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
+    <TableRow key={request.id} className={isDragging ? 'bg-blue-50' : ''}>
       <TableCell>
-        <input
-          type="checkbox"
-          checked={selectedRequests.includes(request.id)}
-          onChange={() => handleSelectRequest(request.id)}
-          className="h-4 w-4"
-        />
+        <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
+        <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
       </TableCell>
-      <TableCell>
-        <div className="text-sm font-medium">
-          {format(new Date(request.created_at), 'MMM dd')}
-        </div>
-        <div className="text-xs text-gray-500">
-          {format(new Date(request.created_at), 'HH:mm')}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{request.name || 'N/A'}</div>
-        <div className="text-sm text-gray-500 flex items-center">
-          <Mail className="w-3 h-3 mr-1" />
-          {request.email}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{request.song_title}</div>
+      <TableCell className="font-medium">
+        <div>{request.song_title}</div>
         <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
           {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
-            <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+            <Badge key={index} variant="outline" className="capitalize">
               {type.replace('-', ' ')}
             </Badge>
           )) : <Badge variant="outline">Not specified</Badge>}
         </div>
       </TableCell>
       <TableCell>
-        {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+        <div className="flex items-center">
+          <CalendarIcon className="w-4 h-4 mr-1 text-gray-500" />
+          {request.delivery_date
+            ? format(new Date(request.delivery_date), 'MMM dd, yyyy')
+            : 'Not specified'}
+        </div>
       </TableCell>
       <TableCell>
-        <Select 
-          value={request.status || 'pending'} 
-          onValueChange={(value) => updateStatus(request.id, value)}
+        {getStatusBadge(request.status)}
+        <Select
+          value={request.status}
+          onValueChange={(value: BackingRequest['status']) => updateStatus(request.id, value)}
         >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
+          <SelectTrigger className="w-[120px] h-8 mt-1">
+            <SelectValue placeholder="Update Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="pending">Pending</SelectItem>
@@ -215,122 +206,128 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         </Select>
       </TableCell>
       <TableCell>
-        <Select 
-          value={request.is_paid ? 'paid' : 'unpaid'} 
+        {getPaymentBadge(request.is_paid)}
+        <Select
+          value={request.is_paid ? 'paid' : 'unpaid'}
           onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
         >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
+          <SelectTrigger className="w-[120px] h-8 mt-1">
+            <SelectValue placeholder="Update Payment" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="unpaid">Unpaid</SelectItem>
           </SelectContent>
         </Select>
       </TableCell>
-      <TableCell>
-        <div className="flex items-center font-medium">
-          <DollarSign className="w-4 h-4 mr-1" />
-          <span>
-            {(() => {
-              const calculatedCost = calculateRequestCost(request);
-              if (calculatedCost && typeof calculatedCost.totalCost === 'number') {
-                return calculatedCost.totalCost.toFixed(2);
-              }
-              return 'N/A';
-            })()}
-          </span>
-        </div>
+      <TableCell
+        className={cn(
+          "relative p-2 border-2 border-dashed rounded-md transition-all duration-200",
+          isDragging ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {request.track_urls && request.track_urls.length > 0 ? (
+          <div className="space-y-1">
+            {request.track_urls.map((track, trackIndex) => (
+              <div key={trackIndex} className="flex items-center justify-between text-sm">
+                {isEditingCaption === track.url ? (
+                  <Input
+                    value={newCaption}
+                    onChange={(e) => setNewCaption(e.target.value)}
+                    onBlur={() => saveCaption(track.url)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        saveCaption(track.url);
+                      }
+                    }}
+                    className="h-7 text-xs flex-grow mr-2"
+                  />
+                ) : (
+                  <span className="flex-grow mr-2 truncate">{track.caption}</span>
+                )}
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => window.open(track.url, '_blank')}
+                    title="Download Track"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleCaptionEdit(track.url, track.caption)}
+                    title="Edit Caption"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500 text-center">Drag & drop audio here or use actions</p>
+        )}
+        {isDragging && (
+          <div className="absolute inset-0 flex items-center justify-center bg-blue-100 bg-opacity-75 text-blue-800 font-bold text-sm pointer-events-none">
+            Drop audio file here
+          </div>
+        )}
       </TableCell>
       <TableCell>
-        <div className="flex flex-col gap-1">
-          {getPlatformIcons(request.uploaded_platforms)}
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => openUploadPlatformsDialog(request.id)}
-            className="mt-1 text-xs"
-          >
-            Edit
-          </Button>
-        </div>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex justify-end space-x-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                <Upload className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Upload Track</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                <Share2 className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Share Track</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link to={`/admin/request/${request.id}`}>
-                <Button variant="outline" size="sm">
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>View Details</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem asChild>
               <Link to={`/track/${request.id}`}>
-                <Button variant="outline" size="sm">
-                  <User className="w-4 h-4" />
-                </Button>
+                <Eye className="mr-2 h-4 w-4" /> View Details
               </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Client View</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => openEmailGenerator(request)}
-              >
-                <Mail className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Email Client</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => openDeleteDialog(request.id)}
-                className="text-red-600 hover:text-red-800"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete Request</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+            </DropdownMenuItem>
+            {request.sheet_music_url && (
+              <DropdownMenuItem onClick={() => window.open(request.sheet_music_url, '_blank')}>
+                <LinkIcon className="mr-2 h-4 w-4" /> View Sheet Music
+              </DropdownMenuItem>
+            )}
+            {request.voice_memo_url && (
+              <DropdownMenuItem onClick={() => window.open(request.voice_memo_url, '_blank')}>
+                <LinkIcon className="mr-2 h-4 w-4" /> View Voice Memo
+              </DropdownMenuItem>
+            )}
+            {request.youtube_link && (
+              <DropdownMenuItem onClick={() => window.open(request.youtube_link, '_blank')}>
+                <LinkIcon className="mr-2 h-4 w-4" /> View YouTube Link
+              </DropdownMenuItem>
+            )}
+            {request.additional_links && (
+              <DropdownMenuItem onClick={() => window.open(request.additional_links, '_blank')}>
+                <LinkIcon className="mr-2 h-4 w-4" /> View Additional Links
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => shareTrack(request.id)}>
+              <Share2 className="mr-2 h-4 w-4" /> Share Client Link
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openUploadPlatformsDialog(request.id)}>
+              <Upload className="mr-2 h-4 w-4" /> Upload Platforms
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => deleteRequest(request.id)} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Request
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </TableCell>
     </TableRow>
   );

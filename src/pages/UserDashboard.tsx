@@ -9,7 +9,7 @@ import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown, ShoppingCart as ShoppingCartIcon } from 'lucide-react'; // Added ShoppingCartIcon
+import { Download, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ShoppingCart as ShoppingCartIcon } from 'lucide-react'; // Removed Play, Share2, ChevronDown
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getSafeBackingTypes } from '@/utils/helpers';
 import {
@@ -118,7 +118,7 @@ const UserDashboard = () => {
     let currentIsAdmin = false;
     if (loggedInUser?.email) {
       const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      currentIsAdmin = adminEmails.includes(loggedInUser.email);
+      currentIsAdmin = adminEmails.includes(loggedInUser.email!); // Added non-null assertion
       setIsAdmin(currentIsAdmin);
     } else {
       setIsAdmin(false);
@@ -140,7 +140,7 @@ const UserDashboard = () => {
       setShowAccountPrompt(false);
     } else if (loggedInUser) {
       targetUserId = loggedInUser.id;
-      targetUserEmail = loggedInUser.email;
+      targetUserEmail = loggedInUser.email!; // Added non-null assertion
       setShowAccountPrompt(false);
     } else if (emailFromUrl) {
       fetchGuestRequestsByEmail(emailFromUrl);
@@ -162,7 +162,7 @@ const UserDashboard = () => {
   // Effect for initial load and auth state changes
   useEffect(() => {
     checkUserAndDetermineTarget();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, _session) => { // Renamed session to _session
       checkUserAndDetermineTarget();
     });
     return () => subscription.unsubscribe();

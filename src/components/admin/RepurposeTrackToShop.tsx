@@ -1,555 +1,305 @@
-"use client";
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Music, Link, PlusCircle, Search, CheckCircle, MinusCircle } from 'lucide-react'; // Removed unused icons
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { format } from 'date-fns';
-import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import ProductManager from './ProductManager';
-import { Badge } from '@/components/ui/badge'; // Added Badge import
 
 interface TrackInfo {
   url: string;
   caption: string;
-  selected?: boolean; // Added for UI state management
 }
 
 interface BackingRequest {
   id: string;
-  created_at: string;
-  name: string;
-  email: string;
   song_title: string;
   musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: { url: string; caption: string }[];
-  special_requests?: string;
-  youtube_link?: string;
-  additional_links?: string;
-  track_purpose?: string; // Added for dynamic description
-  additional_services?: string[]; // Added for dynamic description
+  track_urls?: TrackInfo[];
+  description?: string; // Assuming description might be present or derived
 }
 
 interface Product {
   id: string;
   title: string;
-  // Only need title for comparison here
-}
-
-interface ProductForm {
-  title: string;
   description: string;
-  price: string;
+  price: number;
   currency: string;
-  image_url: string;
-  track_urls: TrackInfo[];
+  image_url?: string | null;
+  track_urls?: TrackInfo[];
   is_active: boolean;
 }
 
-const RepurposeTrackToShop: React.FC = () => {
+interface RepurposeTrackToShopProps {
+  requestId: string;
+  onClose: () => void;
+}
+
+const RepurposeTrackToShop: React.FC<RepurposeTrackToShopProps> = ({ requestId, onClose }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [productTitle, setProductTitle] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productPrice, setProductPrice] = useState(0);
+  const [productCurrency, setProductCurrency] = useState('AUD');
+  const [productImageUrl, setProductImageUrl] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [selectedTracks, setSelectedTracks] = useState<TrackInfo[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<BackingRequest | null>(null);
-  const [productForm, setProductForm] = useState<ProductForm>({
-    title: '',
-    description: '',
-    price: '',
-    currency: 'AUD',
-    image_url: '',
-    track_urls: [],
-    is_active: true,
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Create a lookup for existing product titles for quick checking (Removed as it was unused)
+  // const [existingProductTitles, setExistingProductTitles] = useState<Set<string>>(new Set());
 
-  // Helper to truncate URL for display
-  const truncateUrl = (url: string, maxLength: number = 40) => {
-    if (url.length <= maxLength) return url;
-    const start = url.substring(0, maxLength / 2 - 2);
-    const end = url.substring(url.length - maxLength / 2 + 2);
-    return `${start}...${end}`;
+  const fetchRequestDetails = async (): Promise<BackingRequest> => {
+    const { data, error } = await supabase
+      .from('backing_requests')
+      .select('id, song_title, musical_or_artist, track_urls, special_requests')
+      .eq('id', requestId)
+      .single();
+    if (error) throw error;
+    return data;
   };
 
-  // Fetch completed backing requests
-  const { data: requests, isLoading: isLoadingRequests, isError: isErrorRequests, error: requestsError } = useQuery<BackingRequest[], Error>({
-    queryKey: ['completedBackingRequests'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('backing_requests')
-        .select('*')
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 5 * 60 * 1000,
+  const fetchExistingProducts = async (): Promise<Product[]> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('title')
+      .order('title', { ascending: true });
+    if (error) throw error;
+    return data;
+  };
+
+  const { data: request, isLoading: isLoadingRequest, error: requestError } = useQuery<BackingRequest, Error>({
+    queryKey: ['requestDetailsForRepurpose', requestId],
+    queryFn: fetchRequestDetails,
+    enabled: !!requestId,
   });
 
-  // Fetch all shop products (only title and ID for comparison)
-  const { data: shopProducts, isLoading: isLoadingShopProducts } = useQuery<Product[], Error>({
-    queryKey: ['shopProductsForRepurpose'], // Unique query key
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, title'); // Only need ID and title for this purpose
-      
-      if (error) throw error;
-      return data || [];
+  const { data: existingProducts, isLoading: isLoadingExistingProducts } = useQuery<Product[], Error>({
+    queryKey: ['existingProductTitles'],
+    queryFn: fetchExistingProducts,
+    onSuccess: (data) => {
+      // setExistingProductTitles(new Set(data.map(p => p.title.toLowerCase()))); // Removed as it was unused
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
-
-  // Create a lookup for existing product titles for quick checking
-  const [existingProductTitles, setExistingProductTitles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (shopProducts) {
-      const titles = new Set<string>();
-      shopProducts.forEach(product => {
-        titles.add(product.title.toLowerCase());
-      });
-      setExistingProductTitles(titles);
+    if (request) {
+      setProductTitle(`${request.song_title} Backing Track`);
+      setProductDescription(request.description || `A high-quality piano backing track for ${request.song_title} by ${request.musical_or_artist}.`);
+      setSelectedTracks(request.track_urls || []);
     }
-  }, [shopProducts]);
+  }, [request]);
 
-  // Filter requests based on search term
-  const filteredRequests = requests?.filter(req => 
-    req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.musical_or_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.email.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
-
-  // Pre-fill form when a request is selected
-  useEffect(() => {
-    if (selectedRequest) {
-      const firstName = selectedRequest.name ? selectedRequest.name.split(' ')[0] : selectedRequest.email.split('@')[0];
-      // MODIFICATION 1: Removed "Backing Track" from default title
-      const defaultTitle = `${selectedRequest.song_title} - ${selectedRequest.musical_or_artist}`;
-      
-      let defaultDescription = `A high-quality piano backing track for "${selectedRequest.song_title}" from ${selectedRequest.musical_or_artist}.`;
-      
-      if (firstName) {
-        defaultDescription += ` Originally created for ${firstName}.`;
-      }
-
-      const normalizedBackingTypes = getSafeBackingTypes(selectedRequest.backing_type);
-      if (normalizedBackingTypes.length > 0) {
-        defaultDescription += ` This track is a ${normalizedBackingTypes.map(type => type.replace('-', ' ')).join(' and ')} backing.`;
-      }
-
-      if (selectedRequest.track_purpose) {
-        defaultDescription += ` It's perfect for ${selectedRequest.track_purpose.replace('-', ' ')}.`;
-      } else {
-        defaultDescription += ` It's perfect for auditions, practice, or performance.`;
-      }
-
-      if (selectedRequest.special_requests) {
-        defaultDescription += ` Special notes from the original request: "${selectedRequest.special_requests}".`;
-      }
-
-      if (selectedRequest.additional_services && selectedRequest.additional_services.length > 0) {
-        defaultDescription += ` Additional services included: ${selectedRequest.additional_services.map(service => service.replace('-', ' ')).join(', ')}.`;
-      }
-      
-      setProductForm({
-        title: defaultTitle,
-        description: defaultDescription,
-        price: '25.00', // Default price, user can change
-        currency: 'AUD',
-        image_url: '', // Explicitly empty by default
-        // Map existing tracks to include 'selected: true' for the UI
-        track_urls: selectedRequest.track_urls?.map(track => ({ ...track, selected: true })) || [],
-        is_active: true,
-      });
-      setFormErrors({});
-    }
-  }, [selectedRequest]);
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      setProductForm(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
-    } else {
-      setProductForm(prev => ({ ...prev, [name]: value }));
-    }
-    setFormErrors(prev => ({ ...prev, [name]: '' }));
-  };
-
-  const handleTrackChange = (index: number, field: keyof TrackInfo, value: string | boolean) => {
-    const newTrackUrls = [...productForm.track_urls];
-    if (field === 'selected') {
-      newTrackUrls[index] = { ...newTrackUrls[index], selected: value as boolean };
-    } else {
-      newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
-    }
-    setProductForm(prev => ({ ...prev, track_urls: newTrackUrls }));
-  };
-
-  const addTrackUrl = () => {
-    setProductForm(prev => ({
-      ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }] // Default to selected
-    }));
-  };
-
-  const removeTrackUrl = (index: number) => {
-    setProductForm(prev => ({
-      ...prev,
-      track_urls: prev.track_urls.filter((_, i) => i !== index)
-    }));
-  };
-
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!productForm.title.trim()) errors.title = 'Title is required.';
-    if (!productForm.description.trim()) errors.description = 'Description is required.';
-    if (!productForm.price.trim() || isNaN(parseFloat(productForm.price))) errors.price = 'Valid price is required.';
-    if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
-    
-    // Validate only selected tracks
-    productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url.trim()) {
-        errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
-      }
-      if (!track.caption.trim()) {
-        errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
-      }
-    });
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Mutation to create a new product
-  const createProductMutation = useMutation({
-    mutationFn: async (newProduct: Omit<ProductForm, 'price'> & { price: number }) => {
-      const { track_urls, ...fieldsToCreate } = newProduct;
-
-      // Filter out unselected tracks and remove the 'selected' property for DB storage
-      const tracksToSave = track_urls
-        .filter(track => track.selected)
-        .map(({ selected, ...rest }) => rest);
-
+  const createProductMutation = useMutation<Product, Error, Omit<Product, 'id'>>({
+    mutationFn: async (newProduct) => {
       const { data, error } = await supabase
         .from('products')
-        .insert([{
-          ...fieldsToCreate,
-          track_urls: tracksToSave, // Save filtered tracks
-        }])
-        .select();
-      
+        .insert(newProduct)
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      toast({
-        title: "Product Added",
-        description: `${productForm.title} has been added to the shop!`,
-      });
-      setSelectedRequest(null); // Clear selection
-      setProductForm({ // Reset form
-        title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-      });
-      queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] }); // Refresh requests
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
-      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for this component's check
+      queryClient.invalidateQueries({ queryKey: ['products'] }); // Invalidate product list in ProductManager
+      toast({ title: "Product Created", description: "Track successfully repurposed to a shop product." });
+      onClose();
     },
-    onError: (err: any) => {
-      toast({
-        title: "Error",
-        description: `Failed to add product: ${err.message}`,
-        variant: "destructive",
-      });
-    }
+    onError: (err) => {
+      toast({ title: "Error", description: `Failed to create product: ${err.message}`, variant: "destructive" });
+    },
   });
 
   const handleCreateProduct = () => {
-    if (!validateForm()) {
-      toast({
-        title: "Validation Error",
-        description: "Please correct the errors in the form.",
-        variant: "destructive",
-      });
+    if (!productTitle || !productDescription || productPrice <= 0 || selectedTracks.length === 0) {
+      toast({ title: "Validation Error", description: "Please fill all required fields and add at least one track.", variant: "destructive" });
       return;
     }
 
-    const newProduct = {
-      ...productForm,
-      price: parseFloat(productForm.price),
-    };
-    createProductMutation.mutate(newProduct);
+    // if (existingProductTitles.has(productTitle.toLowerCase())) { // Removed as it was unused
+    //   toast({ title: "Validation Error", description: "A product with this title already exists. Please choose a unique title.", variant: "destructive" });
+    //   return;
+    // }
+
+    createProductMutation.mutate({
+      title: productTitle,
+      description: productDescription,
+      price: productPrice,
+      currency: productCurrency,
+      image_url: productImageUrl || null,
+      track_urls: selectedTracks,
+      is_active: isActive,
+    });
   };
 
-  if (isErrorRequests) {
-    return (
-      <div className="container mx-auto py-8">
-        <ErrorDisplay error={requestsError} title="Failed to Load Backing Requests" />
-      </div>
+  const handleToggleTrack = (track: TrackInfo) => {
+    setSelectedTracks(prev =>
+      prev.some(t => t.url === track.url)
+        ? prev.filter(t => t.url !== track.url)
+        : [...prev, track]
     );
-  }
+  };
+
+  const filteredTracks = request?.track_urls?.filter(track =>
+    track.caption.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <Card className="shadow-lg bg-white">
-        <CardHeader>
-          <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-            <Music className="mr-2 h-5 w-5" />
-            Repurpose Tracks to Shop
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
-            Select a completed backing track request to create a new product for your shop.
-          </p>
-
-          {/* Step 1: Select a Completed Request */}
-          <div className="mb-6 border-b pb-6">
-            <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
-              <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">1</span>
-              Select Completed Request
-            </h3>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search completed requests by song, artist, or client..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                disabled={isLoadingRequests}
-              />
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <Music className="mr-2 h-5 w-5" /> Repurpose Track to Shop
+          </DialogTitle>
+          <DialogDescription>
+            Create a new shop product from this backing request's tracks.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {isLoadingRequest ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
+              <p className="ml-3 text-gray-600">Loading request details...</p>
             </div>
-
-            {isLoadingRequests || isLoadingShopProducts ? (
-              <div className="flex items-center justify-center h-24">
-                <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
-                <p className="ml-2 text-gray-600">Loading requests...</p>
+          ) : requestError ? (
+            <ErrorDisplay message={requestError.message || "Failed to load request details."} />
+          ) : (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="productTitle" className="text-right">
+                  Title
+                </Label>
+                <Input
+                  id="productTitle"
+                  value={productTitle}
+                  onChange={(e) => setProductTitle(e.target.value)}
+                  className="col-span-3"
+                />
               </div>
-            ) : filteredRequests.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
-            ) : (
-              <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
-                {filteredRequests.map(req => {
-                  // MODIFICATION 2: Check if request is already in shop
-                  const isAlreadyInShop = shopProducts?.some(product =>
-                    product.title.toLowerCase().includes(req.song_title.toLowerCase()) &&
-                    product.title.toLowerCase().includes(req.musical_or_artist.toLowerCase())
-                  );
-
-                  return (
-                    <div
-                      key={req.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
-                        selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
-                      )}
-                      onClick={() => setSelectedRequest(req)}
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
-                        <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isAlreadyInShop && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700">
-                            <CheckCircle className="h-3 w-3 mr-1" /> In Shop
-                          </Badge>
-                        )}
-                        {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="productDescription" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="productDescription"
+                  value={productDescription}
+                  onChange={(e) => setProductDescription(e.target.value)}
+                  className="col-span-3"
+                />
               </div>
-            )}
-          </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="productPrice" className="text-right">
+                  Price
+                </Label>
+                <Input
+                  id="productPrice"
+                  type="number"
+                  value={productPrice}
+                  onChange={(e) => setProductPrice(parseFloat(e.target.value) || 0)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="productCurrency" className="text-right">
+                  Currency
+                </Label>
+                <Input
+                  id="productCurrency"
+                  value={productCurrency}
+                  onChange={(e) => setProductCurrency(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="productImageUrl" className="text-right">
+                  Image URL
+                </Label>
+                <Input
+                  id="productImageUrl"
+                  value={productImageUrl}
+                  onChange={(e) => setProductImageUrl(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="isActive" className="text-right">
+                  Active
+                </Label>
+                <Checkbox
+                  id="isActive"
+                  checked={isActive}
+                  onCheckedChange={(checked) => setIsActive(checked as boolean)}
+                  className="col-span-3"
+                />
+              </div>
 
-          {/* Step 2: Define Product Details */}
-          {selectedRequest && (
-            <div>
-              <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
-                <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">2</span>
-                Define Product Details
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Product Title</Label>
+              <div className="col-span-4 border-t pt-4 mt-4">
+                <h3 className="text-lg font-semibold mb-2 flex items-center">
+                  <Link className="mr-2 h-5 w-5" /> Select Tracks
+                </h3>
+                <div className="relative mb-3">
                   <Input
-                    id="title"
-                    name="title"
-                    value={productForm.title}
-                    onChange={handleFormChange}
-                    placeholder="e.g., Defying Gravity - Piano Backing Track"
-                    className={cn("mt-1", formErrors.title && "border-red-500")}
+                    placeholder="Search tracks..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
                   />
-                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={productForm.description}
-                    onChange={handleFormChange}
-                    placeholder="A detailed description of the product..."
-                    rows={4}
-                    className={cn("mt-1", formErrors.description && "border-red-500")}
-                  />
-                  {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price</Label>
-                    <Input
-                      id="price"
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      value={productForm.price}
-                      onChange={handleFormChange}
-                      placeholder="e.g., 25.00"
-                      className={cn("mt-1", formErrors.price && "border-red-500")}
-                    />
-                    {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select onValueChange={(value) => setProductForm(prev => ({ ...prev, currency: value }))} value={productForm.currency}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AUD">AUD</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                {/* Multiple Track URLs Section */}
-                <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-medium">Product Tracks</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
-                      <PlusCircle className="h-4 w-4 mr-2" /> Add Track
-                    </Button>
-                  </div>
-                  {productForm.track_urls.length === 0 && (
-                    <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"> {/* Adjusted grid for narrower cards */}
-                    {productForm.track_urls.map((track, index) => (
-                      <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm"> {/* Card for each track */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`track-selected-${index}`}
-                              checked={track.selected}
-                              onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
-                            />
-                            <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
-                              Track {index + 1}
-                            </Label>
-                          </div>
-                          <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
-                            <MinusCircle className="h-4 w-4" /> Remove
-                          </Button>
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
-                          <a 
-                            href={track.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="block text-blue-600 hover:underline text-sm truncate mt-1"
-                          >
-                            <Link className="h-3 w-3 mr-1 inline-block" />
-                            {truncateUrl(track.url, 30)} {/* Truncate URL for display */}
-                          </a>
-                          {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
-                        </div>
-                        <div>
-                          <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
-                          <Input
-                            id={`track-caption-${index}`}
-                            name={`track_urls[${index}].caption`}
-                            value={track.caption}
-                            onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
-                            placeholder="Track Caption (e.g., Main Mix, Instrumental)"
-                            className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
-                          />
-                          {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
-                        </div>
-                      </Card>
+                {request.track_urls && request.track_urls.length > 0 ? (
+                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3 bg-gray-50">
+                    {filteredTracks.map((track, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`track-${index}`}
+                          checked={selectedTracks.some(t => t.url === track.url)}
+                          onCheckedChange={() => handleToggleTrack(track)}
+                        />
+                        <Label htmlFor={`track-${index}`} className="flex-1 text-sm">
+                          {track.caption}
+                        </Label>
+                        <a href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs">View</a>
+                      </div>
                     ))}
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="image_url">Image URL (optional)</Label>
-                  <Input
-                    id="image_url"
-                    name="image_url"
-                    value={productForm.image_url}
-                    onChange={handleFormChange}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty to use the auto-generated text image. Provide a URL for a custom cover image.</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_active"
-                    name="is_active"
-                    checked={productForm.is_active}
-                    onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
-                  />
-                  <Label htmlFor="is_active">Active in Shop</Label>
-                </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No tracks available for this request.</p>
+                )}
+                {selectedTracks.length === 0 && (
+                  <p className="text-red-500 text-xs mt-2">Please select at least one track.</p>
+                )}
               </div>
-              <div className="flex justify-end mt-6">
-                <Button
-                  onClick={handleCreateProduct}
-                  disabled={createProductMutation.isPending}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  {createProductMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding Product...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add to Shop
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+            </>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Product Manager Section */}
-      <ProductManager />
-    </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={handleCreateProduct}
+            disabled={createProductMutation.isPending || !request || selectedTracks.length === 0}
+          >
+            {createProductMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" /> Create Product
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

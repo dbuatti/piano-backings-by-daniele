@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music, UserCheck, Lock, Eye, Edit, Plane, Loader2, ShoppingCart } from "lucide-react"; // Removed unused icons
+import { Music, UserCheck, Lock, Eye, Edit, Plane, Loader2, Youtube, Instagram, Facebook, Mail } from "lucide-react"; // Re-imported used icons, removed ShoppingCart
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";

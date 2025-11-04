@@ -1,64 +1,60 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
+// import { supabase } from '@/integrations/supabase/client'; // Removed as it was unused
+import { Mail } from 'lucide-react';
 
-const GmailOAuthButton: React.FC = () => {
+interface GmailOAuthButtonProps {
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+  className?: string;
+}
+
+const GmailOAuthButton: React.FC<GmailOAuthButtonProps> = ({ onSuccess, onError, className }) => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const initiateOAuth = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Use environment variables directly
-      const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
-      const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
-      
-      // Check if client ID is available
-      if (!clientId) {
-        console.error('GMAIL_CLIENT_ID is not set in environment variables');
-        toast({
-          title: "Configuration Error",
-          description: "Gmail OAuth is not properly configured. Please check environment variables.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // Scopes required for sending emails
-      const scopes = 'https://www.googleapis.com/auth/gmail.send';
-      
-      // Construct the authorization URL
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${encodeURIComponent(clientId)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=${encodeURIComponent(scopes)}` +
-        `&response_type=code` +
-        `&access_type=offline` +
-        `&prompt=consent`;
-      
-      // Redirect the user to Google's authorization server
-      window.location.href = authUrl;
-    } catch (error) {
-      console.error('Error initiating OAuth:', error);
-      toast({
-        title: "Error",
-        description: "Failed to initiate Gmail OAuth. Please try again.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-    }
+  const handleGmailOAuth = async () => {
+    toast({
+      title: "Feature Disabled",
+      description: "Gmail OAuth is currently disabled for security reasons. Please contact support for manual email generation.",
+      variant: "destructive",
+    });
+    if (onError) onError("Gmail OAuth is disabled.");
+    return;
+
+    // try {
+    //   const { data, error } = await supabase.auth.signInWithOAuth({
+    //     provider: 'google',
+    //     options: {
+    //       scopes: 'https://www.googleapis.com/auth/gmail.send',
+    //       redirectTo: `${window.location.origin}/gmail-oauth-callback`,
+    //     },
+    //   });
+
+    //   if (error) {
+    //     throw error;
+    //   }
+
+    //   if (onSuccess) onSuccess();
+    // } catch (error: any) {
+    //   console.error('Gmail OAuth error:', error);
+    //   toast({
+    //     title: "Gmail OAuth Failed",
+    //     description: error.message || "Could not initiate Gmail OAuth process.",
+    //     variant: "destructive",
+    //   });
+    //   if (onError) onError(error.message || "Unknown error");
+    // }
   };
 
   return (
-    <Button 
-      onClick={initiateOAuth} 
-      disabled={isLoading}
-      className="bg-blue-500 hover:bg-blue-600"
+    <Button
+      onClick={handleGmailOAuth}
+      className={className}
+      variant="outline"
     >
-      {isLoading ? 'Redirecting...' : 'Connect Gmail Account'}
+      <Mail className="mr-2 h-4 w-4" />
+      Connect Gmail to Send
     </Button>
   );
 };

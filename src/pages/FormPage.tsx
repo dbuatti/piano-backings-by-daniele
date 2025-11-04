@@ -9,11 +9,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   LinkIcon, 
-  MicIcon, 
-  FileTextIcon, 
-  MusicIcon, 
-  KeyIcon, 
-  CalendarIcon, 
+  Music as MusicIcon, // Renamed to avoid conflict with Music in lucide-react
+  Key as KeyIcon, // Renamed to avoid conflict with Key in lucide-react
+  Calendar as CalendarIcon, // Renamed to avoid conflict with Calendar in lucide-react
   AlertCircle, 
   User as UserIcon,
   Folder,
@@ -25,7 +23,7 @@ import {
   Sparkles, // Added Sparkles icon
   MessageSquare, // New icon for special requests
   Plane // Added Plane icon for holiday mode
-} from "lucide-react";
+} from "lucide-react"; // Removed MicIcon, FileTextIcon
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -86,7 +84,7 @@ const FormPage = () => {
         }));
         // Check if user is admin
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        setIsAdmin(adminEmails.includes(session.user.email));
+        setIsAdmin(adminEmails.includes(session.user!.email!)); // Added non-null assertion
         setShowAccountPrompt(false); // Hide prompt if logged in
       } else {
         setIsAdmin(false); // Ensure isAdmin is false if no session
@@ -174,7 +172,7 @@ const FormPage = () => {
     setErrors(prev => ({ ...prev, [fieldName]: '' })); // Clear error on change
   };
 
-  const handleCheckboxChange = (service: string) => {
+  const handleCheckboxChange = (_checked: boolean | 'indeterminate', service: string) => { // Adjusted type for _checked
     setFormData(prev => {
       const newServices = prev.additionalServices.includes(service)
         ? prev.additionalServices.filter(s => s !== service)
@@ -184,9 +182,9 @@ const FormPage = () => {
   };
 
   // New handler for multi-select backing types
-  const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
+  const handleBackingTypeChange = (type: string, _checked: boolean | 'indeterminate') => { // Renamed 'checked' to '_checked'
     setFormData(prev => {
-      const newBackingTypes = checked
+      const newBackingTypes = _checked
         ? [...prev.backingType, type]
         : prev.backingType.filter(t => t !== type);
       setErrors(prevErrors => ({ ...prevErrors, backingType: '' })); // Clear error on change
@@ -747,28 +745,28 @@ const FormPage = () => {
                       <RadioGroupItem value="polished" id="polished" className="sr-only" />
                       <Sparkles className={cn("h-8 w-8 mb-2", formData.trackType === 'polished' ? "text-[#F538BC]" : "text-gray-500")} />
                       <span className="font-bold text-sm text-[#1C0357]">Polished Backing</span>
-                      <span className="text-[#1C0357] font-medium mt-1 text-xs">$15 - $35</span>
-                      <span className="text-xs mt-1 text-gray-600">Refined track for auditions</span>
+                      <span className="text-[#1C0357] font-medium mt-1 text-xs">$20 - $40</span>
+                      <span className="text-xs mt-1 text-gray-600">Refined, accurate track for performance</span>
                     </Card>
                   </Label>
                 </RadioGroup>
                 {errors.trackType && <p className="text-red-500 text-xs mt-1">{errors.trackType}</p>}
               </div>
 
-              {/* Section 3: Musical Details */}
+              {/* Section 3: Song Details */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span>
-                  Musical Details
+                  Song Details
                 </h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="songKey" className="text-sm mb-1">What key is your song in?</Label>
+                    <Label htmlFor="songKey" className="text-sm mb-1">Original Song Key</Label>
                     <div className="relative">
                       <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey} disabled={isHolidayModeActive}>
                         <SelectTrigger className="pl-8 py-2 text-sm">
-                          <SelectValue placeholder="Select key" />
+                          <SelectValue placeholder="Select original key" />
                         </SelectTrigger>
                         <SelectContent>
                           {keyOptions.map((key) => (
@@ -783,256 +781,209 @@ const FormPage = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="differentKey" className="text-sm mb-1">Do you require it in a different key?</Label>
-                    <div className="relative">
-                      <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey} disabled={isHolidayModeActive}>
-                        <SelectTrigger className="pl-8 py-2 text-sm">
-                          <SelectValue placeholder="Select option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="No" className="text-sm">No</SelectItem>
-                          <SelectItem value="Yes" className="text-sm">Yes</SelectItem>
-                          <SelectItem value="Maybe" className="text-sm">Maybe</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <KeyIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                    </div>
+                    <Label htmlFor="differentKey" className="text-sm mb-1">Do you need the track in a different key?</Label>
+                    <RadioGroup 
+                      value={formData.differentKey} 
+                      onValueChange={(value) => handleSelectChange('differentKey', value)}
+                      className="flex space-x-4 mt-2"
+                      disabled={isHolidayModeActive}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Yes" id="diff-key-yes" />
+                        <Label htmlFor="diff-key-yes" className="text-sm">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="No" id="diff-key-no" />
+                        <Label htmlFor="diff-key-no" className="text-sm">No</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+                  
+                  {formData.differentKey === 'Yes' && (
+                    <div>
+                      <Label htmlFor="keyForTrack" className="text-sm mb-1">Key for Track</Label>
+                      <div className="relative">
+                        <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isHolidayModeActive}>
+                          <SelectTrigger className="pl-8 py-2 text-sm">
+                            <SelectValue placeholder="Select desired key" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {keyOptions.map((key) => (
+                              <SelectItem key={key.value} value={key.value} className="text-sm">
+                                {key.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <KeyIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                {formData.differentKey === 'Yes' && (
-                  <div className="mt-4">
-                    <Label htmlFor="keyForTrack" className="text-sm mb-1">Which key?</Label>
-                    <div className="relative">
-                      <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isHolidayModeActive}>
-                        <SelectTrigger className="pl-8 py-2 text-sm">
-                          <SelectValue placeholder="Select key" />
-                      </SelectTrigger>
-                        <SelectContent>
-                          {keyOptions.map((key) => (
-                            <SelectItem key={key.value} value={key.value} className="text-sm">
-                              {key.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <KeyIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Section 4: Materials */}
+              {/* Section 4: Reference Materials */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">4</span>
-                  Materials
+                  Reference Materials
                 </h2>
                 
                 <div className="space-y-4">
-                  {/* Using the new FileInput component */}
-                  <FileInput
-                    id="sheetMusic"
-                    label="Please upload your sheet music as a PDF"
-                    icon={FileTextIcon}
-                    accept=".pdf"
-                    onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
-                    required // This 'required' prop is for visual indication, actual validation is in handleSubmit
-                    note="Make sure it's clear and in the right key"
-                    error={errors.sheetMusic} // Pass error prop
-                    disabled={isHolidayModeActive}
-                  />
-                  {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
-
                   <div>
-                    <Label htmlFor="youtubeLink" className="flex items-center text-sm mb-1">
-                      <LinkIcon className="mr-1" size={14} />
-                      YouTube URL for tempo reference (optional)
+                    <Label htmlFor="sheetMusic" className="flex items-center text-sm mb-1">
+                      Sheet Music (PDF) <span className="text-red-500 ml-1">*</span>
                     </Label>
+                    <FileInput 
+                      id="sheetMusic"
+                      // name="sheetMusic" // Removed name prop as it's not part of FileInputProps
+                      accept=".pdf"
+                      onFileChange={(file: File | null) => handleFileInputChange(file, 'sheetMusic')} // Explicitly typed file
+                      currentFile={formData.sheetMusic}
+                      disabled={isHolidayModeActive}
+                      error={errors.sheetMusic}
+                    />
+                    {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="youtubeLink" className="text-sm mb-1">YouTube Link (Optional)</Label>
                     <div className="relative">
                       <Input 
                         id="youtubeLink" 
                         name="youtubeLink" 
                         value={formData.youtubeLink} 
                         onChange={handleInputChange} 
-                        placeholder="https://www.youtube.com/watch?v=..."
+                        placeholder="e.g., https://www.youtube.com/watch?v=..."
                         className="pl-8 py-2 text-sm"
                         disabled={isHolidayModeActive}
                       />
                       <Youtube className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
+
+                  <div>
+                    <Label htmlFor="voiceMemoFile" className="text-sm mb-1">Voice Memo (Optional)</Label>
+                    <FileInput 
+                      id="voiceMemoFile"
+                      // name="voiceMemoFile" // Removed name prop as it's not part of FileInputProps
+                      accept="audio/*"
+                      onFileChange={(file: File | null) => handleFileInputChange(file, 'voiceMemoFile')} // Explicitly typed file
+                      currentFile={formData.voiceMemoFile}
+                      disabled={isHolidayModeActive}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Upload a voice memo of you singing the song with accurate rests/beats.</p>
+                  </div>
                   
                   <div>
-                    <Label htmlFor="additionalLinks" className="flex items-center text-sm mb-1">
-                      <LinkIcon className="mr-1" size={14} />
-                      Additional Reference Links (optional)
-                    </Label>
+                    <Label htmlFor="additionalLinks" className="text-sm mb-1">Additional Reference Links (Optional)</Label>
                     <div className="relative">
                       <Input 
                         id="additionalLinks" 
                         name="additionalLinks" 
                         value={formData.additionalLinks} 
                         onChange={handleInputChange} 
-                        placeholder="e.g., Dropbox link, Spotify link"
+                        placeholder="e.g., Spotify link, another YouTube video"
                         className="pl-8 py-2 text-sm"
                         disabled={isHolidayModeActive}
                       />
                       <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Provide any other relevant links here (e.g., Dropbox, Spotify, etc.)</p>
-                  </div>
-
-                  <div>
-                    <Label className="flex items-center text-sm mb-1">
-                      <MicIcon className="mr-1" size={14} />
-                      Voice Memo (optional)
-                    </Label>
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="voiceMemo" className="text-xs text-gray-600 mb-1">Link to voice memo</Label>
-                        <div className="relative">
-                          <Input 
-                            id="voiceMemo" 
-                            name="voiceMemo" 
-                            value={formData.voiceMemo} 
-                            onChange={handleInputChange} 
-                            placeholder="https://example.com/voice-memo.mp3"
-                            className="pl-8 py-2 text-sm"
-                            disabled={isHolidayModeActive}
-                          />
-                          <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                        </div>
-                      </div>
-                      {/* Using the new FileInput component */}
-                      <FileInput
-                        id="voiceMemoFile"
-                        label="Upload voice memo file"
-                        icon={MicIcon}
-                        accept="audio/*"
-                        onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                        note="Note: Voice memo uploads may not be available at this time"
-                        disabled={isHolidayModeActive}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
                   </div>
                 </div>
               </div>
 
-              {/* Section 5: Purpose */}
+              {/* Section 5: Track Purpose & Backing Type */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
-                  Purpose
+                  Track Purpose & Backing Type <span className="text-red-500 ml-1">*</span>
                 </h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="trackPurpose" className="text-sm mb-1">This track is for...</Label>
+                    <Label htmlFor="trackPurpose" className="text-sm mb-1">What is the track for?</Label>
                     <div className="relative">
                       <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose} disabled={isHolidayModeActive}>
                         <SelectTrigger className="pl-8 py-2 text-sm">
                           <SelectValue placeholder="Select purpose" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="audition" className="text-sm">Audition</SelectItem>
+                          <SelectItem value="performance" className="text-sm">Performance</SelectItem>
                           <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
-                          <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
-                          <SelectItem value="melody-bash" className="text-sm">Note/melody bash</SelectItem>
+                          <SelectItem value="other" className="text-sm">Other</SelectItem>
                         </SelectContent>
                       </Select>
                       <Target className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
                   </div>
                   
-                  {/* Multi-select for Backing Type */}
                   <div>
-                    <h3 className="font-semibold mb-2 flex items-center text-sm">
-                      <MusicIcon className="mr-1" size={14} />
-                      What do you need? <span className="text-red-500 ml-1">*</span>
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Label htmlFor="backing-full-song" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <Card className={cn(
-                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.backingType.includes('full-song') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                          errors.backingType && "border-red-500"
-                        )}>
-                          <Checkbox
-                            id="backing-full-song"
-                            checked={formData.backingType.includes('full-song')}
-                            onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <span className="font-bold text-sm text-[#1C0357]">Full Song Backing</span>
-                            <p className="text-xs text-gray-600 mt-1">Complete song accompaniment</p>
-                          </div>
-                        </Card>
-                      </Label>
-                      
-                      <Label htmlFor="backing-audition-cut" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <Card className={cn(
-                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.backingType.includes('audition-cut') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                          errors.backingType && "border-red-500"
-                        )}>
-                          <Checkbox
-                            id="backing-audition-cut"
-                            checked={formData.backingType.includes('audition-cut')}
-                            onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <span className="font-bold text-sm text-[#1C0357]">Audition Cut Backing</span>
-                            <p className="text-xs text-gray-600 mt-1">Shortened version for auditions</p>
-                          </div>
-                        </Card>
-                      </Label>
-                      
-                      <Label htmlFor="backing-note-bash" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <Card className={cn(
-                          "w-full h-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.backingType.includes('note-bash') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
-                          errors.backingType && "border-red-500"
-                        )}>
-                          <Checkbox
-                            id="backing-note-bash"
-                            checked={formData.backingType.includes('note-bash')}
-                            onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <span className="font-bold text-sm text-[#1C0357]">Note/Melody Bash</span>
-                            <p className="text-xs text-gray-600 mt-1">Focus on specific melodic lines</p>
-                          </div>
-                        </Card>
-                      </Label>
+                    <Label className="flex items-center text-sm mb-1">
+                      Backing Type <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", errors.backingType && "border-red-500 p-2 rounded-md border")}>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="full-song" 
+                          checked={formData.backingType.includes('full-song')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleBackingTypeChange('full-song', _checked)} // Explicitly typed _checked
+                          disabled={isHolidayModeActive}
+                        />
+                        <Label htmlFor="full-song" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Full Song
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="16-bar-cut" 
+                          checked={formData.backingType.includes('16-bar-cut')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleBackingTypeChange('16-bar-cut', _checked)} // Explicitly typed _checked
+                          disabled={isHolidayModeActive}
+                        />
+                        <Label htmlFor="16-bar-cut" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          16 Bar Cut
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="32-bar-cut" 
+                          checked={formData.backingType.includes('32-bar-cut')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleBackingTypeChange('32-bar-cut', _checked)} // Explicitly typed _checked
+                          disabled={isHolidayModeActive}
+                        />
+                        <Label htmlFor="32-bar-cut" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          32 Bar Cut
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="audition-cut" 
+                          checked={formData.backingType.includes('audition-cut')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleBackingTypeChange('audition-cut', _checked)} // Explicitly typed _checked
+                          disabled={isHolidayModeActive}
+                        />
+                        <Label htmlFor="audition-cut" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                          Audition Cut (specify in special requests)
+                        </Label>
+                      </div>
                     </div>
                     {errors.backingType && <p className="text-red-500 text-xs mt-1">{errors.backingType}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Section 6: Additional Services & Timeline */}
+              {/* Section 6: Delivery & Additional Services */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">6</span>
-                  Additional Services & Timeline
+                  Delivery & Additional Services
                 </h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="deliveryDate" className="flex items-center text-sm mb-1">
-                      <CalendarIcon className="mr-1" size={14} />
-                      When do you need your track by?
-                    </Label>
+                    <Label htmlFor="deliveryDate" className="text-sm mb-1">Desired Delivery Date (Optional)</Label>
                     <div className="relative">
                       <Input 
                         id="deliveryDate" 
@@ -1040,7 +991,7 @@ const FormPage = () => {
                         type="date" 
                         value={formData.deliveryDate} 
                         onChange={handleInputChange} 
-                        className="pl-8 py-2 text-sm w-full"
+                        className="pl-8 py-2 text-sm"
                         disabled={isHolidayModeActive}
                       />
                       <CalendarIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
@@ -1048,134 +999,113 @@ const FormPage = () => {
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold mb-2 flex items-center text-sm">
-                      <MusicIcon className="mr-1" size={14} />
-                      Additional Services
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Added grid layout */}
-                      <Label htmlFor="rush-order" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <div className={cn(
-                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.additionalServices.includes('rush-order') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
-                        )}>
-                          <Checkbox
-                            id="rush-order"
-                            checked={formData.additionalServices.includes('rush-order')}
-                            onCheckedChange={(checked) => handleCheckboxChange('rush-order')}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <span className="font-bold text-sm text-[#1C0357]">Rush Order</span>
-                            <span className="text-xs text-[#1C0357] font-medium">+$10</span>
-                            <p className="text-xs text-gray-600 mt-1">24-hour turnaround</p>
-                          </div>
+                    <Label className="text-sm mb-1">Additional Services (Optional)</Label>
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-start space-x-2">
+                        <Checkbox 
+                          id="rush-order" 
+                          checked={formData.additionalServices.includes('rush-order')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleCheckboxChange(_checked, 'rush-order')}
+                          className="mt-1 mr-3"
+                          disabled={isHolidayModeActive}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="rush-order" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Rush Order (+$10)
+                          </Label>
+                          <p className="text-sm text-gray-500">
+                            Guaranteed delivery within 48 hours.
+                          </p>
                         </div>
-                      </Label>
-                      
-                      <Label htmlFor="complex-songs" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <div className={cn(
-                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.additionalServices.includes('complex-songs') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
-                        )}>
-                          <Checkbox
-                            id="complex-songs"
-                            checked={formData.additionalServices.includes('complex-songs')}
-                            onCheckedChange={(checked) => handleCheckboxChange('complex-songs')}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <Label htmlFor="complex-songs" className="font-bold text-sm text-[#1C0357] cursor-pointer">
-                              Complex Songs
-                            </Label>
-                            <span className="text-xs text-[#1C0357] font-medium">+$7</span>
-                            <p className="text-xs text-gray-600 mt-1">Sondheim, JRB, Guettel</p>
-                          </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Checkbox 
+                          id="complex-songs" 
+                          checked={formData.additionalServices.includes('complex-songs')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleCheckboxChange(_checked, 'complex-songs')}
+                          className="mt-1 mr-3"
+                          disabled={isHolidayModeActive}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="complex-songs" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Complex Songs (+$5)
+                          </Label>
+                          <p className="text-sm text-gray-500">
+                            For songs by Stephen Sondheim, Jason Robert Brown, Adam Guettel, etc.
+                          </p>
                         </div>
-                      </Label>
-                      
-                      <Label htmlFor="additional-edits" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <div className={cn(
-                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.additionalServices.includes('additional-edits') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
-                        )}>
-                          <Checkbox
-                            id="additional-edits"
-                            checked={formData.additionalServices.includes('additional-edits')}
-                            onCheckedChange={(checked) => handleCheckboxChange('additional-edits')}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <Label htmlFor="additional-edits" className="font-bold text-sm text-[#1C0357] cursor-pointer">
-                              Additional Edits
-                            </Label>
-                            <span className="text-xs text-[#1C0357] font-medium">+$5</span>
-                            <p className="text-xs text-gray-600 mt-1">After completion</p>
-                          </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Checkbox 
+                          id="additional-edits" 
+                          checked={formData.additionalServices.includes('additional-edits')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleCheckboxChange(_checked, 'additional-edits')}
+                          className="mt-1 mr-3"
+                          disabled={isHolidayModeActive}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="additional-edits" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Additional Edits (+$5 per edit)
+                          </Label>
+                          <p className="text-sm text-gray-500">
+                            Beyond initial revisions (e.g., key changes after completion).
+                          </p>
                         </div>
-                      </Label>
-                      
-                      <Label htmlFor="exclusive-ownership" className="flex flex-col items-center justify-center cursor-pointer w-full">
-                        <div className={cn(
-                          "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
-                          "hover:border-[#F538BC] hover:shadow-md",
-                          formData.additionalServices.includes('exclusive-ownership') ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white"
-                        )}>
-                          <Checkbox
-                            id="exclusive-ownership"
-                            checked={formData.additionalServices.includes('exclusive-ownership')}
-                            onCheckedChange={(checked) => handleCheckboxChange('exclusive-ownership')}
-                            className="mt-1 mr-3"
-                            disabled={isHolidayModeActive}
-                          />
-                          <div className="flex flex-col flex-1">
-                            <Label htmlFor="exclusive-ownership" className="font-bold text-sm text-[#1C0357] cursor-pointer">
-                              Exclusive Ownership
-                            </Label>
-                            <span className="text-xs text-[#1C0357] font-medium">+$40</span>
-                            <p className="text-xs text-gray-600 mt-1">Prevent online sharing</p>
-                          </div>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Checkbox 
+                          id="exclusive-ownership" 
+                          checked={formData.additionalServices.includes('exclusive-ownership')}
+                          onCheckedChange={(_checked: boolean | 'indeterminate') => handleCheckboxChange(_checked, 'exclusive-ownership')}
+                          className="mt-1 mr-3"
+                          disabled={isHolidayModeActive}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="exclusive-ownership" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Exclusive Ownership (+$20)
+                          </Label>
+                          <p className="text-sm text-gray-500">
+                            I will not use your track for my own promotional purposes.
+                          </p>
                         </div>
-                      </Label>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="specialRequests" className="text-sm mb-1 flex items-center">
-                      <MessageSquare className="mr-1" size={14} />
-                      Special Requests / Notes
-                    </Label>
-                    <Textarea
-                      id="specialRequests"
-                      name="specialRequests"
-                      value={formData.specialRequests}
-                      onChange={handleInputChange}
-                      placeholder="Any special requests or notes..."
-                      className="mt-1"
-                      disabled={isHolidayModeActive}
-                    />
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || isHolidayModeActive}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
-                </Button>
+              {/* Section 7: Special Requests */}
+              <div>
+                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">7</span>
+                  Special Requests (Optional)
+                </h2>
+                <div className="relative">
+                  <Textarea 
+                    id="specialRequests" 
+                    name="specialRequests" 
+                    value={formData.specialRequests} 
+                    onChange={handleInputChange} 
+                    placeholder="Any specific instructions, tempo, dynamics, or cuts for your track?"
+                    rows={4}
+                    className="pl-8 py-2 text-sm"
+                    disabled={isHolidayModeActive}
+                  />
+                  <MessageSquare className="absolute left-2 top-3 text-gray-400" size={14} />
+                </div>
               </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg py-3"
+                disabled={isSubmitting || isHolidayModeActive}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              </Button>
             </form>
           </CardContent>
         </Card>
-        
+
         <MadeWithDyad />
       </div>
     </div>
