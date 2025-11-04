@@ -69,6 +69,7 @@ export const downloadTrack = (rawUrl: string, rawFilenameSuggestion: string | bo
     : url;
   link.href = downloadUrl;
   link.setAttribute('download', finalFilename);
+  link.setAttribute('target', '_blank'); // Add target="_blank" to open in a new tab
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
