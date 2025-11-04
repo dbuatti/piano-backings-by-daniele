@@ -1,6 +1,16 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+// @ts-ignore
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
+
+// Declare Deno namespace for TypeScript
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,10 +26,17 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    let siteUrl = Deno.env.get('SITE_URL'); // Use let to allow modification
 
     if (!stripeSecretKey) {
       throw new Error('STRIPE_SECRET_KEY is not configured in Supabase secrets.');
     }
+    if (!siteUrl) {
+      throw new Error('SITE_URL is not configured in Supabase secrets.');
+    }
+
+    // Normalize siteUrl to remove any trailing slash
+    siteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const stripe = new Stripe(stripeSecretKey, {
@@ -65,8 +82,8 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      success_url: `${Deno.env.get('SITE_URL')}/shop?success=true`,
-      cancel_url: `${Deno.env.get('SITE_URL')}/shop?canceled=true`,
+      success_url: `${siteUrl}/shop?success=true`,
+      cancel_url: `${siteUrl}/shop?canceled=true`,
       metadata: {
         product_id: product.id,
       },
@@ -76,17 +93,20 @@ serve(async (req) => {
       JSON.stringify({ sessionId: session.id, url: session.url }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
+        status: 200
+      }
     );
   } catch (error) {
     console.error('Error in create-stripe-checkout function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 500
+      }
     );
   }
 });
