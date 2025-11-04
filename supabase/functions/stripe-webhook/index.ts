@@ -1,8 +1,5 @@
-// @ts-ignore
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
-// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-// @ts-ignore
 import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
 // Declare Deno namespace for TypeScript
@@ -27,6 +24,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
     const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET'); // New secret for webhook verification
+    const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com'; // Default sender email for notifications
 
     if (!stripeSecretKey) {
       throw new Error('STRIPE_SECRET_KEY is not configured in Supabase secrets.');
@@ -80,10 +78,10 @@ serve(async (req) => {
         });
       }
 
-      // Fetch product details to ensure it exists and get its price
+      // Fetch product details to ensure it exists and get its price and track_url
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
-        .select('id, price')
+        .select('id, title, description, price, track_url') // Select track_url
         .eq('id', productId)
         .single();
 
@@ -115,9 +113,95 @@ serve(async (req) => {
 
       console.log('Order created successfully:', order);
 
-      // TODO: Implement digital product delivery here (e.g., send download link via email)
-      // For now, we'll just log it.
-      console.log(`Digital product delivery for order ${order[0].id} for product ${productId} to ${customerEmail}`);
+      // Implement digital product delivery here (send download link via email)
+      if (product.track_url) {
+        try {
+          // Invoke the send-email Edge Function
+          const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
+          
+          // Generate email content (we'll define generateProductDeliveryEmail in emailGenerator.ts)
+          const { subject, html } = await (await import('../src/utils/emailGenerator.ts')).generateProductDeliveryEmail(product, customerEmail);
+
+          const emailResponse = await fetch(sendEmailUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for Edge Function invocation
+            },
+            body: JSON.stringify({
+              to: customerEmail,
+              subject: subject,
+              html: html,
+              senderEmail: defaultSenderEmail
+            })
+          });
+
+          if (!emailResponse.ok) {
+            const emailErrorText = await emailResponse.text();
+            console.error('Failed to send product delivery email:', emailErrorText);
+            // Log notification failure to database
+            await supabaseAdmin
+              .from('notifications')
+              .insert([
+                {
+                  recipient: customerEmail,
+                  sender: defaultSenderEmail,
+                  subject: subject,
+                  content: html,
+                  status: 'failed',
+                  type: 'product_delivery_email',
+                  error_message: emailErrorText
+                }
+              ]);
+          } else {
+            console.log(`Product delivery email sent successfully to ${customerEmail}`);
+            // Log notification success to database
+            await supabaseAdmin
+              .from('notifications')
+              .insert([
+                {
+                  recipient: customerEmail,
+                  sender: defaultSenderEmail,
+                  subject: subject,
+                  content: html,
+                  status: 'sent',
+                  type: 'product_delivery_email'
+                }
+              ]);
+          }
+        } catch (emailSendError: any) {
+          console.error('Error sending product delivery email:', emailSendError);
+          // Log notification failure to database
+          await supabaseAdmin
+            .from('notifications')
+            .insert([
+              {
+                recipient: customerEmail,
+                sender: defaultSenderEmail,
+                subject: `Failed to deliver product: ${product.title}`,
+                content: `Error: ${emailSendError.message}`,
+                status: 'failed',
+                type: 'product_delivery_email',
+                error_message: emailSendError.message
+              }
+            ]);
+        }
+      } else {
+        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_url. No delivery email sent.`);
+        // Optionally, log a notification that a product without a track_url was purchased
+        await supabaseAdmin
+          .from('notifications')
+          .insert([
+            {
+              recipient: defaultSenderEmail, // Notify admin
+              sender: 'system@pianobackings.com',
+              subject: `Warning: Product purchased without track_url - ${product.title}`,
+              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_url was set for delivery. Manual intervention required.`,
+              status: 'warning',
+              type: 'system_alert'
+            }
+          ]);
+      }
 
     } else {
       console.log(`Unhandled event type: ${event.type}`);
