@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js'; // Import createClient
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
@@ -51,22 +52,33 @@ const PurchaseConfirmation: React.FC = () => {
         return;
       }
 
+      // Create a temporary Supabase client instance with a custom fetch function
+      // that injects the 'x-checkout-session-id' header for this specific request.
+      const supabaseWithHeaders = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        {
+          global: {
+            fetch: async (input, init) => {
+              const headers = new Headers(init?.headers);
+              headers.set('x-checkout-session-id', sessionId);
+              return fetch(input, { ...init, headers });
+            },
+          },
+        }
+      );
+
       try {
-        // Check user session
+        // Check user session using the original supabase client (auth doesn't need custom headers for RLS)
         const { data: { session } } = await supabase.auth.getSession();
         setUserSession(session);
 
-        // Fetch order details using the checkout_session_id
-        // Pass the sessionId as a custom header for RLS policy
-        const { data, error: fetchError } = await supabase
+        // Fetch order details using the new client with custom headers
+        const { data, error: fetchError } = await supabaseWithHeaders
           .from('orders')
           .select('*, products(title, description, track_urls)') // Select product details
           .eq('checkout_session_id', sessionId)
-          .single({
-            headers: {
-              'x-checkout-session-id': sessionId, // Pass the session ID as a custom header for RLS
-            },
-          });
+          .single();
 
         if (fetchError || !data) {
           console.error('Error fetching order:', fetchError);
