@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Store, AlertCircle, CheckCircle, Search, ArrowUpDown, Tag, User } from 'lucide-react'; // Added Tag and User icons
 import Seo from "@/components/Seo"; // Import Seo component
+import { Helmet } from 'react-helmet-async'; // Import Helmet for schema markup
 
 interface TrackInfo {
   url: string;
@@ -226,6 +227,31 @@ const Shop: React.FC = () => {
     return a.localeCompare(b);
   });
 
+  // Generate Product Schema Markup
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": products.map((product, index) => ({
+      "@type": "Product",
+      "position": index + 1,
+      "name": product.title,
+      "description": product.description,
+      "image": product.image_url || "/pasted-image-2025-09-19T05-15-20-729Z.png", // Use default if no image
+      "url": `${window.location.origin}/shop`, // Link to the shop page for now
+      "brand": product.artist_name ? { "@type": "Brand", "name": product.artist_name } : undefined,
+      "offers": {
+        "@type": "Offer",
+        "priceCurrency": product.currency,
+        "price": product.price.toFixed(2),
+        "itemCondition": "https://schema.org/NewCondition",
+        "availability": product.is_active ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        "url": `${window.location.origin}/shop`, // Link to the shop page for now
+      },
+      "sku": product.id,
+      "category": product.category?.replace('-', ' ') || undefined,
+    }))
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Seo 
@@ -235,6 +261,13 @@ const Shop: React.FC = () => {
         ogImage="/pasted-image-2025-09-19T05-15-20-729Z.png"
         canonicalUrl={`${window.location.origin}/shop`}
       />
+      <Helmet>
+        {products.length > 0 && (
+          <script type="application/ld+json">
+            {JSON.stringify(productSchema)}
+          </script>
+        )}
+      </Helmet>
       <Header />
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
