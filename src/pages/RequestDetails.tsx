@@ -28,13 +28,15 @@ import {
   UserPlus,
   Loader2,
   Download,
-  Edit // Import Edit icon
+  Edit,
+  DollarSign // Import DollarSign icon
 } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { Separator } from '@/components/ui/separator';
+import { calculateRequestCost } from '@/utils/pricing'; // Import calculateRequestCost
 
 interface TrackInfo {
   url: string;
@@ -221,6 +223,8 @@ const RequestDetails = () => {
   };
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+  const displayedCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
+  const isCostManuallySet = request.cost !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -456,6 +460,85 @@ const RequestDetails = () => {
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <DollarSign className="mr-2 h-5 w-5" />
+              Payment & Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Cost
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Actual Cost</p>
+                    <p className="font-medium">
+                      ${displayedCost.toFixed(2)}
+                      {isCostManuallySet && <span className="ml-2 text-sm text-gray-600">(Manually Set)</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Payment Status</p>
+                    <p className="font-medium">
+                      {request.is_paid ? (
+                        <Badge variant="default" className="bg-green-500">Paid</Badge>
+                      ) : (
+                        <Badge variant="destructive">Unpaid</Badge>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  Dropbox Automation
+                </h3>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="mb-3">
+                    If the Dropbox folder was not created during the initial request, you can manually trigger the automation process here.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={triggerDropboxAutomation}
+                      disabled={isTriggeringDropbox}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                    >
+                      {isTriggeringDropbox ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Triggering...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Trigger Dropbox Automation
+                        </>
+                      )}
+                    </Button>
+                    {request.dropbox_folder_id && (
+                      <Badge variant="default" className="bg-green-500">
+                        Folder Created
+                      </Badge>
+                    )}
+                  </div>
+                  {request.dropbox_folder_id && (
+                    <p className="mt-3 text-sm text-gray-600">
+                      <span className="font-medium">Folder ID:</span> {request.dropbox_folder_id}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg mb-6">
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
               <Folder className="mr-2 h-5 w-5" />
               Additional Information
             </CardTitle>
@@ -511,47 +594,6 @@ const RequestDetails = () => {
                 ) : (
                   <p className="text-gray-500">No tracks uploaded yet.</p>
                 )}
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <RefreshCw className="mr-2 h-5 w-5" />
-                  Dropbox Automation
-                </h3>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="mb-3">
-                    If the Dropbox folder was not created during the initial request, you can manually trigger the automation process here.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={triggerDropboxAutomation}
-                      disabled={isTriggeringDropbox}
-                      className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                    >
-                      {isTriggeringDropbox ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Triggering...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Trigger Dropbox Automation
-                        </>
-                      )}
-                    </Button>
-                    {request.dropbox_folder_id && (
-                      <Badge variant="default" className="bg-green-500">
-                        Folder Created
-                      </Badge>
-                    )}
-                  </div>
-                  {request.dropbox_folder_id && (
-                    <p className="mt-3 text-sm text-gray-600">
-                      <span className="font-medium">Folder ID:</span> {request.dropbox_folder_id}
-                    </p>
-                  )}
-                </div>
               </div>
             </div>
           </CardContent>

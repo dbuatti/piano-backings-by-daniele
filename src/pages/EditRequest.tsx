@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon, DollarSign } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
@@ -44,7 +44,7 @@ interface BackingRequest {
   shared_link?: string | null;
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
-  cost?: number | null;
+  cost?: number | null; // Make cost nullable
 }
 
 const keyOptions = [
@@ -164,7 +164,12 @@ const EditRequest: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setRequest(prev => prev ? { ...prev, [name]: value } : null);
+    if (name === 'cost') {
+      // Convert to number or null if empty
+      setRequest(prev => prev ? { ...prev, [name]: value === '' ? null : parseFloat(value) } : null);
+    } else {
+      setRequest(prev => prev ? { ...prev, [name]: value } : null);
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -190,13 +195,14 @@ const EditRequest: React.FC = () => {
     setError(null);
 
     try {
-      const { id, created_at, track_urls, shared_link, dropbox_folder_id, uploaded_platforms, cost, ...updates } = request;
+      const { id, created_at, track_urls, shared_link, dropbox_folder_id, uploaded_platforms, ...updates } = request;
       
       // Ensure backing_type and additional_services are stored as arrays
       const payload = {
         ...updates,
         backing_type: Array.isArray(updates.backing_type) ? updates.backing_type : (updates.backing_type ? [updates.backing_type] : []),
         additional_services: Array.isArray(updates.additional_services) ? updates.additional_services : (updates.additional_services ? [updates.additional_services] : []),
+        cost: updates.cost === null ? null : parseFloat(updates.cost.toString()), // Ensure cost is number or null
       };
 
       const { error } = await supabase
@@ -531,6 +537,21 @@ const EditRequest: React.FC = () => {
                       onCheckedChange={(checked) => setRequest(prev => prev ? { ...prev, is_paid: checked as boolean } : null)}
                     />
                     <Label htmlFor="is_paid" className="text-sm">Mark as Paid</Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="cost" className="text-sm mb-1 flex items-center">
+                      <DollarSign className="mr-1 h-4 w-4" /> Actual Cost (AUD)
+                    </Label>
+                    <Input 
+                      id="cost" 
+                      name="cost" 
+                      type="number" 
+                      step="0.01" 
+                      value={request.cost?.toString() || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., 25.00" 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter the actual amount paid by the client. Leave empty for calculated estimate.</p>
                   </div>
                 </div>
               </div>

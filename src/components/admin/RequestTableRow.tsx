@@ -148,6 +148,9 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     }
   };
 
+  const displayedCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
+  const isCostManuallySet = request.cost !== null;
+
   return (
     <TableRow 
       key={request.id} 
@@ -232,13 +235,8 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         <div className="flex items-center font-medium">
           <DollarSign className="w-4 h-4 mr-1" />
           <span>
-            {(() => {
-              const calculatedCost = calculateRequestCost(request);
-              if (calculatedCost && typeof calculatedCost.totalCost === 'number') {
-                return calculatedCost.totalCost.toFixed(2);
-              }
-              return 'N/A';
-            })()}
+            {displayedCost.toFixed(2)}
+            {isCostManuallySet && <span className="ml-1 text-xs text-gray-500">(Manual)</span>}
           </span>
         </div>
       </TableCell>
