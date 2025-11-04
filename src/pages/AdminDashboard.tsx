@@ -33,8 +33,8 @@ import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
 import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
 import { useRequestActions } from '@/hooks/admin/useRequestActions';
 import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
-import { useDeleteDialogs }
- from '@/hooks/admin/useDeleteDialogs';
+import { useDeleteDialogs
+ } from '@/hooks/admin/useDeleteDialogs';
 import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 
 const AdminDashboard = () => {
@@ -62,7 +62,8 @@ const AdminDashboard = () => {
   } = useRequestFilters(requests);
   const { 
     updateStatus, updatePaymentStatus, shareTrack, 
-    deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests 
+    deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests,
+    updateCost, // Destructure updateCost
   } = useRequestActions(requests, setRequests);
   const {
     uploadTrackId, setUploadTrackId,
@@ -350,6 +351,8 @@ const AdminDashboard = () => {
                 openBatchDeleteDialog={confirmBatchDeleteRequests}
                 openUploadPlatformsDialog={openUploadPlatformsDialog}
                 onDirectFileUpload={handleDirectFileUpload}
+                updateTrackCaption={updateTrackCaption}
+                updateCost={updateCost} // Pass updateCost
               />
             </TabsContent>
 

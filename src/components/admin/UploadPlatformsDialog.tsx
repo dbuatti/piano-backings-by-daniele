@@ -6,12 +6,6 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-interface UploadPlatformsDialogProps {
-  requestId: string;
-  isOpen: boolean; // Added prop
-  onOpenChange: (isOpen: boolean) => void; // Changed from onClose
-}
-
 interface UploadedPlatforms {
   youtube: boolean;
   tiktok: boolean;
@@ -20,14 +14,23 @@ interface UploadedPlatforms {
   gumroad: boolean;
 }
 
-const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({ requestId, isOpen, onOpenChange }) => {
-  const [platforms, setPlatforms] = useState<UploadedPlatforms>({
-    youtube: false,
-    tiktok: false,
-    facebook: false,
-    instagram: false,
-    gumroad: false,
-  });
+interface UploadPlatformsDialogProps {
+  requestId: string;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  platforms: UploadedPlatforms;
+  setPlatforms: React.Dispatch<React.SetStateAction<UploadedPlatforms>>;
+  onSavePlatforms: () => Promise<void>;
+}
+
+const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({ 
+  requestId, 
+  isOpen, 
+  onOpenChange,
+  platforms,
+  setPlatforms,
+  onSavePlatforms,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -74,7 +77,7 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({ requestId
     };
 
     fetchPlatforms();
-  }, [requestId, isOpen, onOpenChange, toast]); // Depend on isOpen to re-fetch when it changes
+  }, [requestId, isOpen, onOpenChange, toast, setPlatforms]); // Depend on isOpen to re-fetch when it changes
 
   const handleCheckboxChange = (platform: keyof UploadedPlatforms, checked: boolean) => {
     setPlatforms(prev => ({ ...prev, [platform]: checked }));
@@ -83,17 +86,7 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({ requestId
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('backing_requests')
-        .update({ uploaded_platforms: platforms })
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Platforms Updated",
-        description: "Uploaded platforms have been updated successfully.",
-      });
+      await onSavePlatforms(); // Call the parent's save function
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving platforms:", error);
