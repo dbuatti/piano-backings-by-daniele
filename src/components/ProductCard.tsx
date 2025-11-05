@@ -101,11 +101,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
         </div>
       </CardContent>
-      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex gap-2 items-center">
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col sm:flex-row gap-2 items-center">
         <Button 
           variant="secondary" 
           onClick={() => onViewDetails(product)}
-          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
+          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20 w-full sm:w-auto"
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details
@@ -113,7 +113,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         <Button 
           onClick={() => onBuyNow(product)}
           disabled={isBuying}
-          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full sm:w-auto"
         >
           {isBuying ? (
             <>
