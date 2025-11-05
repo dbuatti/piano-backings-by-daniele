@@ -4,13 +4,27 @@ export const calculateRequestCost = (request: any) => {
   let totalCost = 0;
   const baseCosts: { type: string; cost: number }[] = [];
   const serviceCosts: { service: string; cost: number }[] = [];
-  let trackTypeBaseCost = 0; // For cases where backing_type is not explicitly set
-
-  // Determine base cost based on backing_type or track_type
+  
   const backingTypes = Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []);
   const trackType = request.track_type;
 
-  if (backingTypes.length > 0) {
+  let baseCost = 0;
+  let baseType = '';
+
+  // 1. Determine base cost based on Track Type (prioritize cheaper rough cuts)
+  if (trackType === 'quick' || trackType === 'one-take') {
+    switch (trackType) {
+      case 'quick': 
+        baseCost = 7.5; // Average of $5 - $10
+        baseType = 'Quick Reference (Base)';
+        break;
+      case 'one-take': 
+        baseCost = 15; // Average of $10 - $20
+        baseType = 'One-Take Recording (Base)';
+        break;
+    }
+  } else if (backingTypes.length > 0) {
+    // 2. If not a rough cut, use Backing Type for base cost
     backingTypes.forEach((type: string) => {
       let cost = 0;
       switch (type) {
@@ -26,31 +40,36 @@ export const calculateRequestCost = (request: any) => {
         default:
           cost = 20; // Default if backing_type is unknown
       }
+      // If multiple backing types are selected, sum their costs
       baseCosts.push({ type, cost });
       totalCost += cost;
     });
+    
+    // If multiple backing types were processed, we skip the single baseCost logic below
+    if (baseCosts.length > 0) {
+      // Total cost already calculated above
+    }
   } else if (trackType) {
-    // If backing_type is not explicitly set, try to infer from track_type
+    // 3. Fallback: If no backing type, use polished track type average
     switch (trackType) {
-      case 'quick': 
-        trackTypeBaseCost = 7.5; // Average of 5-10
-        break;
-      case 'one-take': 
-        trackTypeBaseCost = 15; // Average of 10-20
-        break;
       case 'polished': 
-        trackTypeBaseCost = 25; // Average of 15-35
+        baseCost = 25; // Average of $15 - $35
+        baseType = 'Polished Backing (Base)';
         break;
       default: 
-        trackTypeBaseCost = 20; // Default if track_type is unknown
+        baseCost = 20; // General Default
+        baseType = 'Default Base Cost';
     }
-    baseCosts.push({ type: trackType, cost: trackTypeBaseCost });
-    totalCost += trackTypeBaseCost;
   } else {
-    // General fallback if neither is specified
-    const defaultCost = 20;
-    baseCosts.push({ type: 'default', cost: defaultCost });
-    totalCost += defaultCost;
+    // 4. General fallback
+    baseCost = 20;
+    baseType = 'Default Base Cost';
+  }
+
+  // If a single base cost was determined (i.e., not multiple backing types)
+  if (baseCost > 0 && baseCosts.length === 0) {
+    baseCosts.push({ type: baseType, cost: baseCost });
+    totalCost += baseCost;
   }
   
   // Add additional service costs
