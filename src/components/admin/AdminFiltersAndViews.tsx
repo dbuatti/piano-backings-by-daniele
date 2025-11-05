@@ -36,13 +36,13 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    setStatusFilter('');
-    setBackingTypeFilter('');
-    setPaymentStatusFilter('');
+    setStatusFilter('all'); // Reset to 'all'
+    setBackingTypeFilter('all'); // Reset to 'all'
+    setPaymentStatusFilter('all'); // Reset to 'all'
     clearFilters();
   };
 
-  const isFilterActive = searchTerm || statusFilter || backingTypeFilter || paymentStatusFilter;
+  const isFilterActive = searchTerm || statusFilter !== 'all' || backingTypeFilter !== 'all' || paymentStatusFilter !== 'all';
 
   const FilterControls = (
     <>
@@ -52,7 +52,7 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Statuses</SelectItem>
+          <SelectItem value="all">All Statuses</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="in-progress">In Progress</SelectItem>
           <SelectItem value="completed">Completed</SelectItem>
@@ -66,7 +66,7 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
           <SelectValue placeholder="Backing Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Types</SelectItem>
+          <SelectItem value="all">All Types</SelectItem>
           <SelectItem value="full-song">Full Song</SelectItem>
           <SelectItem value="audition-cut">Audition Cut</SelectItem>
           <SelectItem value="note-bash">Note Bash</SelectItem>
@@ -79,7 +79,7 @@ const AdminFiltersAndViews: React.FC<AdminFiltersAndViewsProps> = ({
           <SelectValue placeholder="Payment Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Payments</SelectItem>
+          <SelectItem value="all">All Payments</SelectItem>
           <SelectItem value="paid">Paid</SelectItem>
           <SelectItem value="unpaid">Unpaid</SelectItem>
         </SelectContent>
