@@ -97,14 +97,22 @@ const CreateNewProduct: React.FC = () => {
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      // Ensure the track object has a 'file' property if it's being set
+      const currentTrack = { ...newTrackUrls[index] }; // Create a copy to modify
+
       if (field === 'file') {
-        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? null : newTrackUrls[index].url }; // Clear URL if file is set, set to null
+        currentTrack.file = value as File | null;
+        if (value) { // If a file is selected, clear the URL
+          currentTrack.url = null;
+        }
       } else if (field === 'url') {
-        newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
+        currentTrack.url = value as string | null;
+        if (value) { // If a URL is entered, clear the file
+          currentTrack.file = null;
+        }
       } else {
-        (newTrackUrls[index] as any)[field] = value; 
+        (currentTrack as any)[field] = value; 
       }
+      newTrackUrls[index] = currentTrack;
       return { ...prev, track_urls: newTrackUrls };
     });
   };
@@ -172,7 +180,7 @@ const CreateNewProduct: React.FC = () => {
     
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
       if (!track.url && !track.file) { // Require either URL or file
-        errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
+        errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`
       }
       if (!track.caption.trim()) { // Caption must be a non-empty string
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
@@ -495,16 +503,16 @@ const CreateNewProduct: React.FC = () => {
               {productForm.track_urls.map((track, index) => (
                 <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`track-selected-${index}`}
-                        checked={track.selected}
-                        onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
-                      />
-                      <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
-                        Track {index + 1}
-                      </Label>
-                    </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`track-selected-${index}`}
+                            checked={track.selected}
+                            onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
+                          />
+                          <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
+                            Track {index + 1}
+                          </Label>
+                        </div>
                     <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
                       <MinusCircle className="h-4 w-4" /> Remove
                     </Button>
