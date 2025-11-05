@@ -224,15 +224,17 @@ const Shop = () => {
         <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
           <div className="relative flex-grow w-full md:w-auto">
             <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search Title or Artist</Label>
-            <Search className="absolute left-3 top-[34px] transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              id="search-input"
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-md w-full"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                id="search-input"
+                type="text"
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 border rounded-md w-full"
+              />
+            </div>
           </div>
           
           {/* PROMINENT VOCAL RANGE FILTER */}
