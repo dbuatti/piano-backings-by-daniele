@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Filter, XCircle, CheckCircle, ShoppingCart, Music, DollarSign, Key, FileText } from 'lucide-react';
+import { Loader2, Search, Filter, XCircle, CheckCircle, ShoppingCart, Music, DollarSign, Key, FileText, ArrowUpDown } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -53,21 +53,70 @@ interface Product {
 const Shop = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('full-song'); // Changed default to 'full-song'
+  const [categoryFilter, setCategoryFilter] = useState('all'); // Changed default to 'all'
   const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
+  const [sortOption, setSortOption] = useState('category_asc'); // New state for sort option, default to category_asc
 
   const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts'],
+    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+
+      // Apply search term
+      if (searchTerm) {
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
+      }
+
+      // Apply category filter
+      if (categoryFilter !== 'all') {
+        query = query.eq('category', categoryFilter);
+      }
+
+      // Apply vocal range filter
+      if (vocalRangeFilter !== 'all') {
+        query = query.contains('vocal_ranges', [vocalRangeFilter]);
+      }
+
+      // Apply price range filter
+      query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
+
+      // Apply sorting
+      switch (sortOption) {
+        case 'price_asc':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price_desc':
+          query = query.order('price', { ascending: false });
+          break;
+        case 'title_asc':
+          query = query.order('title', { ascending: true });
+          break;
+        case 'title_desc':
+          query = query.order('title', { ascending: false });
+          break;
+        case 'artist_name_asc':
+          query = query.order('artist_name', { ascending: true });
+          break;
+        case 'artist_name_desc':
+          query = query.order('artist_name', { ascending: false });
+          break;
+        case 'category_asc': // New sort option
+          query = query.order('category', { ascending: true }).order('title', { ascending: true });
+          break;
+        case 'created_at_desc':
+        default:
+          query = query.order('created_at', { ascending: false });
+          break;
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data || [];
@@ -92,13 +141,43 @@ const Shop = () => {
     setIsDetailDialogOpen(true);
   }, []);
 
-  const handleBuyNow = useCallback((product: Product) => {
-    // Implement buy now logic, e.g., redirect to checkout or add to cart
-    toast({
-      title: "Buy Now",
-      description: `Initiating purchase for "${product.title}"`,
-    });
-    console.log("Buy Now:", product);
+  const handleBuyNow = useCallback(async (product: Product) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+          },
+          body: JSON.stringify({ product_id: product.id }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to create checkout session: ${response.status} ${response.statusText}`);
+      }
+
+      if (result.url) {
+        window.location.href = result.url; // Redirect to Stripe Checkout
+      } else {
+        throw new Error('Stripe checkout URL not received.');
+      }
+
+    } catch (err: any) {
+      console.error('Error during buy now:', err);
+      toast({
+        title: "Purchase Error",
+        description: `Failed to initiate purchase: ${err.message}`,
+        variant: "destructive",
+      });
+    }
   }, [toast]);
 
   const clearFilters = () => {
@@ -106,32 +185,10 @@ const Shop = () => {
     setCategoryFilter('all');
     setVocalRangeFilter('all');
     setPriceRange([0, 100]);
+    setSortOption('category_asc'); // Reset sort option as well
   };
 
-  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || vocalRangeFilter !== 'all' || priceRange[0] !== 0 || priceRange[1] !== 100;
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
-          <p className="ml-2 text-lg text-gray-700">Loading shop products...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p className="text-lg text-red-600">Error loading products: ${error?.message}</p>
-        </div>
-      </div>
-    );
-  }
+  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || vocalRangeFilter !== 'all' || priceRange[0] !== 0 || priceRange[1] !== 100 || sortOption !== 'category_asc';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -210,6 +267,25 @@ const Shop = () => {
                     onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
                     className="w-full"
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="sort-option" className="mb-2 block">Sort By</Label>
+                  <Select value={sortOption} onValueChange={setSortOption}>
+                    <SelectTrigger id="sort-option">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="category_asc">Category: A-Z</SelectItem> {/* New default sort */}
+                      <SelectItem value="created_at_desc">Newest First</SelectItem>
+                      <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                      <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                      <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                      <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                      <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                      <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {hasActiveFilters && (
