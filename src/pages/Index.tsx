@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit, Plane, Loader2 } from "lucide-react"; // Import Loader2
+import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit, Plane, Loader2, Mic, Sparkles } from "lucide-react"; // Import Mic and Sparkles
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useState, useEffect } from "react";
@@ -184,31 +184,25 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-4">
-                    1
-                  </div>
-                  <h3 className="font-bold text-lg mb-3">Quick Reference</h3>
+                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow text-center">
+                  <Mic className="h-10 w-10 text-blue-500 mx-auto mb-3" />
+                  <h3 className="font-bold text-lg mb-2">Quick Reference</h3>
                   <p className="text-sm">
                     Fast voice memo for learning or audition notes. Not suitable for professional use.
                   </p>
                 </div>
                 
-                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-4">
-                    2
-                  </div>
-                  <h3 className="font-bold text-lg mb-3">One-Take Recording</h3>
+                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow text-center">
+                  <Headphones className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
+                  <h3 className="font-bold text-lg mb-2">One-Take Recording</h3>
                   <p className="text-sm">
                     Single-pass DAW recording with potential minor errors. Suitable for self-tapes and quick references.
                   </p>
                 </div>
                 
                 <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="bg-[#D1AAF2] text-[#1C0357] font-bold rounded-full w-8 h-8 flex items-center justify-center mr-3 mb-4">
-                    3
-                  </div>
-                  <h3 className="font-bold text-lg mb-3">Polished Backing</h3>
+                  <Sparkles className="h-10 w-10 text-[#F538BC] mx-auto mb-3" />
+                  <h3 className="font-bold text-lg mb-2">Polished Backing</h3>
                   <p className="text-sm">
                     Refined, accurate track with correct notes and rhythm. Ideal for auditions, performances, and dedicated practice.
                   </p>

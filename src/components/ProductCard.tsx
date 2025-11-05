@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key } from 'lucide-react';
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key, Mic, Headphones, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
@@ -34,6 +34,22 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
+  
+  const getTrackTypeIcon = (type: string | undefined) => {
+    switch (type) {
+      case 'quick':
+        return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
+      case 'one-take':
+        return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
+      case 'polished':
+        return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
+      default:
+        return null;
+    }
+  };
+
+  const trackIcon = getTrackTypeIcon(product.track_type);
+
   return (
     <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
       <CardHeader className="p-0 relative overflow-hidden">
@@ -55,16 +71,38 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </div>
           )}
         </AspectRatio>
-        <div className="absolute top-2 left-2 flex flex-col items-start space-y-1">
-          {product.category && product.track_type && (
+        
+        {/* Top Left: Category Badge (Simplified) */}
+        <div className="absolute top-2 left-2">
+          {product.category && (
             <Badge 
               variant="default" 
               className="bg-white/90 text-[#1C0357] capitalize text-sm px-3 py-1 rounded-full shadow-lg font-semibold"
             >
-              {product.category.replace('-', ' ')} / {product.track_type.replace('-', ' ')}
+              {product.category.replace('-', ' ')}
             </Badge>
           )}
         </div>
+
+        {/* Top Right: Track Type Icon (New) */}
+        {trackIcon && (
+          <div className="absolute top-2 right-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn(
+                  "p-2 rounded-full bg-white/90 shadow-lg",
+                  trackIcon.color
+                )}>
+                  <trackIcon.Icon className="h-5 w-5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{trackIcon.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+
       </CardHeader>
       <CardContent className="flex-1 p-4">
         <CardTitle className="text-xl font-bold text-[#1C0357] mb-2">{product.title}</CardTitle>
