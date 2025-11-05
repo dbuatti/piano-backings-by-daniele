@@ -127,8 +127,10 @@ const RepurposeTrackToShop: React.FC = () => {
       newCaption = 'Untitled Track';
     }
 
-    const urlExtensionMatch = trackUrl.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-    const urlExtension = urlExtensionMatch?.[1] || ''; // Safely access urlExtensionMatch[1]
+    const urlParts = trackUrl.split('/');
+    const filenameWithExt = urlParts[urlParts.length - 1].split('?')[0];
+    const urlExtensionMatch = filenameWithExt.match(/\.([0-9a-z]+)$/i);
+    const urlExtension = urlExtensionMatch?.[1] || '';
     
     if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
       newCaption += `.${urlExtension}`;
@@ -169,19 +171,6 @@ const RepurposeTrackToShop: React.FC = () => {
     },
     staleTime: 5 * 60 * 1000,
   });
-
-  // Create a lookup for existing product titles for quick checking
-  const [existingProductTitles, setExistingProductTitles] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (shopProducts) {
-      const titles = new Set<string>();
-      shopProducts.forEach(product => {
-        titles.add(product.title.toLowerCase());
-      });
-      setExistingProductTitles(titles);
-    }
-  }, [shopProducts]);
 
   // Filter requests based on search term
   const filteredRequests = requests?.filter(req => 
@@ -237,17 +226,12 @@ const RepurposeTrackToShop: React.FC = () => {
         const originalCaption = track.caption;
         let captionToUse = String(originalCaption || ''); // Ensure caption is a string
 
-        const urlParts = track.url.split('/');
-        const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0];
-        const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
-
         const isGenericCaption = 
           captionToUse === '' || 
           captionToUse.toLowerCase() === 'true' ||
-          captionToUse === filenameFromUrlWithExt ||
-          captionToUse === filenameFromUrlWithoutExt;
+          (track.url && captionToUse === truncateUrl(track.url, 100)); // Check against truncated URL
 
-        if (isGenericCaption) {
+        if (isGenericCaption && track.url) {
           captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
         }
         
@@ -275,7 +259,16 @@ const RepurposeTrackToShop: React.FC = () => {
       setSheetMusicFile(null);
       setFormErrors({});
     }
+    // NOTE: When selectedRequest becomes null, the form retains the last populated data.
   }, [selectedRequest]);
+
+  const handleClearSourceRequest = () => {
+    setSelectedRequest(null);
+    toast({
+      title: "Source Cleared",
+      description: "The form data remains, allowing you to edit and create a new product.",
+    });
+  };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -546,7 +539,7 @@ const RepurposeTrackToShop: React.FC = () => {
           Repurpose Tracks to Shop
         </CardTitle>
       </CardHeader>
-      <CardContent> {/* This CardContent wraps the request selection */}
+      <CardContent>
         <p className="text-sm text-gray-600 mb-4">
           Select a completed backing track request to create a new product for your shop.
         </p>
@@ -556,74 +549,100 @@ const RepurposeTrackToShop: React.FC = () => {
             <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">1</span>
             Select Completed Request
           </h3>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search completed requests by song, artist, or client..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              disabled={isLoadingRequests}
-            />
-          </div>
-
-          {isLoadingRequests || isLoadingShopProducts ? (
-            <div className="flex items-center justify-center h-24">
-              <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
-              <p className="ml-2 text-gray-600">Loading requests...</p>
+          
+          {selectedRequest ? (
+            <div className="p-4 border rounded-md bg-blue-50 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-[#1C0357]">{selectedRequest.song_title} by {selectedRequest.musical_or_artist}</p>
+                  <p className="text-sm text-gray-600">Client: {selectedRequest.name || selectedRequest.email}</p>
+                  <p className="text-xs text-gray-500">Submitted: {format(new Date(selectedRequest.created_at), 'MMM dd, yyyy')}</p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleClearSourceRequest}
+                >
+                  <XCircle className="h-4 w-4 mr-1" /> Clear Source
+                </Button>
+              </div>
+              <p className="text-sm text-blue-800">
+                Data imported successfully. Proceed to Step 2 to modify and create the new product.
+              </p>
             </div>
-          ) : filteredRequests.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
           ) : (
-            <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
-              {filteredRequests.map(req => {
-                let derivedTitle = req.song_title;
-                let derivedArtist = req.musical_or_artist;
+            <>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search completed requests by song, artist, or client..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                  disabled={isLoadingRequests}
+                />
+              </div>
 
-                const hyphenIndex = req.song_title.indexOf(' - ');
-                if (hyphenIndex !== -1) {
-                  derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
-                  derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
-                }
+              {isLoadingRequests || isLoadingShopProducts ? (
+                <div className="flex items-center justify-center h-24">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#1C0357]" />
+                  <p className="ml-2 text-gray-600">Loading requests...</p>
+                </div>
+              ) : filteredRequests.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
+              ) : (
+                <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
+                  {filteredRequests.map(req => {
+                    let derivedTitle = req.song_title;
+                    let derivedArtist = req.musical_or_artist;
 
-                const isAlreadyInShop = shopProducts?.some(product =>
-                  product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
-                  product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
-                );
+                    const hyphenIndex = req.song_title.indexOf(' - ');
+                    if (hyphenIndex !== -1) {
+                      derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
+                      derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
+                    }
 
-                return (
-                  <div
-                    key={req.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors",
-                      selectedRequest?.id === req.id ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
-                    )}
-                    onClick={() => setSelectedRequest(req)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
-                      <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isAlreadyInShop && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          <CheckCircle className="h-3 w-3 mr-1" /> In Shop
-                        </Badge>
-                      )}
-                      {selectedRequest?.id === req.id && <CheckCircle className="h-4 w-4 text-green-600" />}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    const isAlreadyInShop = shopProducts?.some(product =>
+                      product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
+                      product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
+                    );
+
+                    return (
+                      <div
+                        key={req.id}
+                        className={cn(
+                          "flex items-center justify-between p-3 border rounded-md transition-colors",
+                          'bg-gray-50 hover:bg-gray-100'
+                        )}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
+                          <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isAlreadyInShop && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              <CheckCircle className="h-3 w-3 mr-1" /> In Shop
+                            </Badge>
+                          )}
+                          <Button size="sm" variant="outline" className="h-6" onClick={() => setSelectedRequest(req)}>
+                            <PlusCircle className="h-3 w-3 mr-1" /> Import
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
-      </CardContent> {/* Closing CardContent for request selection */}
+      </CardContent>
 
       {/* Conditional rendering of the product form or placeholder message, each wrapped in its own CardContent */}
-      {selectedRequest ? (
-        <CardContent> {/* This CardContent contains the form */}
-          <div> {/* This div contains the h3 and form fields */}
+      {selectedRequest || productForm.title ? (
+        <CardContent>
+          <div>
             <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
               <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">2</span>
               Define Product Details
@@ -822,10 +841,10 @@ const RepurposeTrackToShop: React.FC = () => {
                             Track {index + 1}
                           </Label>
                         </div>
-                        <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
-                          <MinusCircle className="h-4 w-4" /> Remove
-                        </Button>
-                      </div>
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
+                      <MinusCircle className="h-4 w-4" /> Remove
+                    </Button>
+                  </div>
                       
                       <div>
                         <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
@@ -927,10 +946,10 @@ const RepurposeTrackToShop: React.FC = () => {
                 )}
               </Button>
             </div>
-          </div> {/* Closing div for form content */}
+          </div>
         </CardContent>
       ) : (
-        <CardContent> {/* This CardContent contains the "select a request" message */}
+        <CardContent>
           <p className="text-center text-gray-500 py-4">Select a completed request above to define a new product.</p>
         </CardContent>
       )}
