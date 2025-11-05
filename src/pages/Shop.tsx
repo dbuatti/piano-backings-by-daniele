@@ -324,7 +324,7 @@ const Shop = () => {
                   </Select>
                 </div>
 
-                hasActiveFilters && (
+                {hasActiveFilters && (
                   <Button variant="outline" onClick={clearFilters} className="w-full flex items-center gap-2">
                     <XCircle className="h-4 w-4" /> Clear All Filters
                   </Button>
