@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Trash2, Edit } from 'lucide-react'; // Added Edit and Trash2
+import { Loader2, Trash2, Edit, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
 import { supabase } from '@/integrations/supabase/client';
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
+import { TrackInfo } from '@/utils/helpers';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface UploadTrackDialogProps {
   requestId: string | null; // Changed to string | null
@@ -72,91 +73,101 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-500">Uploading track for request ID: <span className="font-medium">{requestId?.substring(0, 8) || 'N/A'}</span></p>
-      
-      {/* Existing Tracks Section */}
-      {existingTrackUrls.length > 0 && (
-        <div className="border rounded-md p-3 bg-gray-50">
-          <h3 className="font-semibold text-sm mb-2">Existing Tracks:</h3>
-          <ul className="space-y-2">
-            {existingTrackUrls.map((track, index) => (
-              <li key={track.url} className="flex items-center justify-between p-2 border rounded-md bg-white">
-                {isEditingCaption === track.url ? (
-                  <div className="flex-1 flex items-center space-x-2">
-                    <Input
-                      value={currentEditCaption}
-                      onChange={(e) => setCurrentEditCaption(e.target.value)}
-                      className="flex-1"
-                      disabled={isUpdatingCaption || isUploading}
-                    />
-                    <Button size="sm" onClick={() => handleSaveCaption(track.url)} disabled={isUpdatingCaption || isUploading}>
-                      {isUpdatingCaption ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleCancelEditCaption} disabled={isUpdatingCaption || isUploading}>
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
-                      {track.caption || `Track ${index + 1}`}
-                    </a>
-                    <div className="flex items-center space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)} disabled={isUploading}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => onRemoveTrack(track.url)} disabled={isUploading}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* New Track Upload Section */}
-      <div className="border-t pt-4 mt-4">
-        <h3 className="font-semibold text-sm mb-2">Upload New Track:</h3>
-        <div>
-          <Label htmlFor="track-file">Select Audio File</Label>
-          <Input 
-            id="track-file" 
-            type="file" 
-            accept="audio/*" 
-            onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} 
-            disabled={isUploading}
-          />
-        </div>
-        <div>
-          <Label htmlFor="caption">Track Caption (optional)</Label>
-          <Input 
-            id="caption" 
-            value={uploadCaption} 
-            onChange={(e) => setUploadCaption(e.target.value)} 
-            placeholder="e.g., Final Mix, Version 2" 
-            disabled={isUploading}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>Cancel</Button>
-        <Button onClick={onFileUpload} disabled={!uploadFile || isUploading}>
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            "Upload Track"
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <UploadCloud className="mr-2 h-5 w-5" /> Upload Track
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">Uploading track for request ID: <span className="font-medium">{requestId?.substring(0, 8) || 'N/A'}</span></p>
+          
+          {/* Existing Tracks Section */}
+          {existingTrackUrls.length > 0 && (
+            <div className="border rounded-md p-3 bg-gray-50">
+              <h3 className="font-semibold text-sm mb-2">Existing Tracks:</h3>
+              <ul className="space-y-2">
+                {existingTrackUrls.map((track, index) => (
+                  <li key={track.url} className="flex items-center justify-between p-2 border rounded-md bg-white">
+                    {isEditingCaption === track.url ? (
+                      <div className="flex-1 flex items-center space-x-2">
+                        <Input
+                          value={currentEditCaption}
+                          onChange={(e) => setCurrentEditCaption(e.target.value)}
+                          className="flex-1"
+                          disabled={isUpdatingCaption || isUploading}
+                        />
+                        <Button size="sm" onClick={() => handleSaveCaption(track.url)} disabled={isUpdatingCaption || isUploading}>
+                          {isUpdatingCaption ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelEditCaption} disabled={isUpdatingCaption || isUploading}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
+                          {track.caption || `Track ${index + 1}`}
+                        </a>
+                        <div className="flex items-center space-x-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)} disabled={isUploading}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => onRemoveTrack(track.url)} disabled={isUploading}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-        </Button>
-      </div>
-    </div>
+
+          {/* New Track Upload Section */}
+          <div className="border-t pt-4 mt-4">
+            <h3 className="font-semibold text-sm mb-2">Upload New Track:</h3>
+            <div>
+              <Label htmlFor="track-file">Select Audio File</Label>
+              <Input 
+                id="track-file" 
+                type="file" 
+                accept="audio/*" 
+                onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} 
+                disabled={isUploading}
+              />
+            </div>
+            <div>
+              <Label htmlFor="caption">Track Caption (optional)</Label>
+              <Input 
+                id="caption" 
+                value={uploadCaption} 
+                onChange={(e) => setUploadCaption(e.target.value)} 
+                placeholder="e.g., Final Mix, Version 2" 
+                disabled={isUploading}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>Cancel</Button>
+            <Button onClick={onFileUpload} disabled={!uploadFile || isUploading}>
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                "Upload Track"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
