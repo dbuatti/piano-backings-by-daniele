@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { format } from 'date-fns';
+import { format }date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -94,7 +94,8 @@ const RepurposeTrackToShop: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Helper to truncate URL for display
-  const truncateUrl = (url: string, maxLength: number = 40) => {
+  const truncateUrl = (url: string | null, maxLength: number = 40) => {
+    if (!url) return 'N/A';
     if (url.length <= maxLength) return url;
     const start = url.substring(0, maxLength / 2 - 2);
     const end = url.substring(url.length - maxLength / 2 + 2);
@@ -102,7 +103,7 @@ const RepurposeTrackToShop: React.FC = () => {
   };
 
   // Function to generate a descriptive caption
-  const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string, trackUrl: string): string => {
+  const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string | boolean | null | undefined, trackUrl: string): string => {
     const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
     const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
 
@@ -232,18 +233,18 @@ const RepurposeTrackToShop: React.FC = () => {
       }
       
       const newTrackUrls = selectedRequest.track_urls?.map(track => {
-        const originalCaption = String(track.caption || '');
-        let captionToUse = originalCaption;
+        const originalCaption = track.caption;
+        let captionToUse = String(originalCaption || ''); // Ensure caption is a string
 
         const urlParts = track.url.split('/');
         const filenameFromUrlWithExt = urlParts[urlParts.length - 1].split('?')[0];
         const filenameFromUrlWithoutExt = filenameFromUrlWithExt.split('.').slice(0, -1).join('.');
 
         const isGenericCaption = 
-          originalCaption === '' || 
-          originalCaption.toLowerCase() === 'true' ||
-          originalCaption === filenameFromUrlWithExt ||
-          originalCaption === filenameFromUrlWithoutExt;
+          captionToUse === '' || 
+          captionToUse.toLowerCase() === 'true' ||
+          captionToUse === filenameFromUrlWithExt ||
+          captionToUse === filenameFromUrlWithoutExt;
 
         if (isGenericCaption) {
           captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
@@ -374,7 +375,7 @@ const RepurposeTrackToShop: React.FC = () => {
       if (!track.url.trim()) {
         errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
       }
-      if (!String(track.caption || '').trim()) {
+      if (!track.caption.trim()) { // Caption must be a non-empty string
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
       }
     });
@@ -389,13 +390,13 @@ const RepurposeTrackToShop: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, ...rest }) => rest); // Destructure 'selected' here
+        .map(({ selected, file, ...rest }) => rest); // Destructures 'selected' and 'file'
 
       const { data, error } = await supabase
         .from('products')
         .insert([{
           ...fieldsToCreate,
-          track_urls: tracksToSave,
+          track_urls: tracksToSave, // This is the array being inserted
         }])
         .select();
       
@@ -776,24 +777,47 @@ const RepurposeTrackToShop: React.FC = () => {
                       </div>
                       
                       <div>
-                        <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
-                        <a 
-                          href={track.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="block text-blue-600 hover:underline text-sm truncate mt-1"
-                        >
-                          <Link className="h-3 w-3 mr-1 inline-block" />
-                          {truncateUrl(track.url, 30)}
-                        </a>
+                        <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
+                        <Input
+                          id={`track-url-${index}`}
+                          name={`track_urls[${index}].url`}
+                          value={track.url || ''}
+                          onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
+                          placeholder="https://example.com/track.mp3"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
+                          disabled={!!track.file} // Disable if a file is selected
+                        />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
+                      
+                      {/* Replaced FileInput with standard input for audio upload */}
+                      <div className="space-y-1">
+                        <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
+                          <FileAudio className="mr-1" size={14} />
+                          Upload Audio File (Optional)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`track-file-upload-${index}`}
+                            type="file"
+                            accept="audio/*"
+                            onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
+                            className="flex-1"
+                            disabled={!!track.url} // Disable if a URL is entered
+                          />
+                        </div>
+                        {track.file && (
+                          <p className="text-xs text-gray-500 mt-1">Selected: {track.file.name}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Upload an audio file (e.g., MP3) for this track. This will override any URL above.</p>
+                      </div>
+
                       <div>
                         <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
                         <Input
                           id={`track-caption-${index}`}
                           name={`track_urls[${index}].caption`}
-                          value={String(track.caption || '')}
+                          value={track.caption} // Caption is now always a string
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
@@ -852,11 +876,9 @@ const RepurposeTrackToShop: React.FC = () => {
                 )}
               </Button>
             </div>
-          </div>
-        )}
-      </CardContent> {/* Closing CardContent for product details */}
-    </Card>
-  );
-};
+          </CardContent>
+        </Card>
+      );
+    };
 
 export default RepurposeTrackToShop;

@@ -38,8 +38,8 @@ import FileInput from '../FileInput'; // Import FileInput
 import { PlusCircle } from 'lucide-react'; // Ensure PlusCircle is imported
 
 interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
+  url: string | null; // Changed to allow null
+  caption: string; // Changed to always be string
   selected?: boolean; // Added for UI state management
   file?: File | null; // Added optional file property for UI state
 }
@@ -109,7 +109,7 @@ const ProductManager: React.FC = () => {
     track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
-  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
+  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(1); // New state for sheet music file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // State variables for filters and sorting
@@ -118,7 +118,8 @@ const ProductManager: React.FC = () => {
   const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
-  const truncateUrl = (url: string, maxLength: number = 40) => {
+  const truncateUrl = (url: string | null, maxLength: number = 40) => {
+    if (!url) return 'N/A';
     if (url.length <= maxLength) return url;
     const start = url.substring(0, maxLength / 2 - 2);
     const end = url.substring(url.length - maxLength / 2 + 2);
@@ -127,11 +128,12 @@ const ProductManager: React.FC = () => {
 
   // Fetch all products
   const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', searchTerm, categoryFilter, sortOption], // Include filters/sort in query key
+    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
     queryFn: async () => {
       let query = supabase
         .from('products')
-        .select('*');
+        .select('*')
+        .eq('is_active', true);
 
       // Apply search term
       if (searchTerm) {
@@ -142,6 +144,14 @@ const ProductManager: React.FC = () => {
       if (categoryFilter !== 'all') {
         query = query.eq('category', categoryFilter);
       }
+
+      // Apply vocal range filter
+      if (vocalRangeFilter !== 'all') {
+        query = query.contains('vocal_ranges', [vocalRangeFilter]);
+      }
+
+      // Apply price range filter
+      query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
 
       // Apply sorting
       switch (sortOption) {
@@ -163,6 +173,9 @@ const ProductManager: React.FC = () => {
         case 'artist_name_desc':
           query = query.order('artist_name', { ascending: false });
           break;
+        case 'category_asc': // New sort option
+          query = query.order('category', { ascending: true }).order('title', { ascending: true });
+          break;
         case 'created_at_desc':
         default:
           query = query.order('created_at', { ascending: false });
@@ -174,7 +187,7 @@ const ProductManager: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   // Mutation for updating a product
@@ -311,7 +324,7 @@ const ProductManager: React.FC = () => {
       const newTrackUrls = [...prev.track_urls];
       // Ensure the track object has a 'file' property if it's being set
       if (field === 'file') {
-        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? '' : newTrackUrls[index].url }; // Clear URL if file is set
+        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? null : newTrackUrls[index].url }; // Clear URL if file is set, set to null
       } else if (field === 'url') {
         newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
       } else {
@@ -324,7 +337,7 @@ const ProductManager: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true, file: null }] // Default to selected, include file
+      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }] // Default to selected, include file, url is null
     }));
   };
 
@@ -386,10 +399,10 @@ const ProductManager: React.FC = () => {
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url.trim() && !track.file) { // Require either URL or file
+      if (!track.url && !track.file) { // Require either URL or file
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
       }
-      if (!String(track.caption || '').trim()) { // Explicitly convert caption to string for validation
+      if (!track.caption.trim()) { // Caption must be a non-empty string
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`;
       }
     });
@@ -442,8 +455,9 @@ const ProductManager: React.FC = () => {
       const processedTrackUrls: TrackInfo[] = [];
       for (const track of productForm.track_urls) {
         if (track.selected) {
-          let trackUrlToSave = track.url;
-          if (track.file) {
+          let trackUrlToSave: string | null = null; // Initialize as null
+
+          if (track.file) { // If a new file is selected for this track
             try {
               trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
             } catch (uploadError: any) {
@@ -454,11 +468,12 @@ const ProductManager: React.FC = () => {
               });
               return; // Stop product update if any track upload fails
             }
-          } else if (track.url === '' && currentProduct.track_urls?.some(t => t.url === track.url)) {
-            // If URL is cleared but existed before, set to null
-            trackUrlToSave = null;
+          } else if (track.url && track.url.trim() !== '') { // No new file, and URL field is not empty
+            trackUrlToSave = track.url.trim();
           }
-          processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption });
+          // If no file and URL is empty, trackUrlToSave remains null.
+
+          processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption.trim() }); // Ensure caption is trimmed
         }
       }
 
@@ -604,9 +619,9 @@ const ProductManager: React.FC = () => {
                       {product.track_urls && product.track_urls.length > 0 ? (
                         <div className="flex flex-col space-y-1">
                           {product.track_urls.map((track, index) => (
-                            <a key={index} href={track.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
+                            <a key={index} href={track.url || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
                               <Link className="h-3 w-3 mr-1 flex-shrink-0" />
-                              {String(track.caption || truncateUrl(track.url))}
+                              {track.caption || truncateUrl(track.url)}
                             </a>
                           ))}
                         </div>
@@ -894,7 +909,7 @@ const ProductManager: React.FC = () => {
                         <Input
                           id={`edit-track-caption-${index}`}
                           name={`track_urls[${index}].caption`}
-                          value={String(track.caption || '')} // Explicitly convert caption to string
+                          value={track.caption} // Caption is now always a string
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}

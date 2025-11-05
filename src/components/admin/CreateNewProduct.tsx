@@ -61,7 +61,8 @@ const CreateNewProduct: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Helper to truncate URL for display
-  const truncateUrl = (url: string, maxLength: number = 40) => {
+  const truncateUrl = (url: string | null, maxLength: number = 40) => {
+    if (!url) return 'N/A';
     if (url.length <= maxLength) return url;
     const start = url.substring(0, maxLength / 2 - 2);
     const end = url.substring(url.length - maxLength / 2 + 2);
@@ -98,7 +99,7 @@ const CreateNewProduct: React.FC = () => {
       const newTrackUrls = [...prev.track_urls];
       // Ensure the track object has a 'file' property if it's being set
       if (field === 'file') {
-        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? '' : newTrackUrls[index].url }; // Clear URL if file is set
+        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? null : newTrackUrls[index].url }; // Clear URL if file is set, set to null
       } else if (field === 'url') {
         newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
       } else {
@@ -111,7 +112,7 @@ const CreateNewProduct: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true, file: null }] // Default to selected, include file
+      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }] // Default to selected, include file, url is null
     }));
   };
 
@@ -170,10 +171,10 @@ const CreateNewProduct: React.FC = () => {
     if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url.trim() && !track.file) { // Require either URL or file
+      if (!track.url && !track.file) { // Require either URL or file
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
       }
-      if (!String(track.caption || '').trim()) {
+      if (!track.caption.trim()) { // Caption must be a non-empty string
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
       }
     });
@@ -188,7 +189,7 @@ const CreateNewProduct: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, file, ...rest }) => rest); // Destructure 'selected' and 'file' here
+        .map(({ selected, file, ...rest }) => rest); // Destructures 'selected' and 'file'
 
       const { data, error } = await supabase
         .from('products')
@@ -268,7 +269,7 @@ const CreateNewProduct: React.FC = () => {
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
       if (track.selected) {
-        let trackUrlToSave = track.url;
+        let trackUrlToSave: string | null = null; // Initialize as null
         if (track.file) {
           try {
             trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
@@ -280,8 +281,10 @@ const CreateNewProduct: React.FC = () => {
             });
             return; // Stop product creation if any track upload fails
           }
+        } else if (track.url && track.url.trim() !== '') {
+          trackUrlToSave = track.url.trim();
         }
-        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption });
+        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption.trim() }); // Ensure caption is trimmed
       }
     }
 
@@ -512,7 +515,7 @@ const CreateNewProduct: React.FC = () => {
                     <Input
                       id={`track-url-${index}`}
                       name={`track_urls[${index}].url`}
-                      value={track.url}
+                      value={track.url || ''}
                       onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
                       placeholder="https://example.com/track.mp3"
                       className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
@@ -524,9 +527,9 @@ const CreateNewProduct: React.FC = () => {
                   {/* Replaced FileInput with standard input for audio upload */}
                   <div className="space-y-1">
                     <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
-                      <FileAudio className="mr-1" size={14} />
-                      Upload Audio File (Optional)
-                    </Label>
+                          <FileAudio className="mr-1" size={14} />
+                          Upload Audio File (Optional)
+                        </Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id={`track-file-upload-${index}`}
@@ -548,7 +551,7 @@ const CreateNewProduct: React.FC = () => {
                     <Input
                       id={`track-caption-${index}`}
                       name={`track_urls[${index}].caption`}
-                      value={String(track.caption || '')}
+                      value={track.caption} // Caption is now always a string
                       onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                       placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                       className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
