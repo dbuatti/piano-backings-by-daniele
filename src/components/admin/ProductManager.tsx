@@ -30,8 +30,8 @@ import {
   DialogDescription, // Import DialogDescription
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge"; // Fixed: Changed single quote to double quote
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key } from 'lucide-react';
+import { Badge } from "@/components/ui/badge'; // Fixed: Changed single quote to double quote
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
@@ -41,6 +41,7 @@ interface TrackInfo {
   url: string;
   caption: string | boolean | null | undefined; // Updated to be more robust
   selected?: boolean; // Added for UI state management
+  file?: File | null; // Added optional file property for UI state
 }
 
 interface Product {
@@ -111,11 +112,6 @@ const ProductManager: React.FC = () => {
   const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // State for search, filter, and sort
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortOption, setSortOption] = useState('created_at_desc');
-
   // Helper to truncate URL for display
   const truncateUrl = (url: string, maxLength: number = 40) => {
     if (url.length <= maxLength) return url;
@@ -181,10 +177,10 @@ const ProductManager: React.FC = () => {
     mutationFn: async (updatedProduct: ProductFormState) => {
       const { id, track_urls, ...fieldsToUpdate } = updatedProduct;
       
-      // Filter out unselected tracks and remove the 'selected' property for DB storage
+      // Filter out unselected tracks and remove the 'selected' and 'file' property for DB storage
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, ...rest }) => rest);
+        .map(({ selected, file, ...rest }) => rest);
 
       const { data, error } = await supabase
         .from('products')
@@ -257,8 +253,8 @@ const ProductManager: React.FC = () => {
       price: product.price.toFixed(2),
       currency: product.currency,
       image_url: product.image_url || '',
-      // Map existing tracks to include 'selected: true' for the UI
-      track_urls: product.track_urls?.map(track => ({ ...track, selected: true })) || [],
+      // Map existing tracks to include 'selected: true' and 'file: null' for the UI
+      track_urls: product.track_urls?.map(track => ({ ...track, selected: true, file: null })) || [],
       is_active: product.is_active,
       artist_name: product.artist_name || '',
       category: product.category || '',
@@ -305,13 +301,16 @@ const ProductManager: React.FC = () => {
     });
   };
 
-  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean) => {
+  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      if (field === 'selected') {
-        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as boolean };
+      // Ensure the track object has a 'file' property if it's being set
+      if (field === 'file') {
+        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? '' : newTrackUrls[index].url }; // Clear URL if file is set
+      } else if (field === 'url') {
+        newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
       } else {
-        newTrackUrls[index] = { ...newTrackUrls[index], [field]: value as string };
+        (newTrackUrls[index] as any)[field] = value; 
       }
       return { ...prev, track_urls: newTrackUrls };
     });
@@ -320,7 +319,7 @@ const ProductManager: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true }] // Default to selected
+      track_urls: [...prev.track_urls, { url: '', caption: '', selected: true, file: null }] // Default to selected, include file
     }));
   };
 
@@ -382,8 +381,8 @@ const ProductManager: React.FC = () => {
     
     // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url.trim()) {
-        errors[`track_urls[${index}].url`] = `Track URL ${index + 1} is required.`;
+      if (!track.url.trim() && !track.file) { // Require either URL or file
+        errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
       }
       if (!String(track.caption || '').trim()) { // Explicitly convert caption to string for validation
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`;
@@ -434,7 +433,36 @@ const ProductManager: React.FC = () => {
         sheetMusicUrlToSave = null;
       }
 
-      updateProductMutation.mutate({ ...productForm, image_url: imageUrlToSave, sheet_music_url: sheetMusicUrlToSave });
+      // Process track_urls: upload files if present, otherwise use existing URL
+      const processedTrackUrls: TrackInfo[] = [];
+      for (const track of productForm.track_urls) {
+        if (track.selected) {
+          let trackUrlToSave = track.url;
+          if (track.file) {
+            try {
+              trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
+            } catch (uploadError: any) {
+              toast({
+                title: "Track Upload Error",
+                description: `Failed to upload track "${track.file.name}": ${uploadError.message}`,
+                variant: "destructive",
+              });
+              return; // Stop product update if any track upload fails
+            }
+          } else if (track.url === '' && currentProduct.track_urls?.some(t => t.url === track.url)) {
+            // If URL is cleared but existed before, set to null
+            trackUrlToSave = null;
+          }
+          processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption });
+        }
+      }
+
+      updateProductMutation.mutate({ 
+        ...productForm, 
+        image_url: imageUrlToSave, 
+        sheet_music_url: sheetMusicUrlToSave,
+        track_urls: processedTrackUrls, // Use processed track URLs
+      });
     }
   };
 
@@ -519,7 +547,7 @@ const ProductManager: React.FC = () => {
           <div className="border rounded-md overflow-hidden">
             <Table>
               <TableHeader className="bg-[#D1AAF2]/20">
-                <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead className="w-[100px]">Status</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
+                <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((product) => (
@@ -821,18 +849,41 @@ const ProductManager: React.FC = () => {
                       </div>
                       
                       <div>
-                        <Label htmlFor={`edit-track-url-${index}`} className="text-xs text-gray-500">URL (Not Editable)</Label>
-                        <a 
-                          href={track.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="block text-blue-600 hover:underline text-sm truncate mt-1"
-                        >
-                          <Link className="h-3 w-3 mr-1 inline-block" />
-                          {truncateUrl(track.url, 30)}
-                        </a>
+                        <Label htmlFor={`edit-track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
+                        <Input
+                          id={`edit-track-url-${index}`}
+                          name={`track_urls[${index}].url`}
+                          value={track.url || ''} // Ensure value is not null/undefined
+                          onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
+                          placeholder="https://example.com/track.mp3"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
+                          disabled={!!track.file} // Disable if a file is selected
+                        />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
+                      
+                      {/* Standard input for audio upload */}
+                      <div className="space-y-1">
+                        <Label htmlFor={`edit-track-file-upload-${index}`} className="flex items-center text-sm mb-1">
+                          <FileAudio className="mr-1" size={14} />
+                          Upload Audio File (Optional)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`edit-track-file-upload-${index}`}
+                            type="file"
+                            accept="audio/*"
+                            onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
+                            className="flex-1"
+                            disabled={!!track.url} // Disable if a URL is entered
+                          />
+                        </div>
+                        {track.file && (
+                          <p className="text-xs text-gray-500 mt-1">Selected: {track.file.name}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Upload an audio file (e.g., MP3) for this track. This will override any URL above.</p>
+                      </div>
+
                       <div>
                         <Label htmlFor={`edit-track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
                         <Input
