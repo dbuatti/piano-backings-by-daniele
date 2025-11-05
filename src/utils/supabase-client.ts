@@ -16,7 +16,8 @@ export const uploadFileToSupabase = async (file: File, path: string, bucketName:
     .from(bucketName)
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: false, // Keep upsert false to ensure we don't accidentally overwrite if the unique name generation fails
+      upsert: false,
+      contentType: file.type, // Explicitly set content type
     });
 
   if (error) {
