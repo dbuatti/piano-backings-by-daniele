@@ -49,6 +49,7 @@ interface Order {
   created_at: string;
   user_id?: string;
   products?: Product; // Joined product details
+  checkout_session_id: string;
 }
 
 const UserDashboard = () => {
@@ -321,13 +322,13 @@ const UserDashboard = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
             <h1 className="text-3xl font-bold text-[#1C0357]">Your Tracks Dashboard</h1>
             <p className="text-lg text-[#1C0357]/90">Access your backing tracks and request history</p>
           </div>
           {isAdmin && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 mt-4 md:mt-0">
               <UserIcon className="h-5 w-5 text-[#1C0357]" />
               <Select
                 value={selectedUserForView || ''}
@@ -432,16 +433,16 @@ const UserDashboard = () => {
                 <p>Loading your requests...</p>
               </div>
             ) : (
-              <div className=" rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto */}
+                <Table className="min-w-[800px]"> {/* Set minimum width */}
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <TableHead className="w-[120px]">Date</TableHead>
                       <TableHead>Song</TableHead>
-                      <TableHead>Backing Type</TableHead>
-                      <TableHead>Delivery Date</TableHead>
+                      <TableHead className="hidden sm:table-cell">Backing Type</TableHead> {/* Hidden on mobile */}
+                      <TableHead className="hidden md:table-cell">Delivery Date</TableHead> {/* Hidden on smaller screens */}
                       <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -471,14 +472,14 @@ const UserDashboard = () => {
                         return (
                           <TableRow key={request.id}>
                             <TableCell>
-                              <div className="font-medium">{format(new Date(request.created_at), 'MMM dd, yyyy')}</div>
-                              <div className="text-sm text-gray-500">{format(new Date(request.created_at), 'HH:mm')}</div>
+                              <div className="font-medium">{format(new Date(request.created_at), 'MMM dd')}</div>
+                              <div className="text-sm text-gray-500 hidden md:block">{format(new Date(request.created_at), 'HH:mm')}</div>
                             </TableCell>
                             <TableCell className="font-medium">
                               <div>{request.song_title}</div>
                               <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell">
                               <div className="flex flex-wrap gap-1">
                                 {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
                                   <Badge key={index} variant="outline" className="capitalize">
@@ -487,12 +488,12 @@ const UserDashboard = () => {
                                 )) : <Badge variant="outline">Not specified</Badge>}
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                               <div className="flex items-center">
                                 <Calendar className="w-4 h-4 mr-1 text-gray-500" />
                                 {request.delivery_date 
                                   ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
-                                  : 'Not specified'}
+                                  : 'N/A'}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -511,7 +512,7 @@ const UserDashboard = () => {
                                 )}
                                 <Link to={`/track/${request.id}`}>
                                   <Button variant="outline" size="sm">
-                                    <Eye className="w-4 h-4 mr-1" /> View Details
+                                    <Eye className="w-4 h-4 mr-1" /> View
                                   </Button>
                                 </Link>
                               </div>
@@ -548,15 +549,15 @@ const UserDashboard = () => {
                 <p>Loading your purchases...</p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto */}
+                <Table className="min-w-[600px]"> {/* Set minimum width */}
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <TableHead className="w-[120px]">Date</TableHead>
                       <TableHead>Product</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="hidden sm:table-cell">Amount</TableHead>
+                      <TableHead className="hidden md:table-cell">Status</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -583,16 +584,16 @@ const UserDashboard = () => {
                       purchases.map((purchase) => (
                         <TableRow key={purchase.id}>
                           <TableCell>
-                            <div className="font-medium">{format(new Date(purchase.created_at), 'MMM dd, yyyy')}</div>
-                            <div className="text-sm text-gray-500">{format(new Date(purchase.created_at), 'HH:mm')}</div>
+                            <div className="font-medium">{format(new Date(purchase.created_at), 'MMM dd')}</div>
+                            <div className="text-sm text-gray-500 hidden md:block">{format(new Date(purchase.created_at), 'HH:mm')}</div>
                           </TableCell>
                           <TableCell className="font-medium">
                             {purchase.products?.title || 'N/A'}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             {purchase.currency} {purchase.amount.toFixed(2)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <Badge variant="default" className="bg-green-500">Completed</Badge>
                           </TableCell>
                           <TableCell>
@@ -633,21 +634,21 @@ const UserDashboard = () => {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-start">
-                  <Download className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
+                  <Download className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold">Download Tracks</h3>
                     <p className="text-sm text-gray-600">Click the Download button next to completed requests or purchases to get your backing track.</p>
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <Eye className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
+                  <Eye className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold">View Track Details</h3>
                     <p className="text-sm text-gray-600">Click "View Details" to see your order information, payment options, and download your track when ready.</p>
                   </div>
                 </div>
                 <div className="flex items-start">
-                  <UserPlus className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2" />
+                  <UserPlus className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold">Create Account</h3>
                     <p className="text-sm text-gray-600">Save all your requests and access them anytime from your dashboard.</p>

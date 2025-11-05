@@ -81,12 +81,12 @@ const Header = () => {
   return (
     <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 md:h-20"> {/* Reduced height on mobile */}
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center">
               <img 
-                className="h-16 w-auto rounded-lg" 
+                className="h-12 md:h-16 w-auto rounded-lg" 
                 src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
                 alt="Piano Backings By Daniele Logo" // Added alt attribute
               />
@@ -94,11 +94,11 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-0.5">
+          <nav className="hidden md:flex items-center space-x-1">
             <Link to="/form-page">
               <Button 
                 className={cn(
-                  "ml-1 px-3 py-2 rounded-full text-sm font-bold transition-all duration-300",
+                  "ml-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300",
                   "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
                   "border-2 border-white shadow-lg hover:shadow-xl",
                   "transform hover:scale-105"
@@ -109,10 +109,10 @@ const Header = () => {
               </Button>
             </Link>
             
-            <Link to="/shop"> {/* New Shop Link */}
+            <Link to="/shop">
               <Button 
                 variant="ghost" 
-                className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+                className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
               >
                 <ShoppingCart className="mr-1 h-4 w-4" />
                 Shop
@@ -123,7 +123,7 @@ const Header = () => {
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
                 >
                   <User className="mr-1 h-4 w-4" />
                   My Tracks
@@ -136,14 +136,13 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+                    className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
                   >
                     <Shield className="mr-1 h-4 w-4" />
                     Admin <Settings className="ml-1 h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
-                  {/* Removed React.Fragment here */}
                   <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -159,7 +158,7 @@ const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin?tab=app-settings">
+                    <Link to="/admin?tab=system-config">
                       <Settings className="mr-2 h-4 w-4" />
                       App Settings
                     </Link>
@@ -172,7 +171,7 @@ const Header = () => {
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
-                className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+                className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
               >
                 <LogIn className="mr-1 h-4 w-4" />
                 Logout
@@ -181,7 +180,7 @@ const Header = () => {
               <Link to="/login">
                 <Button 
                   variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-2"
+                  className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
                 >
                   <LogIn className="mr-1 h-4 w-4" />
                   Login
@@ -214,15 +213,15 @@ const Header = () => {
           />
           
           <div className="fixed inset-y-0 right-0 max-w-full flex">
-            <div className="relative w-screen max-w-md">
+            <div className="relative w-screen max-w-xs"> {/* Reduced max-w-md to max-w-xs for better iPhone fit */}
               <div className="h-full flex flex-col bg-[#FF00B3] shadow-xl">
-                <div className="px-4 py-6 bg-[#1C0357]">
+                <div className="px-4 py-4 bg-[#1C0357]"> {/* Reduced padding */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <img 
-                        className="h-12 w-auto rounded-lg" 
+                        className="h-10 w-auto rounded-lg" 
                         src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
-                        alt="Piano Backings By Daniele Logo" // Added alt attribute
+                        alt="Piano Backings By Daniele Logo"
                       />
                     </div>
                     <Button 
@@ -236,7 +235,7 @@ const Header = () => {
                   </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-6">
+                <div className="flex-1 overflow-y-auto py-6 px-4"> {/* Reduced padding */}
                   <nav className="space-y-1">
                     <div className="pt-4 border-t border-white/20">
                       <Link 
@@ -304,7 +303,7 @@ const Header = () => {
                           Issue Reports
                         </Link>
                         <Link 
-                          to="/admin?tab=app-settings" 
+                          to="/admin?tab=system-config" 
                           className={cn(
                             "block px-4 py-3 rounded-md text-base font-medium flex items-center",
                             "text-white hover:bg-white/20"

@@ -173,19 +173,19 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
           </div>
         ) : (
           <div className="border rounded-md overflow-x-auto">
-            <Table>
+            <Table className="min-w-[1200px]"> {/* Set minimum width for horizontal scroll */}
               <TableHeader className="bg-[#1C0357] text-white">
                 <TableRow className="hover:bg-[#1C0357]">
                   <TableHead className="w-[50px] text-white"><input type="checkbox" checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0} onChange={handleSelectAll} className="h-4 w-4"/></TableHead>
                   <TableHead className="w-[120px] text-white"><div className="flex items-center"><CalendarDays className="w-4 h-4 mr-2" />Date</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><User className="w-4 h-4 mr-2" />Client</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><Music className="w-4 h-4 mr-2" />Song</div></TableHead>
-                  <TableHead className="text-white"><div className="flex items-center"><Tag className="w-4 h-4 mr-2" />Type</div></TableHead>
-                  <TableHead className="text-white"><div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Delivery</div></TableHead>
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Tag className="w-4 h-4 mr-2" />Type</div></TableHead> {/* Hidden on mobile */}
+                  <TableHead className="text-white hidden sm:table-cell"><div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Delivery</div></TableHead> {/* Hidden on mobile */}
                   <TableHead className="text-white"><div className="flex items-center"><Hash className="w-4 h-4 mr-2" />Status</div></TableHead>
-                  <TableHead className="text-white"><div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Payment</div></TableHead>
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Payment</div></TableHead> {/* Hidden on mobile */}
                   <TableHead className="text-white"><div className="flex items-center"><DollarSign className="w-4 h-4 mr-2" />Cost</div></TableHead>
-                  <TableHead className="text-white"><div className="flex items-center"><Upload className="w-4 h-4 mr-2" />Platforms</div></TableHead>
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Upload className="w-4 h-4 mr-2" />Platforms</div></TableHead> {/* Hidden on mobile */}
                   <TableHead className="text-right text-white w-[250px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>

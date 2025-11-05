@@ -228,7 +228,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         <div className="font-medium text-[#1C0357]">{request.song_title}</div>
         <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
         <div className="flex flex-wrap gap-1">
           {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
             <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
@@ -237,7 +237,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           )) : <Badge variant="outline">Not specified</Badge>}
         </div>
       </TableCell>
-      <TableCell className="text-sm text-[#1C0357]">
+      <TableCell className="text-sm text-[#1C0357] hidden sm:table-cell"> {/* Hidden on mobile */}
         {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
       </TableCell>
       <TableCell>
@@ -256,7 +256,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           </SelectContent>
         </Select>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
         <Select 
           value={request.is_paid ? 'paid' : 'unpaid'} 
           onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
@@ -302,7 +302,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           )}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
         <div className="flex flex-col gap-1">
           {getPlatformIcons(request.uploaded_platforms)}
           <Button 
@@ -317,79 +317,43 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end space-x-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                <Upload className="w-4 h-4" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreHorizontal className="w-4 h-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Upload Track</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button size="sm" variant="outline" onClick={() => shareTrack(request.id)}>
-                <Share2 className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Share Track</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link to={`/admin/request/${request.id}`}>
-                <Button variant="outline" size="sm">
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>View Details</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link to={`/track/${request.id}`}>
-                <Button variant="outline" size="sm">
-                  <User className="w-4 h-4" />
-                </Button>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Client View</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => openEmailGenerator(request)}
-              >
-                <Mail className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Email Client</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="sm" 
-                variant="outline" 
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to={`/admin/request/${request.id}`}>
+                  <Eye className="w-4 h-4 mr-2" /> View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to={`/track/${request.id}`}>
+                  <User className="w-4 h-4 mr-2" /> Client View
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => uploadTrack(request.id)}>
+                <Upload className="w-4 h-4 mr-2" /> Upload Track
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareTrack(request.id)}>
+                <Share2 className="w-4 h-4 mr-2" /> Share Link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openEmailGenerator(request)}>
+                <Mail className="w-4 h-4 mr-2" /> Email Client
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
                 onClick={() => openDeleteDialog(request.id)}
-                className="text-red-600 hover:text-red-800"
+                className="text-red-600"
               >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete Request</p>
-            </TooltipContent>
-          </Tooltip>
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Request
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </TableCell>
     </TableRow>

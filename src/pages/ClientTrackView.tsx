@@ -192,7 +192,7 @@ const ClientTrackView = () => {
   }
 
   const costBreakdown = calculateRequestCost(request);
-  const baseTotalCost = costBreakdown.totalCost;
+  const baseTotalCost = request.cost !== null ? request.cost : costBreakdown.totalCost;
   
   // Calculate the range for display, rounding down to the nearest multiple of 5
   const rawMinCost = baseTotalCost * 0.5;
@@ -563,7 +563,7 @@ const ClientTrackView = () => {
         
         <div className="flex justify-end gap-4">
           <Button 
-            onClick={() => navigate('/admin')} 
+            onClick={() => navigate('/user-dashboard')} 
             variant="outline"
           >
             Back to Dashboard
