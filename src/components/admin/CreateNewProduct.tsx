@@ -93,11 +93,17 @@ const CreateNewProduct: React.FC = () => {
     });
   };
 
-  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected', value: string | boolean | File | null) => {
+  const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      // Type assertion to allow dynamic field assignment for 'selected'
-      (newTrackUrls[index] as any)[field] = value; 
+      // Ensure the track object has a 'file' property if it's being set
+      if (field === 'file') {
+        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? '' : newTrackUrls[index].url }; // Clear URL if file is set
+      } else if (field === 'url') {
+        newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
+      } else {
+        (newTrackUrls[index] as any)[field] = value; 
+      }
       return { ...prev, track_urls: newTrackUrls };
     });
   };
@@ -515,23 +521,27 @@ const CreateNewProduct: React.FC = () => {
                     {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                   </div>
                   
-                  {/* New FileInput for audio upload */}
-                  <FileInput
-                    id={`track-file-upload-${index}`}
-                    label="Upload Audio File (Optional)"
-                    icon={FileAudio}
-                    accept="audio/*"
-                    onChange={(file) => handleTrackChange(index, 'file', file)}
-                    note="Upload an audio file (e.g., MP3) for this track. This will override any URL above."
-                    error={formErrors[`track_urls[${index}].file`]}
-                    disabled={!!track.url} // Disable if a URL is entered
-                  />
-                  {track.file && (
-                    <div className="mt-2">
-                      <Label className="text-xs text-gray-500">File Selected:</Label>
-                      <p className="block text-sm truncate mt-1">{track.file.name}</p>
+                  {/* Replaced FileInput with standard input for audio upload */}
+                  <div className="space-y-1">
+                    <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
+                      <FileAudio className="mr-1" size={14} />
+                      Upload Audio File (Optional)
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`track-file-upload-${index}`}
+                        type="file"
+                        accept="audio/*"
+                        onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
+                        className="flex-1"
+                        disabled={!!track.url} // Disable if a URL is entered
+                      />
                     </div>
-                  )}
+                    {track.file && (
+                      <p className="text-xs text-gray-500 mt-1">Selected: {track.file.name}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">Upload an audio file (e.g., MP3) for this track. This will override any URL above.</p>
+                  </div>
 
                   <div>
                     <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
