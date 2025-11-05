@@ -1,7 +1,7 @@
 // src/utils/pricing.ts
 
 export const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
-  'quick': 10.00,
+  'quick': 5.00,
   'one-take': 15.00,
   'polished': 25.00,
 };
