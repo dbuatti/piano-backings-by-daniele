@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import ProductCard from '@/components/shop/ProductCard'; // Ensure this path is correct
-import ProductDetailDialog from '@/components/shop/ProductDetailDialog'; // Ensure this path is correct
+import ProductCard from '@/components/shop/ProductCard';
+import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Label } from '@/components/ui/label'; // Import Label
@@ -53,7 +53,7 @@ interface Product {
 const Shop = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('full-song'); // Changed default to 'full-song'
   const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
@@ -127,7 +127,7 @@ const Shop = () => {
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         <div className="flex items-center justify-center h-96">
-          <p className="text-lg text-red-600">Error loading products: {error?.message}</p>
+          <p className="text-lg text-red-600">Error loading products: ${error?.message}</p>
         </div>
       </div>
     );
