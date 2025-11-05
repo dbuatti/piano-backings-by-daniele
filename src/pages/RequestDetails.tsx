@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,40 +24,68 @@ import {
   Folder,
   RefreshCw,
   AlertCircle,
-  Search, 
-  UserPlus,
   Loader2,
   Download,
   Edit,
-  DollarSign // Import DollarSign icon
+  DollarSign,
+  Eye,
+  Share2,
+  CreditCard
 } from 'lucide-react';
-import { getSafeBackingTypes } from '@/utils/helpers';
+import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { Separator } from '@/components/ui/separator';
-import { calculateRequestCost } from '@/utils/pricing'; // Import calculateRequestCost
+import { calculateRequestCost } from '@/utils/pricing';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TrackInfo {
   url: string;
   caption: string;
 }
 
-interface UserProfile {
+interface BackingRequest {
   id: string;
+  created_at: string;
+  name: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
+  song_title: string;
+  musical_or_artist: string;
+  song_key: string | null;
+  different_key: string | null;
+  key_for_track: string | null;
+  youtube_link: string | null;
+  voice_memo: string | null;
+  sheet_music_url: string | null;
+  track_purpose: string | null;
+  backing_type: string[] | string | null;
+  delivery_date: string | null;
+  additional_services: string[] | null;
+  special_requests: string | null;
+  category: string | null;
+  track_type: string | null;
+  additional_links: string | null;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  is_paid: boolean;
+  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
+  shared_link?: string | null;
+  dropbox_folder_id?: string | null;
+  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
+  cost?: number | null;
 }
 
 const RequestDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [request, setRequest] = useState<any>(null);
+  const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -92,7 +120,7 @@ const RequestDetails = () => {
         .from('backing_requests')
         .select('*')
         .eq('id', id)
-        .single();
+        .single<BackingRequest>();
       
       if (error) throw error;
       
@@ -109,7 +137,35 @@ const RequestDetails = () => {
     }
   };
 
+  const handleUpdateField = async (field: keyof BackingRequest, value: any) => {
+    if (!request) return;
+    setIsUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ [field]: value })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      setRequest(prev => prev ? { ...prev, [field]: value } : null);
+      toast({
+        title: "Update Successful",
+        description: `${field.replace('_', ' ')} updated.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update ${field}: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const triggerDropboxAutomation = async () => {
+    if (!request) return;
     setIsTriggeringDropbox(true);
     
     try {
@@ -119,6 +175,7 @@ const RequestDetails = () => {
         throw new Error('You must be logged in to trigger this function');
       }
       
+      // Reconstruct formData from the current request state
       const formData = {
         email: request.email,
         name: request.name,
@@ -160,7 +217,11 @@ const RequestDetails = () => {
           description: "Dropbox automation triggered successfully.",
         });
         
-        fetchRequest();
+        // Update the request state with the new folder ID if successful
+        if (result.dropboxFolderId) {
+          setRequest(prev => prev ? { ...prev, dropbox_folder_id: result.dropboxFolderId } : null);
+        }
+        fetchRequest(); // Re-fetch to ensure all fields are updated
       } else {
         throw new Error(result.error || 'Failed to trigger Dropbox automation');
       }
@@ -192,7 +253,8 @@ const RequestDetails = () => {
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         <div className="flex items-center justify-center h-96">
-          <p>Loading request details...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+          <p className="ml-4 text-lg text-gray-600">Loading request details...</p>
         </div>
       </div>
     );
@@ -242,6 +304,130 @@ const RequestDetails = () => {
           <h1 className="text-3xl font-bold text-[#1C0357]">Request Details</h1>
           <p className="text-lg text-[#1C0357]/90">Viewing request #{request.id.substring(0, 8)}</p>
         </div>
+
+        {/* Action Bar */}
+        <Card className="shadow-lg mb-6 border-2 border-[#F538BC]">
+          <CardContent className="p-4 flex flex-wrap gap-3 justify-between items-center">
+            <div className="flex flex-wrap gap-3">
+              <Link to={`/admin/request/${id}/edit`}>
+                <Button 
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
+                >
+                  <Edit className="mr-2 h-4 w-4" /> Edit Request
+                </Button>
+              </Link>
+              <Link to={`/track/${id}`}>
+                <Button variant="outline" className="flex items-center">
+                  <Eye className="w-4 h-4 mr-2" /> Client View
+                </Button>
+              </Link>
+              <Button 
+                onClick={() => navigate(`/email-generator/${id}`)}
+                variant="outline" 
+                className="flex items-center"
+              >
+                <Mail className="w-4 h-4 mr-2" /> Email Client
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={triggerDropboxAutomation}
+                    disabled={isTriggeringDropbox || !!request.dropbox_folder_id}
+                    variant="secondary"
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    {isTriggeringDropbox ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {request.dropbox_folder_id ? 'Dropbox Folder Exists' : 'Trigger Dropbox Automation'}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => navigate('/email-generator', { state: { request } })}
+                    variant="secondary"
+                    className="bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Share Track Link
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Status and Payment Update */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <CreditCard className="mr-2 h-5 w-5" />
+              Quick Status Update
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <div>
+                <Label htmlFor="status-update" className="text-sm mb-1">Request Status</Label>
+                <Select 
+                  value={request.status || 'pending'} 
+                  onValueChange={(value) => handleUpdateField('status', value as BackingRequest['status'])}
+                  disabled={isUpdatingStatus}
+                >
+                  <SelectTrigger id="status-update">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="payment-status-update" className="text-sm mb-1">Payment Status</Label>
+                <Select 
+                  value={request.is_paid ? 'paid' : 'unpaid'} 
+                  onValueChange={(value) => handleUpdateField('is_paid', value === 'paid')}
+                  disabled={isUpdatingStatus}
+                >
+                  <SelectTrigger id="payment-status-update">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unpaid">Unpaid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="cost-display" className="text-sm mb-1 flex items-center">
+                  <DollarSign className="mr-1 h-4 w-4" /> Cost (AUD)
+                </Label>
+                <div className="flex items-center h-10 border border-input rounded-md px-3 bg-gray-50">
+                  <span className="font-bold text-lg">
+                    ${displayedCost.toFixed(2)}
+                  </span>
+                  {isCostManuallySet && <span className="ml-2 text-sm text-gray-600">(Manual)</span>}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
@@ -349,7 +535,7 @@ const RequestDetails = () => {
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
               <Key className="mr-2 h-5 w-5" />
-              Musical Information
+              Musical Information & References
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -392,7 +578,7 @@ const RequestDetails = () => {
                         href={request.youtube_link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm"
+                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
                       >
                         {request.youtube_link}
                       </a>
@@ -409,7 +595,7 @@ const RequestDetails = () => {
                         href={request.voice_memo} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm"
+                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
                       >
                         {request.voice_memo}
                       </a>
@@ -443,7 +629,7 @@ const RequestDetails = () => {
                         href={request.additional_links} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm"
+                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
                       >
                         {request.additional_links}
                       </a>
@@ -460,76 +646,73 @@ const RequestDetails = () => {
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <DollarSign className="mr-2 h-5 w-5" />
-              Payment & Status
+              <Folder className="mr-2 h-5 w-5" />
+              Admin & Delivery Information
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <DollarSign className="mr-2 h-5 w-5" />
-                  Cost
+                  <Download className="mr-2 h-5 w-5" />
+                  Uploaded Tracks
                 </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Actual Cost</p>
-                    <p className="font-medium">
-                      ${displayedCost.toFixed(2)}
-                      {isCostManuallySet && <span className="ml-2 text-sm text-gray-600">(Manually Set)</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Payment Status</p>
-                    <p className="font-medium">
-                      {request.is_paid ? (
-                        <Badge variant="default" className="bg-green-500">Paid</Badge>
-                      ) : (
-                        <Badge variant="destructive">Unpaid</Badge>
-                      )}
-                    </p>
-                  </div>
-                </div>
+                {request.track_urls && request.track_urls.length > 0 ? (
+                  <ul className="space-y-2">
+                    {request.track_urls.map((track: any, index: number) => (
+                      <li key={track.url} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
+                              {track.caption || `Track ${index + 1}`}
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{track.url}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => downloadTrack(track.url, track.caption || `${request.song_title}.mp3`)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500">No tracks uploaded yet.</p>
+                )}
               </div>
               
               <div>
                 <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <RefreshCw className="mr-2 h-5 w-5" />
-                  Dropbox Automation
+                  <AlertCircle className="mr-2 h-5 w-5" />
+                  Dropbox & Sharing
                 </h3>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="mb-3">
-                    If the Dropbox folder was not created during the initial request, you can manually trigger the automation process here.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={triggerDropboxAutomation}
-                      disabled={isTriggeringDropbox}
-                      className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                    >
-                      {isTriggeringDropbox ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Triggering...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Trigger Dropbox Automation
-                        </>
-                      )}
-                    </Button>
-                    {request.dropbox_folder_id && (
-                      <Badge variant="default" className="bg-green-500">
-                        Folder Created
-                      </Badge>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Dropbox Folder ID</p>
+                    <p className="font-medium break-all">
+                      {request.dropbox_folder_id || 'Not created'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Shared Link</p>
+                    {request.shared_link ? (
+                      <a 
+                        href={request.shared_link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:underline text-sm break-all"
+                      >
+                        {request.shared_link}
+                      </a>
+                    ) : (
+                      <p className="font-medium">Not shared</p>
                     )}
                   </div>
-                  {request.dropbox_folder_id && (
-                    <p className="mt-3 text-sm text-gray-600">
-                      <span className="font-medium">Folder ID:</span> {request.dropbox_folder_id}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -539,8 +722,8 @@ const RequestDetails = () => {
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Folder className="mr-2 h-5 w-5" />
-              Additional Information
+              <FileText className="mr-2 h-5 w-5" />
+              Special Requests & Services
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -552,7 +735,7 @@ const RequestDetails = () => {
                 </h3>
                 {request.additional_services && request.additional_services.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {request.additional_services.map((service: string, index: number) => (
+                    {getSafeBackingTypes(request.additional_services).map((service: string, index: number) => (
                       <Badge key={index} variant="secondary" className="capitalize">
                         {service.replace('-', ' ')}
                       </Badge>
@@ -572,47 +755,9 @@ const RequestDetails = () => {
                   {request.special_requests || 'No special requests provided'}
                 </p>
               </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Music className="mr-2 h-5 w-5" />
-                  Uploaded Tracks
-                </h3>
-                {request.track_urls && request.track_urls.length > 0 ? (
-                  <ul className="space-y-2">
-                    {request.track_urls.map((track: TrackInfo, index: number) => (
-                      <li key={track.url} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                        <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
-                          {track.caption}
-                        </a>
-                        <Button variant="outline" size="sm" onClick={() => window.open(track.url, '_blank')}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-500">No tracks uploaded yet.</p>
-                )}
-              </div>
             </div>
           </CardContent>
         </Card>
-        
-        <div className="flex justify-end gap-4">
-          <Button 
-            onClick={() => navigate('/admin')} 
-            variant="outline"
-          >
-            Back to Dashboard
-          </Button>
-          <Button 
-            onClick={() => navigate(`/admin/request/${id}/edit`)} // Navigate to the new edit page
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-          >
-            <Edit className="mr-2 h-4 w-4" /> Edit Request
-          </Button>
-        </div>
         
         <MadeWithDyad />
       </div>
