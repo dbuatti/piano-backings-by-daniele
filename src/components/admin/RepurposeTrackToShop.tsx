@@ -529,7 +529,6 @@ const RepurposeTrackToShop: React.FC = () => {
     console.log('Calling createProductMutation.mutate with:', newProduct);
     createProductMutation.mutate(newProduct);
   };
-  // Removed the extraneous console.log('handleCreateProduct completed'); from here.
 
   if (isErrorRequests) {
     return (

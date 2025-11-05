@@ -324,14 +324,22 @@ const ProductManager: React.FC = () => {
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      // Ensure the track object has a 'file' property if it's being set
+      const currentTrack = { ...newTrackUrls[index] };
+
       if (field === 'file') {
-        newTrackUrls[index] = { ...newTrackUrls[index], file: value as File | null, url: value ? null : newTrackUrls[index].url }; // Clear URL if file is set, set to null
+        currentTrack.file = value as File | null;
+        if (value) {
+          currentTrack.url = null; // Clear URL if file is selected
+        }
       } else if (field === 'url') {
-        newTrackUrls[index] = { ...newTrackUrls[index], url: value as string, file: value ? null : newTrackUrls[index].file }; // Clear file if URL is set
+        currentTrack.url = value as string | null;
+        if (value) {
+          currentTrack.file = null; // Clear file if URL is entered
+        }
       } else {
-        (newTrackUrls[index] as any)[field] = value; 
+        (currentTrack as any)[field] = value; 
       }
+      newTrackUrls[index] = currentTrack;
       return { ...prev, track_urls: newTrackUrls };
     });
   };

@@ -250,9 +250,10 @@ const CreateNewProduct: React.FC = () => {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
       } catch (uploadError: any) {
+        console.log('Image upload error:', uploadError);
         toast({
           title: "Image Upload Error",
-          description: `Failed to upload image: ${uploadError.message}`,
+          description: `Failed to upload image: ${uploadError.message}`, 
           variant: "destructive",
         });
         return;
@@ -261,48 +262,58 @@ const CreateNewProduct: React.FC = () => {
 
     let sheetMusicUrlToSave = productForm.sheet_music_url;
     if (sheetMusicFile) {
+      console.log('Starting sheet music upload...');
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
+        console.log('Sheet music upload successful, URL:', sheetMusicUrlToSave);
       } catch (uploadError: any) {
+        console.log('Sheet music upload error:', uploadError);
         toast({
-          title: "Sheet Music Upload Error",
+          title : "Sheet Music Upload Error",
           description: `Failed to upload sheet music: ${uploadError.message}`,
           variant: "destructive",
         });
         return;
       }
+    } else if (productForm.sheet_music_url === '' && sheetMusicFile === null) {
+      sheetMusicUrlToSave = null;
     }
 
-    // Process track_urls: upload files if present, otherwise use existing URL
+    // Process track URLs: upload files and replace with URLs
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
-      if (track.selected) {
-        let trackUrlToSave: string | null = null; // Initialize as null
+      if (track.selected) { // Only process selected tracks
+        console.log('Processing track:', track.caption || 'Unnamed');
+        let trackUrlToSave = track.url;
         if (track.file) {
+          console.log('Starting track file upload:', track.caption || 'Unnamed');
           try {
-            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
+            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks'); // Use 'shop-tracks' folder within 'product-tracks' bucket
+            console.log('Track file upload successful, URL:', trackUrlToSave);
           } catch (uploadError: any) {
+            console.log('Track upload error:', uploadError);
             toast({
               title: "Track Upload Error",
-              description: `Failed to upload track "${track.file.name}": ${uploadError.message}`,
+              description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
               variant: "destructive",
             });
-            return; // Stop product creation if any track upload fails
+            return; // Stop if any track upload fails
           }
-        } else if (track.url && track.url.trim() !== '') {
-          trackUrlToSave = track.url.trim();
         }
-        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption.trim() }); // Ensure caption is trimmed
+        // Add the processed track (with URL and without file) to the list
+        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption, selected: track.selected });
       }
     }
 
+    console.log('Constructing new product object');
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
-      track_urls: processedTrackUrls, // Use processed track URLs
-    };
+      track_urls: processedTrackUrls, // Use the processed track URLs
+    }; 
+    console.log('Calling createProductMutation.mutate with:', newProduct);
     createProductMutation.mutate(newProduct);
   };
 
