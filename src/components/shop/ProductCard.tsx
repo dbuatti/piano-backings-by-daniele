@@ -103,14 +103,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
         <Button 
           variant="secondary" 
           onClick={() => onViewDetails(product)}
-          className="flex-1 bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
+          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details
         </Button>
         <Button 
           onClick={() => { /* onBuyNow logic will be handled by the dialog */ }}
-          className="flex-1 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
         >
           <ShoppingCart className="h-4 w-4 mr-2" />
           Buy Now
