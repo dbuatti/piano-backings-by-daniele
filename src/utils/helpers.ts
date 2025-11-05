@@ -1,7 +1,7 @@
 // src/utils/helpers.ts
 export interface TrackInfo {
-  url: string;
-  caption: string | null | undefined; // Updated 'caption' to allow null/undefined
+  url: string | null; // Changed to allow null
+  caption: string; // Changed to always be string
   selected?: boolean;
   file?: File | null; // Added optional file property for UI state
 }

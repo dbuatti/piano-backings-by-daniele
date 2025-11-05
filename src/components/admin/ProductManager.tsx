@@ -30,7 +30,7 @@ import {
   DialogDescription, // Import DialogDescription
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge';
 import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
@@ -109,12 +109,14 @@ const ProductManager: React.FC = () => {
     track_type: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
-  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(1); // New state for sheet music file upload in edit dialog
+  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // State variables for filters and sorting
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [vocalRangeFilter, setVocalRangeFilter] = useState('all'); // Declared vocalRangeFilter
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]); // Declared priceRange
   const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
