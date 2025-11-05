@@ -210,7 +210,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         />
       </TableCell>
       <TableCell>
-        <div className="text-sm font-medium">
+        <div className="text-sm font-medium text-[#1C0357]">
           {format(new Date(request.created_at), 'MMM dd')}
         </div>
         <div className="text-xs text-gray-500">
@@ -218,14 +218,14 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         </div>
       </TableCell>
       <TableCell>
-        <div className="font-medium">{request.name || 'N/A'}</div>
+        <div className="font-medium text-[#1C0357]">{request.name || 'N/A'}</div>
         <div className="text-sm text-gray-500 flex items-center">
           <Mail className="w-3 h-3 mr-1" />
           {request.email}
         </div>
       </TableCell>
       <TableCell>
-        <div className="font-medium">{request.song_title}</div>
+        <div className="font-medium text-[#1C0357]">{request.song_title}</div>
         <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
       </TableCell>
       <TableCell>
@@ -237,7 +237,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           )) : <Badge variant="outline">Not specified</Badge>}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="text-sm text-[#1C0357]">
         {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
       </TableCell>
       <TableCell>
@@ -245,7 +245,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           value={request.status || 'pending'} 
           onValueChange={(value) => updateStatus(request.id, value)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px] h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -261,7 +261,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           value={request.is_paid ? 'paid' : 'unpaid'} 
           onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
         >
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[120px] h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -272,7 +272,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       </TableCell>
       <TableCell>
         <div className="flex items-center font-medium relative">
-          <DollarSign className="w-4 h-4 mr-1 text-gray-500" />
+          <span className="text-sm text-gray-500 mr-0.5">$</span>
           <Input
             type="number"
             step="0.01"
@@ -282,10 +282,10 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
             onBlur={handleCostBlur}
             onKeyDown={handleCostKeyDown}
             className={cn(
-              "w-24 h-8 p-1 text-sm border-none focus:ring-0 focus:outline-none",
+              "w-20 h-8 p-1 text-sm border-none focus:ring-0 focus:outline-none",
               editingCost ? "bg-white border border-blue-300" : "bg-transparent"
             )}
-            style={{ paddingLeft: '0.5rem' }} // Adjust padding to make space for dollar sign
+            style={{ paddingLeft: '0.25rem' }}
           />
           {isUpdatingCost && (
             <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
@@ -293,7 +293,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           {!editingCost && isCostManuallySet && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="ml-1 text-xs text-gray-500 cursor-help">(Manual)</span>
+                <span className="ml-1 text-xs text-gray-500 cursor-help">(M)</span>
               </TooltipTrigger>
               <TooltipContent>
                 <p>This cost was manually set.</p>
@@ -309,7 +309,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
             size="sm" 
             variant="outline" 
             onClick={() => openUploadPlatformsDialog(request.id)}
-            className="mt-1 text-xs"
+            className="mt-1 text-xs h-6"
           >
             Edit
           </Button>

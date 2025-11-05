@@ -88,12 +88,12 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
                       value={currentEditCaption}
                       onChange={(e) => setCurrentEditCaption(e.target.value)}
                       className="flex-1"
-                      disabled={isUpdatingCaption}
+                      disabled={isUpdatingCaption || isUploading}
                     />
-                    <Button size="sm" onClick={() => handleSaveCaption(track.url)} disabled={isUpdatingCaption}>
+                    <Button size="sm" onClick={() => handleSaveCaption(track.url)} disabled={isUpdatingCaption || isUploading}>
                       {isUpdatingCaption ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={handleCancelEditCaption} disabled={isUpdatingCaption}>
+                    <Button size="sm" variant="outline" onClick={handleCancelEditCaption} disabled={isUpdatingCaption || isUploading}>
                       Cancel
                     </Button>
                   </div>
@@ -103,10 +103,10 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
                       {track.caption || `Track ${index + 1}`}
                     </a>
                     <div className="flex items-center space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)}>
+                      <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)} disabled={isUploading}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => onRemoveTrack(track.url)}>
+                      <Button size="sm" variant="destructive" onClick={() => onRemoveTrack(track.url)} disabled={isUploading}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -123,11 +123,23 @@ const UploadTrackDialog: React.FC<UploadTrackDialogProps> = ({
         <h3 className="font-semibold text-sm mb-2">Upload New Track:</h3>
         <div>
           <Label htmlFor="track-file">Select Audio File</Label>
-          <Input id="track-file" type="file" accept="audio/*" onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} />
+          <Input 
+            id="track-file" 
+            type="file" 
+            accept="audio/*" 
+            onChange={(e) => onFileChange(e.target.files ? e.target.files[0] : null)} 
+            disabled={isUploading}
+          />
         </div>
         <div>
           <Label htmlFor="caption">Track Caption (optional)</Label>
-          <Input id="caption" value={uploadCaption} onChange={(e) => setUploadCaption(e.target.value)} placeholder="e.g., Final Mix, Version 2" />
+          <Input 
+            id="caption" 
+            value={uploadCaption} 
+            onChange={(e) => setUploadCaption(e.target.value)} 
+            placeholder="e.g., Final Mix, Version 2" 
+            disabled={isUploading}
+          />
         </div>
       </div>
 

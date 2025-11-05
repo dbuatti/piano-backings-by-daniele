@@ -19,6 +19,7 @@ import { uploadFileToSupabase } from '@/utils/supabase-client';
 import AdminFiltersAndViews from './AdminFiltersAndViews'; // Import AdminFiltersAndViews
 import RequestsCalendar from './RequestsCalendar'; // Import RequestsCalendar
 import PricingMatrix from '../PricingMatrix'; // Import PricingMatrix
+import { Card, CardContent } from '@/components/ui/card'; // Import Card components
 
 interface TrackInfo {
   url: string;
@@ -121,19 +122,23 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
         unreadIssueReports={unreadIssueReports}
       />
 
-      <AdminFiltersAndViews
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        backingTypeFilter={backingTypeFilter}
-        setBackingTypeFilter={setBackingTypeFilter}
-        paymentStatusFilter={paymentStatusFilter}
-        setPaymentStatusFilter={setPaymentStatusFilter}
-        clearFilters={clearFilters}
-        totalRequests={requests.length}
-        filteredRequestsCount={filteredRequests.length}
-      />
+      <Card className="shadow-lg mb-6 bg-white">
+        <CardContent className="p-4">
+          <AdminFiltersAndViews
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            backingTypeFilter={backingTypeFilter}
+            setBackingTypeFilter={setBackingTypeFilter}
+            paymentStatusFilter={paymentStatusFilter}
+            setPaymentStatusFilter={setPaymentStatusFilter}
+            clearFilters={clearFilters}
+            totalRequests={requests.length}
+            filteredRequestsCount={filteredRequests.length}
+          />
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end mb-4 space-x-2">
         <Button 

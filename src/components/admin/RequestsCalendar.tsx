@@ -73,7 +73,7 @@ const RequestsCalendar: React.FC<RequestsCalendarProps> = ({
             className={`w-2 h-2 rounded-full ${
               request.status === 'completed' ? 'bg-green-500' :
               request.status === 'in-progress' ? 'bg-yellow-500' :
-              request.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-400'
+              request.status === 'cancelled' ? 'bg-red-500' : 'bg-[#1C0357]' // Changed to primary color
             }`}
           />
         ))}
