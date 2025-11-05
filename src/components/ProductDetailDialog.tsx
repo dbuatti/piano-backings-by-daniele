@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag, Key, FileText } from 'lucide-react'; // Added Key and FileText icons
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag, Key, FileText, Loader2 } from 'lucide-react'; // Added Key and FileText icons
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
@@ -75,7 +75,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden [&>button]:hidden">
         <div className="relative">
           <AspectRatio ratio={16 / 9}>
             {product.image_url ? (
@@ -165,8 +165,17 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               disabled={isBuying}
               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
             >
-              {isBuying ? 'Processing...' : 'Buy Now'}
-              <ShoppingCart className="ml-2 h-5 w-5" />
+              {isBuying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Buying...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="ml-2 h-5 w-5" />
+                  Buy Now
+                </>
+              )}
             </Button>
           </div>
 

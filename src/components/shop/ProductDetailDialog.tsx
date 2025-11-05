@@ -73,7 +73,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden [&>button]:hidden">
         <div className="relative">
           <AspectRatio ratio={16 / 9}>
             {product.image_url ? (
