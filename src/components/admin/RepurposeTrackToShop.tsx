@@ -16,7 +16,6 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { FileAudio } from 'lucide-react'; // Added FileAudio import
