@@ -85,6 +85,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   onDirectFileUpload,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isDirectUploading, setIsDirectUploading] = useState(false); // Local state for direct upload
   const [editingCost, setEditingCost] = useState(false);
   const [currentCost, setCurrentCost] = useState<string>(
     request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
@@ -146,14 +147,22 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     setIsDragging(false);
   };
 
-  const handleDrop = (event: React.DragEvent<HTMLTableRowElement>) => {
+  const handleDrop = async (event: React.DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
     setIsDragging(false);
     const files = event.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
       if (file.type.startsWith('audio/')) { // Only accept audio files
-        onDirectFileUpload(request.id, file);
+        setIsDirectUploading(true);
+        try {
+          // Call the async upload function
+          await onDirectFileUpload(request.id, file);
+        } catch (e) {
+          // Error handling is done in the hook, just ensure loading state is cleared
+        } finally {
+          setIsDirectUploading(false);
+        }
       } else {
         toast({
           title: "Invalid File Type",
@@ -195,7 +204,8 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       key={request.id} 
       className={cn(
         `hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
-        isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : ""
+        isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : "",
+        isDirectUploading && "bg-green-50/50 animate-pulse" // Visual feedback for uploading
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

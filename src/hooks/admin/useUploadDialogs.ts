@@ -22,13 +22,53 @@ export const useUploadDialogs = (
   const [uploadTrackId, setUploadTrackId] = useState<string | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadCaption, setUploadCaption] = useState<string>('');
-  const [isUploading, setIsUploading] = useState(false); // State for upload progress
+  const [isUploading, setIsUploading] = useState(false); 
+  const [isDirectUploading, setIsDirectUploading] = useState(false); // State for direct upload feedback
 
   const [uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen] = useState(false);
   const [selectedRequestForPlatforms, setSelectedRequestForPlatforms] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<UploadedPlatforms>({
     youtube: false, tiktok: false, facebook: false, instagram: false, gumroad: false,
   });
+
+  // Core upload logic extracted
+  const performUpload = useCallback(async (requestId: string, file: File, caption: string) => {
+    const folderPath = `tracks/${requestId}/`;
+    
+    const { data: uploadData, error: uploadError } = await uploadFileToSupabase(file, folderPath);
+    if (uploadError) throw uploadError;
+
+    const newTrackUrl = uploadData?.path;
+    if (!newTrackUrl) throw new Error("Failed to get uploaded file path.");
+
+    // Fetch existing track URLs
+    const { data: existingRequest, error: fetchError } = await supabase
+      .from('backing_requests')
+      .select('track_urls')
+      .eq('id', requestId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentTrackUrls = existingRequest?.track_urls || [];
+    const updatedTrackUrls = [...currentTrackUrls, { url: newTrackUrl, caption: caption || file.name }];
+
+    // Update the database record
+    const { error: updateError } = await supabase
+      .from('backing_requests')
+      .update({ track_urls: updatedTrackUrls })
+      .eq('id', requestId);
+
+    if (updateError) throw updateError;
+
+    // Update local state
+    setRequests(prev => prev.map(req =>
+      req.id === requestId ? { ...req, track_urls: updatedTrackUrls } : req
+    ));
+    
+    return file.name;
+  }, [setRequests]);
+
 
   const handleFileChange = useCallback((file: File | null) => {
     setUploadFile(file);
@@ -53,37 +93,11 @@ export const useUploadDialogs = (
 
     setIsUploading(true);
     try {
-      const { data: uploadData, error: uploadError } = await uploadFileToSupabase(uploadFile, `tracks/${uploadTrackId}/`);
-      if (uploadError) throw uploadError;
-
-      const newTrackUrl = uploadData?.path;
-      if (!newTrackUrl) throw new Error("Failed to get uploaded file path.");
-
-      const { data: existingRequest, error: fetchError } = await supabase
-        .from('backing_requests')
-        .select('track_urls')
-        .eq('id', uploadTrackId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const currentTrackUrls = existingRequest?.track_urls || [];
-      const updatedTrackUrls = [...currentTrackUrls, { url: newTrackUrl, caption: uploadCaption || uploadFile.name }];
-
-      const { error: updateError } = await supabase
-        .from('backing_requests')
-        .update({ track_urls: updatedTrackUrls })
-        .eq('id', uploadTrackId);
-
-      if (updateError) throw updateError;
-
-      setRequests(prev => prev.map(req =>
-        req.id === uploadTrackId ? { ...req, track_urls: updatedTrackUrls } : req
-      ));
+      const fileName = await performUpload(uploadTrackId, uploadFile, uploadCaption);
 
       toast({
         title: "Upload Successful",
-        description: `${uploadFile.name} has been uploaded and linked to request ${uploadTrackId}.`,
+        description: `${fileName} has been uploaded and linked to request ${uploadTrackId.substring(0, 8)}.`,
       });
       setUploadTrackId(null); // Close dialog
       setUploadFile(null);
@@ -92,19 +106,36 @@ export const useUploadDialogs = (
       console.error("Upload error:", error);
       toast({
         title: "Upload Failed",
-        description: `Could not upload ${uploadFile.name}: ${error.message}`,
+        description: `Could not upload ${uploadFile?.name || 'file'}: ${error.message}`,
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
     }
-  }, [uploadTrackId, uploadFile, uploadCaption, setRequests, toast]);
+  }, [uploadTrackId, uploadFile, uploadCaption, performUpload, toast]);
 
+  // Implementation for direct file upload (drag and drop)
   const handleDirectFileUpload = useCallback(async (requestId: string, file: File) => {
-    // This function is passed directly to RequestsTable, so its logic is self-contained there.
-    // This placeholder is just to satisfy the hook's return type.
-    console.log('Direct file upload handled by RequestsTable parent logic.');
-  }, []);
+    setIsDirectUploading(true);
+    try {
+      const fileName = await performUpload(requestId, file, file.name);
+
+      toast({
+        title: "Direct Upload Successful",
+        description: `${fileName} has been uploaded and linked to request ${requestId.substring(0, 8)}.`,
+      });
+    } catch (error: any) {
+      console.error("Direct upload error:", error);
+      toast({
+        title: "Direct Upload Failed",
+        description: `Could not upload ${file.name}: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDirectUploading(false);
+    }
+  }, [performUpload, toast]);
+
 
   const openUploadPlatformsDialog = useCallback((id: string) => {
     setSelectedRequestForPlatforms(id);
@@ -182,6 +213,7 @@ export const useUploadDialogs = (
     uploadFile, handleFileChange,
     uploadCaption, setUploadCaption,
     isUploading,
+    isDirectUploading, // Return new state
     uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen,
     selectedRequestForPlatforms, setSelectedRequestForPlatforms,
     platforms, setPlatforms,
