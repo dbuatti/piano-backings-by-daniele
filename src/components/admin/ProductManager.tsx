@@ -200,7 +200,7 @@ const ProductManager: React.FC = () => {
       // Filter out unselected tracks and remove the 'selected' and 'file' property for DB storage
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, file, ...rest }) => rest);
+        .map(({ selected, file, ...rest }) => rest); // This map correctly removes 'selected' and 'file'
 
       const { data, error } = await supabase
         .from('products')
@@ -426,74 +426,83 @@ const ProductManager: React.FC = () => {
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive" });
       return;
     }
-    if (currentProduct) {
-      let imageUrlToSave = productForm.image_url;
-      if (imageFile) {
-        try {
-          imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
-        } catch (uploadError: any) {
-          toast({
-            title: "Image Upload Error",
-            description: `Failed to upload image: ${uploadError.message}`,
-            variant: "destructive",
-          });
-          return; // Stop update if image upload fails
-        }
-      } else if (productForm.image_url === '' && currentProduct.image_url) {
-        // If image_url is cleared in form but existed before, it means user wants to remove it
-        imageUrlToSave = null;
+    if (!currentProduct) return;
+
+    // 1. Handle Image Upload
+    let imageUrlToSave = productForm.image_url;
+    if (imageFile) {
+      try {
+        imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
+      } catch (uploadError: any) {
+        toast({
+          title: "Image Upload Error",
+          description: `Failed to upload image: ${uploadError.message}`,
+          variant: "destructive",
+        });
+        return;
       }
-
-      let sheetMusicUrlToSave = productForm.sheet_music_url;
-      if (editSheetMusicFile) {
-        try {
-          sheetMusicUrlToSave = await uploadFileToStorage(editSheetMusicFile, 'sheet-music', 'shop-sheet-music');
-        } catch (uploadError: any) {
-          toast({
-            title: "Sheet Music Upload Error",
-            description: `Failed to upload sheet music: ${uploadError.message}`,
-            variant: "destructive",
-          });
-          return; // Stop update if sheet music upload fails
-        }
-      } else if (productForm.sheet_music_url === '' && currentProduct.sheet_music_url) {
-        // If sheet_music_url is cleared in form but existed before, it means user wants to remove it
-        sheetMusicUrlToSave = null;
-      }
-
-      // Process track_urls: upload files if present, otherwise use existing URL
-      const processedTrackUrls: TrackInfo[] = [];
-      for (const track of productForm.track_urls) {
-        if (track.selected) {
-          let trackUrlToSave: string | null = null; // Initialize as null
-
-          if (track.file) { // If a new file is selected for this track
-            try {
-              trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
-            } catch (uploadError: any) {
-              toast({
-                title: "Track Upload Error",
-                description: `Failed to upload track "${track.file.name}": ${uploadError.message}`,
-                variant: "destructive",
-              });
-              return; // Stop product update if any track upload fails
-            }
-          } else if (track.url && track.url.trim() !== '') { // No new file, and URL field is not empty
-            trackUrlToSave = track.url.trim();
-          }
-          // If no file and URL is empty, trackUrlToSave remains null.
-
-          processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption.trim() }); // Ensure caption is trimmed
-        }
-      }
-
-      updateProductMutation.mutate({ 
-        ...productForm, 
-        image_url: imageUrlToSave, 
-        sheet_music_url: sheetMusicUrlToSave,
-        track_urls: processedTrackUrls, // Use processed track URLs
-      });
+    } else if (productForm.image_url === '' && currentProduct.image_url) {
+      imageUrlToSave = null;
     }
+
+    // 2. Handle Sheet Music Upload
+    let sheetMusicUrlToSave = productForm.sheet_music_url;
+    if (editSheetMusicFile) {
+      try {
+        sheetMusicUrlToSave = await uploadFileToStorage(editSheetMusicFile, 'sheet-music', 'shop-sheet-music');
+      } catch (uploadError: any) {
+        toast({
+          title: "Sheet Music Upload Error",
+          description: `Failed to upload sheet music: ${uploadError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (productForm.sheet_music_url === '' && currentProduct.sheet_music_url) {
+      sheetMusicUrlToSave = null;
+    }
+
+    // 3. Prepare a mutable copy of the track_urls array for file uploads
+    const tracksToMutate = productForm.track_urls.map(track => ({ ...track }));
+    
+    for (let i = 0; i < tracksToMutate.length; i++) {
+      const track = tracksToMutate[i];
+      
+      if (track.selected && track.file) {
+        console.log(`Uploading file for track ${i + 1}: ${track.file.name}`);
+        try {
+          const trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
+          
+          // Update the track object in the mutable copy
+          tracksToMutate[i] = { 
+            ...track, 
+            url: trackUrlToSave, 
+            file: null // Clear the file object after successful upload
+          };
+        } catch (uploadError: any) {
+          toast({
+            title: "Track Upload Error",
+            description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+            variant: "destructive",
+          });
+          return; // Stop product update if any track upload fails
+        }
+      } else if (track.selected && track.url && track.url.trim() !== '') {
+        // Ensure URL is trimmed and saved if no file was uploaded
+        tracksToMutate[i] = { ...track, url: track.url.trim() };
+      }
+      // Tracks that are not selected or have no URL/File remain as they are (will be filtered out by mutationFn)
+    }
+    
+    // 4. Finalize the payload for mutation
+    const finalPayload: ProductFormState = {
+      ...productForm,
+      image_url: imageUrlToSave,
+      sheet_music_url: sheetMusicUrlToSave,
+      track_urls: tracksToMutate, // Pass the updated array containing 'selected' and 'file: null' (if uploaded)
+    };
+
+    updateProductMutation.mutate(finalPayload);
   };
 
   const handleDeleteProduct = () => {
