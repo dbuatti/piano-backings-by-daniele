@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
@@ -190,6 +190,30 @@ const Shop = () => {
 
   const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || vocalRangeFilter !== 'all' || priceRange[0] !== 0 || priceRange[1] !== 100 || sortOption !== 'category_asc';
 
+  // Group products by category for display
+  const groupedProducts = useMemo(() => {
+    const groups: { [key: string]: Product[] } = {};
+    filteredProducts.forEach(product => {
+      const categoryName = product.category?.replace(/-/g, ' ') || 'Uncategorized';
+      if (!groups[categoryName]) {
+        groups[categoryName] = [];
+      }
+      groups[categoryName].push(product);
+    });
+
+    // Sort categories alphabetically
+    const sortedCategoryNames = Object.keys(groups).sort((a, b) => {
+      if (a === 'Uncategorized') return 1; // Push 'Uncategorized' to the end
+      if (b === 'Uncategorized') return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedCategoryNames.map(categoryName => ({
+      category: categoryName,
+      products: groups[categoryName],
+    }));
+  }, [filteredProducts]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -298,7 +322,12 @@ const Shop = () => {
           </Sheet>
         </div>
 
-        {filteredProducts.length === 0 && !isLoading ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
+            <p className="text-lg text-gray-600">Loading products...</p>
+          </div>
+        ) : filteredProducts.length === 0 && !isLoading ? (
           <div className="text-center py-12">
             <p className="text-xl text-gray-600">No products found matching your criteria.</p>
             {hasActiveFilters && (
@@ -308,13 +337,22 @@ const Shop = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onViewDetails={handleViewDetails}
-              />
+          <div className="space-y-10"> {/* Added space-y for separation between categories */}
+            {groupedProducts.map(group => (
+              <div key={group.category}>
+                <h2 className="text-2xl font-bold text-[#1C0357] mb-6 capitalize">
+                  {group.category}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {group.products.map(product => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
