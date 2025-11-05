@@ -18,6 +18,7 @@ import UploadPlatformsDialog from './UploadPlatformsDialog';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
 import AdminFiltersAndViews from './AdminFiltersAndViews'; // Import AdminFiltersAndViews
 import RequestsCalendar from './RequestsCalendar'; // Import RequestsCalendar
+import PricingMatrix from '../PricingMatrix'; // Import PricingMatrix
 
 interface TrackInfo {
   url: string;
@@ -190,7 +191,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
       )}
 
       {viewMode === 'pricing' && (
-        <p>Pricing Matrix content goes here.</p> // Placeholder for Pricing Matrix
+        <PricingMatrix />
       )}
     </div>
   );
