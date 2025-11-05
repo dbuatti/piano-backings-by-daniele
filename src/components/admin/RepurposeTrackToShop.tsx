@@ -369,6 +369,7 @@ const RepurposeTrackToShop: React.FC = () => {
   };
 
   const validateForm = () => {
+    console.log('validateForm called');
     const errors: Record<string, string> = {};
     if (!productForm.title.trim()) errors.title = 'Title is required.';
     if (!productForm.description.trim()) errors.description = 'Description is required.';
@@ -378,6 +379,8 @@ const RepurposeTrackToShop: React.FC = () => {
     if (!productForm.category.trim()) errors.category = 'Category is required.';
     if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
+    console.log('Validating track_urls:', productForm.track_urls);
+
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
       if (!track.url && !track.file) { // Require either URL or file
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
@@ -452,9 +455,10 @@ const RepurposeTrackToShop: React.FC = () => {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
       } catch (uploadError: any) {
+        console.log('Image upload error:', uploadError);
         toast({
           title: "Image Upload Error",
-          description: `Failed to upload image: ${uploadError.message}`,
+          description: `Failed to upload image: ${uploadError.message}`, 
           variant: "destructive",
         });
         return;
@@ -463,11 +467,14 @@ const RepurposeTrackToShop: React.FC = () => {
 
     let sheetMusicUrlToSave = productForm.sheet_music_url;
     if (sheetMusicFile) {
+      console.log('Starting sheet music upload...');
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
+        console.log('Sheet music upload successful, URL:', sheetMusicUrlToSave);
       } catch (uploadError: any) {
+        console.log('Sheet music upload error:', uploadError);
         toast({
-          title: "Sheet Music Upload Error",
+          title : "Sheet Music Upload Error",
           description: `Failed to upload sheet music: ${uploadError.message}`,
           variant: "destructive",
         });
@@ -481,11 +488,15 @@ const RepurposeTrackToShop: React.FC = () => {
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
       if (track.selected) { // Only process selected tracks
+        console.log('Processing track:', track.caption || 'Unnamed');
         let trackUrlToSave = track.url;
         if (track.file) {
+          console.log('Starting track file upload:', track.caption || 'Unnamed');
           try {
-            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'product-tracks'); // Assuming 'product-tracks' bucket
+            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks'); // Use 'shop-tracks' folder within 'product-tracks' bucket
+            console.log('Track file upload successful, URL:', trackUrlToSave);
           } catch (uploadError: any) {
+            console.log('Track upload error:', uploadError);
             toast({
               title: "Track Upload Error",
               description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
@@ -499,15 +510,18 @@ const RepurposeTrackToShop: React.FC = () => {
       }
     }
 
+    console.log('Constructing new product object');
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
       track_urls: processedTrackUrls, // Use the processed track URLs
-    };
+    }; 
+    console.log('Calling createProductMutation.mutate with:', newProduct);
     createProductMutation.mutate(newProduct);
   };
+  console.log('handleCreateProduct completed');
 
   if (isErrorRequests) {
     return (
