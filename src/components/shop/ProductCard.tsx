@@ -47,29 +47,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
               className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
               style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
             >
-              <h3 className="text-3xl md:text-4xl font-bold italic leading-tight">
+              <h3 className="text-2xl md:text-3xl font-bold leading-snug">
                 {product.title} {product.artist_name && `- ${product.artist_name}`}
               </h3>
             </div>
           )}
         </AspectRatio>
         <div className="absolute top-2 left-2 flex flex-col items-start space-y-1">
-          {product.category && (
+          {product.category && product.track_type && (
             <Badge 
               variant="default" 
-              className="bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full shadow-md"
+              className="bg-white/90 text-[#1C0357] capitalize text-sm px-3 py-1 rounded-full shadow-lg font-semibold"
             >
-              {product.category.replace('-', ' ')}
+              {product.category.replace('-', ' ')} / {product.track_type.replace('-', ' ')}
             </Badge>
           )}
-          {product.track_type && (
-            <Badge 
-              variant="secondary" 
-              className="bg-gray-700 text-white capitalize text-xs px-2 py-0.5 rounded-full shadow-md -mt-1"
-            >
-              {product.track_type.replace('-', ' ')}
-            </Badge>
-          )}
+          {/* Removed individual badges for cleaner look */}
         </div>
       </CardHeader>
       <CardContent className="flex-1 p-4">
