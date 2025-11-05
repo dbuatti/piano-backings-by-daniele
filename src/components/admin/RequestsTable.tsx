@@ -50,8 +50,8 @@ import {
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
-import RequestTableRow from './RequestTableRow'; // Import the new component
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added missing import
+import RequestTableRow from './RequestTableRow';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface RequestsTableProps {
   filteredRequests: any[];
@@ -62,15 +62,15 @@ interface RequestsTableProps {
   totalCost: number;
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  updateCost: (id: string, newCost: number | null) => void; // New prop for updating cost
+  updateCost: (id: string, newCost: number | null) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
   openDeleteDialog: (id: string) => void;
   openBatchDeleteDialog: () => void;
   openUploadPlatformsDialog: (id: string) => void;
-  onDirectFileUpload: (id: string, file: File) => void; // New prop for direct upload
-  clearFilters: () => void; // ADDED: Prop to clear filters
+  onDirectFileUpload: (id: string, file: File) => void;
+  clearFilters: () => void;
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({
@@ -82,15 +82,15 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   totalCost,
   updateStatus,
   updatePaymentStatus,
-  updateCost, // Destructure new prop
+  updateCost,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
   openDeleteDialog,
   openBatchDeleteDialog,
   openUploadPlatformsDialog,
-  onDirectFileUpload, // Pass this down
-  clearFilters, // ADDED: Destructure clearFilters
+  onDirectFileUpload,
+  clearFilters,
 }) => {
 
   return (
@@ -173,19 +173,19 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
           </div>
         ) : (
           <div className="border rounded-md overflow-x-auto">
-            <Table className="min-w-[1200px]"> {/* Set minimum width for horizontal scroll */}
+            <Table className="min-w-[1200px]">
               <TableHeader className="bg-[#1C0357] text-white">
                 <TableRow className="hover:bg-[#1C0357]">
                   <TableHead className="w-[50px] text-white"><input type="checkbox" checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0} onChange={handleSelectAll} className="h-4 w-4"/></TableHead>
                   <TableHead className="w-[120px] text-white"><div className="flex items-center"><CalendarDays className="w-4 h-4 mr-2" />Date</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><User className="w-4 h-4 mr-2" />Client</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><Music className="w-4 h-4 mr-2" />Song</div></TableHead>
-                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Tag className="w-4 h-4 mr-2" />Type</div></TableHead> {/* Hidden on mobile */}
-                  <TableHead className="text-white hidden sm:table-cell"><div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Delivery</div></TableHead> {/* Hidden on mobile */}
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Tag className="w-4 h-4 mr-2" />Type</div></TableHead>
+                  <TableHead className="text-white hidden sm:table-cell"><div className="flex items-center"><Calendar className="w-4 h-4 mr-2" />Delivery</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><Hash className="w-4 h-4 mr-2" />Status</div></TableHead>
-                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Payment</div></TableHead> {/* Hidden on mobile */}
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Payment</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><DollarSign className="w-4 h-4 mr-2" />Cost</div></TableHead>
-                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Upload className="w-4 h-4 mr-2" />Platforms</div></TableHead> {/* Hidden on mobile */}
+                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Upload className="w-4 h-4 mr-2" />Platforms</div></TableHead>
                   <TableHead className="text-right text-white w-[250px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,7 +216,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       handleSelectRequest={handleSelectRequest}
                       updateStatus={updateStatus}
                       updatePaymentStatus={updatePaymentStatus}
-                      updateCost={updateCost} // Pass the new updateCost function
+                      updateCost={updateCost}
                       uploadTrack={uploadTrack}
                       shareTrack={shareTrack}
                       openEmailGenerator={openEmailGenerator}

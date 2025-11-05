@@ -42,11 +42,6 @@ const IssueReportsTable: React.FC<IssueReportsTableProps> = ({
 }) => {
   const { toast } = useToast();
 
-  // The toggleReadStatus and toggleResolveStatus functions were previously defined here
-  // but are now expected to be passed as props from IssueReportsTabContent.
-  // The original IssueReportsTable component in the codebase did not have these functions.
-  // The current implementation in IssueReportsTabContent already uses mutations for these actions.
-
   return (
     <div className="border rounded-md overflow-hidden">
       <Table>
