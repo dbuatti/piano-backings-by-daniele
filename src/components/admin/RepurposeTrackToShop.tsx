@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { FileAudio } from 'lucide-react'; // Added FileAudio import
+import { Badge } from '@/components/ui/badge'; // ADDED Badge IMPORT
 
 interface BackingRequest {
   id: string;
