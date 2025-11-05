@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
 
 interface Product {
@@ -101,11 +101,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
         </div>
       </CardContent>
-      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex justify-between items-center">
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex gap-2 items-center">
         <Button 
           variant="secondary" 
           onClick={() => onViewDetails(product)}
-          className="flex-1 mr-2 bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
+          className="flex-1 bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details
