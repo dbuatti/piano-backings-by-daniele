@@ -29,8 +29,8 @@ import {
   FileAudio,
   DollarSign // Added DollarSign icon
 } from 'lucide-react';
-import { calculateRequestCost, getTrackTypeBaseDisplayRange } from '@/utils/pricing'; // Import getTrackTypeBaseDisplayRange
-import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import from new utility
+import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 import Seo from "@/components/Seo"; // Import Seo component
 
@@ -199,8 +199,6 @@ const ClientTrackView = () => {
   const rawMaxCost = baseTotalCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Round UP to nearest 5
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round DOWN to nearest 5
-
-  const trackTypeDisplayRange = request.track_type ? getTrackTypeBaseDisplayRange(request.track_type) : null;
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
@@ -397,11 +395,6 @@ const ClientTrackView = () => {
                     <div className="text-3xl font-bold mb-4">
                       ${minCost} - ${maxCost}
                     </div>
-                    {trackTypeDisplayRange && (
-                      <p className="text-sm opacity-90 mb-2">
-                        Base cost for {request.track_type?.replace('-', ' ')}: {trackTypeDisplayRange}
-                      </p>
-                    )}
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
                     </p>
@@ -439,7 +432,7 @@ const ClientTrackView = () => {
                   <ul className="space-y-2 text-sm">
                     {costBreakdown.baseCosts.map((item, index) => (
                       <li key={`base-${index}`} className="flex justify-between items-center">
-                        <span className="capitalize">{item.type.replace('-', ' ')} Base Track</span>
+                        <span className="capitalize">{item.type.replace('-', ' ')}</span>
                         <span>${item.cost.toFixed(2)}</span>
                       </li>
                     ))}
@@ -450,7 +443,7 @@ const ClientTrackView = () => {
                       </li>
                     ))}
                     <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
-                      <span>Total Estimated Cost</span>
+                      <span>Total Estimated Cost (Rounded)</span>
                       <span>${costBreakdown.totalCost.toFixed(2)}</span>
                     </li>
                   </ul>

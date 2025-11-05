@@ -1,43 +1,51 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { calculateRequestCost } from "@/utils/pricing"; // Import the utility
+import { 
+  calculateRequestCost, 
+  TRACK_TYPE_BASE_COSTS, 
+  BACKING_TYPE_MODIFIERS, 
+  ADDITIONAL_SERVICE_COSTS 
+} from "@/utils/pricing"; // Import constants
 
 const PricingMatrix = () => {
-  // Base prices for each backing type (used internally by the utility if track_type is polished/missing)
-  // We define the track types we want to display in the matrix
-  const trackTypes = [
-    { id: 'polished', name: 'Polished Backing', baseRange: '$15 - $35' },
-    { id: 'one-take', name: 'One-Take Recording', baseRange: '$10 - $20' },
-    { id: 'quick', name: 'Quick Reference', baseRange: '$5 - $10' },
-  ];
+  
+  // Define the track types based on the imported constants
+  const trackTypes = Object.entries(TRACK_TYPE_BASE_COSTS).map(([id, cost]) => ({
+    id,
+    name: id.replace('-', ' '),
+    baseCost: cost,
+  }));
+
+  // Define the backing types (modifiers) based on the imported constants
+  const backingTypes = Object.entries(BACKING_TYPE_MODIFIERS).map(([id, modifier]) => ({
+    id,
+    name: id.replace('-', ' '),
+    modifier,
+  }));
 
   // Additional service prices (used for display)
-  const additionalServices = [
-    { id: 'rush-order', name: 'Rush Order', price: 10 },
-    { id: 'complex-songs', name: 'Complex Songs', price: 7 },
-    { id: 'additional-edits', name: 'Additional Edits', price: 5 },
-    { id: 'exclusive-ownership', name: 'Exclusive Ownership', price: 40 }
-  ];
+  const additionalServices = Object.entries(ADDITIONAL_SERVICE_COSTS).map(([id, price]) => ({
+    id,
+    name: id.replace('-', ' '),
+    price,
+  }));
 
-  // Generate service combinations (showing some common ones)
-  const serviceCombinations = [
-    { name: 'Base Price', services: [] },
-    { name: 'Base + Rush', services: ['rush-order'] },
-    { name: 'Base + Complex', services: ['complex-songs'] },
-    { name: 'Base + Rush + Complex', services: ['rush-order', 'complex-songs'] },
-    { name: 'Base + Exclusive', services: ['exclusive-ownership'] },
-    { name: 'All Services', services: ['rush-order', 'complex-songs', 'additional-edits', 'exclusive-ownership'] }
-  ];
+  // Generate service combinations (showing only the base + single modifier for the matrix)
+  const matrixColumns = backingTypes.map(bt => ({
+    name: `${bt.name} (+A$${bt.modifier.toFixed(2)})`,
+    modifierId: bt.id,
+  }));
 
-  // Calculate total using the central utility function
-  const calculateTotal = (trackType: string, services: string[]) => {
+  // Calculate total using the central utility function for the matrix cells
+  const calculateMatrixTotal = (trackType: string, modifierId: string) => {
     // Simulate a request object for the utility function
     const mockRequest = {
       track_type: trackType,
-      backing_type: ['full-song'], // Use full-song to ensure the base cost is overridden by track_type
-      additional_services: services,
+      backing_type: [modifierId], // Only include the single modifier for the matrix cell
+      additional_services: [],
     };
+    // Note: The utility function rounds to the nearest $5.00.
     return calculateRequestCost(mockRequest).totalCost;
   };
 
@@ -51,10 +59,10 @@ const PricingMatrix = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#D1AAF2]/20">
-                <TableHead className="font-bold w-[200px]">Track Type</TableHead>
-                {serviceCombinations.map((combo, index) => (
+                <TableHead className="font-bold w-[200px]">Quality / Length</TableHead>
+                {matrixColumns.map((col, index) => (
                   <TableHead key={index} className="text-center font-medium">
-                    {combo.name}
+                    {col.name}
                   </TableHead>
                 ))}
               </TableRow>
@@ -67,23 +75,14 @@ const PricingMatrix = () => {
                       <Badge variant="default" className="mb-1 bg-[#1C0357] capitalize">
                         {type.name}
                       </Badge>
-                      <span className="text-sm text-gray-600">{type.baseRange}</span>
+                      <span className="text-sm text-gray-600">(A${type.baseCost.toFixed(2)})</span>
                     </div>
                   </TableCell>
-                  {serviceCombinations.map((combo, index) => {
-                    const total = calculateTotal(type.id, combo.services);
+                  {matrixColumns.map((col, index) => {
+                    const total = calculateMatrixTotal(type.id, col.modifierId);
                     return (
                       <TableCell key={index} className="text-center font-bold">
-                        <div className="flex flex-col items-center">
-                          <span className="text-lg">${total.toFixed(2)}</span>
-                          {combo.services.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              ({combo.services.map(s => 
-                                additionalServices.find(sv => sv.id === s)?.price
-                              ).join(' + ')})
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-lg">A${total.toFixed(2)}</span>
                       </TableCell>
                     );
                   })}
@@ -100,9 +99,9 @@ const PricingMatrix = () => {
               <Card key={service.id} className="border">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">{service.name}</span>
+                    <span className="font-medium capitalize">{service.name.replace('-', ' ')}</span>
                     <Badge variant="default" className="bg-[#1C0357]">
-                      ${service.price}
+                      +A${service.price.toFixed(2)}
                     </Badge>
                   </div>
                 </CardContent>
@@ -114,10 +113,11 @@ const PricingMatrix = () => {
         <div className="mt-6 p-4 bg-[#D1AAF2]/20 rounded-lg">
           <h3 className="font-semibold text-[#1C0357] mb-2">Pricing Notes</h3>
           <ul className="text-sm space-y-1">
-            <li>• Base prices reflect the complexity and quality of the track type (Quick, One-Take, Polished).</li>
+            <li>• Final price is calculated by: (Track Type Base Cost + Highest Backing Type Modifier + Additional Services).</li>
+            <li>• The final total is rounded to the nearest A$5.00.</li>
             <li>• Rush orders are delivered within 24 hours</li>
             <li>• Complex songs include Sondheim, JRB, and Guettel compositions</li>
-            <li>• Additional edits are $5 per request after completion</li>
+            <li>• Additional edits are A$5.00 per request after completion</li>
             <li>• Exclusive ownership prevents the track from being shared online</li>
           </ul>
         </div>
