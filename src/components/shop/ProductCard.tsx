@@ -6,6 +6,7 @@ import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key, Mic, Hea
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TrackInfo } from '@/utils/helpers';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Product {
   id: string;
