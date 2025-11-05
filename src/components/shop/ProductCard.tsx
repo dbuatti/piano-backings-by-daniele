@@ -47,7 +47,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
               className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
               style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
             >
-              <h3 className="text-xl md:text-2xl font-bold italic leading-tight">
+              <h3 className="text-3xl md:text-4xl font-bold italic leading-tight">
                 {product.title} {product.artist_name && `- ${product.artist_name}`}
               </h3>
             </div>
@@ -65,7 +65,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
           {product.track_type && (
             <Badge 
               variant="secondary" 
-              className="bg-gray-700 text-white capitalize text-xs px-2 py-0.5 rounded-full shadow-md"
+              className="bg-gray-700 text-white capitalize text-xs px-2 py-0.5 rounded-full shadow-md -mt-1"
             >
               {product.track_type.replace('-', ' ')}
             </Badge>
@@ -99,11 +99,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
           <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
         </div>
       </CardContent>
-      <CardFooter className="p-4 border-t bg-gray-50 flex justify-between items-center">
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex justify-between items-center">
         <Button 
           variant="secondary" 
           onClick={() => onViewDetails(product)}
-          className="flex-1 mr-2 bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
+          className="flex-1 mr-2 bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20"
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details

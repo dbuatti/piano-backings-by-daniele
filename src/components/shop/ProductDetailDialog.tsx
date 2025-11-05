@@ -87,7 +87,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 className="flex items-center justify-center w-full h-full text-white p-4 text-center"
                 style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
               >
-                <h3 className="text-2xl md:text-3xl font-bold italic leading-tight">
+                <h3 className="text-3xl md:text-4xl font-bold italic leading-tight">
                   {product.title}
                 </h3>
               </div>
