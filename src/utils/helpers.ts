@@ -26,8 +26,20 @@ export const getSafeBackingTypes = (backingType: string | string[] | undefined):
 };
 
 export const downloadTrack = (url: string, filename: string) => {
+  if (!url) return;
+  
+  let finalUrl = url;
+  
+  // Check if the URL is a Supabase public storage URL
+  if (url.includes('supabase.co/storage/v1/object/public/')) {
+    // Append the 'download' query parameter to force a full download and suggest filename
+    const urlObj = new URL(url);
+    urlObj.searchParams.set('download', filename);
+    finalUrl = urlObj.toString();
+  }
+  
   const link = document.createElement('a');
-  link.href = url;
+  link.href = finalUrl;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
