@@ -160,7 +160,8 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                 </DropdownMenu>
               </div>
             )}
-          </CardTitle>
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
