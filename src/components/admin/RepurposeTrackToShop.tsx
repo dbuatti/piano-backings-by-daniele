@@ -128,7 +128,7 @@ const RepurposeTrackToShop: React.FC = () => {
     }
 
     const urlExtensionMatch = trackUrl.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
-    const urlExtension = urlExtensionMatch ? urlExtensionMatch[1] : '';
+    const urlExtension = urlExtensionMatch?.[1] || ''; // Safely access urlExtensionMatch[1]
     
     if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
       newCaption += `.${urlExtension}`;
@@ -577,9 +577,10 @@ const RepurposeTrackToShop: React.FC = () => {
         </div>
       </CardContent> {/* Closing CardContent for request selection */}
 
-      <CardContent> {/* This CardContent is always rendered, its content is conditional */}
-        {selectedRequest ? (
-          <> {/* Fragment to wrap all conditional content */}
+      {/* Conditional rendering of the product form or placeholder message, each wrapped in its own CardContent */}
+      {selectedRequest ? (
+        <CardContent> {/* This CardContent contains the form */}
+          <div> {/* Wrap all form content in a single div */}
             <div>
               <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
                 <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">2</span>
@@ -884,13 +885,15 @@ const RepurposeTrackToShop: React.FC = () => {
                   )}
                 </Button>
               </div>
-            </>
-          ) : (
-            <p className="text-center text-gray-500 py-4">Select a completed request above to define a new product.</p>
-          )}
+            </div> {/* Closing div for form content */}
         </CardContent>
-      </Card>
-    );
-  };
+      ) : (
+        <CardContent> {/* This CardContent contains the "select a request" message */}
+          <p className="text-center text-gray-500 py-4">Select a completed request above to define a new product.</p>
+        </CardContent>
+      )}
+    </Card>
+  );
+};
 
 export default RepurposeTrackToShop;
