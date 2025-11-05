@@ -38,10 +38,18 @@ export const useUploadDialogs = (
     const { data: uploadData, error: uploadError } = await uploadFileToSupabase(file, folderPath);
     if (uploadError) throw uploadError;
 
-    const newTrackUrl = uploadData?.path;
-    if (!newTrackUrl) throw new Error("Failed to get uploaded file path.");
+    const relativePath = uploadData?.path; // This is the relative path, e.g., 'tracks/request-id/filename.mp3'
+    if (!relativePath) throw new Error("Failed to get uploaded file path.");
 
-    // Fetch existing track URLs
+    // 1. Get the full public URL from the relative path
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('tracks') // Assuming the bucket name is 'tracks'
+      .getPublicUrl(relativePath);
+
+    const newTrackUrl = publicUrl;
+    
+    // 2. Fetch existing track URLs
     const { data: existingRequest, error: fetchError } = await supabase
       .from('backing_requests')
       .select('track_urls')
@@ -53,7 +61,7 @@ export const useUploadDialogs = (
     const currentTrackUrls = existingRequest?.track_urls || [];
     const updatedTrackUrls = [...currentTrackUrls, { url: newTrackUrl, caption: caption || file.name }];
 
-    // Update the database record
+    // 3. Update the database record with the full public URL
     const { error: updateError } = await supabase
       .from('backing_requests')
       .update({ track_urls: updatedTrackUrls })
@@ -61,7 +69,7 @@ export const useUploadDialogs = (
 
     if (updateError) throw updateError;
 
-    // Update local state
+    // 4. Update local state
     setRequests(prev => prev.map(req =>
       req.id === requestId ? { ...req, track_urls: updatedTrackUrls } : req
     ));
