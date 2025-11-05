@@ -70,6 +70,7 @@ interface RequestsTableProps {
   openBatchDeleteDialog: () => void;
   openUploadPlatformsDialog: (id: string) => void;
   onDirectFileUpload: (id: string, file: File) => void; // New prop for direct upload
+  clearFilters: () => void; // ADDED: Prop to clear filters
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({
@@ -89,6 +90,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   openBatchDeleteDialog,
   openUploadPlatformsDialog,
   onDirectFileUpload, // Pass this down
+  clearFilters, // ADDED: Destructure clearFilters
 }) => {
 
   return (

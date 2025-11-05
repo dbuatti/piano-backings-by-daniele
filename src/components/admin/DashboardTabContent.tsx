@@ -97,7 +97,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   selectedDate,
   setSelectedDate,
   filteredRequests,
-  clearFilters,
+  clearFilters, // Destructure clearFilters
   selectedRequests,
   handleSelectAll,
   handleSelectRequest,
@@ -182,6 +182,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
           openBatchDeleteDialog={openBatchDeleteDialog}
           openUploadPlatformsDialog={openUploadPlatformsDialog}
           onDirectFileUpload={onDirectFileUpload}
+          clearFilters={clearFilters} // PASS clearFilters
         />
       )}
 
