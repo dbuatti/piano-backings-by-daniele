@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import ProductCard from '@/components/shop/ProductCard';
-import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
+import ProductCard from '@/components/ProductCard'; // Use the updated ProductCard
+import ProductDetailDialog from '@/components/ProductDetailDialog'; // Use the updated ProductDetailDialog
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Label } from '@/components/ui/label'; // Import Label
@@ -60,6 +60,7 @@ const Shop = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [sortOption, setSortOption] = useState('category_asc'); // New state for sort option, default to category_asc
+  const [isBuying, setIsBuying] = useState(false); // New state for loading indicator during purchase
 
   const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
     queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
@@ -142,6 +143,7 @@ const Shop = () => {
   }, []);
 
   const handleBuyNow = useCallback(async (product: Product) => {
+    setIsBuying(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -177,6 +179,8 @@ const Shop = () => {
         description: `Failed to initiate purchase: ${err.message}`,
         variant: "destructive",
       });
+    } finally {
+      setIsBuying(false);
     }
   }, [toast]);
 
@@ -320,7 +324,7 @@ const Shop = () => {
                   </Select>
                 </div>
 
-                {hasActiveFilters && (
+                hasActiveFilters && (
                   <Button variant="outline" onClick={clearFilters} className="w-full flex items-center gap-2">
                     <XCircle className="h-4 w-4" /> Clear All Filters
                   </Button>
@@ -357,6 +361,8 @@ const Shop = () => {
                       key={product.id} 
                       product={product} 
                       onViewDetails={handleViewDetails}
+                      onBuyNow={handleBuyNow}
+                      isBuying={isBuying}
                     />
                   ))}
                 </div>
@@ -372,6 +378,7 @@ const Shop = () => {
           onOpenChange={setIsDetailDialogOpen}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
+          isBuying={isBuying}
         />
       )}
       
