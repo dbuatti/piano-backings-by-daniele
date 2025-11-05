@@ -477,12 +477,34 @@ const RepurposeTrackToShop: React.FC = () => {
       sheetMusicUrlToSave = null;
     }
 
+    // Process track URLs: upload files and replace with URLs
+    const processedTrackUrls: TrackInfo[] = [];
+    for (const track of productForm.track_urls) {
+      if (track.selected) { // Only process selected tracks
+        let trackUrlToSave = track.url;
+        if (track.file) {
+          try {
+            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'product-tracks'); // Assuming 'product-tracks' bucket
+          } catch (uploadError: any) {
+            toast({
+              title: "Track Upload Error",
+              description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+              variant: "destructive",
+            });
+            return; // Stop if any track upload fails
+          }
+        }
+        // Add the processed track (with URL and without file) to the list
+        processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption, selected: track.selected });
+      }
+    }
 
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
+      track_urls: processedTrackUrls, // Use the processed track URLs
     };
     createProductMutation.mutate(newProduct);
   };
