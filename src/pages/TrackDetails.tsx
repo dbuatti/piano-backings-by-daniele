@@ -151,7 +151,7 @@ const TrackDetails = () => {
                   </Tooltip>
                 </TooltipProvider>
               </span>
-              {/* Moved Vocal Range here */}
+              {/* Vocal Range moved here */}
               {product.vocal_range && product.vocal_range.length > 0 && (
                 <span className="flex items-center">
                   <Music className="h-4 w-4 mr-1 text-[#F538BC]" />
@@ -180,6 +180,17 @@ const TrackDetails = () => {
               </div>
             )}
 
+            {product.sheet_music_url && (
+              <div className="mb-6">
+                <Link to={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="w-full py-3 text-lg border-[#1C0357] text-[#1C0357] hover:bg-[#D1AAF2]/20">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Preview Sheet Music (Preview Cut)
+                  </Button>
+                </Link>
+              </div>
+            )}
+
             <p className="text-gray-700 mb-6 leading-relaxed">
               {product.description}
             </p>
@@ -194,17 +205,6 @@ const TrackDetails = () => {
                 Buy Now
               </Button>
             </div>
-
-            {product.sheet_music_url && (
-              <div className="mb-6">
-                <Link to={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="w-full py-3 text-lg border-[#1C0357] text-[#1C0357] hover:bg-[#D1AAF2]/20">
-                    <FileText className="mr-2 h-5 w-5" />
-                    Preview Sheet Music (Preview Cut)
-                  </Button>
-                </Link>
-              </div>
-            )}
 
             <div className="text-sm text-gray-500 mt-8">
               Created on: {format(new Date(product.created_at), 'MMM dd, yyyy')}
