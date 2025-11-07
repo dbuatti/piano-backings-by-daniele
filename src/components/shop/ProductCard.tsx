@@ -36,11 +36,11 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   return (
-    <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
+    <Card className="flex flex-col h-full border border-gray-200 bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out min-h-[400px]">
       <CardHeader className="p-0">
         <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
           <img
-            src={product.image_url || '/placeholder-image.jpg'}
+            src={product.image_url || '/placeholder.svg'} // Changed fallback to .svg
             alt={product.title}
             className="w-full h-full object-cover"
           />
