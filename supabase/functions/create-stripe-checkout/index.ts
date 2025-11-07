@@ -23,6 +23,19 @@ interface CartLineItem {
   quantity: number;
 }
 
+// Define the expected structure of product data fetched from Supabase
+interface ProductDetails {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  image_url?: string | null;
+  vocal_ranges?: string[] | null;
+  sheet_music_url?: string | null;
+  key_signature?: string | null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -81,7 +94,9 @@ serve(async (req) => {
       throw new Error('One or more products in the cart could not be found.');
     }
 
-    const productsMap = new Map(productsData.map(p => [p.id, p]));
+    // Cast the fetched data to the defined interface to resolve TS errors
+    const typedProductsData = productsData as ProductDetails[];
+    const productsMap = new Map(typedProductsData.map(p => [p.id, p]));
 
     // 2. Construct Stripe line items and metadata
     const stripeLineItems = lineItems.map((cartItem: CartLineItem) => {

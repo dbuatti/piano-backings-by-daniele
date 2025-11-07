@@ -11,7 +11,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useCart, CartItem } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js'; // FIX: Import Stripe type
 import Seo from "@/components/Seo";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
