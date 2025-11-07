@@ -83,7 +83,7 @@ const Cart: React.FC = () => {
 
       if (result.sessionId) {
         // Redirect to Stripe Checkout
-        const { error: stripeError } = await stripe.redirectToCheckout({
+        const { error: stripeError } = await (stripe as any).redirectToCheckout({
           sessionId: result.sessionId,
         });
 
