@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +27,14 @@ import {
   Banknote,
   Play,
   FileAudio,
-  DollarSign // Added DollarSign icon
+  DollarSign,
+  User as UserIcon, // Added UserIcon for linking section
+  Loader2 // Added Loader2 for linking button
 } from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
-import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
-import Seo from "@/components/Seo"; // Import Seo component
+import { calculateRequestCost } from '@/utils/pricing';
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import Seo from "@/components/Seo";
 
 // TrackInfo interface is now imported from helpers.ts
 // interface TrackInfo {
@@ -47,9 +49,12 @@ const ClientTrackView = () => {
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<any>(null); // New state
+  const [isAdmin, setIsAdmin] = useState(false); // New state
+  const [isLinking, setIsLinking] = useState(false); // New state for linking loading
 
   useEffect(() => {
-    const fetchRequest = async () => {
+    const fetchRequestAndAuth = async () => { // Renamed to include auth check
       setLoading(true);
       setAccessDenied(false);
       
@@ -60,14 +65,27 @@ const ClientTrackView = () => {
       }
 
       const urlParams = new URLSearchParams(window.location.search);
-      const guestAccessToken = urlParams.get('token'); // Get the guest access token
+      const guestAccessToken = urlParams.get('token');
       
+      // Fetch current session and user details
+      const { data: { session } = {} } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+      setLoggedInUser(currentUser);
+
+      let currentIsAdmin = false;
+      if (currentUser?.email) {
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        currentIsAdmin = adminEmails.includes(currentUser.email);
+        setIsAdmin(currentIsAdmin);
+      } else {
+        setIsAdmin(false);
+      }
+
       try {
         let requestData: any = null;
         let fetchError: any = null;
 
         if (guestAccessToken) {
-          // Attempt to fetch using the secure token for anonymous users
           const response = await fetch(
             `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
             {
@@ -106,20 +124,13 @@ const ClientTrackView = () => {
           return;
         }
 
-        // Now, determine access based on user_id, email, and admin status
-        const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
-        const loggedInUserId = session?.user?.id;
-        const loggedInUserEmail = session?.user?.email;
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        const isAdmin = loggedInUserEmail && adminEmails.includes(loggedInUserEmail);
-
+        // Determine access based on user_id, email, and admin status
         let hasAccess = false;
 
-        if (isAdmin) {
-          hasAccess = true; // Admins can view any track
+        if (currentIsAdmin) {
+          hasAccess = true;
         } else if (requestData.user_id) {
-          // If the request is linked to a user_id, only the owner can access
-          if (loggedInUserId === requestData.user_id) {
+          if (currentUser?.id === requestData.user_id) {
             hasAccess = true;
           } else {
             console.warn('Logged-in user is not the owner of this request.');
@@ -129,8 +140,10 @@ const ClientTrackView = () => {
           // Access is granted if guestAccessToken matches the stored token
           if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
             hasAccess = true;
+          } else if (currentUser?.email === requestData.email) { // Allow logged-in user to view their unlinked request by email
+            hasAccess = true;
           } else {
-            console.warn('Guest access denied: Token mismatch or no token provided for unlinked request.');
+            console.warn('Guest access denied: Token mismatch or no token/email match for unlinked request.');
           }
         }
 
@@ -158,7 +171,7 @@ const ClientTrackView = () => {
       }
     };
     
-    fetchRequest();
+    fetchRequestAndAuth();
   }, [id, navigate, toast]);
 
   const getStatusBadge = (status: string) => {
@@ -174,8 +187,40 @@ const ClientTrackView = () => {
     }
   };
 
-  // downloadTrack function is now imported from helpers.ts
-  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
+  const handleLinkRequest = async () => {
+    if (!request || !loggedInUser?.id) return;
+
+    setIsLinking(true);
+    try {
+      const { data, error } = await supabase.rpc('link_backing_request_to_user', {
+        p_request_id: request.id,
+        p_user_id: loggedInUser.id,
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        toast({
+          title: "Request Linked!",
+          description: "This request has been successfully linked to your account.",
+        });
+        // Refresh the request data to show it's now linked
+        // Or simply update the local state
+        setRequest(prev => ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }));
+      } else {
+        throw new Error("Failed to link request: Unknown error.");
+      }
+    } catch (error: any) {
+      console.error('Error linking request:', error);
+      toast({
+        title: "Linking Failed",
+        description: `Could not link request: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -246,6 +291,55 @@ const ClientTrackView = () => {
           <h1 className="text-3xl font-bold text-[#1C0357]">Your Track Order</h1>
           <p className="text-lg text-[#1C0357]/90">Order details and download</p>
         </div>
+        
+        {/* New: Account Linking Section */}
+        {request && !request.user_id && loggedInUser && loggedInUser.email === request.email && (
+          <Card className="shadow-lg mb-6 border-2 border-blue-500 bg-blue-50">
+            <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center text-blue-800">
+                <LinkIcon className="mr-3 h-6 w-6 flex-shrink-0" />
+                <p className="font-medium text-lg">
+                  This request is not yet linked to your account.
+                </p>
+              </div>
+              <Button 
+                onClick={handleLinkRequest}
+                disabled={isLinking}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+              >
+                {isLinking ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Linking...
+                  </>
+                ) : (
+                  <>
+                    <UserIcon className="mr-2 h-4 w-4" /> Link to My Account
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {request && !request.user_id && !loggedInUser && (
+          <Card className="shadow-lg mb-6 border-2 border-yellow-500 bg-yellow-50">
+            <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center text-yellow-800">
+                <UserIcon className="mr-3 h-6 w-6 flex-shrink-0" />
+                <p className="font-medium text-lg">
+                  This request is not linked to an account.
+                </p>
+              </div>
+              <Link to="/login">
+                <Button 
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3"
+                >
+                  Log In / Sign Up to Link
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
         
         <Card className="shadow-lg mb-6 border-2 border-[#1C0357]/20">
           <CardHeader className="bg-gradient-to-r from-[#D1AAF2] to-[#F1E14F] py-6">
