@@ -462,6 +462,7 @@ const UserDashboard = () => {
                                 </Button>
                               </Link>
                             </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -576,6 +577,7 @@ const UserDashboard = () => {
                                 </Button>
                               </Link>
                             </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -661,7 +663,7 @@ const UserDashboard = () => {
               <CardTitle className="text-2xl text-[#1C0357]">
                 Need Help?
               </CardTitle>
-            </CardHeader>
+            </CardHeader> {/* Removed duplicate </CardTitle> */}
             <CardContent>
               <div className="space-y-4">
                 <p>
