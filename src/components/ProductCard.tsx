@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCart } from '@/hooks/useCart'; // Import useCart
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface Product {
   id: string;
@@ -30,12 +32,28 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
-  onBuyNow: (product: Product) => void;
+  onBuyNow: (product: Product) => void; // Keep this for now, but change usage
   isBuying: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
-  
+  const { addItem } = useCart(); // Use addItem from cart hook
+  const { toast } = useToast(); // Use toast for feedback
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      currency: product.currency,
+      image_url: product.image_url,
+    });
+    toast({
+      title: "Added to Cart",
+      description: `${product.title} added to your shopping cart.`,
+    });
+  };
+
   const getTrackTypeIcon = (type: string | undefined) => {
     switch (type) {
       case 'quick':
@@ -142,21 +160,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           View Details
         </Button>
         <Button 
-          onClick={() => onBuyNow(product)}
-          disabled={isBuying}
+          onClick={handleAddToCart}
           className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full"
         >
-          {isBuying ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Buying...
-            </>
-          ) : (
-            <>
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Buy Now
-            </>
-          )}
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Add to Cart
         </Button>
       </CardFooter>
     </Card>

@@ -60,7 +60,6 @@ const Shop = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [sortOption, setSortOption] = useState('category_asc'); // New state for sort option, default to category_asc
-  const [isBuying, setIsBuying] = useState(false); // New state for loading indicator during purchase
 
   const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
     queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
@@ -142,46 +141,14 @@ const Shop = () => {
     setIsDetailDialogOpen(true);
   }, []);
 
+  // This function is now a placeholder, as the actual checkout happens on the Cart page
   const handleBuyNow = useCallback(async (product: Product) => {
-    setIsBuying(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
-          },
-          body: JSON.stringify({ product_id: product.id }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `Failed to create checkout session: ${response.status} ${response.statusText}`);
-      }
-
-      if (result.url) {
-        window.location.href = result.url; // Redirect to Stripe Checkout
-      } else {
-        throw new Error('Stripe checkout URL not received.');
-      }
-
-    } catch (err: any) {
-      console.error('Error during buy now:', err);
-      toast({
-        title: "Purchase Error",
-        description: `Failed to initiate purchase: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsBuying(false);
-    }
+    // This function is now obsolete as we use "Add to Cart"
+    toast({
+      title: "Action Required",
+      description: "Please add items to your cart and proceed to checkout from the Cart page.",
+      variant: "destructive",
+    });
   }, [toast]);
 
   const clearFilters = () => {
@@ -362,7 +329,7 @@ const Shop = () => {
                       product={product} 
                       onViewDetails={handleViewDetails}
                       onBuyNow={handleBuyNow}
-                      isBuying={isBuying}
+                      isBuying={false} // isBuying is always false here since we use Add to Cart
                     />
                   ))}
                 </div>
@@ -378,7 +345,7 @@ const Shop = () => {
           onOpenChange={setIsDetailDialogOpen}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
-          isBuying={isBuying}
+          isBuying={false} // isBuying is always false here since we use Add to Cart
         />
       )}
       

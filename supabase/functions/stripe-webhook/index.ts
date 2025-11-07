@@ -42,6 +42,12 @@ export interface Product {
   show_key_signature?: boolean; // New field
 }
 
+// Inlined Cart Line Item structure
+interface CartLineItem {
+  id: string; // product_id
+  quantity: number;
+}
+
 // Inlined HTML Email signature template
 const EMAIL_SIGNATURE_HTML = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -81,10 +87,10 @@ const textToHtml = (text: string) => {
 };
 
 // Inlined Helper to generate track list HTML for products
-const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
-  if (!trackUrls || trackUrls.length === 0) return '';
+const generateProductTrackListHtml = (product: Product) => {
+  if (!product.track_urls || product.track_urls.length === 0) return '';
   
-  const listItems = trackUrls.map(track => `
+  const listItems = product.track_urls.map(track => `
     <li style="margin-bottom: 5px;">
       <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
         ${track.caption || 'Download Track'}
@@ -94,7 +100,7 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
 
   return `
     <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
-      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
+      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">${product.title}:</p>
       <ul style="list-style: none; padding: 0; margin-top: 10px;">
         ${listItems}
       </ul>
@@ -112,7 +118,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000'; // Use SITE_URL from Deno env
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
+  const productTrackListHtml = generateProductTrackListHtml(product);
 
 
   if (!product.track_urls || product.track_urls.length === 0) {
@@ -125,6 +131,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   }
 
   try {
+    // @ts-ignore
     const genAI = new GoogleGenerativeAI(apiKey); // Initialize here with Deno API key
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
@@ -281,78 +288,164 @@ serve(async (req) => {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
-      const productId = session.metadata?.product_id;
       const customerEmail = session.customer_details?.email;
-      const amountTotal = session.amount_total;
-      const currency = session.currency;
       const paymentIntentId = session.payment_intent as string;
       const userId = session.client_reference_id; // Extract user_id from client_reference_id
       const checkoutSessionId = session.id; // Get the checkout session ID
+      
+      // Retrieve line items from metadata
+      const lineItemsMetadata = session.metadata?.line_items;
+      let cartLineItems: CartLineItem[] = [];
 
-      if (!productId || !customerEmail || amountTotal === null || currency === null || !checkoutSessionId) {
-        console.error('Missing essential data in checkout.session.completed event:', { productId, customerEmail, amountTotal, currency, checkoutSessionId });
+      if (lineItemsMetadata) {
+        try {
+          cartLineItems = JSON.parse(lineItemsMetadata);
+        } catch (e) {
+          console.error('Failed to parse line_items metadata:', e);
+          return new Response(JSON.stringify({ error: 'Invalid line_items metadata format.' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        // Fallback for single item purchase (shouldn't happen with new flow, but good for robustness)
+        const productId = session.metadata?.product_id;
+        if (productId) {
+          cartLineItems = [{ id: productId, quantity: 1 }];
+        }
+      }
+
+      if (!customerEmail || !checkoutSessionId || cartLineItems.length === 0) {
+        console.error('Missing essential data in checkout.session.completed event:', { customerEmail, checkoutSessionId, cartLineItems });
         return new Response(JSON.stringify({ error: 'Missing essential data in checkout session.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
-      // Fetch product details to ensure it exists and get its price and track_urls
-      const { data: product, error: productError } = await supabaseAdmin
-        .from('products')
-        .select('id, title, description, price, track_urls, vocal_ranges, sheet_music_url, key_signature') // Added sheet_music_url and key_signature
-        .eq('id', productId)
-        .single();
-
-      if (productError || !product) {
-        console.error('Product not found for order creation:', productId, productError);
-        return new Response(JSON.stringify({ error: `Product not found for order creation: ${productId}` }), {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Create an order record in your Supabase 'orders' table
-      const { data: order, error: insertError } = await supabaseAdmin
-        .from('orders')
-        .insert({
+      
+      // Fetch the full line items from Stripe to get accurate price and currency
+      const stripeSessionWithLineItems = await stripe.checkout.sessions.retrieve(checkoutSessionId, {
+        expand: ['line_items.data.price.product'],
+      });
+      
+      const stripeLineItems = stripeSessionWithLineItems.line_items?.data || [];
+      
+      // Map Stripe line items to database inserts
+      const ordersToInsert = stripeLineItems.map(item => {
+        const product = item.price?.product as Stripe.Product;
+        const productId = product?.metadata?.product_id || product?.id; // Use product ID from metadata or Stripe ID
+        
+        if (!productId) {
+          console.error('Product ID missing for line item:', item);
+          throw new Error('Product ID missing for one or more line items.');
+        }
+        
+        return {
           product_id: productId,
           customer_email: customerEmail,
-          amount: amountTotal / 100, // Convert cents back to dollars
-          currency: currency.toUpperCase(),
-          status: 'completed', // Mark as completed on successful checkout
+          amount: (item.amount_total || 0) / 100, // Convert cents back to dollars
+          currency: item.currency?.toUpperCase() || 'AUD',
+          status: 'completed',
           payment_intent_id: paymentIntentId,
-          user_id: userId, // Store the user_id if available
-          checkout_session_id: checkoutSessionId, // Store the checkout session ID
-        })
+          user_id: userId,
+          checkout_session_id: checkoutSessionId,
+          // Store the line item details in the new column
+          line_items: {
+            product_id: productId,
+            quantity: item.quantity,
+            unit_amount: (item.amount_total || 0) / (item.quantity || 1) / 100,
+            title: product.name,
+          }
+        };
+      });
+
+      // Insert all orders in a single batch
+      const { data: insertedOrders, error: insertError } = await supabaseAdmin
+        .from('orders')
+        .insert(ordersToInsert)
         .select();
 
       if (insertError) {
-        console.error('Error inserting order into database:', insertError);
-        throw new Error(`Failed to insert order: ${insertError.message}`);
+        console.error('Error inserting orders into database:', insertError);
+        throw new Error(`Failed to insert orders: ${insertError.message}`);
       }
 
-      console.log('Order created successfully:', order);
+      console.log(`Successfully created ${insertedOrders?.length || 0} orders.`);
 
-      // Implement digital product delivery here (send download link via email)
-      if (product.track_urls && product.track_urls.length > 0) { // Check for track_urls array
+      // 3. Handle digital product delivery (send one email containing all purchased products)
+      
+      // Get unique product IDs from the inserted orders
+      const uniqueProductIds = [...new Set(insertedOrders?.map(order => order.product_id).filter(Boolean) || [])];
+      
+      // Fetch all unique products purchased
+      const { data: purchasedProducts, error: productsError } = await supabaseAdmin
+        .from('products')
+        .select('id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature')
+        .in('id', uniqueProductIds);
+
+      if (productsError) {
+        console.error('Error fetching purchased products for email delivery:', productsError);
+        // Continue execution even if product fetch fails, but log warning
+      }
+      
+      const productsMap = new Map<string, Product>();
+      purchasedProducts?.forEach(p => productsMap.set(p.id, p as Product));
+
+      // Construct a single email body containing all products
+      let emailBodyHtml = '';
+      let emailSubject = 'Your Piano Backings Purchase Confirmation';
+      
+      if (purchasedProducts && purchasedProducts.length > 0) {
+        emailSubject = `Your ${purchasedProducts.length} Track${purchasedProducts.length > 1 ? 's' : ''} are Ready!`;
+        
+        emailBodyHtml += `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+            <p>Hi ${customerEmail.split('@')[0]},</p>
+            <p>Thank you for your recent purchase from Piano Backings by Daniele! All your digital tracks are now ready for download.</p>
+        `;
+        
+        purchasedProducts.forEach(product => {
+          const productTrackListHtml = generateProductTrackListHtml(product as Product);
+          
+          emailBodyHtml += `
+            <div style="margin-top: 25px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+              <h3 style="color: #1C0357; margin-top: 0;">Product: ${product.title}</h3>
+              <p style="font-size: 0.9em; color: #666;">${product.description}</p>
+              ${productTrackListHtml}
+              ${product.sheet_music_url ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music:</strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>` : ''}
+            </div>
+          `;
+        });
+        
+        emailBodyHtml += `
+            <p style="margin-top: 20px;">
+              We hope you enjoy your new tracks! Feel free to browse our other offerings:
+            </p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${Deno.env.get('SITE_URL')}/shop" 
+                 style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                Visit Our Shop
+              </a>
+            </p>
+            <p style="margin-top: 20px;">Warmly,</p>
+          </div>
+          ${EMAIL_SIGNATURE_HTML}
+        `;
+        
+        // Send the combined email
         try {
-          // Invoke the send-email Edge Function
           const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
           
-          // Generate email content using the Deno-compatible emailGenerator
-          const { subject, html } = await generateProductDeliveryEmail(product as Product, customerEmail); // Cast to Product
-
           const emailResponse = await fetch(sendEmailUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}` // Use service key for Edge Function invocation
+              'Authorization': `Bearer ${supabaseServiceKey}`
             },
             body: JSON.stringify({
               to: customerEmail,
-              subject: subject,
-              html: html,
+              subject: emailSubject,
+              html: emailBodyHtml,
               senderEmail: defaultSenderEmail
             })
           });
@@ -367,8 +460,8 @@ serve(async (req) => {
                 {
                   recipient: customerEmail,
                   sender: defaultSenderEmail,
-                  subject: subject,
-                  content: html,
+                  subject: emailSubject,
+                  content: emailBodyHtml,
                   status: 'failed',
                   type: 'product_delivery_email',
                   error_message: emailErrorText
@@ -383,8 +476,8 @@ serve(async (req) => {
                 {
                   recipient: customerEmail,
                   sender: defaultSenderEmail,
-                  subject: subject,
-                  content: html,
+                  subject: emailSubject,
+                  content: emailBodyHtml,
                   status: 'sent',
                   type: 'product_delivery_email'
                 }
@@ -399,7 +492,7 @@ serve(async (req) => {
               {
                 recipient: customerEmail,
                 sender: defaultSenderEmail,
-                subject: `Failed to deliver product: ${product.title}`,
+                subject: `Failed to deliver products: ${emailSubject}`,
                 content: `Error: ${emailSendError.message}`,
                 status: 'failed',
                 type: 'product_delivery_email',
@@ -408,20 +501,7 @@ serve(async (req) => {
             ]);
         }
       } else {
-        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_urls. No delivery email sent.`);
-        // Optionally, log a notification that a product without a track_url was purchased
-        await supabaseAdmin
-          .from('notifications')
-          .insert([
-            {
-              recipient: defaultSenderEmail, // Notify admin
-              sender: 'system@pianobackings.com',
-              subject: `Warning: Product purchased without track_urls - ${product.title}`,
-              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_urls was set for delivery. Manual intervention required.`,
-              status: 'warning',
-              type: 'system_alert'
-            }
-          ]);
+        console.warn('No products found for delivery email generation.');
       }
 
     } else {

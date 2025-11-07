@@ -17,6 +17,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Define the expected input structure for line items
+interface CartLineItem {
+  id: string; // product_id
+  quantity: number;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -41,10 +47,10 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const { product_id } = await req.json();
+    const { lineItems } = await req.json(); // Expecting an array of CartLineItem
 
-    if (!product_id) {
-      return new Response(JSON.stringify({ error: 'Product ID is required.' }), {
+    if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
+      return new Response(JSON.stringify({ error: 'Missing or empty lineItems array.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -54,68 +60,69 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
 
-    console.log('create-stripe-checkout: Auth header received:', authHeader ? 'Present' : 'Not Present');
-
     if (authHeader) {
       const token = authHeader.split(' ')[1];
-      console.log('create-stripe-checkout: Attempting to get user with token:', token ? 'Token Present' : 'Token Missing');
       const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-      if (userError) {
-        console.error('create-stripe-checkout: Error fetching user:', userError.message);
-      } else if (user) {
+      if (!userError && user) {
         userId = user.id;
-        console.log('create-stripe-checkout: User ID found for checkout session:', userId);
-      } else {
-        console.log('create-stripe-checkout: No user found for provided token.');
       }
-    } else {
-      console.log('create-stripe-checkout: No Authorization header, proceeding without user_id.');
     }
 
-    // Fetch product details from Supabase
-    const { data: product, error: productError } = await supabaseAdmin
+    // 1. Fetch all product details needed for the line items
+    const productIds = lineItems.map((item: CartLineItem) => item.id);
+    
+    const { data: productsData, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, title, description, price, currency, image_url, vocal_ranges, sheet_music_url, key_signature') // Added sheet_music_url and key_signature
-      .eq('id', product_id)
-      .single();
+      .select('id, title, description, price, currency, image_url, vocal_ranges, sheet_music_url, key_signature')
+      .in('id', productIds);
 
-    if (productError || !product) {
-      console.error('Error fetching product:', productError);
-      throw new Error(`Product not found: ${product_id}`);
+    if (productsError || !productsData || productsData.length === 0) {
+      console.error('Error fetching products for checkout:', productsError);
+      throw new Error('One or more products in the cart could not be found.');
     }
+
+    const productsMap = new Map(productsData.map(p => [p.id, p]));
+
+    // 2. Construct Stripe line items and metadata
+    const stripeLineItems = lineItems.map((cartItem: CartLineItem) => {
+      const product = productsMap.get(cartItem.id);
+      if (!product) {
+        throw new Error(`Product with ID ${cartItem.id} not found.`);
+      }
+
+      return {
+        price_data: {
+          currency: product.currency,
+          product_data: {
+            name: product.title,
+            description: product.description,
+            images: product.image_url ? [product.image_url] : [],
+            metadata: {
+              vocal_ranges: product.vocal_ranges ? product.vocal_ranges.join(', ') : 'N/A',
+              key_signature: product.key_signature || 'N/A',
+              sheet_music_url: product.sheet_music_url || 'N/A',
+            },
+          },
+          unit_amount: Math.round(product.price * 100), // Stripe expects amount in cents
+        },
+        quantity: cartItem.quantity,
+      };
+    });
+    
+    // Store the full list of line items in metadata for the webhook
+    const lineItemsMetadata = JSON.stringify(lineItems);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: product.currency,
-            product_data: {
-              name: product.title,
-              description: product.description,
-              images: product.image_url ? [product.image_url] : [],
-              metadata: { // Add vocal_ranges, key_signature, sheet_music_url to product_data metadata
-                vocal_ranges: product.vocal_ranges ? product.vocal_ranges.join(', ') : 'N/A',
-                key_signature: product.key_signature || 'N/A',
-                sheet_music_url: product.sheet_music_url || 'N/A',
-              },
-            },
-            unit_amount: Math.round(product.price * 100), // Stripe expects amount in cents
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: stripeLineItems,
       mode: 'payment',
-      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`, // Redirect to new confirmation page
+      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/shop?canceled=true`,
       metadata: {
-        product_id: product.id,
+        line_items: lineItemsMetadata, // Store all line items here
       },
-      // Pass the user ID if available
       client_reference_id: userId || undefined,
     });
-
-    console.log('create-stripe-checkout: Stripe session created with client_reference_id:', session.client_reference_id);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
