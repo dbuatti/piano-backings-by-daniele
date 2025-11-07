@@ -64,7 +64,7 @@ const FormPage = () => {
     sheetMusic: null as File | null,
     youtubeLink: '',
     additionalLinks: '', // New field for additional links
-    trackPurpose: '',
+    // trackPurpose: '', // REMOVED: Consolidated with Category
     backingType: [] as string[], // Changed to array for multi-select
     deliveryDate: '',
     additionalServices: [] as string[],
@@ -210,7 +210,7 @@ const FormPage = () => {
       sheetMusic: null,
       youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY', // Added a dummy YouTube link
       additionalLinks: 'https://example.com/extra-reference', // Dummy additional link
-      trackPurpose: 'personal-practise',
+      // trackPurpose: 'personal-practise', // REMOVED
       backingType: ['full-song', 'audition-cut'], // Dummy multi-select
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
@@ -248,6 +248,7 @@ const FormPage = () => {
     if (!formData.musicalOrArtist) newErrors.musicalOrArtist = 'Musical or Artist is required.';
     if (!formData.category) newErrors.category = 'Category is required.';
     if (!formData.trackType) newErrors.trackType = 'Track Type is required.';
+    if (!formData.songKey) newErrors.songKey = 'Sheet music key is required.'; // NEW: Make sheet music key required
     if (formData.backingType.length === 0) newErrors.backingType = 'At least one backing type is required.';
     if (!formData.sheetMusic) newErrors.sheetMusic = 'Sheet music is required. Please upload a PDF file.';
     if (!consentChecked) newErrors.consent = 'You must agree to the terms to submit your request.'; // New consent validation
@@ -371,7 +372,7 @@ const FormPage = () => {
           voiceMemo: formData.voiceMemo,
           voiceMemoFileUrl: voiceMemoFileUrl,
           sheetMusicUrl: sheetMusicUrl,
-          trackPurpose: formData.trackPurpose,
+          // trackPurpose: formData.trackPurpose, // REMOVED
           backingType: formData.backingType, // Now an array
           deliveryDate: formData.deliveryDate,
           additionalServices: formData.additionalServices,
@@ -436,7 +437,7 @@ const FormPage = () => {
         sheetMusic: null,
         youtubeLink: '',
         additionalLinks: '', // Clear the new field
-        trackPurpose: '',
+        // trackPurpose: '', // REMOVED
         backingType: [], // Clear as array
         deliveryDate: '',
         additionalServices: [],
@@ -550,7 +551,7 @@ const FormPage = () => {
           <CardHeader id="request-guidelines" className="bg-[#D1AAF2]/20 py-3 px-4"> {/* Added id here */}
             <CardTitle className="text-lg md:text-xl text-[#1C0357] flex items-center">
               <MusicIcon className="mr-2" size={16} />
-              Request Guidelines
+              Before You Start: Preparation Checklist
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -563,7 +564,7 @@ const FormPage = () => {
             
             <div className="border-l-2 border-[#F538BC] pl-3 py-2 my-3">
               <p className="font-bold text-[#1C0357] text-sm">
-                ✅ Important: Your sheet music must be clear, correctly cut, and in the right key.
+                ✅ <span className="font-bold">Important: Your sheet music must be clear, correctly cut, and in the right key.</span>
               </p>
             </div>
             
@@ -728,7 +729,7 @@ const FormPage = () => {
                       <RadioGroupItem value="quick" id="quick" className="sr-only" /> {/* Hidden radio button */}
                       <Mic className={cn("h-8 w-8 mb-2", formData.trackType === 'quick' ? "text-[#F538BC]" : "text-gray-500")} />
                       <span className="font-bold text-sm text-[#1C0357]">Quick Reference</span>
-                      <span className="text-[#1C0357] font-medium mt-1 text-xs">$5 - $10</span>
+                      <span className="text-[#1C0357] font-bold mt-1 text-xs">$5 - $10</span> {/* BOLDED */}
                       <span className="text-xs mt-1 text-gray-600">Fast voice memo for quick learning</span>
                     </Card>
                   </Label>
@@ -743,7 +744,7 @@ const FormPage = () => {
                       <RadioGroupItem value="one-take" id="one-take" className="sr-only" />
                       <Headphones className={cn("h-8 w-8 mb-2", formData.trackType === 'one-take' ? "text-[#F538BC]" : "text-gray-500")} />
                       <span className="font-bold text-sm text-[#1C0357]">One-Take Recording</span>
-                      <span className="text-[#1C0357] font-medium mt-1 text-xs">$10 - $20</span>
+                      <span className="text-[#1C0357] font-bold mt-1 text-xs">$10 - $20</span> {/* BOLDED */}
                       <span className="text-xs mt-1 text-gray-600">Single-pass DAW recording</span>
                     </Card>
                   </Label>
@@ -758,7 +759,7 @@ const FormPage = () => {
                       <RadioGroupItem value="polished" id="polished" className="sr-only" />
                       <Sparkles className={cn("h-8 w-8 mb-2", formData.trackType === 'polished' ? "text-[#F538BC]" : "text-gray-500")} />
                       <span className="font-bold text-sm text-[#1C0357]">Polished Backing</span>
-                      <span className="text-[#1C0357] font-medium mt-1 text-xs">$15 - $35</span>
+                      <span className="text-[#1C0357] font-bold mt-1 text-xs">$15 - $35</span> {/* BOLDED */}
                       <span className="text-xs mt-1 text-gray-600">Refined track for auditions</span>
                     </Card>
                   </Label>
@@ -775,10 +776,12 @@ const FormPage = () => {
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="songKey" className="text-sm mb-1">What key is your song in?</Label>
+                    <Label htmlFor="songKey" className="flex items-center text-sm mb-1">
+                      What key is the <span className="font-bold ml-1">sheet music you are uploading</span> in? <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <div className="relative">
                       <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey} disabled={isHolidayModeActive}>
-                        <SelectTrigger className="pl-8 py-2 text-sm">
+                        <SelectTrigger className={cn("pl-8 py-2 text-sm", errors.songKey && "border-red-500")}>
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
                         <SelectContent>
@@ -791,10 +794,13 @@ const FormPage = () => {
                       </Select>
                       <KeyIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                     </div>
+                    {errors.songKey && <p className="text-red-500 text-xs mt-1">{errors.songKey}</p>}
                   </div>
                   
                   <div>
-                    <Label htmlFor="differentKey" className="text-sm mb-1">Do you require it in a different key?</Label>
+                    <Label htmlFor="differentKey" className="flex items-center text-sm mb-1">
+                      Do you require the <span className="font-bold ml-1">final backing track</span> to be in a different key?
+                    </Label>
                     <div className="relative">
                       <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey} disabled={isHolidayModeActive}>
                         <SelectTrigger className="pl-8 py-2 text-sm">
@@ -813,7 +819,7 @@ const FormPage = () => {
                 
                 {formData.differentKey === 'Yes' && (
                   <div className="mt-4">
-                    <Label htmlFor="keyForTrack" className="text-sm mb-1">Which key?</Label>
+                    <Label htmlFor="keyForTrack" className="text-sm mb-1">Which key do you require?</Label>
                     <div className="relative">
                       <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isHolidayModeActive}>
                         <SelectTrigger className="pl-8 py-2 text-sm">
@@ -894,73 +900,54 @@ const FormPage = () => {
                     <p className="text-xs text-gray-500 mt-1">Provide any other relevant links here (e.g., Dropbox, Spotify, etc.)</p>
                   </div>
 
-                  <div>
+                  {/* Grouped Voice Memo Options */}
+                  <div className="space-y-3 border p-3 rounded-md bg-gray-50">
                     <Label className="flex items-center text-sm mb-1">
                       <MicIcon className="mr-1" size={14} />
-                      Voice Memo (optional)
+                      Voice Memo (Optional - Please Choose One)
                     </Label>
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="voiceMemo" className="text-xs text-gray-600 mb-1">Link to voice memo</Label>
-                        <div className="relative">
-                          <Input 
-                            id="voiceMemo" 
-                            name="voiceMemo" 
-                            value={formData.voiceMemo} 
-                            onChange={handleInputChange} 
-                            placeholder="https://example.com/voice-memo.mp3"
-                            className="pl-8 py-2 text-sm"
-                            disabled={isHolidayModeActive}
-                          />
-                          <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                        </div>
+                    <div>
+                      <Label htmlFor="voiceMemo" className="text-xs text-gray-600 mb-1">Link to voice memo</Label>
+                      <div className="relative">
+                        <Input 
+                          id="voiceMemo" 
+                          name="voiceMemo" 
+                          value={formData.voiceMemo} 
+                          onChange={handleInputChange} 
+                          placeholder="https://example.com/voice-memo.mp3"
+                          className="pl-8 py-2 text-sm"
+                          disabled={isHolidayModeActive || !!formData.voiceMemoFile} // Disable if file is selected
+                        />
+                        <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
-                      {/* Using the new FileInput component */}
-                      <FileInput
-                        id="voiceMemoFile"
-                        label="Upload voice memo file"
-                        icon={MicIcon}
-                        accept="audio/*"
-                        onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                        note="Note: Voice memo uploads may not be available at this time"
-                        disabled={isHolidayModeActive}
-                      />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">You can provide either a link or upload a file</p>
+                    <p className="text-center text-xs text-gray-500">OR</p>
+                    <FileInput
+                      id="voiceMemoFile"
+                      label="Upload voice memo file"
+                      icon={MicIcon}
+                      accept="audio/*"
+                      onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                      note="Note: Voice memo uploads may not be available at this time"
+                      disabled={isHolidayModeActive || !!formData.voiceMemo} // Disable if link is provided
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Section 5: Purpose */}
+              {/* Section 5: Purpose (Now only Backing Type checkboxes) */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
-                  Purpose
+                  Backing Type <span className="text-red-500 ml-1">*</span>
                 </h2>
                 
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="trackPurpose" className="text-sm mb-1">This track is for...</Label>
-                    <div className="relative">
-                      <Select onValueChange={(value) => handleSelectChange('trackPurpose', value)} value={formData.trackPurpose} disabled={isHolidayModeActive}>
-                        <SelectTrigger className="pl-8 py-2 text-sm">
-                          <SelectValue placeholder="Select purpose" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="personal-practise" className="text-sm">Personal Practise</SelectItem>
-                          <SelectItem value="audition-backing" className="text-sm">Audition Backing Track</SelectItem>
-                          <SelectItem value="melody-bash" className="text-sm">Note/melody bash</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Target className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                    </div>
-                  </div>
-                  
                   {/* Multi-select for Backing Type */}
                   <div>
                     <h3 className="font-semibold mb-2 flex items-center text-sm">
                       <MusicIcon className="mr-1" size={14} />
-                      What do you need? <span className="text-red-500 ml-1">*</span>
+                      What do you need?
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Label htmlFor="backing-full-song" className="flex flex-col items-center justify-center cursor-pointer w-full">
@@ -1195,7 +1182,7 @@ const FormPage = () => {
                     disabled={isHolidayModeActive}
                   />
                   <Label htmlFor="consent-checkbox" className="text-sm leading-relaxed cursor-pointer">
-                    I understand that to keep costs low and tracks accessible, Piano Backings by Daniele may sell this track to other artists and/or upload it to public platforms like YouTube.
+                    I understand that to keep costs low and tracks accessible, Piano Backings by Daniele may sell this track to other artists and/or upload it to public platforms like YouTube, <span className="font-bold">unless I purchase the 'Exclusive Ownership' option in Section 6.</span>
                     <span className="text-red-500 ml-1">*</span>
                   </Label>
                 </div>
