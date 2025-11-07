@@ -29,11 +29,6 @@ import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
 // Removed Table imports as the table is being replaced
 
-interface TrackInfo {
-  url: string;
-  caption: string;
-}
-
 // New interface for Product (updated to use track_urls)
 export interface Product {
   id: string;
@@ -130,7 +125,7 @@ const EmailGenerator = () => {
       try {
         const { data, error } = await supabase
           .from('backing_requests')
-          .select('*, track_urls') // Select track_urls to infer email status
+          .select('*, track_urls, user_id, guest_access_token') // Select track_urls to infer email status
           .order('created_at', { ascending: false });
         
         if (error) throw error;

@@ -42,11 +42,43 @@ import Seo from "@/components/Seo";
 //   caption: string | boolean | null | undefined;
 // }
 
+interface BackingRequest { // Define BackingRequest interface for this component
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  song_title: string;
+  musical_or_artist: string;
+  song_key: string | null;
+  different_key: string | null;
+  key_for_track: string | null;
+  youtube_link: string | null;
+  voice_memo: string | null;
+  sheet_music_url: string | null;
+  track_purpose: string | null;
+  backing_type: string[] | string | null;
+  delivery_date: string | null;
+  additional_services: string[] | null;
+  special_requests: string | null;
+  category: string | null;
+  track_type: string | null;
+  additional_links: string | null;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  is_paid: boolean;
+  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
+  shared_link?: string | null;
+  dropbox_folder_id?: string | null;
+  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
+  cost?: number | null;
+  user_id?: string | null; // Added user_id
+  guest_access_token?: string | null; // Added guest_access_token
+}
+
 const ClientTrackView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [request, setRequest] = useState<any>(null);
+  const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<any>(null); // New state
@@ -82,7 +114,7 @@ const ClientTrackView = () => {
       }
 
       try {
-        let requestData: any = null;
+        let requestData: BackingRequest | null = null;
         let fetchError: any = null;
 
         if (guestAccessToken) {
@@ -109,7 +141,7 @@ const ClientTrackView = () => {
             .from('backing_requests')
             .select('*')
             .eq('id', id)
-            .single();
+            .single<BackingRequest>();
           requestData = data;
           fetchError = error;
         }
@@ -207,7 +239,7 @@ const ClientTrackView = () => {
         });
         // Refresh the request data to show it's now linked
         // Or simply update the local state
-        setRequest(prev => ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }));
+        setRequest(prev => prev ? ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }) : null);
       } else {
         throw new Error("Failed to link request: Unknown error.");
       }
