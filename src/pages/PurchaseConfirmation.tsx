@@ -7,7 +7,7 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText, UserPlus } from 'lucide-react'; // Added UserPlus
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { downloadTrack, TrackInfo } from '@/utils/helpers';
@@ -51,6 +51,10 @@ const PurchaseConfirmation: React.FC = () => {
       setLoading(true);
       setError(null);
       const sessionId = searchParams.get('session_id');
+
+      // Fetch user session first
+      const { data: { session } = {} } = await supabase.auth.getSession();
+      setUserSession(session);
 
       if (!sessionId) {
         setError(new Error('No session ID found in URL.'));
@@ -270,26 +274,50 @@ const PurchaseConfirmation: React.FC = () => {
                     <User className="mr-2 h-5 w-5" />
                     Next Steps
                   </h3>
-                  <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    {userSession ? (
+                  {!userSession ? (
+                    <div className="space-y-6">
+                      <Card className="bg-[#1C0357] text-white border-[#1C0357] shadow-lg">
+                        <CardContent className="p-6 text-center">
+                          <h4 className="text-2xl font-bold mb-3 flex items-center justify-center">
+                            <UserPlus className="mr-3 h-6 w-6" />
+                            Enhance Your Experience!
+                          </h4>
+                          <p className="text-lg mb-4 opacity-90">
+                            Create a free account to easily track all your purchases and custom requests in one place.
+                          </p>
+                          <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <Link to="/login">
+                              <Button size="lg" className="bg-white text-[#1C0357] hover:bg-gray-200 text-base px-6 py-3">
+                                Login / Create Account
+                              </Button>
+                            </Link>
+                            <Link to="/shop">
+                              <Button 
+                                variant="ghost" 
+                                size="lg" 
+                                className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
+                              >
+                                Continue Shopping as Guest
+                              </Button>
+                            </Link>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row justify-center gap-4">
                       <Link to="/user-dashboard">
                         <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3 w-full sm:w-auto">
                           Go to My Dashboard
                         </Button>
                       </Link>
-                    ) : (
-                      <Link to="/login">
-                        <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3 w-full sm:w-auto">
-                          Login / Create Account
+                      <Link to="/shop">
+                        <Button variant="outline" className="text-[#1C0357] border-[#1C0357] hover:bg-[#1C0357]/10 text-lg px-6 py-3 w-full sm:w-auto">
+                          Continue Shopping
                         </Button>
                       </Link>
-                    )}
-                    <Link to="/shop">
-                      <Button variant="outline" className="text-[#1C0357] border-[#1C0357] hover:bg-[#1C0357]/10 text-lg px-6 py-3 w-full sm:w-auto">
-                        Continue Shopping
-                      </Button>
-                    </Link>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
