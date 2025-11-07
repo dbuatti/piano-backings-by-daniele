@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, Mask, Tag, Key, FileText, Loader2 } from 'lucide-react'; // Added Loader2 icon
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, Theater, Tag, Key, FileText, Loader2 } from 'lucide-react'; // Replaced Mask with Theater
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
@@ -111,7 +111,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <DialogTitle className="text-3xl font-bold text-[#1C0357]">{product.title}</DialogTitle>
             {product.artist_name && (
               <p className="text-lg text-gray-700 flex items-center">
-                <Mask className="h-5 w-5 mr-2" /> {product.artist_name}
+                <Theater className="h-5 w-5 mr-2" /> {product.artist_name}
               </p>
             )}
             {product.category && (
