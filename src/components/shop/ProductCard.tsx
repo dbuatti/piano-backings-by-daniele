@@ -119,7 +119,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           </p>
         )}
         
-        {/* Moved Category and Vocal Ranges here */}
+        {/* Grouped Category, Vocal Ranges, Key, and Sheet Music */}
         <div className="flex flex-wrap gap-1 mb-2">
           {product.category && (
             <Badge 
@@ -134,21 +134,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               {range}
             </Badge>
           ))}
+          {product.key_signature && product.show_key_signature && (
+            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-gray-300 text-gray-700">
+              Key: {product.key_signature}
+            </Badge>
+          )}
+          {product.show_sheet_music_url && product.sheet_music_url && (
+            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-green-500 text-green-700">
+              Sheet Music
+            </Badge>
+          )}
         </div>
 
         <p className="text-sm text-gray-600 line-clamp-3 mb-3">{product.description}</p>
         
-        {product.key_signature && product.show_key_signature && (
-          <div className="flex items-center text-gray-700 text-sm mb-1">
-            <Key className="h-4 w-4 mr-2 text-purple-500" /> {product.key_signature}
-          </div>
-        )}
-        {product.show_sheet_music_url && product.sheet_music_url && (
-          <div className="flex items-center text-gray-700 text-sm mb-3">
-            <FileText className="h-4 w-4 mr-2 text-green-500" /> Sheet Music Available
-          </div>
-        )}
-
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center">
             <DollarSign className="h-5 w-5 text-[#1C0357] mr-1" />

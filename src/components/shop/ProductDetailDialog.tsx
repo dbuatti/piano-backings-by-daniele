@@ -178,7 +178,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <div className="space-y-3">
               <h4 className="text-xl font-semibold text-[#1C0357] flex items-center">
                 <Music className="mr-2 h-5 w-5" />
-                Available Tracks
+                10-Second Audio Sample
               </h4>
               <ul className="space-y-2">
                 {product.track_urls.map((track, index) => (
