@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag, Key, FileText } from 'lucide-react'; // Added Key and FileText icons
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, User, Tag, Key, FileText, Loader2 } from 'lucide-react'; // Added Loader2 icon
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
@@ -37,7 +37,8 @@ interface ProductDetailDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   product: Product | null;
-  onBuyNow: (product: Product) => void;
+  onBuyNow: (product: Product) => Promise<void>;
+  isBuying: boolean; // Added isBuying prop
 }
 
 const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
@@ -45,6 +46,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
   product,
   onBuyNow,
+  isBuying, // Destructure isBuying
 }) => {
   const { toast } = useToast(); // Initialize useToast
   if (!product) return null;
@@ -161,9 +163,14 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <Button 
               onClick={() => onBuyNow(product)}
               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
+              disabled={isBuying} // Disable button when buying
             >
-              Buy Now
-              <ShoppingCart className="ml-2 h-5 w-5" />
+              {isBuying ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <ShoppingCart className="ml-2 h-5 w-5" />
+              )}
+              {isBuying ? 'Processing...' : 'Buy Now'}
             </Button>
           </div>
 

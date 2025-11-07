@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key, Mic, Headphones, Sparkles } from 'lucide-react';
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText } from 'lucide-react'; // Added FileText
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TrackInfo } from '@/utils/helpers';
@@ -30,9 +30,28 @@ interface Product {
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
+  onBuyNow: (product: Product) => Promise<void>;
+  isBuying: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
   
   const getTrackTypeIcon = (type: string | undefined) => {
     switch (type) {
@@ -48,9 +67,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
   };
 
   const trackIcon = getTrackTypeIcon(product.track_type);
+  const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
 
   return (
-    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
+    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full border border-gray-200 bg-white min-h-[400px]">
       <CardHeader className="p-0 relative overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
@@ -71,18 +91,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
           )}
         </AspectRatio>
         
-        {/* Top Left: Category Badge (Simplified) */}
-        <div className="absolute top-2 left-2">
-          {product.category && (
-            <Badge 
-              variant="default" 
-              className="bg-white/90 text-[#1C0357] capitalize text-sm px-3 py-1 rounded-full shadow-lg font-semibold"
-            >
-              {product.category.replace('-', ' ')}
-            </Badge>
-          )}
-        </div>
-
         {/* Top Right: Track Type Icon (New) */}
         {trackIcon && (
           <div className="absolute top-2 right-2">
@@ -103,32 +111,69 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
         )}
 
       </CardHeader>
-      <CardContent className="flex-1 p-4">
-        <CardTitle className="text-xl font-bold text-[#1C0357] mb-2">{product.title}</CardTitle>
+      <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10"> {/* Lighter purple background */}
+        <CardTitle className="text-xl font-bold text-[#1C0357] mb-0 leading-tight">{product.title}</CardTitle>
         {product.artist_name && (
-          <p className="text-sm text-gray-500 flex items-center mb-1">
-            <User className="h-3 w-3 mr-1" /> {product.artist_name}
-          </p>
+          <p className="text-sm text-gray-700 mb-2 leading-tight">{product.artist_name}</p>
         )}
+        
+        {/* Moved Category and Vocal Ranges here */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {product.category && (
+            <Badge 
+              variant="default" 
+              className="bg-[#1C0357] text-white capitalize text-xs px-2 py-0.5 rounded-full font-semibold"
+            >
+              {product.category.replace('-', ' ')}
+            </Badge>
+          )}
+          {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
+            <Badge key={range} variant="secondary" className="bg-gray-200 text-gray-800 text-xs px-2 py-0.5 rounded-full">
+              {range}
+            </Badge>
+          ))}
+        </div>
+
+        <p className="text-sm text-gray-600 line-clamp-3 mb-3">{product.description}</p>
+        
         {product.key_signature && product.show_key_signature && (
-          <p className="text-xs text-gray-500 flex items-center mb-1">
-            <Key className="h-3 w-3 mr-1" /> {product.key_signature}
-          </p>
-        )}
-        {product.vocal_ranges && product.vocal_ranges.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {product.vocal_ranges.map((range, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {range}
-              </Badge>
-            ))}
+          <div className="flex items-center text-gray-700 text-sm mb-1">
+            <Key className="h-4 w-4 mr-2 text-purple-500" /> {product.key_signature}
           </div>
         )}
-        <p className="text-sm text-gray-600 line-clamp-3">{product.description}</p>
-        <div className="flex items-center mt-3">
-          <DollarSign className="h-5 w-5 text-[#1C0357] mr-1" />
-          <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+        {product.show_sheet_music_url && product.sheet_music_url && (
+          <div className="flex items-center text-gray-700 text-sm mb-3">
+            <FileText className="h-4 w-4 mr-2 text-green-500" /> Sheet Music Available
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center">
+            <DollarSign className="h-5 w-5 text-[#1C0357] mr-1" />
+            <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+          </div>
+          {firstTrackUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handlePlayPause} 
+                  className="text-[#1C0357] hover:bg-[#1C0357]/10"
+                >
+                  {isPlaying ? <PauseCircle className="h-6 w-6" /> : <PlayCircle className="h-6 w-6" />}
+                  <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play Sample'}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
+        {firstTrackUrl && (
+          <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
+        )}
       </CardContent>
       <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full">
         <Button 
@@ -140,11 +185,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails }) => 
           View Details
         </Button>
         <Button 
-          onClick={() => { /* onBuyNow logic will be handled by the dialog */ }}
+          onClick={() => onBuyNow(product)} 
           className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full"
+          disabled={isBuying}
         >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Buy Now
+          {isBuying ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ShoppingCart className="mr-2 h-4 w-4" />
+          )}
+          {isBuying ? 'Processing...' : 'Buy Now'}
         </Button>
       </CardFooter>
     </Card>

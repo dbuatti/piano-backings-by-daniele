@@ -226,7 +226,7 @@ const Shop = () => {
         <p className="text-lg text-gray-700 mb-8">Browse our collection of high-quality backing tracks.</p>
 
         <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
-          <div className="relative flex-grow w-full md:w-auto">
+          <div className="relative w-full md:w-1/3"> {/* Adjusted width */}
             <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search Title or Artist</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -245,7 +245,7 @@ const Shop = () => {
           <div className="w-full md:w-[180px]">
             <Label htmlFor="vocal-range-filter-main" className="text-sm font-medium text-gray-700 mb-1 block">Filter by Vocal Range</Label>
             <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
-              <SelectTrigger id="vocal-range-filter-main">
+              <SelectTrigger id="vocal-range-filter-main" className="border border-gray-300"> {/* Added border */}
                 <SelectValue placeholder="All Ranges" />
               </SelectTrigger>
               <SelectContent>
@@ -260,7 +260,7 @@ const Shop = () => {
           
           <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10">
+              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300"> {/* Added border */}
                 <Filter className="h-5 w-5" /> More Filters
                 {hasActiveFilters && <Badge className="ml-1 px-2 py-0.5 rounded-full bg-[#D1AAF2] text-[#1C0357]">Active</Badge>}
               </Button>
@@ -277,7 +277,7 @@ const Shop = () => {
                 <div>
                   <Label htmlFor="category-filter" className="mb-2 block">Category</Label>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger id="category-filter">
+                    <SelectTrigger id="category-filter" className="border border-gray-300"> {/* Added border */}
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -308,7 +308,7 @@ const Shop = () => {
                 <div>
                   <Label htmlFor="sort-option" className="mb-2 block">Sort By</Label>
                   <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger id="sort-option">
+                    <SelectTrigger id="sort-option" className="border border-gray-300"> {/* Added border */}
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
