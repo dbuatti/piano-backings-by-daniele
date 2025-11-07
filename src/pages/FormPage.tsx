@@ -31,7 +31,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom'; // Import Link
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils"; // Import cn for conditional classNames
 import FileInput from "@/components/FileInput"; // Import the new FileInput component
