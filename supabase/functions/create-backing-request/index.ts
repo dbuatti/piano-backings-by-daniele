@@ -505,7 +505,7 @@ serve(async (req) => {
                     // Create a fallback reference file
                     await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
                     youtubeMp3Success = true; // Mark as successful since we provided a reference
-                    youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to missing API key';
+                    youtubeMp3Error += ' | Created reference text file with YouTube link instead of MP3 due to missing API key';
                   }
                 } else {
                   youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
@@ -544,9 +544,14 @@ serve(async (req) => {
             youtubeMp3Error = `API error: ${apiError.message}`;
             
             // Create a fallback reference file
-            await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
-            youtubeMp3Success = true; // Mark as successful since we provided a reference
-            youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+            try {
+              const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+              await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
+              youtubeMp3Success = true; // Mark as successful since we provided a reference
+              youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
+            } catch (fallbackError) {
+              console.error('Fallback reference file creation failed:', fallbackError);
+            }
           }
         }
       } catch (error) {
@@ -721,6 +726,7 @@ serve(async (req) => {
           user_id: userId, // Will be null for anonymous users
           email: userEmail, // Guaranteed to be present
           name: userName, // From form data or auth
+          phone: formData.phone, // Insert phone number
           song_title: formData.songTitle,
           musical_or_artist: formData.musicalOrArtist,
           song_key: formData.songKey,
@@ -788,6 +794,7 @@ serve(async (req) => {
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.additionalLinks ? `<a href="${formData.additionalLinks}">${formData.additionalLinks}</a>` : 'None'}</td></tr>
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.voiceMemo || formData.voiceMemoFileUrl ? `<a href="${formData.voiceMemo || formData.voiceMemoFileUrl}">${formData.voiceMemo || formData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.sheetMusicUrl ? `<a href="${formData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone Number:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.phone || 'Not provided'}</td></tr>
               <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests:</td><td style="padding: 5px 0;">${formData.specialRequests || 'None'}</td></tr>
             </table>
           </div>
@@ -893,6 +900,7 @@ serve(async (req) => {
               <strong>Song:</strong> ${formData.songTitle}<br>
               <strong>Musical/Artist:</strong> ${formData.musicalOrArtist}<br>
               <strong>Requested by:</strong> ${userName || 'N/A'} (${userEmail})<br>
+              ${formData.phone ? `<strong>Phone:</strong> ${formData.phone}<br>` : ''}
               <strong>Submitted:</strong> ${new Date().toLocaleString()}
             </div>
             
@@ -1015,80 +1023,6 @@ serve(async (req) => {
                 }
               ]);
           }
-        }
-      } else { // If fetching recipients was successful
-        if (recipients && recipients.length > 0) {
-          const recipientEmails = recipients.map(r => r.email);
-          console.log('Sending notification to configured recipients:', recipientEmails);
-          
-          for (const email of recipientEmails) {
-            try {
-              const payloadToSend = {
-                to: email,
-                subject: adminEmailSubject,
-                html: adminEmailHtml,
-                senderEmail: defaultSenderEmail
-              };
-              
-              const emailResponse = await fetch(sendEmailUrl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${supabaseServiceKey}`
-                },
-                body: JSON.stringify(payloadToSend)
-              });
-              
-              if (!emailResponse.ok) {
-                const emailErrorText = await emailResponse.text();
-                console.error(`Failed to send notification email to ${email}:`, emailErrorText);
-                await supabaseAdmin
-                  .from('notifications')
-                  .insert([
-                    {
-                      recipient: email,
-                      sender: 'system@pianobackings.com',
-                      subject: adminEmailSubject,
-                      content: adminEmailHtml,
-                      status: 'failed',
-                      type: 'email',
-                      error_message: emailErrorText
-                    }
-                  ]);
-              } else {
-                console.log(`Notification email sent successfully to ${email}`);
-                await supabaseAdmin
-                  .from('notifications')
-                  .insert([
-                    {
-                      recipient: email,
-                      sender: 'system@pianobackings.com',
-                      subject: adminEmailSubject,
-                      content: adminEmailHtml,
-                      status: 'sent',
-                      type: 'email'
-                    }
-                  ]);
-              }
-            } catch (emailError) {
-              console.error(`Error sending notification email to ${email}:`, emailError);
-              await supabaseAdmin
-                .from('notifications')
-                .insert([
-                  {
-                    recipient: email,
-                    sender: 'system@pianobackings.com',
-                    subject: adminEmailSubject,
-                    content: adminEmailHtml,
-                    status: 'failed',
-                    type: 'email',
-                    error_message: emailError.message
-                  }
-                ]);
-            }
-          }
-        } else {
-          console.log('No notification recipients configured, no email sent.');
         }
       }
     } catch (emailError) {
@@ -1255,6 +1189,7 @@ CLIENT INFORMATION
 ------------------
 Name: ${formData.name || 'Not provided'}
 Email: ${formData.email || 'Not provided'}
+Phone: ${formData.phone || 'Not provided'}
 
 TRACK INFORMATION
 -----------------

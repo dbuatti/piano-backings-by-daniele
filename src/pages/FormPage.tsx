@@ -25,7 +25,8 @@ import {
   Sparkles, // Added Sparkles icon
   MessageSquare, // New icon for special requests
   Plane, // Added Plane icon for holiday mode
-  CheckCircle // Added CheckCircle for success message
+  CheckCircle, // Added CheckCircle for success message
+  Phone // Added Phone icon
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -55,7 +56,9 @@ const FormPage = () => {
 
   const [formData, setFormData] = useState({
     email: '',
+    confirmEmail: '', // New field for email confirmation
     name: '',
+    phone: '', // New field for phone number
     songTitle: '',
     musicalOrArtist: '',
     songKey: '',
@@ -85,6 +88,7 @@ const FormPage = () => {
         setFormData(prev => ({
           ...prev,
           email: session.user.email || '',
+          confirmEmail: session.user.email || '', // Pre-fill confirm email too
           name: session.user.user_metadata?.full_name || ''
         }));
         // Check if user is admin
@@ -200,7 +204,9 @@ const FormPage = () => {
   const fillDummyData = () => {
     setFormData({
       email: user?.email || 'test@example.com',
+      confirmEmail: user?.email || 'test@example.com', // Fill confirm email too
       name: user?.user_metadata?.full_name || 'Test User',
+      phone: '0412345678', // Dummy phone number
       songTitle: 'Defying Gravity',
       musicalOrArtist: 'Wicked',
       songKey: 'C Major (0)',
@@ -244,6 +250,7 @@ const FormPage = () => {
 
     // Client-side validation
     if (!formData.email) newErrors.email = 'Email is required.';
+    if (formData.email !== formData.confirmEmail) newErrors.confirmEmail = 'Emails do not match.'; // New validation
     if (!formData.songTitle) newErrors.songTitle = 'Song Title is required.';
     if (!formData.musicalOrArtist) newErrors.musicalOrArtist = 'Musical or Artist is required.';
     if (!formData.category) newErrors.category = 'Category is required.';
@@ -362,6 +369,7 @@ const FormPage = () => {
         formData: {
           email: formData.email,
           name: formData.name,
+          phone: formData.phone, // Include phone number
           songTitle: formData.songTitle,
           musicalOrArtist: formData.musicalOrArtist,
           songKey: formData.songKey,
@@ -423,7 +431,9 @@ const FormPage = () => {
       // Clear form
       setFormData({
         email: user?.email || '',
+        confirmEmail: user?.email || '',
         name: user?.user_metadata?.full_name || '',
+        phone: '',
         songTitle: '',
         musicalOrArtist: '',
         songKey: '',
@@ -663,6 +673,47 @@ const FormPage = () => {
                         <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
                       {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                    </div>
+                    {/* New: Confirm Email Field */}
+                    <div>
+                      <Label htmlFor="confirmEmail" className="flex items-center text-sm mb-1">
+                        Confirm Email <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input 
+                          id="confirmEmail" 
+                          name="confirmEmail" 
+                          type="email" 
+                          value={formData.confirmEmail} 
+                          onChange={handleInputChange} 
+                          required 
+                          placeholder="Confirm your email address"
+                          className={cn("pl-8 py-2 text-sm", errors.confirmEmail && "border-red-500")}
+                          disabled={isHolidayModeActive || !!user} // Disable if logged in
+                        />
+                        <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                      </div>
+                      {errors.confirmEmail && <p className="text-red-500 text-xs mt-1">{errors.confirmEmail}</p>}
+                    </div>
+                    {/* New: Phone Number Field */}
+                    <div>
+                      <Label htmlFor="phone" className="flex items-center text-sm mb-1">
+                        <Phone className="mr-1" size={14} />
+                        Phone Number (optional, for critical updates)
+                      </Label>
+                      <div className="relative">
+                        <Input 
+                          id="phone" 
+                          name="phone" 
+                          type="tel" 
+                          value={formData.phone} 
+                          onChange={handleInputChange} 
+                          placeholder="e.g., 0412 345 678"
+                          className="pl-8 py-2 text-sm"
+                          disabled={isHolidayModeActive}
+                        />
+                        <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                      </div>
                     </div>
                   </div>
                   
