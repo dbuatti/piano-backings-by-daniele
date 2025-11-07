@@ -42,7 +42,7 @@ import Seo from "@/components/Seo";
 //   caption: string | boolean | null | undefined;
 // }
 
-interface BackingRequest { // Define BackingRequest interface for this component
+interface BackingRequest {
   id: string;
   created_at: string;
   name: string;
@@ -141,7 +141,7 @@ const ClientTrackView = () => {
             .from('backing_requests')
             .select('*')
             .eq('id', id)
-            .single<BackingRequest>();
+            .single();
           requestData = data;
           fetchError = error;
         }
@@ -239,7 +239,7 @@ const ClientTrackView = () => {
         });
         // Refresh the request data to show it's now linked
         // Or simply update the local state
-        setRequest(prev => prev ? ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }) : null);
+        setRequest(prev => ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }));
       } else {
         throw new Error("Failed to link request: Unknown error.");
       }

@@ -31,8 +31,8 @@ export interface BackingRequest {
   created_at?: string; // Added created_at
   is_paid?: boolean; // Added is_paid
   category?: string; // Added category
-  user_id?: string; // Added user_id to determine if linked
-  guest_access_token?: string; // Added guest_access_token for secure guest links
+  user_id?: string | null; // Added user_id
+  guest_access_token?: string | null; // Added guest_access_token
 }
 
 // New interface for Product
@@ -146,13 +146,13 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
     // If linked to a user, no token needed, RLS handles access for logged-in user
-    // The link is just the base track URL
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    // If not linked to a user, use the guest access token
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    // If unlinked but has a guest token, use the token for secure access
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    // Fallback for older links or if token is somehow missing (less secure)
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    // Fallback (should ideally not happen if create-backing-request always generates a token for unlinked requests)
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -222,11 +222,11 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -275,12 +275,11 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    // Fallback for older links or if token is somehow missing (less secure)
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -354,12 +353,11 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    // Fallback for older links or if token is somehow missing (less secure)
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -422,12 +420,11 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    // Fallback for older links or if token is somehow missing (less secure)
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
@@ -504,12 +501,11 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
   } else if (request.guest_access_token) {
-    clientPortalLink += `?token=${request.guest_access_token}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
   } else {
-    // Fallback for older links or if token is somehow missing (less secure)
-    clientPortalLink += `?email=${encodeURIComponent(request.email)}`;
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;

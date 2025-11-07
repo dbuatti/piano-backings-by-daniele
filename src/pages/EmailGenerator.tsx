@@ -29,6 +29,11 @@ import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
 // Removed Table imports as the table is being replaced
 
+interface TrackInfo {
+  url: string;
+  caption: string;
+}
+
 // New interface for Product (updated to use track_urls)
 export interface Product {
   id: string;
