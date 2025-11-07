@@ -192,9 +192,9 @@ const FormPage = () => {
       const newBackingTypes = checked
         ? [...prev.backingType, type]
         : prev.backingType.filter(t => t !== type);
-      setErrors(prevErrors => ({ ...prevErrors, backingType: '' })); // Clear error on change
       return { ...prev, backingType: newBackingTypes };
     });
+    setErrors(prev => ({ ...prev, backingType: '' })); // Fix: Correctly clear error on change
   };
 
   const fillDummyData = () => {
@@ -539,7 +539,11 @@ const FormPage = () => {
         )}
 
         {!user && showAccountPrompt && (
-          <AccountPromptCard onDismiss={handleDismissAccountPrompt} />
+          <AccountPromptCard 
+            onDismiss={handleDismissAccountPrompt} 
+            isHolidayModeActive={isHolidayModeActive}
+            isLoadingHolidayMode={isLoadingHolidayMode}
+          />
         )}
 
         <Card className="shadow-lg mb-6">
@@ -634,10 +638,11 @@ const FormPage = () => {
                           onChange={handleInputChange} 
                           placeholder="Your full name"
                           className="pl-8 py-2 text-sm"
-                          disabled={isHolidayModeActive}
+                          disabled={isHolidayModeActive || !!user} // Disable if logged in
                         />
                         <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
+                      {user && <p className="text-xs text-gray-500 mt-1">(Pre-filled from your account. To change, please update your profile settings.)</p>}
                     </div>
                     <div>
                       <Label htmlFor="email" className="flex items-center text-sm mb-1">
@@ -651,9 +656,9 @@ const FormPage = () => {
                           value={formData.email} 
                           onChange={handleInputChange} 
                           required 
-                          placeholder="your.email@example.com"
+                          placeholder="your.email@example.com (Required for tracking, or sign in to pre-fill)" // Updated placeholder
                           className={cn("pl-8 py-2 text-sm", errors.email && "border-red-500")}
-                          disabled={isHolidayModeActive}
+                          disabled={isHolidayModeActive || !!user} // Disable if logged in
                         />
                         <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -1217,10 +1222,17 @@ const FormPage = () => {
                   </p>
                 </div>
 
+                {/* Tip above submit button */}
+                {!user && (
+                  <p className="text-sm text-gray-600 mb-4 text-center">
+                    <span className="font-semibold">Tip:</span> Submitting while logged in allows you to track this order's status and download links permanently in your <Link to="/user-dashboard" className="text-[#1C0357] hover:underline font-bold">My Tracks</Link> dashboard.
+                  </p>
+                )}
+
                 <div className="flex justify-end">
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting || isHolidayModeActive || !consentChecked}
+                    disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)} // Disable if prompt is visible and not logged in
                     className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
                   >
                     {isSubmitting ? 'Submitting...' : 'Submit Request'}
