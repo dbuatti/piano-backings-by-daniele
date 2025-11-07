@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Lock, Edit, UserPlus, X, Key, Loader2 } from 'lucide-react'; // Added Key and Loader2
+import { Eye, Lock, Edit, UserPlus, X, Key, Loader2, Chrome } from 'lucide-react'; // Added Chrome
 import { supabase } from '@/integrations/supabase/client'; // Import supabase
+import { useToast } from '@/hooks/use-toast'; // Import useToast for error handling
 
 interface AccountPromptCardProps {
   onDismiss?: () => void;
@@ -16,6 +17,8 @@ interface AccountPromptCardProps {
 const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHolidayModeActive, isLoadingHolidayMode }) => {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [loadingAuth, setLoadingAuth] = useState(true); // To prevent flickering
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false); // New state for Google sign-in loading
+  const { toast } = useToast(); // Initialize useToast
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -35,6 +38,32 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
       authListener?.subscription.unsubscribe();
     };
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningInWithGoogle(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/user-dashboard`, // Redirect to user dashboard after successful sign-in
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+      // No need for toast.success here, as the redirect will happen.
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
+      toast({
+        title: "Sign In Error",
+        description: `Failed to sign in with Google: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningInWithGoogle(false);
+    }
+  };
 
   if (loadingAuth) {
     return null; // Or a loading spinner if preferred, while auth status is being checked
@@ -58,6 +87,23 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
         </Button>
       )}
       <CardContent className="p-6 text-center">
+        {/* New Google Sign-in Button */}
+        <Button
+          onClick={handleGoogleSignIn}
+          disabled={isSigningInWithGoogle || isHolidayModeActive || isLoadingHolidayMode}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-3 mb-6 w-full flex items-center justify-center"
+        >
+          {isSigningInWithGoogle ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Signing In...
+            </>
+          ) : (
+            <>
+              <Chrome className="mr-2 h-5 w-5" /> Sign In with Google
+            </>
+          )}
+        </Button>
+
         <h3 className="text-2xl font-bold mb-4 flex items-center justify-center">
           <Key className="mr-3 h-6 w-6" /> {/* Changed icon to Key */}
           Track Your Order Securely
@@ -83,9 +129,10 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
           </div>
         </div>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
+          {/* Changed button text */}
           <Link to="/login">
             <Button size="lg" className="bg-white text-[#1C0357] hover:bg-gray-200 text-base px-6 py-3">
-              Sign In / Create Account
+              Sign In with Email
             </Button>
           </Link>
           <Button 
