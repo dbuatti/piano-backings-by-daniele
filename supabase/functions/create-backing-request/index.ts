@@ -34,6 +34,8 @@ serve(async (req) => {
     const rapidApiKey = Deno.env.get('RAPIDAPI_KEY') || ''; // Use the secret key
     // @ts-ignore
     const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com'; // Default sender email for notifications
+    // @ts-ignore
+    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000'; // Get site URL for client links
     
     // Log environment variable status for debugging (without exposing the actual values)
     console.log('Environment variables status:', {
@@ -45,7 +47,8 @@ serve(async (req) => {
       DROPBOX_PARENT_FOLDER: defaultDropboxParentFolder,
       LOGIC_TEMPLATE_PATH: templateFilePath,
       RAPIDAPI_KEY: rapidApiKey ? 'SET' : 'NOT SET',
-      GMAIL_USER: defaultSenderEmail
+      GMAIL_USER: defaultSenderEmail,
+      SITE_URL: siteUrl
     });
     
     // Create a Supabase client with service role key (has full permissions)
@@ -749,16 +752,132 @@ serve(async (req) => {
         throw new Error('Failed to insert backing request into database: No data returned after insert.');
     }
 
+    // --- Send confirmation email to client ---
+    try {
+      console.log("Attempting to send confirmation email to client");
+      
+      const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
+      
+      const clientEmailSubject = `Confirmation: Your Backing Track Request for "${formData.songTitle}"`;
+      const clientEmailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <h2 style="color: #1C0357;">Request Submitted Successfully!</h2>
+          <p>Hi ${formData.name || 'there'},</p>
+          <p>Thank you for submitting your custom piano backing track request for <strong>"${formData.songTitle}"</strong> from <strong>${formData.musicalOrArtist}</strong>.</p>
+          <p>We have received your request and will be in touch within <strong>24-48 hours</strong> with a quote and estimated delivery date.</p>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1C0357;">Your Request Details:</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Song Title:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.songTitle}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Musical/Artist:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.musicalOrArtist}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Category:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${formData.category.replace('-', ' ') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Track Type:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${formData.trackType.replace('-', ' ') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music Key:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.songKey || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Different Key Required:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.differentKey || 'No'}</td></tr>
+              ${formData.differentKey === 'Yes' ? `<tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Requested Key:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.keyForTrack || 'N/A'}</td></tr>` : ''}
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Backing Type(s):</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${Array.isArray(formData.backingType) ? formData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') : (formData.backingType?.replace('-', ' ') || 'Not specified')}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Delivery Date:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.deliveryDate ? new Date(formData.deliveryDate).toLocaleDateString() : 'Not specified'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Services:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${formData.additionalServices && formData.additionalServices.length > 0 ? formData.additionalServices.map((service: string) => service.replace('-', ' ')).join(', ') : 'None'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">YouTube Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.youtubeLink ? `<a href="${formData.youtubeLink}">${formData.youtubeLink}</a>` : 'None'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.additionalLinks ? `<a href="${formData.additionalLinks}">${formData.additionalLinks}</a>` : 'None'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.voiceMemo || formData.voiceMemoFileUrl ? `<a href="${formData.voiceMemo || formData.voiceMemoFileUrl}">${formData.voiceMemo || formData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.sheetMusicUrl ? `<a href="${formData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
+              <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests:</td><td style="padding: 5px 0;">${formData.specialRequests || 'None'}</td></tr>
+            </table>
+          </div>
+
+          <p style="margin-top: 20px;">You can view the status of your request and any updates on your personal dashboard:</p>
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="${siteUrl}/user-dashboard" 
+               style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+              View My Dashboard
+            </a>
+          </p>
+          <p style="font-size: 12px; color: #666;">
+            This email was automatically generated by Piano Backings by Daniele.
+          </p>
+        </div>
+      `;
+      
+      const clientEmailResponse = await fetch(sendEmailUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({
+          to: userEmail,
+          subject: clientEmailSubject,
+          html: clientEmailHtml,
+          senderEmail: defaultSenderEmail
+        })
+      });
+
+      if (!clientEmailResponse.ok) {
+        const emailErrorText = await clientEmailResponse.text();
+        console.error(`Failed to send confirmation email to client ${userEmail}:`, emailErrorText);
+        await supabaseAdmin
+          .from('notifications')
+          .insert([
+            {
+              recipient: userEmail,
+              sender: 'system@pianobackings.com',
+              subject: clientEmailSubject,
+              content: clientEmailHtml,
+              status: 'failed',
+              type: 'client_confirmation_email',
+              error_message: emailErrorText
+            }
+          ]);
+      } else {
+        console.log(`Confirmation email sent successfully to client ${userEmail}`);
+        await supabaseAdmin
+          .from('notifications')
+          .insert([
+            {
+              recipient: userEmail,
+              sender: 'system@pianobackings.com',
+              subject: clientEmailSubject,
+              content: clientEmailHtml,
+              status: 'sent',
+              type: 'client_confirmation_email'
+            }
+          ]);
+      }
+    } catch (emailError) {
+      console.error('Top-level error sending client confirmation email:', emailError);
+      // Log to notifications table even if client email fails
+      try {
+        await supabaseAdmin
+          .from('notifications')
+          .insert([
+            {
+              recipient: userEmail,
+              sender: 'system@pianobackings.com',
+              subject: `Failed to send client confirmation for: ${formData.songTitle}`,
+              content: `Error: ${emailError.message}`,
+              status: 'failed',
+              type: 'client_confirmation_email',
+              error_message: emailError.message
+            }
+          ]);
+      } catch (dbError) {
+        console.error('Failed to store client notification in database after top-level email error:', dbError);
+      }
+    }
+    // --- End client confirmation email ---
+
     // Send email notification to admins with improved error handling
     try {
-      console.log("Attempting to send email notification");
+      console.log("Attempting to send email notification to admins");
       
-      const sendEmailUrl = `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`;
+      const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
       console.log("sendEmailUrl:", sendEmailUrl);
       
-      // Create email content
-      const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
-      const emailHtml = `
+      // Create email content for admin
+      const adminEmailSubject = `New Backing Track Request: ${formData.songTitle}`;
+      const adminEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1C0357;">New Backing Track Request</h2>
           
@@ -803,7 +922,7 @@ serve(async (req) => {
           </div>
           
           <div style="margin: 20px 0;">
-            <a href="https://pianobackingsbydaniele.vercel.app/admin/request/${newRequestData.id}" 
+            <a href="${siteUrl}/admin/request/${newRequestData.id}" 
                style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Request Details
             </a>
@@ -830,8 +949,8 @@ serve(async (req) => {
           try {
             const payloadToSend = {
               to: email,
-              subject: emailSubject,
-              html: emailHtml,
+              subject: adminEmailSubject,
+              html: adminEmailHtml,
               senderEmail: defaultSenderEmail
             };
             
@@ -853,8 +972,8 @@ serve(async (req) => {
                   {
                     recipient: email,
                     sender: 'system@pianobackings.com',
-                    subject: emailSubject,
-                    content: emailHtml,
+                    subject: adminEmailSubject,
+                    content: adminEmailHtml,
                     status: 'failed',
                     type: 'email',
                     error_message: emailErrorText
@@ -868,8 +987,8 @@ serve(async (req) => {
                   {
                     recipient: email,
                     sender: 'system@pianobackings.com',
-                    subject: emailSubject,
-                    content: emailHtml,
+                    subject: adminEmailSubject,
+                    content: adminEmailHtml,
                     status: 'sent',
                     type: 'email'
                   }
@@ -883,8 +1002,8 @@ serve(async (req) => {
                 {
                   recipient: email,
                   sender: 'system@pianobackings.com',
-                  subject: emailSubject,
-                  content: emailHtml,
+                  subject: adminEmailSubject,
+                  content: adminEmailHtml,
                   status: 'failed',
                   type: 'email',
                   error_message: emailError.message
@@ -901,8 +1020,8 @@ serve(async (req) => {
             try {
               const payloadToSend = {
                 to: email,
-                subject: emailSubject,
-                html: emailHtml,
+                subject: adminEmailSubject,
+                html: adminEmailHtml,
                 senderEmail: defaultSenderEmail
               };
               
@@ -924,8 +1043,8 @@ serve(async (req) => {
                     {
                       recipient: email,
                       sender: 'system@pianobackings.com',
-                      subject: emailSubject,
-                      content: emailHtml,
+                      subject: adminEmailSubject,
+                      content: adminEmailHtml,
                       status: 'failed',
                       type: 'email',
                       error_message: emailErrorText
@@ -939,8 +1058,8 @@ serve(async (req) => {
                     {
                       recipient: email,
                       sender: 'system@pianobackings.com',
-                      subject: emailSubject,
-                      content: emailHtml,
+                      subject: adminEmailSubject,
+                      content: adminEmailHtml,
                       status: 'sent',
                       type: 'email'
                     }
@@ -954,8 +1073,8 @@ serve(async (req) => {
                   {
                     recipient: email,
                     sender: 'system@pianobackings.com',
-                    subject: emailSubject,
-                    content: emailHtml,
+                    subject: adminEmailSubject,
+                    content: adminEmailHtml,
                     status: 'failed',
                     type: 'email',
                     error_message: emailError.message
@@ -968,7 +1087,7 @@ serve(async (req) => {
         }
       }
     } catch (emailError) {
-      console.error('Top-level error sending notification emails:', emailError);
+      console.error('Top-level error sending admin notification emails:', emailError);
       // Even if email fails, we still want to store the notification attempt
       try {
         const emailSubject = `New Backing Track Request: ${formData.songTitle}`;
