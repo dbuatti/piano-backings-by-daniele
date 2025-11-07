@@ -12,7 +12,6 @@ import IssueReportsTable from './IssueReportsTable';
 import { useRequestActions } from '@/hooks/admin/useRequestActions';
 import { calculateRequestCost } from '@/utils/pricing';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import EmailGenerator from './EmailGenerator';
 import UploadTrackDialog from './UploadTrackDialog';
 import UploadPlatformsDialog from './UploadPlatformsDialog';
 import { uploadFileToSupabase } from '@/utils/supabase-client';

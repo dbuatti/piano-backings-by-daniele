@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import ProductCard from '@/components/ProductCard'; // Use the updated ProductCard
-import ProductDetailDialog from '@/components/ProductDetailDialog'; // Use the updated ProductDetailDialog
+import ProductCard from '@/components/shop/ProductCard'; // Use the updated ProductCard
+import ProductDetailDialog from '@/components/shop/ProductDetailDialog'; // Use the updated ProductDetailDialog
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Label } from '@/components/ui/label'; // Import Label
