@@ -222,9 +222,6 @@ serve(async (req) => {
         const fullPath = `${normalizedParentFolder}/${folderName}`;
         dropboxFolderPath = fullPath;
         
-        console.log('Creating Dropbox folder at path:', fullPath);
-        
-        // First, check if the parent folder exists
         console.log('Checking if parent folder exists:', normalizedParentFolder);
         const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
           method: 'POST',
@@ -711,6 +708,9 @@ serve(async (req) => {
         summaryUploadError = `Order summary upload error: ${error.message}`;
       }
     }
+
+    // Generate a unique guest access token
+    const guestAccessToken = crypto.randomUUID();
     
     // Save to the database using the admin client
     // This allows inserting records even for anonymous users
@@ -736,7 +736,8 @@ serve(async (req) => {
           special_requests: formData.specialRequests,
           dropbox_folder_id: dropboxFolderId,
           track_type: formData.trackType,
-          additional_links: formData.additionalLinks // Insert the new field
+          additional_links: formData.additionalLinks, // Insert the new field
+          guest_access_token: guestAccessToken, // Store the generated token
         }
       ])
       .select();
@@ -759,6 +760,10 @@ serve(async (req) => {
       const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
       
       const clientEmailSubject = `Confirmation: Your Backing Track Request for "${formData.songTitle}"`;
+      // Update client email link to include request_id and guest_access_token
+      const clientDashboardLink = `${siteUrl}/user-dashboard?request_id=${newRequestData.id}&token=${guestAccessToken}`;
+      const clientTrackViewLink = `${siteUrl}/track/${newRequestData.id}?token=${guestAccessToken}`;
+
       const clientEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
           <h2 style="color: #1C0357;">Request Submitted Successfully!</h2>
@@ -787,11 +792,11 @@ serve(async (req) => {
             </table>
           </div>
 
-          <p style="margin-top: 20px;">You can view the status of your request and any updates on your personal dashboard:</p>
+          <p style="margin-top: 20px;">You can view the status of your request and any updates on your personal track page:</p>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${siteUrl}/user-dashboard" 
+            <a href="${clientTrackViewLink}" 
                style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-              View My Dashboard
+              View Your Track Details
             </a>
           </p>
           <p style="font-size: 12px; color: #666;">
@@ -1133,7 +1138,8 @@ serve(async (req) => {
       logicFileNameUsed: logicFileName,
       parentFolderCheck,
       voiceMemoUploadSuccess,
-      summaryUploadSuccess
+      summaryUploadSuccess,
+      guestAccessToken, // Include the token in the response
     };
     
     if (dropboxError) {

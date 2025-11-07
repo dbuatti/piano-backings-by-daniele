@@ -58,7 +58,7 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [loadingPurchases, setLoadingPurchases] = useState(true); // New loading state for purchases
   const [user, setUser] = useState<any>(null); // The currently logged-in user
-  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false); // State to control visibility of the new card
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -73,23 +73,44 @@ const UserDashboard = () => {
     allUsersForAdminRef.current = allUsersForAdmin;
   }, [allUsersForAdmin]);
 
-  const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
+  const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null, guestRequestId: string | null, guestAccessToken: string | null) => {
     setLoading(true);
     try {
-      let query = supabase.from('backing_requests').select('*').order('created_at', { ascending: false });
+      let fetchedRequests: any[] = [];
 
       if (targetUserId) {
-        query = query.eq('user_id', targetUserId);
+        // Authenticated user
+        const { data, error } = await supabase.from('backing_requests').select('*').eq('user_id', targetUserId).order('created_at', { ascending: false });
+        if (error) throw error;
+        fetchedRequests = data || [];
+      } else if (guestRequestId && guestAccessToken) {
+        // Anonymous user with secure token
+        const response = await fetch(
+          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ request_id: guestRequestId, token: guestAccessToken }),
+          }
+        );
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to fetch guest request: ${response.status} ${response.statusText}`);
+        }
+        fetchedRequests = result.request ? [result.request] : [];
       } else if (targetUserEmail) {
-        query = query.ilike('email', targetUserEmail);
+        // Fallback for guest access by email (less secure, but might be needed for older links)
+        // This path should ideally be deprecated in favor of token-based access
+        const { data, error } = await supabase.from('backing_requests').select('*').ilike('email', targetUserEmail).order('created_at', { ascending: false });
+        if (error) throw error;
+        fetchedRequests = data || [];
       } else {
-        throw new Error('No target user ID or email provided for fetching requests.');
+        throw new Error('No valid identifier provided for fetching requests.');
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setRequests(data || []);
+      setRequests(fetchedRequests);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -156,38 +177,6 @@ const UserDashboard = () => {
     }
   }, [toast]);
 
-  const fetchGuestRequestsByEmail = useCallback(async (email: string) => {
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-requests-by-email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        }
-      );
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || `Failed to fetch guest requests: ${response.status} ${response.statusText}`);
-      }
-      
-      setRequests(result.requests || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `Failed to fetch guest requests: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
   // Main function to check user and determine which data to fetch
   const checkUserAndDetermineTarget = useCallback(async () => {
     setLoading(true);
@@ -207,7 +196,9 @@ const UserDashboard = () => {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const emailFromUrl = urlParams.get('email');
+    const guestRequestId = urlParams.get('request_id');
+    const guestAccessToken = urlParams.get('token');
+    const emailFromUrl = urlParams.get('email'); // Keep for purchases and potential fallback
 
     let targetUserId: string | null = null;
     let targetUserEmail: string | null = null;
@@ -225,20 +216,27 @@ const UserDashboard = () => {
       targetUserId = loggedInUser.id;
       targetUserEmail = loggedInUser.email;
       setShowAccountPrompt(false);
+    } else if (guestRequestId && guestAccessToken) {
+      // Anonymous user accessing via secure token link
+      fetchRequestsForTarget(null, null, guestRequestId, guestAccessToken);
+      // For purchases, we still rely on email for now as orders don't have guest_access_token
+      fetchPurchasesForTarget(null, emailFromUrl); 
+      setShowAccountPrompt(true);
+      return;
     } else if (emailFromUrl) {
-      // Guest viewing via email link
-      fetchGuestRequestsByEmail(emailFromUrl);
-      fetchPurchasesForTarget(null, emailFromUrl); // Fetch purchases for guests too
+      // Fallback for older guest links that only use email (less secure)
+      fetchRequestsForTarget(null, emailFromUrl, null, null);
+      fetchPurchasesForTarget(null, emailFromUrl);
       setShowAccountPrompt(true);
       return;
     } else {
-      // Not logged in, no email in URL
+      // Not logged in, no secure token, no email in URL
       navigate('/login');
       return;
     }
 
     if (targetUserId || targetUserEmail) {
-      fetchRequestsForTarget(targetUserId, targetUserEmail);
+      fetchRequestsForTarget(targetUserId, targetUserEmail, null, null);
       fetchPurchasesForTarget(targetUserId, targetUserEmail);
     } else {
       setRequests([]);
@@ -246,7 +244,7 @@ const UserDashboard = () => {
       setLoading(false);
       setLoadingPurchases(false);
     }
-  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, fetchGuestRequestsByEmail, toast, setUser, setIsAdmin, setShowAccountPrompt]);
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, toast, setUser, setIsAdmin, setShowAccountPrompt]);
 
   // Effect for initial load and auth state changes
   useEffect(() => {
@@ -510,7 +508,7 @@ const UserDashboard = () => {
                                     <Download className="w-4 h-4" />
                                   </Button>
                                 )}
-                                <Link to={`/track/${request.id}`}>
+                                <Link to={`/track/${request.id}${request.guest_access_token ? `?token=${request.guest_access_token}` : ''}`}>
                                   <Button variant="outline" size="sm">
                                     <Eye className="w-4 h-4 mr-1" /> View
                                   </Button>

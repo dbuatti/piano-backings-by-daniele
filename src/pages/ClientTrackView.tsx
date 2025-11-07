@@ -60,18 +60,43 @@ const ClientTrackView = () => {
       }
 
       const urlParams = new URLSearchParams(window.location.search);
-      const emailFromUrl = urlParams.get('email');
+      const guestAccessToken = urlParams.get('token'); // Get the guest access token
       
       try {
-        // Always fetch the request by ID first
-        const { data: requestData, error: fetchError } = await supabase
-          .from('backing_requests')
-          .select('*')
-          .eq('id', id)
-          .single();
+        let requestData: any = null;
+        let fetchError: any = null;
+
+        if (guestAccessToken) {
+          // Attempt to fetch using the secure token for anonymous users
+          const response = await fetch(
+            `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ request_id: id, token: guestAccessToken }),
+            }
+          );
+          const result = await response.json();
+          if (!response.ok) {
+            fetchError = new Error(result.error || `Failed to fetch guest request: ${response.status} ${response.statusText}`);
+          } else {
+            requestData = result.request;
+          }
+        } else {
+          // For logged-in users or admins, fetch directly from Supabase with RLS
+          const { data, error } = await supabase
+            .from('backing_requests')
+            .select('*')
+            .eq('id', id)
+            .single();
+          requestData = data;
+          fetchError = error;
+        }
         
         if (fetchError || !requestData) {
-          console.error('Error fetching request by ID:', fetchError);
+          console.error('Error fetching request:', fetchError);
           setAccessDenied(true);
           toast({
             title: "Error",
@@ -101,14 +126,11 @@ const ClientTrackView = () => {
           }
         } else {
           // If the request is NOT linked to a user_id (guest submission)
-          // Allow access if email from URL matches request email
-          if (emailFromUrl && requestData.email && emailFromUrl.toLowerCase() === requestData.email.toLowerCase()) {
-            hasAccess = true;
-          } else if (loggedInUserEmail && requestData.email && loggedInUserEmail.toLowerCase() === requestData.email.toLowerCase()) {
-            // If no email in URL, but logged-in user's email matches request email
+          // Access is granted if guestAccessToken matches the stored token
+          if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
             hasAccess = true;
           } else {
-            console.warn('Guest access denied: Email mismatch or no email provided in URL/session for unlinked request.');
+            console.warn('Guest access denied: Token mismatch or no token provided for unlinked request.');
           }
         }
 

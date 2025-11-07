@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log("get-guest-requests-by-email function invoked");
+    console.log("get-guest-request-by-token function invoked");
 
     // Create a Supabase client with service role key (has full permissions)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -39,32 +39,41 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
     
-    const { email } = requestBody;
+    const { request_id, token } = requestBody;
 
-    if (!email) {
-      return new Response(JSON.stringify({ error: "Missing 'email' in request body" }), { 
+    if (!request_id || !token) {
+      return new Response(JSON.stringify({ error: "Missing 'request_id' or 'token' in request body" }), { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     // Fetch requests using the service role client, bypassing RLS
+    // Now, it requires both the ID and the guest_access_token to match
     const { data, error } = await supabaseAdmin
       .from('backing_requests')
       .select('*')
-      .ilike('email', email) // Case-insensitive search
-      .order('created_at', { ascending: false });
+      .eq('id', request_id)
+      .eq('guest_access_token', token)
+      .single(); // Expecting a single result
 
     if (error) {
-      console.error('Error fetching requests:', error);
-      throw new Error(`Failed to fetch requests: ${error.message}`);
+      console.error('Error fetching request:', error);
+      // Return 404 if no data found, otherwise 500 for other errors
+      if (error.code === 'PGRST116') { // PGRST116 is "no rows found"
+        return new Response(JSON.stringify({ error: "Request not found or invalid token." }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      throw new Error(`Failed to fetch request: ${error.message}`);
     }
 
-    console.log(`Found ${data?.length || 0} requests for email: ${email}`);
+    console.log(`Found request for ID: ${request_id}`);
 
     return new Response(
       JSON.stringify({ 
-        requests: data || []
+        request: data
       }),
       { 
         headers: { 
@@ -75,7 +84,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error in get-guest-requests-by-email function:", error);
+    console.error("Error in get-guest-request-by-token function:", error);
     return new Response(
       JSON.stringify({ 
         error: error.message 
