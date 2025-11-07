@@ -433,14 +433,14 @@ const UserDashboard = () => {
                 <p>Loading your requests...</p>
               </div>
             ) : (
-              <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto */}
-                <Table className="min-w-[800px]"> {/* Set minimum width */}
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[120px]">Date</TableHead>
                       <TableHead>Song</TableHead>
-                      <TableHead className="hidden sm:table-cell">Backing Type</TableHead> {/* Hidden on mobile */}
-                      <TableHead className="hidden md:table-cell">Delivery Date</TableHead> {/* Hidden on smaller screens */}
+                      <TableHead className="hidden sm:table-cell">Backing Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Delivery Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[150px]">Actions</TableHead>
                     </TableRow>
@@ -462,7 +462,6 @@ const UserDashboard = () => {
                                 </Button>
                               </Link>
                             </div>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -549,8 +548,8 @@ const UserDashboard = () => {
                 <p>Loading your purchases...</p>
               </div>
             ) : (
-              <div className="rounded-md border overflow-x-auto"> {/* Added overflow-x-auto */}
-                <Table className="min-w-[600px]"> {/* Set minimum width */}
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[120px]">Date</TableHead>
@@ -577,7 +576,6 @@ const UserDashboard = () => {
                                 </Button>
                               </Link>
                             </div>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (
