@@ -15,7 +15,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCart } from "@/hooks/useCart"; // Import useCart
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -24,7 +23,6 @@ const Header = () => {
   const [isAdmin, setIsAdmin] = React.useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { totalItems } = useCart(); // Use cart hook
 
   React.useEffect(() => {
     const checkSession = async () => {
@@ -80,23 +78,6 @@ const Header = () => {
     }
   };
 
-  const CartLink = (
-    <Link to="/cart" className="relative">
-      <Button 
-        variant="ghost" 
-        className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-      >
-        <ShoppingCart className="mr-1 h-4 w-4" />
-        Cart
-      </Button>
-      {totalItems > 0 && (
-        <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-[#1C0357] transform translate-x-1/2 -translate-y-1/2 bg-[#D1AAF2] rounded-full">
-          {totalItems}
-        </span>
-      )}
-    </Link>
-  );
-
   return (
     <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,8 +118,6 @@ const Header = () => {
                 Shop
               </Button>
             </Link>
-            
-            {CartLink}
 
             {session && (
               <Link to="/user-dashboard">
@@ -284,23 +263,6 @@ const Header = () => {
                       Shop
                     </Link>
                     
-                    <Link 
-                      to="/cart"
-                      className={cn(
-                        "block px-4 py-3 rounded-md text-base font-medium flex items-center relative",
-                        "text-white hover:bg-white/20"
-                      )}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <ShoppingCart className="mr-3 h-5 w-5" />
-                      Cart
-                      {totalItems > 0 && (
-                        <span className="absolute right-4 top-1/2 transform -translate-y-1/2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-[#1C0357] bg-[#D1AAF2] rounded-full">
-                          {totalItems}
-                        </span>
-                      )}
-                    </Link>
-
                     {session && (
                       <Link 
                         to="/user-dashboard"

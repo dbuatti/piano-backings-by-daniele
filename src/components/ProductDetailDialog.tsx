@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { useToast } from '@/hooks/use-toast'; // Import useToast
-import { useCart } from '@/hooks/useCart'; // Import useCart
 
 interface Product {
   id: string;
@@ -38,7 +37,7 @@ interface ProductDetailDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   product: Product | null;
-  onBuyNow: (product: Product) => void; // Keep this for now, but change usage
+  onBuyNow: (product: Product) => void;
   isBuying: boolean;
 }
 
@@ -50,24 +49,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   isBuying,
 }) => {
   const { toast } = useToast(); // Initialize useToast
-  const { addItem } = useCart(); // Use addItem from cart hook
-
   if (!product) return null;
-
-  const handleAddToCart = () => {
-    addItem({
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      currency: product.currency,
-      image_url: product.image_url,
-    });
-    toast({
-      title: "Added to Cart",
-      description: `${product.title} added to your shopping cart.`,
-    });
-    onOpenChange(false); // Close dialog after adding to cart
-  };
 
   const handlePreviewPdf = () => {
     if (product.sheet_music_url) {
@@ -179,11 +161,21 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
             </div>
             <Button 
-              onClick={handleAddToCart}
+              onClick={() => onBuyNow(product)}
+              disabled={isBuying}
               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
             >
-              Add to Cart
-              <ShoppingCart className="ml-2 h-5 w-5" />
+              {isBuying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Buying...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="ml-2 h-5 w-5" />
+                  Buy Now
+                </>
+              )}
             </Button>
           </div>
 
