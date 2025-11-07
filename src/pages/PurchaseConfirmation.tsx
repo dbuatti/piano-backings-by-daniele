@@ -7,7 +7,6 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// The 'FileText' import is already present here.
 import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
@@ -78,18 +77,53 @@ const PurchaseConfirmation: React.FC = () => {
         }
       );
 
+      const MAX_RETRIES = 5;
+      const RETRY_DELAY_MS = 2000; // 2 seconds
+
+      let orderData: Order | null = null;
+      let fetchError: any = null;
+
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUserSession(session);
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const { data, error } = await supabaseWithHeaders
+              .from('orders')
+              .select('*')
+              .eq('checkout_session_id', sessionId)
+              .single();
 
-        const { data: orderData, error: fetchError } = await supabaseWithHeaders
-          .from('orders')
-          .select('*')
-          .eq('checkout_session_id', sessionId)
-          .single();
-
-        if (fetchError || !orderData) {
-          console.error('Error fetching order:', fetchError);
+            if (error) {
+              // Supabase returns PGRST116 when .single() finds no rows (Order not found)
+              if (error.code === 'PGRST116') {
+                console.log(`Attempt ${attempt}: Order not found yet (PGRST116). Retrying in ${RETRY_DELAY_MS}ms...`);
+                if (attempt < MAX_RETRIES) {
+                  await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                  continue; // Continue to the next attempt
+                } else {
+                  throw new Error('Order not found or could not be retrieved after multiple attempts.');
+                }
+              }
+              throw error; // Throw other errors immediately
+            }
+            
+            orderData = data as Order;
+            break; // Success, break the loop
+          } catch (err: any) {
+            fetchError = err;
+            
+            // Check for the specific "not found" error code or message
+            if (fetchError.code === 'PGRST116' || fetchError.message.includes('Order not found')) {
+              if (attempt < MAX_RETRIES) {
+                console.log(`Attempt ${attempt}: Transient error or not found. Retrying in ${RETRY_DELAY_MS}ms...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                continue;
+              }
+            }
+            throw fetchError; // Throw final error or non-transient error
+          }
+        }
+        
+        if (!orderData) {
           throw new Error('Order not found or could not be retrieved.');
         }
 
@@ -170,7 +204,14 @@ const PurchaseConfirmation: React.FC = () => {
                 <p className="text-lg text-gray-600">Retrieving your order details...</p>
               </div>
             ) : error ? (
-              <ErrorDisplay error={error} title="Failed to Load Order" />
+              <div className="space-y-4">
+                <ErrorDisplay error={error} title="Failed to Load Order" />
+                <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    Your transaction may still be successful. Please check your email for the confirmation and download links.
+                  </p>
+                </div>
+              </div>
             ) : order ? (
               <div className="space-y-6">
                 <div className="text-center">
@@ -200,7 +241,8 @@ const PurchaseConfirmation: React.FC = () => {
                           className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
                           onClick={() => downloadTrack(track.url, track.caption || `${order.products?.title || 'track'}.mp3`)}
                         >
-                          <Download className="w-5 h-5" />
+                          <Download className="w-5 h-5 mr-2" />
+                          {track.caption || `Download Track ${index + 1}`}
                         </Button>
                       ))}
                     </div>
@@ -218,7 +260,7 @@ const PurchaseConfirmation: React.FC = () => {
                       className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
                       onClick={() => window.open(order.products?.sheet_music_url || '', '_blank')}
                     >
-                      <FileText className="h-5 w-5" />
+                      <FileText className="h-5 w-5 mr-2" /> View Sheet Music PDF
                     </Button>
                   </div>
                 )}

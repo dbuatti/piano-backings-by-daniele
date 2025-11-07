@@ -11,16 +11,6 @@ interface ErrorDisplayProps {
 const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => {
   const [copied, setCopied] = useState(false);
   
-  const copyToClipboard = () => {
-    const errorText = JSON.stringify(error, null, 2);
-    navigator.clipboard.writeText(errorText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-    });
-  };
-
   // Create a more readable error summary
   const getErrorSummary = () => {
     const summary = [];
@@ -37,10 +27,51 @@ const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => 
       summary.push({ label: "Status", value: error.status });
     }
     
+    // Handle Supabase specific error codes if available
+    if (error.code) {
+      summary.push({ label: "Code", value: error.code });
+    }
+    
     return summary;
   };
 
   const errorSummary = getErrorSummary();
+
+  // Determine content for the raw display
+  const rawErrorContent = (() => {
+    if (typeof error === 'string') return error;
+    
+    // If it's a standard Error object, stringify its enumerable properties plus message/name
+    if (error instanceof Error) {
+        const errorObject = {
+            ...error, // Spread enumerable properties
+            message: error.message,
+            name: error.name,
+        };
+        const stringified = JSON.stringify(errorObject, null, 2);
+        if (stringified === '{}' && error.message) {
+            return JSON.stringify({ message: error.message, name: error.name }, null, 2);
+        }
+        return stringified;
+    }
+
+    // For plain objects, check if it's empty after stringifying
+    const stringified = JSON.stringify(error, null, 2);
+    if (stringified === '{}' && errorSummary.length > 0) {
+      return 'Raw error object was empty, see summary below.';
+    }
+    
+    return stringified;
+  })();
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(rawErrorContent).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  };
 
   return (
     <Card className="border-red-300 bg-red-50">
@@ -69,7 +100,7 @@ const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => 
       </CardHeader>
       <CardContent>
         <pre className="whitespace-pre-wrap break-words text-sm bg-red-100 p-4 rounded-lg max-h-60 overflow-y-auto">
-          {JSON.stringify(error, null, 2)}
+          {rawErrorContent}
         </pre>
         {errorSummary.length > 0 && (
           <div className="mt-4 text-sm text-red-700">
