@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, User, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText } from 'lucide-react'; // Added FileText
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, Mask, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText } from 'lucide-react'; // Added FileText
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TrackInfo } from '@/utils/helpers';
@@ -114,7 +114,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10"> {/* Lighter purple background */}
         <CardTitle className="text-xl font-bold text-[#1C0357] mb-0 leading-tight">{product.title}</CardTitle>
         {product.artist_name && (
-          <p className="text-sm text-gray-700 mb-2 leading-tight">{product.artist_name}</p>
+          <p className="text-sm text-gray-700 mb-2 leading-tight flex items-center">
+            <Mask className="h-4 w-4 mr-2 text-gray-500" /> {product.artist_name}
+          </p>
         )}
         
         {/* Moved Category and Vocal Ranges here */}
