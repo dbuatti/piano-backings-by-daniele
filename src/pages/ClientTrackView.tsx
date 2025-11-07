@@ -86,6 +86,7 @@ const ClientTrackView = () => {
         let fetchError: any = null;
 
         if (guestAccessToken) {
+          // Prioritize guest access via token using the Edge Function
           const response = await fetch(
             `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
             {
