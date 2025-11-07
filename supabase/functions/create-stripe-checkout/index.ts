@@ -29,9 +29,11 @@ serve(async (req) => {
     const siteUrl = Deno.env.get('SITE_URL');
 
     if (!stripeSecretKey) {
+      console.error('STRIPE_SECRET_KEY is not configured.');
       throw new Error('STRIPE_SECRET_KEY is not configured in Supabase secrets.');
     }
     if (!siteUrl) {
+      console.error('SITE_URL is not configured.');
       throw new Error('SITE_URL is not configured in Supabase secrets.');
     }
 
@@ -44,6 +46,7 @@ serve(async (req) => {
     const { product_id } = await req.json();
 
     if (!product_id) {
+      console.error('Product ID is required but missing.');
       return new Response(JSON.stringify({ error: 'Product ID is required.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -80,9 +83,26 @@ serve(async (req) => {
       .single();
 
     if (productError || !product) {
-      console.error('Error fetching product:', productError);
+      console.error('Error fetching product:', productError?.message || 'Product not found');
       throw new Error(`Product not found: ${product_id}`);
     }
+
+    // --- Add validation for product data before creating Stripe session ---
+    if (!product.title || product.title.trim() === '') {
+      console.error('Product title is missing or empty for product ID:', product_id);
+      throw new Error('Product title cannot be empty.');
+    }
+    if (typeof product.price !== 'number' || product.price <= 0) {
+      console.error('Product price is invalid or zero for product ID:', product_id, 'Price:', product.price);
+      throw new Error('Product price must be a positive number.');
+    }
+    if (!product.currency || product.currency.trim() === '') {
+      console.error('Product currency is missing or empty for product ID:', product_id);
+      throw new Error('Product currency cannot be empty.');
+    }
+    // --- End validation ---
+
+    console.log('create-stripe-checkout: Fetched product details:', product);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -92,9 +112,9 @@ serve(async (req) => {
             currency: product.currency,
             product_data: {
               name: product.title,
-              description: product.description,
+              description: product.description || undefined, // Stripe allows undefined for description
               images: product.image_url ? [product.image_url] : [],
-              metadata: { // Add vocal_ranges, key_signature, sheet_music_url to product_data metadata
+              metadata: {
                 vocal_ranges: product.vocal_ranges ? product.vocal_ranges.join(', ') : 'N/A',
                 key_signature: product.key_signature || 'N/A',
                 sheet_music_url: product.sheet_music_url || 'N/A',
@@ -106,12 +126,11 @@ serve(async (req) => {
         },
       ],
       mode: 'payment',
-      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`, // Redirect to new confirmation page
+      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/shop?canceled=true`,
       metadata: {
-        product_id: product.id,
+            product_id: product.id,
       },
-      // Pass the user ID if available
       client_reference_id: userId || undefined,
     });
 
@@ -125,7 +144,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in create-stripe-checkout function:', error);
+    console.error('Error in create-stripe-checkout function:', error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
