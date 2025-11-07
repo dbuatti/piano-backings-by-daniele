@@ -1195,7 +1195,7 @@ const FormPage = () => {
                       checked={consentChecked}
                       onCheckedChange={(checked) => {
                         setConsentChecked(checked as boolean);
-                        setErrors(prev => ({ ...prevErrors, consent: '' })); // Clear error on change
+                        setErrors(prev => ({ ...prev, consent: '' })); // Clear error on change
                       }}
                       className="mt-1"
                       disabled={isHolidayModeActive}
@@ -1220,7 +1220,7 @@ const FormPage = () => {
                 <div className="flex justify-end">
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)} // UPDATED DISABLED CONDITION
+                    disabled={isSubmitting || isHolidayModeActive || !consentChecked}
                     className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
                   >
                     {isSubmitting ? 'Submitting...' : 'Submit Request'}
