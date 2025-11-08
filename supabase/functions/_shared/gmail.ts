@@ -1,7 +1,6 @@
 /// <reference lib="deno.ns" />
 /// <reference lib="deno.window" />
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0'; // UPDATED Supabase client version
-// Removed: import { serve } from "https://deno.land/std@0.200.0/http/server.ts"; // This file does not use 'serve'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0';
 
 interface GmailToken {
   access_token: string;

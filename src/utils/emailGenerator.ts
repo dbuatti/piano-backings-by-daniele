@@ -163,7 +163,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
@@ -291,7 +291,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
@@ -436,7 +436,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
@@ -581,7 +581,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
