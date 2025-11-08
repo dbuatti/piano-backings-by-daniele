@@ -2,7 +2,7 @@
 /// <reference lib="deno.window" />
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { sendGmailEmail } from '../_shared/gmail.ts'; // NEW IMPORT
+import { sendGmailEmail } from '@shared/gmail.ts'; // UPDATED IMPORT PATH
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +41,7 @@ serve(async (req) => {
     // 2. Store the code in the database
     const { error: insertError } = await supabaseClient
       .from('verification_codes')
-      .insert({ request_id: requestId, email, code, expires_at: expiresAt }); // FIXED: Changed expires_at to expiresAt
+      .insert({ request_id: requestId, email, code, expires_at: expiresAt });
 
     if (insertError) {
       console.error('Error inserting verification code:', insertError);
