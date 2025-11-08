@@ -2,7 +2,7 @@
 /// <reference lib="deno.window" />
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { sendGmailEmail } from '@shared/gmail.ts'; // UPDATED IMPORT PATH
+import { sendGmailEmail } from '../_shared/gmail.ts'; // REVERTED TO RELATIVE IMPORT PATH
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,7 +53,7 @@ serve(async (req) => {
 
     // 3. Send email with the code using Gmail API
     const GMAIL_USER = Deno.env.get('GMAIL_USER');
-    const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID');
+    const GMAIL_CLIENT_ID = Deno.env('GMAIL_CLIENT_ID');
     const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET');
 
     if (!GMAIL_USER || !GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {

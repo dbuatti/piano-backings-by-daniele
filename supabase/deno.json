@@ -1,3 +1,6 @@
 {
-  "imports": "./import_map.json"
+  "compilerOptions": {
+    "lib": ["deno.ns", "deno.window"],
+    "strict": true
+  }
 }
