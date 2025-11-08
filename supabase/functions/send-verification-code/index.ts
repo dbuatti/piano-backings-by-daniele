@@ -1,6 +1,8 @@
+/// <reference lib="deno.ns" />
+/// <reference lib="deno.window" />
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { Resend } from 'https://esm.sh/resend@3.2.0';
+import { sendGmailEmail } from '../_shared/gmail.ts'; // NEW IMPORT
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,7 +41,7 @@ serve(async (req) => {
     // 2. Store the code in the database
     const { error: insertError } = await supabaseClient
       .from('verification_codes')
-      .insert({ request_id: requestId, email, code, expires_at });
+      .insert({ request_id: requestId, email, code, expires_at: expiresAt }); // FIXED: Changed expires_at to expiresAt
 
     if (insertError) {
       console.error('Error inserting verification code:', insertError);
@@ -49,23 +51,37 @@ serve(async (req) => {
       });
     }
 
-    // 3. Send email with the code
-    const resend = new Resend(Deno.env.get('RESEND_API_KEY')); // Assuming RESEND_API_KEY is set
+    // 3. Send email with the code using Gmail API
+    const GMAIL_USER = Deno.env.get('GMAIL_USER');
+    const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID');
+    const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET');
 
-    await resend.emails.send({
-      from: 'Daniele Buatti <onboarding@resend.dev>', // Replace with your verified sender
-      to: [email],
-      subject: `Your Verification Code for Track Access`,
-      html: `
-        <p>Hello,</p>
-        <p>Your verification code for accessing your track (ID: ${requestId.substring(0, 8)}) is:</p>
-        <h2 style="font-size: 24px; font-weight: bold; color: #1C0357;">${code}</h2>
-        <p>This code is valid for 5 minutes.</p>
-        <p>If you did not request this, please ignore this email.</p>
-        <p>Warmly,</p>
-        <p>Daniele Buatti</p>
-      `,
-    });
+    if (!GMAIL_USER || !GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
+      throw new Error('Gmail API environment variables (GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET) are not set.');
+    }
+
+    const emailHtml = `
+      <p>Hello,</p>
+      <p>Your verification code for accessing your track (ID: ${requestId.substring(0, 8)}) is:</p>
+      <h2 style="font-size: 24px; font-weight: bold; color: #1C0357;">${code}</h2>
+      <p>This code is valid for 5 minutes.</p>
+      <p>If you did not request this, please ignore this email.</p>
+      <p>Warmly,</p>
+      <p>Daniele Buatti</p>
+    `;
+
+    const emailSent = await sendGmailEmail(
+      email,
+      `Your Verification Code for Track Access`,
+      emailHtml,
+      GMAIL_USER, // Pass the email of the sender
+      GMAIL_CLIENT_ID,
+      GMAIL_CLIENT_SECRET
+    );
+
+    if (!emailSent) {
+      throw new Error('Failed to send verification email via Gmail API.');
+    }
 
     return new Response(JSON.stringify({ message: 'Verification code sent.' }), {
       status: 200,
