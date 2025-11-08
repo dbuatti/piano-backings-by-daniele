@@ -53,7 +53,7 @@ serve(async (req) => {
 
     // 3. Send email with the code using Gmail API
     const GMAIL_USER = Deno.env.get('GMAIL_USER');
-    const GMAIL_CLIENT_ID = Deno.env('GMAIL_CLIENT_ID');
+    const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID'); // FIXED: Changed Deno.env() to Deno.env.get()
     const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET');
 
     if (!GMAIL_USER || !GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
