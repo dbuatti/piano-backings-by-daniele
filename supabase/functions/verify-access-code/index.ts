@@ -1,5 +1,3 @@
-/// <reference lib="deno.ns" />
-/// <reference lib="deno.window" />
 import { serve } from "https://deno.land/std@0.200.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0';
 

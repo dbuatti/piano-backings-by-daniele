@@ -138,6 +138,16 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   `;
 };
 
+// Helper function to parse Gemini's markdown JSON response
+const parseGeminiResponse = (text: string) => {
+  const jsonStringMatch = text.match(/```json\n([\s\S]*?)\n```/);
+  if (jsonStringMatch && jsonStringMatch[1]) {
+    return JSON.parse(jsonStringMatch[1]);
+  }
+  // Fallback if not wrapped in markdown, try direct parse
+  return JSON.parse(text);
+};
+
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -204,7 +214,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     const text = response.text();
     
     try {
-      const emailData = JSON.parse(text);
+      const emailData = parseGeminiResponse(text); // Use the new parsing function
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -331,7 +341,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     const text = response.text();
     
     try {
-      const emailData = JSON.parse(text);
+      const emailData = parseGeminiResponse(text); // Use the new parsing function
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -479,7 +489,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     const text = response.text();
     
     try {
-      const emailData = JSON.parse(text);
+      const emailData = parseGeminiResponse(text); // Use the new parsing function
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -624,7 +634,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     const text = response.text();
     
     try {
-      const emailData = JSON.parse(text);
+      const emailData = parseGeminiResponse(text); // Use the new parsing function
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
