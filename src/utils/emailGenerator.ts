@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Removed: import { GoogleGenerativeAI } from "@google/generative-ai";
 import { calculateRequestCost } from "./pricing"; // Import the pricing utility
 
-// Initialize Gemini API client
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
+// Removed: Initialize Gemini API client
+// const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
 
 export interface TrackInfo {
   url: string;
@@ -31,6 +31,8 @@ export interface BackingRequest {
   created_at?: string; // Added created_at
   is_paid?: boolean; // Added is_paid
   category?: string; // Added category
+  user_id?: string | null; // Added user_id
+  guest_access_token?: string | null; // Added guest_access_token
 }
 
 // New interface for Product
@@ -136,76 +138,41 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   `;
 };
 
+// Removed: Helper function to parse Gemini's markdown JSON response
+// const parseGeminiResponse = (text: string) => {
+//   const jsonStringMatch = text.match(/```json\n([\s\S]*?)\n```/);
+//   if (jsonStringMatch && jsonStringMatch[1]) {
+//     return JSON.parse(jsonStringMatch[1]);
+//   }
+//   // Fallback if not wrapped in markdown, try direct parse
+//   return JSON.parse(text);
+// };
+
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const firstName = request.name.split(' ')[0];
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
-
-  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    console.log("Gemini API key not configured, using fallback completion template");
-    return generateFallbackCompletionEmail(request);
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
-    
-    Request details:
-    - Client name: ${request.name}
-    - Song title: "${request.song_title}"
-    - Musical/Artist: ${request.musical_or_artist}
-    - Track purpose: ${request.track_purpose}
-    - Backing type(s): ${request.backing_type.join(', ') || 'N/A'}
-    - Special requests: ${request.special_requests || 'None'}
-    - Client Portal Link: ${clientPortalLink}
-    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
-    
-    Instructions for crafting the email:
-    1. Create a compelling subject line that immediately tells the client their track is ready.
-    2. Open with a warm, personalized greeting using the client's first name.
-    3. Announce that the track is complete and ready.
-    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
-    5. Provide a prominent call-to-action button to "View Your Track Details" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
-    6. Proactively offer adjustments or revisions to ensure satisfaction.
-    7. Express gratitude for their business.
-    8. Keep the tone professional yet friendly, showing genuine care for their success.
-    9. Never use "Break a leg" - end with "Warmly" instead.
-    10. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    11. Do NOT include pricing information in this completion email.
-    12. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
-    
-    Format the response as JSON with two fields:
-    {
-      "subject": "Email subject line",
-      "html": "Full HTML email body content"
-    }
-    `;
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    try {
-      const emailData = JSON.parse(text);
-      emailData.html += EMAIL_SIGNATURE_HTML;
-      return emailData;
-    } catch (parseError) {
-      console.error('Error parsing Gemini response for completion email:', parseError);
-      return generateFallbackCompletionEmail(request);
-    }
-  } catch (error) {
-    console.error('Error generating completion email copy with Gemini:', error);
-    return generateFallbackCompletionEmail(request);
-  }
+  // Removed: const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Removed: if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") { ... }
+  // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
+  
+  // Directly call fallback
+  return generateFallbackCompletionEmail(request);
 };
 
 const generateFallbackCompletionEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  
+  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  if (request.user_id) {
+    // If linked to a user, no token needed, RLS handles access for logged-in user
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  } else if (request.guest_access_token) {
+    // If unlinked but has a guest token, use the token for secure access
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
+  } else {
+    // Fallback (should ideally not happen if create-backing-request always generates a token for unlinked requests)
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  }
+
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
@@ -241,75 +208,13 @@ const generateFallbackCompletionEmail = (request: BackingRequest) => {
 };
 
 export const generatePaymentReminderEmail = async (request: BackingRequest) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const firstName = request.name.split(' ')[0];
-  // Correctly access totalCost from the object returned by calculateRequestCost
+  // Removed: const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Removed: if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") { ... }
+  // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
+
+  // Directly call fallback
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
-  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
-
-  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    console.log("Gemini API key not configured, using fallback payment reminder template");
-    return generateFallbackPaymentReminderEmail(request, trackCost);
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
-    
-    Request details:
-    - Client name: ${request.name}
-    - Song title: "${request.song_title}"
-    - Musical/Artist: ${request.musical_or_artist}
-    - Estimated cost: $${minCost} - $${maxCost}
-    - Client Portal Link: ${clientPortalLink}
-    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
-    - Request Status: ${request.status}
-    
-    Instructions for crafting the email:
-    1. Create a clear subject line indicating it's a payment reminder for their track.
-    2. Open with a warm, personalized greeting using the client's first name.
-    3. Clearly state that it's a friendly reminder for their backing track request.
-    4. If 'Request Status' is 'completed' AND 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently.
-    5. Prominently display the estimated cost for their track as a range.
-    6. Provide a clear call-to-action button to "View Request & Make Payment" linking to the Client Portal Link.
-    7. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
-    8. Offer assistance if they have any questions.
-    9. Express gratitude for their business.
-    10. Keep the tone professional yet friendly.
-    11. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    12. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
-    
-    Format the response as JSON with two fields:
-    {
-      "subject": "Email subject line",
-      "html": "Full HTML email body content"
-    }
-    `;
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    try {
-      const emailData = JSON.parse(text);
-      emailData.html += EMAIL_SIGNATURE_HTML;
-      return emailData;
-    } catch (parseError) {
-      console.error('Error parsing Gemini response for payment reminder email:', parseError);
-      return generateFallbackPaymentReminderEmail(request, trackCost);
-    }
-  } catch (error) {
-    console.error('Error generating payment reminder email copy with Gemini:', error);
-    return generateFallbackPaymentReminderEmail(request, trackCost);
-  }
+  return generateFallbackPaymentReminderEmail(request, trackCost);
 };
 
 const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost: number) => {
@@ -318,7 +223,16 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  
+  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  if (request.user_id) {
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  } else if (request.guest_access_token) {
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
+  } else {
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  }
+
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
@@ -368,78 +282,13 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
 };
 
 export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const firstName = request.name.split(' ')[0];
-  // Correctly access totalCost from the object returned by calculateRequestCost
+  // Removed: const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Removed: if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") { ... }
+  // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
+
+  // Directly call fallback
   const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  const feedbackLink = `${window.location.origin}/?openFeedback=true`;
-  const trackListHtml = generateTrackListHtml(request.track_urls);
-
-  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    console.log("Gemini API key not configured, using fallback completion and payment reminder template");
-    return generateFallbackCompletionAndPaymentEmail(request, trackCost);
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
-    
-    Request details:
-    - Client name: ${request.name}
-    - Song title: "${request.song_title}"
-    - Musical/Artist: ${request.musical_or_artist}
-    - Track purpose: ${request.track_purpose}
-    - Backing type(s): ${request.backing_type.join(', ') || 'N/A'}
-    - Special requests: ${request.special_requests || 'None'}
-    - Estimated cost: $${minCost} - $${maxCost}
-    - Client Portal Link: ${clientPortalLink}
-    - Track URLs: ${request.track_urls && request.track_urls.length > 0 ? JSON.stringify(request.track_urls) : 'None'}
-    
-    Instructions for crafting the email:
-    1. Create a compelling subject line that clearly states the track is ready and includes payment information.
-    2. Open with a warm, personalized greeting using the client's first name.
-    3. Announce that the track is complete and ready.
-    4. If 'Track URLs' are provided, include an HTML unordered list of these tracks with their captions as clickable links, clearly indicating they are ready for download. Place this section prominently after the main announcement.
-    5. Provide a prominent call-to-action button to "View Request & Make Payment" linking to the Client Portal Link. Clearly state that the track can be accessed on this page.
-    6. Clearly state the estimated cost for their track as a range.
-    7. Offer alternative payment methods (Buy Me a Coffee: https://buymeacoffee.com/Danielebuatti, Direct Bank Transfer: BSB: 923100, Account: 301110875).
-    8. Proactively offer adjustments or revisions to ensure satisfaction.
-    9. Express gratitude for their business.
-    10. Keep the tone professional yet friendly, showing genuine care for their success.
-    11. Never use "Break a leg" - end with "Warmly" instead.
-    12. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    13. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
-    
-    Format the response as JSON with two fields:
-    {
-      "subject": "Email subject line",
-      "html": "Full HTML email body content"
-    }
-    `;
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    try {
-      const emailData = JSON.parse(text);
-      emailData.html += EMAIL_SIGNATURE_HTML;
-      return emailData;
-    } catch (parseError) {
-      console.error('Error parsing Gemini response for completion and payment email:', parseError);
-      return generateFallbackCompletionAndPaymentEmail(request, trackCost);
-    }
-  } catch (error) {
-    console.error('Error generating completion and payment email copy with Gemini:', error);
-    return generateFallbackCompletionAndPaymentEmail(request, trackCost);
-  }
+  return generateFallbackCompletionAndPaymentEmail(request, trackCost);
 };
 
 const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trackCost: number) => {
@@ -448,7 +297,16 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  
+  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  if (request.user_id) {
+    clientPortalLink = `${window.location.origin}/track/${request.id}`;
+  } else if (request.guest_access_token) {
+    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
+  } else {
+    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
+  }
+
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
@@ -504,78 +362,22 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
 };
 
 export const generateProductDeliveryEmail = async (product: Product, customerEmail: string) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
+  // Removed: const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Removed: if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") { ... }
+  // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
+
+  // Directly call fallback
   const siteUrl = window.location.origin; // Use window.location.origin for client-side
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  // generateProductTrackListHtml is defined in this file and should be accessible.
-  const productTrackListHtml = generateProductTrackListHtml(product.track_urls); // Use product.track_urls
+  const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
+  const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
 
-  if (!product.track_urls || product.track_urls.length === 0) { // Check for track_urls array
+  if (!product.track_urls || product.track_urls.length === 0) {
     throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
   }
 
-  if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-    console.log("Gemini API key not configured, using fallback product delivery template");
-    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const prompt = `
-    You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
-    
-    Product details:
-    - Product Title: "${product.title}"
-    - Product Description: ${product.description}
-    - Customer Email: ${customerEmail}
-    - Shop Link: ${shopLink}
-    - Feedback Link: ${feedbackLink}
-    - Product Track List HTML: ${productTrackListHtml}
-    - Vocal Ranges: ${product.vocal_ranges && product.vocal_ranges.length > 0 ? product.vocal_ranges.join(', ') : 'None specified'}
-    - Key Signature: ${product.key_signature || 'None specified'}
-    - Sheet Music URL: ${product.sheet_music_url || 'None provided'}
-    
-    Instructions for crafting the email:
-    1. Create a compelling subject line that clearly states the purchase is confirmed and the product is ready for download.
-    2. Open with a warm, personalized greeting using the customer's first name (derived from their email if no name is available).
-    3. Confirm the purchase of "${product.title}".
-    4. Include the "Product Track List HTML" directly in the email body to list all downloadable tracks.
-    5. Briefly mention the product description.
-    6. If vocal ranges are specified, include them in a clear and concise way.
-    7. If a key signature is specified, include it.
-    8. If a sheet music URL is provided, include a link to it.
-    9. Encourage them to explore other products in the shop with a link to the Shop Link.
-    10. Express gratitude for their business.
-    11. Keep the tone professional yet friendly.
-    12. Ensure the email body is valid HTML, using <p> tags for paragraphs and <a> tags for links.
-    13. Add a small section asking for feedback on their experience with the new app, providing a link to the homepage with '?openFeedback=true' query parameter.
-    
-    Format the response as JSON with two fields:
-    {
-      "subject": "Email subject line",
-      "html": "Full HTML email body content"
-    }
-    `;
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    try {
-      const emailData = JSON.parse(text);
-      emailData.html += EMAIL_SIGNATURE_HTML;
-      return emailData;
-    } catch (parseError) {
-      console.error('Error parsing Gemini response for product delivery email:', parseError);
-      return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
-    }
-  } catch (error) {
-    console.error('Error generating product delivery email copy with Gemini:', error);
-    return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
-  }
+  return generateFallbackProductDeliveryEmail(product, firstName, shopLink, feedbackLink, productTrackListHtml);
 };
 
 const generateFallbackProductDeliveryEmail = (product: Product, firstName: string, shopLink: string, feedbackLink: string, productTrackListHtml: string) => {
