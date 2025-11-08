@@ -543,7 +543,7 @@ serve(async (req) => {
             console.error('API error:', apiError);
             youtubeMp3Error = `API error: ${apiError.message}`;
             
-            // Try to create a fallback reference file
+            // Create a fallback reference file
             try {
               const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
               await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
@@ -767,6 +767,7 @@ serve(async (req) => {
       
       const clientEmailSubject = `Confirmation: Your Backing Track Request for "${formData.songTitle}"`;
       // Update client email link to include request_id and guest_access_token
+      const clientDashboardLink = `${siteUrl}/user-dashboard?request_id=${newRequestData.id}&token=${guestAccessToken}`;
       const clientTrackViewLink = `${siteUrl}/track/${newRequestData.id}?token=${guestAccessToken}`;
 
       const clientEmailHtml = `
@@ -793,7 +794,7 @@ serve(async (req) => {
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.additionalLinks ? `<a href="${formData.additionalLinks}">${formData.additionalLinks}</a>` : 'None'}</td></tr>
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.voiceMemo || formData.voiceMemoFileUrl ? `<a href="${formData.voiceMemo || formData.voiceMemoFileUrl}">${formData.voiceMemo || formData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
               <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.sheetMusicUrl ? `<a href="${formData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
-              <tr><td style="padding: 5px 0; font-weight: bold;">Phone Number:</td><td style="padding: 5px 0;">${formData.phone || 'Not provided'}</td></tr>
+              <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone Number:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${formData.phone || 'Not provided'}</td></tr>
               <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests:</td><td style="padding: 5px 0;">${formData.specialRequests || 'None'}</td></tr>
             </table>
           </div>

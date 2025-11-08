@@ -22,8 +22,6 @@ interface BackingRequest {
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
   cost?: number; // Assuming cost might be stored or calculated
-  user_id?: string | null; // Added user_id
-  guest_access_token?: string | null; // Added guest_access_token
   // Add other fields as necessary
 }
 

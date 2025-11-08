@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,15 +27,12 @@ import {
   Banknote,
   Play,
   FileAudio,
-  DollarSign,
-  User as UserIcon, // Added UserIcon for linking section
-  Loader2 // Added Loader2 for linking button
+  DollarSign // Added DollarSign icon
 } from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing';
-import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import Seo from "@/components/Seo";
-import EmailVerificationDialog from '@/components/EmailVerificationDialog'; // Import the new dialog
+import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
+import Seo from "@/components/Seo"; // Import Seo component
 
 // TrackInfo interface is now imported from helpers.ts
 // interface TrackInfo {
@@ -43,208 +40,126 @@ import EmailVerificationDialog from '@/components/EmailVerificationDialog'; // I
 //   caption: string | boolean | null | undefined;
 // }
 
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  song_key: string | null;
-  different_key: string | null;
-  key_for_track: string | null;
-  youtube_link: string | null;
-  voice_memo: string | null;
-  sheet_music_url: string | null;
-  track_purpose: string | null;
-  backing_type: string[] | string | null;
-  delivery_date: string | null;
-  additional_services: string[] | null;
-  special_requests: string | null;
-  category: string | null;
-  track_type: string | null;
-  additional_links: string | null;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
-  shared_link?: string | null;
-  dropbox_folder_id?: string | null;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
-  cost?: number | null;
-  user_id?: string | null; // Added user_id
-  guest_access_token?: string | null; // Added guest_access_token
-}
-
 const ClientTrackView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [request, setRequest] = useState<BackingRequest | null>(null);
+  const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null); // New state
-  const [isAdmin, setIsAdmin] = useState(false); // New state
-  const [isLinking, setIsLinking] = useState(false); // New state for linking loading
-  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false); // New state for dialog
 
-  const fetchRequestAndAuth = async () => { // Removed tempAccessToken parameter, will read from URL
-    setLoading(true);
-    setAccessDenied(false);
-    
-    if (!id) {
-      setAccessDenied(true);
-      setLoading(false);
-      return;
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const guestAccessToken = urlParams.get('token');
-    const tempAccessToken = urlParams.get('temp_token'); // NEW: Read temp_token from URL
-    
-    // Fetch current session and user details
-    const { data: { session } = {} } = await supabase.auth.getSession();
-    const currentUser = session?.user;
-    setLoggedInUser(currentUser);
-
-    let currentIsAdmin = false;
-    if (currentUser?.email) {
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      currentIsAdmin = adminEmails.includes(currentUser.email);
-      setIsAdmin(currentIsAdmin);
-    } else {
-      setIsAdmin(false);
-    }
-
-    try {
-      let requestData: BackingRequest | null = null;
-      let fetchError: any = null;
-
-      if (guestAccessToken) {
-        // Prioritize guest access via token using the Edge Function
-        const response = await fetch(
-          `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ request_id: id, token: guestAccessToken }),
-          }
-        );
-        const result = await response.json();
-        if (!response.ok) {
-          fetchError = new Error(result.error || `Failed to fetch guest request: ${response.status} ${response.statusText}`);
-        } else {
-          requestData = result.request;
-        }
-      } else if (tempAccessToken) { // NEW: Handle temporary access token
-        // First, fetch the request data
-        const { data, error } = await supabase
-          .from('backing_requests')
-          .select('*')
-          .eq('id', id)
-          .single();
-        
-        if (error) {
-          fetchError = error;
-        } else if (data) {
-          // Now verify the tempAccessToken against the database
-          const { data: tempTokenData, error: tempTokenError } = await supabase
-            .from('temp_access_tokens')
-            .select('*')
-            .eq('token', tempAccessToken)
-            .eq('request_id', id)
-            .gt('expires_at', new Date().toISOString())
-            .single();
-
-          if (tempTokenError || !tempTokenData) {
-            fetchError = new Error("Invalid or expired temporary access token.");
-          } else {
-            requestData = data; // Grant access if temp token is valid
-            // Optionally delete the temp token after use to prevent replay
-            await supabase.from('temp_access_tokens').delete().eq('token', tempAccessToken);
-          }
-        }
-      } else {
-        // For logged-in users or admins, fetch directly from Supabase with RLS
-        const { data, error } = await supabase
-          .from('backing_requests')
-          .select('*')
-          .eq('id', id)
-          .single();
-        requestData = data;
-        fetchError = error;
-      }
+  useEffect(() => {
+    const fetchRequest = async () => {
+      setLoading(true);
+      setAccessDenied(false);
       
-      if (fetchError || !requestData) {
-        console.error('Error fetching request:', fetchError);
+      if (!id) {
         setAccessDenied(true);
-        toast({
-          title: "Error",
-          description: "Request not found or access denied.",
-          variant: "destructive",
-        });
+        setLoading(false);
         return;
       }
 
-      // Determine access based on user_id, email, and admin status
-      let hasAccess = false;
+      const urlParams = new URLSearchParams(window.location.search);
+      const guestAccessToken = urlParams.get('token'); // Get the guest access token
+      
+      try {
+        let requestData: any = null;
+        let fetchError: any = null;
 
-      if (currentIsAdmin) {
-        hasAccess = true;
-      } else if (requestData.user_id) {
-        if (currentUser?.id === requestData.user_id) {
-          hasAccess = true;
+        if (guestAccessToken) {
+          // Attempt to fetch using the secure token for anonymous users
+          const response = await fetch(
+            `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ request_id: id, token: guestAccessToken }),
+            }
+          );
+          const result = await response.json();
+          if (!response.ok) {
+            fetchError = new Error(result.error || `Failed to fetch guest request: ${response.status} ${response.statusText}`);
+          } else {
+            requestData = result.request;
+          }
         } else {
-          console.warn('Logged-in user is not the owner of this request.');
+          // For logged-in users or admins, fetch directly from Supabase with RLS
+          const { data, error } = await supabase
+            .from('backing_requests')
+            .select('*')
+            .eq('id', id)
+            .single();
+          requestData = data;
+          fetchError = error;
         }
-      } else {
-        // If the request is NOT linked to a user_id (guest submission)
-        // Access is granted if guestAccessToken matches the stored token
-        if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
-          hasAccess = true;
-        } else if (tempAccessToken) { // NEW: Access granted if tempAccessToken was valid
-          hasAccess = true;
-        } else if (currentUser?.email === requestData.email) { // Allow logged-in user to view their unlinked request by email
-          hasAccess = true;
-        } else {
-          console.warn('Guest access denied: Token mismatch or no token/email match for unlinked request.');
+        
+        if (fetchError || !requestData) {
+          console.error('Error fetching request:', fetchError);
+          setAccessDenied(true);
+          toast({
+            title: "Error",
+            description: "Request not found or access denied.",
+            variant: "destructive",
+          });
+          return;
         }
-      }
 
-      if (hasAccess) {
-        setRequest(requestData);
-      } else {
+        // Now, determine access based on user_id, email, and admin status
+        const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
+        const loggedInUserId = session?.user?.id;
+        const loggedInUserEmail = session?.user?.email;
+        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+        const isAdmin = loggedInUserEmail && adminEmails.includes(loggedInUserEmail);
+
+        let hasAccess = false;
+
+        if (isAdmin) {
+          hasAccess = true; // Admins can view any track
+        } else if (requestData.user_id) {
+          // If the request is linked to a user_id, only the owner can access
+          if (loggedInUserId === requestData.user_id) {
+            hasAccess = true;
+          } else {
+            console.warn('Logged-in user is not the owner of this request.');
+          }
+        } else {
+          // If the request is NOT linked to a user_id (guest submission)
+          // Access is granted if guestAccessToken matches the stored token
+          if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
+            hasAccess = true;
+          } else {
+            console.warn('Guest access denied: Token mismatch or no token provided for unlinked request.');
+          }
+        }
+
+        if (hasAccess) {
+          setRequest(requestData);
+        } else {
+          setAccessDenied(true);
+          toast({
+            title: "Access Denied",
+            description: "You do not have permission to view this track. Please ensure you are logged in with the correct account or using the correct access link.",
+            variant: "destructive",
+          });
+        }
+
+      } catch (error: any) {
+        console.error('Error in ClientTrackView fetch logic:', error);
         setAccessDenied(true);
         toast({
-          title: "Access Denied",
-          description: "You do not have permission to view this track. Please ensure you are logged in with the correct account or using the correct access link.",
+          title: "Error",
+          description: `Failed to fetch request: ${error.message}`,
           variant: "destructive",
         });
+      } finally {
+        setLoading(false);
       }
-
-    } catch (error: any) {
-      console.error('Error in ClientTrackView fetch logic:', error);
-      setAccessDenied(true);
-      toast({
-        title: "Error",
-        description: `Failed to fetch request: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    fetchRequestAndAuth();
+    };
+    
+    fetchRequest();
   }, [id, navigate, toast]);
-
-  const handleVerifiedAccess = (tempAccessToken: string) => {
-    // Redirect with the temporary token
-    navigate(`/track/${id}?temp_token=${tempAccessToken}`, { replace: true });
-    // The useEffect will re-run fetchRequestAndAuth with the new URL param
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -259,40 +174,8 @@ const ClientTrackView = () => {
     }
   };
 
-  const handleLinkRequest = async () => {
-    if (!request || !loggedInUser?.id) return;
-
-    setIsLinking(true);
-    try {
-      const { data, error } = await supabase.rpc('link_backing_request_to_user', {
-        p_request_id: request.id,
-        p_user_id: loggedInUser.id,
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        toast({
-          title: "Request Linked!",
-          description: "This request has been successfully linked to your account.",
-        });
-        // Refresh the request data to show it's now linked
-        // Or simply update the local state
-        setRequest(prev => ({ ...prev, user_id: loggedInUser.id, guest_access_token: null }));
-      } else {
-        throw new Error("Failed to link request: Unknown error.");
-      }
-    } catch (error: any) {
-      console.error('Error linking request:', error);
-      toast({
-        title: "Linking Failed",
-        description: `Could not link request: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLinking(false);
-    }
-  };
+  // downloadTrack function is now imported from helpers.ts
+  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
 
   if (loading) {
     return (
@@ -317,47 +200,15 @@ const ClientTrackView = () => {
             <FileAudio className="mx-auto h-16 w-16 text-gray-400" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied or Track Not Found</h3>
             <p className="mt-1 text-gray-500">
-              We couldn't find your track or verify your access.
+              You do not have permission to view this track, or the track does not exist.
             </p>
-            
-            {/* New buttons */}
-            <div className="mt-6 space-y-3">
-              {!loggedInUser ? ( // Only show these options if not logged in
-                <>
-                  <p className="text-sm text-gray-600">
-                    If you have an account, please log in to view your tracks.
-                  </p>
-                  <Button onClick={() => navigate('/login')} className="w-full max-w-xs bg-[#1C0357] hover:bg-[#1C0357]/90">
-                    <UserIcon className="mr-2 h-4 w-4" /> Log In / Sign Up
-                  </Button>
-                  <p className="text-sm text-gray-600 mt-4">
-                    Alternatively, you can verify your email to access this specific track.
-                  </p>
-                  <Button 
-                    onClick={() => setShowEmailVerificationDialog(true)} 
-                    variant="outline" 
-                    className="w-full max-w-xs"
-                  >
-                    <Mail className="mr-2 h-4 w-4" /> Verify by Email
-                  </Button>
-                </>
-              ) : (
-                // If logged in but still access denied (e.g., not owner, not admin)
-                <Button onClick={() => navigate('/user-dashboard')}>
-                  Back to Dashboard
-                </Button>
-              )}
+            <div className="mt-6">
+              <Button onClick={() => navigate('/user-dashboard')}>
+                Back to Dashboard
+              </Button>
             </div>
           </div>
         </div>
-
-        {/* Email Verification Dialog */}
-        <EmailVerificationDialog 
-          isOpen={showEmailVerificationDialog} 
-          onClose={() => setShowEmailVerificationDialog(false)} 
-          requestId={id}
-          onVerified={handleVerifiedAccess}
-        />
       </div>
     );
   }
@@ -395,55 +246,6 @@ const ClientTrackView = () => {
           <h1 className="text-3xl font-bold text-[#1C0357]">Your Track Order</h1>
           <p className="text-lg text-[#1C0357]/90">Order details and download</p>
         </div>
-        
-        {/* New: Account Linking Section */}
-        {request && !request.user_id && loggedInUser && loggedInUser.email === request.email && (
-          <Card className="shadow-lg mb-6 border-2 border-blue-500 bg-blue-50">
-            <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center text-blue-800">
-                <LinkIcon className="mr-3 h-6 w-6 flex-shrink-0" />
-                <p className="font-medium text-lg">
-                  This request is not yet linked to your account.
-                </p>
-              </div>
-              <Button 
-                onClick={handleLinkRequest}
-                disabled={isLinking}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-              >
-                {isLinking ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Linking...
-                  </>
-                ) : (
-                  <>
-                    <UserIcon className="mr-2 h-4 w-4" /> Link to My Account
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {request && !request.user_id && !loggedInUser && (
-          <Card className="shadow-lg mb-6 border-2 border-yellow-500 bg-yellow-50">
-            <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center text-yellow-800">
-                <UserIcon className="mr-3 h-6 w-6 flex-shrink-0" />
-                <p className="font-medium text-lg">
-                  This request is not linked to an account.
-                </p>
-              </div>
-              <Link to="/login">
-                <Button 
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3"
-                >
-                  Log In / Sign Up to Link
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
         
         <Card className="shadow-lg mb-6 border-2 border-[#1C0357]/20">
           <CardHeader className="bg-gradient-to-r from-[#D1AAF2] to-[#F1E14F] py-6">

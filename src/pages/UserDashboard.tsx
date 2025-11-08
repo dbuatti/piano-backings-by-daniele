@@ -52,27 +52,8 @@ interface Order {
   checkout_session_id: string;
 }
 
-interface BackingRequest { // Define BackingRequest interface for this component
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[];
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number;
-  user_id?: string | null;
-  guest_access_token?: string | null;
-}
-
 const UserDashboard = () => {
-  const [requests, setRequests] = useState<BackingRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<Order[]>([]); // New state for purchases
   const [loading, setLoading] = useState(true);
   const [loadingPurchases, setLoadingPurchases] = useState(true); // New loading state for purchases
@@ -95,7 +76,7 @@ const UserDashboard = () => {
   const fetchRequestsForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null, guestRequestId: string | null, guestAccessToken: string | null) => {
     setLoading(true);
     try {
-      let fetchedRequests: BackingRequest[] = [];
+      let fetchedRequests: any[] = [];
 
       if (targetUserId) {
         // Authenticated user

@@ -31,8 +31,6 @@ export interface BackingRequest {
   created_at?: string; // Added created_at
   is_paid?: boolean; // Added is_paid
   category?: string; // Added category
-  user_id?: string | null; // Added user_id
-  guest_access_token?: string | null; // Added guest_access_token
 }
 
 // New interface for Product
@@ -138,33 +136,11 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   `;
 };
 
-// Helper function to parse Gemini's markdown JSON response
-const parseGeminiResponse = (text: string) => {
-  const jsonStringMatch = text.match(/```json\n([\s\S]*?)\n```/);
-  if (jsonStringMatch && jsonStringMatch[1]) {
-    return JSON.parse(jsonStringMatch[1]);
-  }
-  // Fallback if not wrapped in markdown, try direct parse
-  return JSON.parse(text);
-};
-
 
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const firstName = request.name.split(' ')[0];
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    // If linked to a user, no token needed, RLS handles access for logged-in user
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    // If unlinked but has a guest token, use the token for secure access
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    // Fallback (should ideally not happen if create-backing-request always generates a token for unlinked requests)
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
 
   if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
@@ -173,7 +149,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete.
@@ -214,7 +190,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
     const text = response.text();
     
     try {
-      const emailData = parseGeminiResponse(text); // Use the new parsing function
+      const emailData = JSON.parse(text);
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -229,16 +205,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
 
 const generateFallbackCompletionEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
@@ -282,16 +249,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
@@ -301,7 +259,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional payment reminder email for a client.
@@ -341,7 +299,7 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     const text = response.text();
     
     try {
-      const emailData = parseGeminiResponse(text); // Use the new parsing function
+      const emailData = JSON.parse(text);
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -360,16 +318,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
@@ -427,16 +376,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
@@ -446,7 +386,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a client whose backing track is now complete AND includes payment information.
@@ -489,7 +429,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     const text = response.text();
     
     try {
-      const emailData = parseGeminiResponse(text); // Use the new parsing function
+      const emailData = JSON.parse(text);
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
@@ -508,16 +448,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
   const rawMaxCost = trackCost * 1.5;
   const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
   const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
-  
-  let clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
+  const clientPortalLink = `${window.location.origin}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
@@ -591,7 +522,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // UPDATED MODEL
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
     You are Daniele, a professional piano backing track creator. Generate a personalized, warm, and professional email for a customer who has just purchased a digital product from your shop.
@@ -634,7 +565,7 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
     const text = response.text();
     
     try {
-      const emailData = parseGeminiResponse(text); // Use the new parsing function
+      const emailData = JSON.parse(text);
       emailData.html += EMAIL_SIGNATURE_HTML;
       return emailData;
     } catch (parseError) {
