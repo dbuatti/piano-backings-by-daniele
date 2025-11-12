@@ -68,41 +68,6 @@ const PurchaseConfirmation: React.FC = () => {
         return;
       }
 
-      // 1. Fetch the session details from Stripe to get the guest_access_token (if available)
-      // We need the token to securely fetch the order via RLS.
-      let guestAccessToken: string | undefined;
-      try {
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('orders')
-          .select('guest_access_token')
-          .eq('checkout_session_id', sessionId)
-          .single();
-        
-        if (sessionError && sessionError.code !== 'PGRST116') throw sessionError;
-        
-        guestAccessToken = sessionData?.guest_access_token;
-      } catch (err) {
-        console.warn('Could not retrieve guest access token from DB using session ID:', err);
-      }
-
-      // 2. Create a Supabase client configured with the secure header
-      const supabaseWithHeaders = createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY,
-        {
-          global: {
-            fetch: async (input, init) => {
-              const headers = new Headers(init?.headers);
-              // Use the secure token for RLS access
-              if (guestAccessToken) {
-                headers.set('x-order-access-token', guestAccessToken);
-              }
-              return fetch(input, { ...init, headers });
-            },
-          },
-        }
-      );
-
       const MAX_RETRIES = 5;
       const RETRY_DELAY_MS = 2000; // 2 seconds
 
@@ -112,41 +77,46 @@ const PurchaseConfirmation: React.FC = () => {
       try {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
           try {
-            // Fetch using checkout_session_id. RLS will use the x-order-access-token header if present.
-            const { data, error } = await supabaseWithHeaders
-              .from('orders')
-              .select('*')
-              .eq('checkout_session_id', sessionId)
-              .single();
+            // NEW: Call secure Edge Function to fetch order by session ID
+            const response = await fetch(
+              `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-order-by-session-id`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sessionId }),
+              }
+            );
+            
+            const result = await response.json();
 
-            if (error) {
-              // Supabase returns PGRST116 when .single() finds no rows (Order not found)
-              if (error.code === 'PGRST116') {
-                console.log(`Attempt ${attempt}: Order not found yet (PGRST116). Retrying in ${RETRY_DELAY_MS}ms...`);
+            if (!response.ok) {
+              if (response.status === 404) {
+                // Order not found yet (Stripe webhook might be delayed)
                 if (attempt < MAX_RETRIES) {
+                  console.log(`Attempt ${attempt}: Order not found yet (404). Retrying in ${RETRY_DELAY_MS}ms...`);
                   await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-                  continue; // Continue to the next attempt
+                  continue;
                 } else {
                   throw new Error('Order not found or could not be retrieved after multiple attempts.');
                 }
               }
-              throw error; // Throw other errors immediately
+              throw new Error(result.error || `Failed to fetch order: ${response.status} ${response.statusText}`);
             }
             
-            orderData = data as Order;
+            orderData = result.order as Order;
             break; // Success, break the loop
           } catch (err: any) {
             fetchError = err;
             
-            // Check for the specific "not found" error code or message
-            if (fetchError.code === 'PGRST116' || fetchError.message.includes('Order not found')) {
-              if (attempt < MAX_RETRIES) {
-                console.log(`Attempt ${attempt}: Transient error or not found. Retrying in ${RETRY_DELAY_MS}ms...`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-                continue;
-              }
+            // Handle transient errors during retry loop
+            if (attempt < MAX_RETRIES) {
+              console.log(`Attempt ${attempt}: Transient error. Retrying in ${RETRY_DELAY_MS}ms...`);
+              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+              continue;
             }
-            throw fetchError; // Throw final error or non-transient error
+            throw fetchError; // Throw final error
           }
         }
         
@@ -154,21 +124,8 @@ const PurchaseConfirmation: React.FC = () => {
           throw new Error('Order not found or could not be retrieved.');
         }
 
-        const { data: productData, error: productError } = await supabase
-          .from('products')
-          .select('id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature')
-          .eq('id', orderData.product_id)
-          .single();
-
-        if (productError || !productData) {
-          console.error('Error fetching product for order:', productError);
-          console.warn(`Product with ID ${orderData.product_id} not found for order ${orderData.id}`);
-        }
-
-        const joinedOrder: Order = {
-          ...orderData,
-          products: productData || undefined,
-        };
+        // The Edge Function already performs the product join, so we just use the data.
+        const joinedOrder: Order = orderData;
 
         setOrder(joinedOrder);
         toast({
