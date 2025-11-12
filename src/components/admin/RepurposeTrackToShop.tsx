@@ -29,7 +29,7 @@ interface BackingRequest {
   email: string;
   song_title: string;
   musical_or_artist: string;
-  backing_type: string | string[];
+  backing_type: string[]; // Changed to string[]
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
@@ -154,7 +154,11 @@ const RepurposeTrackToShop: React.FC = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      // Ensure backing_type is always an array when fetched
+      return data?.map(req => ({
+        ...req,
+        backing_type: getSafeBackingTypes(req.backing_type)
+      })) || [];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -749,12 +753,12 @@ const RepurposeTrackToShop: React.FC = () => {
                     icon={FileText}
                     accept=".pdf"
                     onChange={handleSheetMusicFileChange}
-                    note="Upload a PDF for the sheet music. This will override any existing URL."
+                    note="Upload a PDF for the sheet music. This will be available for preview."
                     error={formErrors.sheet_music_url}
                   />
-                  {productForm.sheet_music_url && !sheetMusicFile && (
+                  {productForm.sheet_music_url && sheetMusicFile && (
                     <div className="mt-2">
-                      <Label className="text-xs text-gray-500">Existing URL:</Label>
+                      <Label className="text-xs text-gray-500">Preview:</Label>
                       <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
                         {truncateUrl(productForm.sheet_music_url, 30)}
                       </a>
@@ -916,7 +920,7 @@ const RepurposeTrackToShop: React.FC = () => {
                 {createProductMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding Product...
+                    Add Product
                   </>
                 ) : (
                   <>
