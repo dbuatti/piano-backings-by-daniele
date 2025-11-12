@@ -1,77 +1,84 @@
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { useToast } from '@/hooks/use-toast';
 import { isPast } from 'date-fns';
 
 interface AppSettings {
-  id: string; // Added id to the interface
+  id: string;
   is_holiday_mode_active: boolean;
   holiday_mode_return_date: string | null;
 }
 
-export const useHolidayMode = () => {
-  const [isHolidayModeActive, setIsHolidayModeActive] = useState(false);
-  const [holidayModeReturnDate, setHolidayModeReturnDate] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface HolidayModeState {
+  isHolidayModeActive: boolean;
+  holidayReturnDate: Date | null;
+  isLoading: boolean;
+  error: any;
+}
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      setIsLoading(true);
+export const useHolidayMode = (): HolidayModeState => {
+  const { toast } = useToast();
+  const [isHolidayModeActive, setIsHolidayModeActive] = useState(false);
+  const [holidayReturnDate, setHolidayReturnDate] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  const fetchHolidaySettings = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
       const { data, error } = await supabase
         .from('app_settings')
-        .select('id, is_holiday_mode_active, holiday_mode_return_date') // Select id as well
-        .single();
+        .select('id, is_holiday_mode_active, holiday_mode_return_date') // Select 'id' explicitly
+        .single<AppSettings>(); // Cast to AppSettings for type safety
 
-      if (error) {
-        console.error('Error fetching holiday mode settings:', error);
-        showError(`Error fetching holiday mode settings: ${error.message}`);
-        setIsLoading(false);
-        return;
-      }
+      if (error) throw error;
 
-      if (data) {
-        let active = data.is_holiday_mode_active;
-        let returnDate: Date | null = null;
+      let active = data.is_holiday_mode_active;
+      let returnDate: Date | null = null;
 
-        if (data.holiday_mode_return_date) {
-          returnDate = new Date(data.holiday_mode_return_date);
+      if (data.holiday_mode_return_date) {
+        const parsedDate = new Date(data.holiday_mode_return_date);
+        if (!isNaN(parsedDate.getTime())) {
+          returnDate = parsedDate;
           // If holiday mode is active but the return date is in the past, deactivate it
           if (active && isPast(returnDate)) {
             active = false;
-            // Optionally, update Supabase to reflect this change
+            // Optionally, update the database to reflect this change
             await supabase
               .from('app_settings')
               .update({ is_holiday_mode_active: false })
-              .eq('id', data.id); // 'id' now exists on data
+              .eq('id', data.id); 
           }
         }
-        setIsHolidayModeActive(active);
-        setHolidayModeReturnDate(returnDate);
       }
+
+      setIsHolidayModeActive(active);
+      setHolidayReturnDate(returnDate);
+    } catch (err: any) {
+      console.error('Error fetching holiday settings:', err);
+      setError(err);
+      // Don't show toast for public users, only log
+    } finally {
       setIsLoading(false);
-    };
+    }
+  }, []);
 
-    fetchSettings();
+  useEffect(() => {
+    fetchHolidaySettings();
 
-    // Set up real-time listener for app_settings changes
+    // Set up real-time subscription for changes to app_settings
     const channel = supabase
-      .channel('app_settings_changes')
+      .channel('holiday_mode_changes')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'app_settings' },
         (payload) => {
-          const newSettings = payload.new as AppSettings;
-          let active = newSettings.is_holiday_mode_active;
-          let returnDate: Date | null = null;
-
-          if (newSettings.holiday_mode_return_date) {
-            returnDate = new Date(newSettings.holiday_mode_return_date);
-            if (active && isPast(returnDate)) {
-              active = false;
-            }
-          }
-          setIsHolidayModeActive(active);
-          setHolidayModeReturnDate(returnDate);
+          console.log('Realtime update for app_settings:', payload);
+          // Refetch settings to ensure we have the latest state
+          fetchHolidaySettings();
         }
       )
       .subscribe();
@@ -79,7 +86,7 @@ export const useHolidayMode = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchHolidaySettings]);
 
-  return { isHolidayModeActive, holidayModeReturnDate, isLoading };
+  return { isHolidayModeActive, holidayReturnDate, isLoading, error };
 };

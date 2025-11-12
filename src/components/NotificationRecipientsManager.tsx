@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { showSuccess, showError } from "@/utils/toast"; // Updated import
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import ErrorDisplay from './ErrorDisplay';
@@ -15,6 +15,7 @@ interface Recipient {
 }
 
 const NotificationRecipientsManager: React.FC = () => {
+  const { toast } = useToast();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,11 @@ const NotificationRecipientsManager: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching recipients:', err);
       setError(err);
-      showError(`Failed to fetch notification recipients: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to fetch notification recipients: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -47,7 +52,11 @@ const NotificationRecipientsManager: React.FC = () => {
 
   const handleAddRecipient = async () => {
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      showError("Please enter a valid email address."); // Updated toast call
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
       return;
     }
     setAdding(true);
@@ -62,11 +71,18 @@ const NotificationRecipientsManager: React.FC = () => {
 
       setRecipients([...recipients, data[0]]);
       setNewEmail('');
-      showSuccess(`${newEmail} has been added to notification list.`); // Updated toast call
+      toast({
+        title: "Recipient Added",
+        description: `${newEmail} has been added to notification list.`,
+      });
     } catch (err: any) {
       console.error('Error adding recipient:', err);
       setError(err);
-      showError(`Failed to add recipient: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to add recipient: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setAdding(false);
     }
@@ -86,11 +102,18 @@ const NotificationRecipientsManager: React.FC = () => {
       if (error) throw error;
 
       setRecipients(recipients.filter(r => r.id !== id));
-      showSuccess(`${email} has been removed from notification list.`); // Updated toast call
+      toast({
+        title: "Recipient Removed",
+        description: `${email} has been removed from notification list.`,
+      });
     } catch (err: any) {
       console.error('Error deleting recipient:', err);
       setError(err);
-      showError(`Failed to remove recipient: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to remove recipient: ${err.message}`,
+        variant: "destructive",
+      });
     }
   };
 

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { showSuccess, showError } from "@/utils/toast"; // Updated import
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Search, User, Link, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -27,6 +27,7 @@ interface BackingRequest {
 }
 
 const RequestOwnershipTabContent: React.FC = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [foundUsers, setFoundUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -44,7 +45,11 @@ const RequestOwnershipTabContent: React.FC = () => {
     setSelectedRequestsToLink([]);
 
     if (!searchTerm.trim()) {
-      showError("Please enter an email address to search for users."); // Updated toast call
+      toast({
+        title: "Search Term Required",
+        description: "Please enter an email address to search for users.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
@@ -70,12 +75,19 @@ const RequestOwnershipTabContent: React.FC = () => {
         }));
         setFoundUsers(profiles);
       } else {
-        showSuccess(`No registered users found with email containing "${searchTerm}".`); // Updated toast call
+        toast({
+          title: "No Users Found",
+          description: `No registered users found with email containing "${searchTerm}".`,
+        });
       }
     } catch (err: any) {
       console.error('Error searching users:', err);
       setError(err);
-      showError(`Failed to search for users: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to search for users: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -104,7 +116,11 @@ const RequestOwnershipTabContent: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching user requests:', err);
       setError(err);
-      showError(`Failed to fetch requests for selected user: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to fetch requests for selected user: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -123,13 +139,21 @@ const RequestOwnershipTabContent: React.FC = () => {
     setError(null);
 
     if (!selectedUser) {
-      showError("Please select a user to link requests to."); // Updated toast call
+      toast({
+        title: "No User Selected",
+        description: "Please select a user to link requests to.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
     if (selectedRequestsToLink.length === 0) {
-      showError("Please select at least one request to link."); // Updated toast call
+      toast({
+        title: "No Requests Selected",
+        description: "Please select at least one request to link.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
@@ -145,7 +169,10 @@ const RequestOwnershipTabContent: React.FC = () => {
         throw new Error(`Failed to link requests: ${updateError.message}`);
       }
 
-      showSuccess(`${selectedRequestsToLink.length} requests have been linked to ${selectedUser.email}.`); // Updated toast call
+      toast({
+        title: "Requests Linked",
+        description: `${selectedRequestsToLink.length} requests have been linked to ${selectedUser.email}.`,
+      });
 
       // Refresh requests for the selected user
       await handleSelectUser(selectedUser);
@@ -153,7 +180,11 @@ const RequestOwnershipTabContent: React.FC = () => {
     } catch (err: any) {
       console.error('Error linking requests:', err);
       setError(err);
-      showError(`Failed to link requests: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to link requests: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

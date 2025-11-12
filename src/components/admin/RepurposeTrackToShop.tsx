@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from "@/utils/toast"; // Updated import
+import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,7 @@ interface ProductForm {
 }
 
 const RepurposeTrackToShop: React.FC = () => {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<BackingRequest | null>(null);
@@ -263,7 +264,10 @@ const RepurposeTrackToShop: React.FC = () => {
 
   const handleClearSourceRequest = () => {
     setSelectedRequest(null);
-    showSuccess("The form data remains, allowing you to edit and create a new product."); // Updated toast call
+    toast({
+      title: "Source Cleared",
+      description: "The form data remains, allowing you to edit and create a new product.",
+    });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -411,7 +415,10 @@ const RepurposeTrackToShop: React.FC = () => {
       return data;
     },
     onSuccess: () => {
-      showSuccess(`${productForm.title} has been added to the shop!`); // Updated toast call
+      toast({
+        title: "Product Added",
+        description: `${productForm.title} has been added to the shop!`,
+      });
       setSelectedRequest(null);
       setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
@@ -426,13 +433,21 @@ const RepurposeTrackToShop: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
     },
     onError: (err: any) => {
-      showError(`Failed to add product: ${err.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to add product: ${err.message}`,
+        variant: "destructive",
+      });
     }
   });
 
   const handleCreateProduct = async () => {
     if (!validateForm()) {
-      showError("Please correct the errors in the form."); // Updated toast call
+      toast({
+        title: "Validation Error",
+        description: "Please correct the errors in the form.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -442,7 +457,11 @@ const RepurposeTrackToShop: React.FC = () => {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
       } catch (uploadError: any) {
         console.log('Image upload error:', uploadError);
-        showError(`Failed to upload image: ${uploadError.message}`); // Updated toast call
+        toast({
+          title: "Image Upload Error",
+          description: `Failed to upload image: ${uploadError.message}`, 
+          variant: "destructive",
+        });
         return;
       }
     }
@@ -455,7 +474,11 @@ const RepurposeTrackToShop: React.FC = () => {
         console.log('Sheet music upload successful, URL:', sheetMusicUrlToSave);
       } catch (uploadError: any) {
         console.log('Sheet music upload error:', uploadError);
-        showError(`Failed to upload sheet music: ${uploadError.message}`); // Updated toast call
+        toast({
+          title : "Sheet Music Upload Error",
+          description: `Failed to upload sheet music: ${uploadError.message}`,
+          variant: "destructive",
+        });
         return;
       }
     } else if (productForm.sheet_music_url === '' && selectedRequest?.sheet_music_url) {
@@ -475,7 +498,11 @@ const RepurposeTrackToShop: React.FC = () => {
             console.log('Track file upload successful, URL:', trackUrlToSave);
           } catch (uploadError: any) {
             console.log('Track upload error:', uploadError);
-            showError(`Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`); // Updated toast call
+            toast({
+              title: "Track Upload Error",
+              description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+              variant: "destructive",
+            });
             return; // Stop if any track upload fails
           }
         }

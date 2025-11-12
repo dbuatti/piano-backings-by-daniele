@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast'; // Updated import
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UploadedPlatforms {
@@ -33,6 +33,7 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isOpen) return; // Only fetch when dialog is open
@@ -46,7 +47,11 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({
         .single();
 
       if (error) {
-        showError(`Failed to fetch platforms: ${error.message}`); // Updated toast call
+        toast({
+          title: "Error",
+          description: `Failed to fetch platforms: ${error.message}`,
+          variant: "destructive",
+        });
         onOpenChange(false); // Close dialog on error
         return;
       }
@@ -72,7 +77,7 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({
     };
 
     fetchPlatforms();
-  }, [requestId, isOpen, onOpenChange, setPlatforms]); // Depend on isOpen to re-fetch when it changes
+  }, [requestId, isOpen, onOpenChange, toast, setPlatforms]); // Depend on isOpen to re-fetch when it changes
 
   const handleCheckboxChange = (platform: keyof UploadedPlatforms, checked: boolean) => {
     setPlatforms(prev => ({ ...prev, [platform]: checked }));
@@ -85,7 +90,11 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving platforms:", error);
-      showError(`Failed to save platforms: ${error.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to save platforms: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
