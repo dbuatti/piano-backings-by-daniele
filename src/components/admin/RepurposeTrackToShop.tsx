@@ -29,7 +29,7 @@ interface BackingRequest {
   email: string;
   song_title: string;
   musical_or_artist: string;
-  backing_type: string[]; // Changed to string[]
+  backing_type: string[]; 
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
@@ -37,11 +37,11 @@ interface BackingRequest {
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
-  track_purpose: string; // Changed from optional to required to match emailGenerator.ts
-  additional_services?: string[];
+  track_purpose: string; 
+  additional_services: string[]; // CHANGED: Made required
   sheet_music_url?: string;
-  song_key?: string;
-  track_type?: string;
+  song_key: string; // CHANGED: Made required
+  track_type: string; // CHANGED: Made required
   category?: string;
 }
 
@@ -154,10 +154,13 @@ const RepurposeTrackToShop: React.FC = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      // Ensure backing_type is always an array when fetched
+      // Ensure required fields are present and typed correctly when fetched
       return data?.map(req => ({
         ...req,
-        backing_type: getSafeBackingTypes(req.backing_type)
+        backing_type: getSafeBackingTypes(req.backing_type),
+        song_key: req.song_key || '', // Added default value
+        additional_services: req.additional_services || [], // Added default value
+        track_type: req.track_type || '', // Added default value
       })) || [];
     },
     staleTime: 5 * 60 * 1000,

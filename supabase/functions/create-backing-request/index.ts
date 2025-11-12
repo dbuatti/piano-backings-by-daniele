@@ -2,13 +2,44 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { EMAIL_SIGNATURE_HTML } from '../../src/utils/emailGenerator.ts'; // Added: Import EMAIL_SIGNATURE_HTML
+// Removed: import { EMAIL_SIGNATURE_HTML } from '../../src/utils/emailGenerator.ts'; 
 
 // Setup CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// HTML Email signature template (Defined locally for Deno compatibility)
+const EMAIL_SIGNATURE_HTML = `
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td valign="top" style="padding-right: 20px; width: 150px;">
+        <p style="margin: 0; font-weight: bold; color: #F538BC; font-size: 18px;">Daniele Buatti</p>
+        <p style="margin: 5px 0 0 0; color: #1C0357; font-size: 14px;">Piano Backings by Daniele</p>
+      </td>
+      <td valign="top" style="border-left: 2px solid #F538BC; padding-left: 20px;">
+        <p style="margin: 0; color: #333;"><strong style="color: #1C0357;">M</strong> 0424 174 067</p>
+        <p style="margin: 5px 0; color: #333;"><strong style="color: #1C0357;">E</strong> <a href="mailto:pianobackingsbydaniele@gmail.com" style="color: #007bff; text-decoration: none;">pianobackingsbydaniele@gmail.com</a></p>
+        <p style="margin: 10px 0 5px 0; font-weight: bold; color: #1C0357;">Piano Backings By Daniele</p>
+        <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
+        <div style="margin-top: 15px;">
+          <a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="display: inline-block; margin-right: 5px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/1200px-2021_Facebook_icon.svg.png" alt="Facebook" width="24" height="24" style="vertical-align: middle;">
+          </a>
+          <a href="https://www.youtube.com/@pianobackingsbydaniele" target="_blank" style="display: inline-block; margin-right: 5px;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1200px-YouTube_full-color_icon_%282017%29.svg.png" alt="YouTube" width="24" height="24" style="vertical-align: middle;">
+          </a>
+          <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" style="display: inline-block;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/1200px-Instagram_logo_2017%29.svg.png" alt="Instagram" width="24" height="24" style="vertical-align: middle;">
+          </a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+`;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -544,7 +575,7 @@ serve(async (req) => {
             console.error('API error:', apiError);
             youtubeMp3Error = `API error: ${apiError.message}`;
             
-            // Create a fallback reference file
+            // Try to create a fallback reference file
             try {
               const mp3FileName = `${formData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
               await createFallbackReferenceFile(dropboxAccessToken, dropboxFolderPath, formData.youtubeLink, mp3FileName);
