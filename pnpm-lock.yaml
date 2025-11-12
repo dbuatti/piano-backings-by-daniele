@@ -110,6 +110,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.56.2
         version: 5.74.4(react@18.3.1)
+      '@types/react-helmet':
+        specifier: ^6.1.11
+        version: 6.1.11
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1419,6 +1422,9 @@ packages:
     resolution: {integrity: sha512-nf22//wEbKXusP6E9pfOCDwFdHAX4u172eaJI4YkDRQEZiorm6KfYnSC2SWLDMVWUOWPERmJnN0ujeAfTBLvrw==}
     peerDependencies:
       '@types/react': ^18.0.0
+
+  '@types/react-helmet@6.1.11':
+    resolution: {integrity: sha512-0QcdGLddTERotCXo3VFlUSWO3ztraw8nZ6e3zJSgG7apwV5xt+pJUS8ewPBqT4NYB1optGLprNQzFleIY84u/g==}
 
   '@types/react@18.3.20':
     resolution: {integrity: sha512-IPaCZN7PShZK/3t6Q87pfTkRm6oLTd4vztyoj+cbHUF1g3FfVb2tFIL79uCRKEfv16AhqDMBywP2VW3KIZUvcg==}
@@ -3702,6 +3708,10 @@ snapshots:
   '@types/prop-types@15.7.14': {}
 
   '@types/react-dom@18.3.6(@types/react@18.3.20)':
+    dependencies:
+      '@types/react': 18.3.20
+
+  '@types/react-helmet@6.1.11':
     dependencies:
       '@types/react': 18.3.20
 
