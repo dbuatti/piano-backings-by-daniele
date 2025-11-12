@@ -3,22 +3,15 @@ import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import Seo from "@/components/Seo";
+// Seo is no longer needed here for social media meta tags, as they are in index.html
+// import Seo from "@/components/Seo"; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Coffee, Youtube, Instagram, Facebook, Mail, Info, Music, DollarSign, CreditCard, Phone } from 'lucide-react';
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo
-        title="Home | Piano Backings by Daniele"
-        description="Get custom piano backing tracks for your auditions, performances, or practice sessions. High-quality, personalized musical accompaniment tailored to your needs."
-        keywords="piano backing tracks, custom piano accompaniment, musical auditions, performance tracks, Daniele Buatti, musical theatre, vocal practice"
-        ogImage={`${window.location.origin}/images/social-share-home.jpg`} // Ensure this image exists in public/images
-        ogType="website"
-        twitterCard="summary_large_image"
-        canonicalUrl={`${window.location.origin}/`}
-      />
+      {/* Seo component removed for home page social media meta tags, now handled in public/index.html */}
       <Header />
       <main className="flex flex-col items-center justify-center flex-1 py-12 px-4 text-center">
         <h1 className="text-5xl font-bold text-[#1C0357] mb-6">
