@@ -288,7 +288,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
           </a>
         </p>
         <p style="margin-top: 20px;">
-          Alternatively, you can pay directly using one of the methods below:
+          You can make your payment using one of the following methods:
         </p>
         <ul style="list-style: none; padding: 0; margin-top: 10px;">
           <li style="margin-bottom: 10px;">
@@ -400,7 +400,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
         
         ${costDisplayHtml}
         <p style="margin-top: 20px;">
-          Alternatively, you can pay directly using one of the methods below:
+          You can make your payment using one of the following methods:
         </p>
         <ul style="list-style: none; padding: 0; margin-top: 10px;">
           <li style="margin-bottom: 10px;">
