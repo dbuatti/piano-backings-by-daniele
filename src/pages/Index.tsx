@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import Seo from "@/components/Seo"; // Import the Seo component
+import Seo from "@/components/Seo";
 
 const Index = () => {
   return (
@@ -11,10 +11,10 @@ const Index = () => {
       <Seo
         title="Home | Piano Backings by Daniele"
         description="Get custom piano backing tracks for your auditions, performances, or practice sessions. High-quality, personalized musical accompaniment tailored to your needs."
-        // Specific image for home page
-        ogImage={`${window.location.origin}/images/social-share-home.jpg`} 
+        ogImage={`${window.location.origin}/images/social-share-home.jpg`}
         ogType="website"
         twitterCard="summary_large_image"
+        canonicalUrl={`${window.location.origin}/`}
       />
       <Header />
       <main className="flex flex-col items-center justify-center flex-1 py-12 px-4 text-center">
