@@ -1,61 +1,55 @@
 import { useState } from 'react';
-import { useRequestActions } from './useRequestActions'; // Assuming this hook is available
+import { useRequestActions } from './useRequestActions';
+import { showSuccess, showError } from '@/utils/toast';
+import { useQueryClient } from '@tanstack/react-query';
 
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_url?: string;
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number;
-}
-
-export const useDeleteDialogs = (
-  requests: BackingRequest[],
-  setRequests: React.Dispatch<React.SetStateAction<BackingRequest[]>>,
-  selectedRequests: string[]
-) => {
+export const useDeleteDialogs = () => {
+  const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
-  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [requestIdToDelete, setRequestIdToDelete] = useState<string | null>(null);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [requestsToDelete, setRequestsToDelete] = useState<string[]>([]);
 
-  const { deleteRequest, batchDeleteRequests } = useRequestActions(requests, setRequests);
+  const { deleteRequest, batchDeleteRequests, isDeletingRequest, isBatchDeletingRequests } = useRequestActions(); // No arguments
 
   const openDeleteDialog = (id: string) => {
-    setRequestToDelete(id);
+    setRequestIdToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDeleteRequest = () => {
-    if (requestToDelete) {
-      deleteRequest(requestToDelete);
+  const confirmDelete = () => {
+    if (requestIdToDelete) {
+      deleteRequest(requestIdToDelete);
       setDeleteDialogOpen(false);
-      setRequestToDelete(null);
+      setRequestIdToDelete(null);
     }
   };
 
-  const openBatchDeleteDialog = () => {
-    setBatchDeleteDialogOpen(true);
+  const openBulkDeleteDialog = (ids: string[]) => {
+    setRequestsToDelete(ids);
+    setBulkDeleteDialogOpen(true);
   };
 
-  const confirmBatchDeleteRequests = () => {
-    batchDeleteRequests(selectedRequests);
-    setBatchDeleteDialogOpen(false);
+  const confirmBulkDelete = () => {
+    if (requestsToDelete.length > 0) {
+      batchDeleteRequests(requestsToDelete); // Corrected call
+      setBulkDeleteDialogOpen(false);
+      setRequestsToDelete([]);
+    }
   };
 
   return {
-    deleteDialogOpen, setDeleteDialogOpen,
-    requestToDelete, setRequestToDelete,
-    batchDeleteDialogOpen, setBatchDeleteDialogOpen,
-    openDeleteDialog, confirmDeleteRequest,
-    openBatchDeleteDialog, confirmBatchDeleteRequests,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    requestIdToDelete,
+    openDeleteDialog,
+    confirmDelete,
+    isDeletingRequest,
+    bulkDeleteDialogOpen,
+    setBulkDeleteDialogOpen,
+    requestsToDelete,
+    openBulkDeleteDialog,
+    confirmBulkDelete,
+    isBatchDeletingRequests,
   };
 };

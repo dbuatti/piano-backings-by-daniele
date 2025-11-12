@@ -1,60 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { BackingRequest } from '@/utils/helpers'; // Assuming BackingRequest is defined here or globally
 
-interface TrackInfo {
-  url: string;
-  caption: string;
-}
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number; // Assuming cost might be stored or calculated
-  // Add other fields as necessary
-}
-
-export const useAdminRequests = () => {
-  const [requests, setRequests] = useState<BackingRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  const fetchRequests = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
+export const useAdminRequests = (searchTerm: string) => {
+  const { data: requests, isLoading, isError, error } = useQuery<BackingRequest[], Error>({
+    queryKey: ['adminRequests', searchTerm],
+    queryFn: async () => {
+      let query = supabase
         .from('backing_requests')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
+      if (searchTerm) {
+        query = query.or(`song_title.ilike.%${searchTerm}%,musical_or_artist.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      
-      setRequests(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `Failed to fetch requests: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]); // `toast` is a stable reference from `useToast`
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]); // `fetchRequests` is now stable due to useCallback
-
-  return { requests, setRequests, loading, fetchRequests };
+  return { requests, isLoading, isError, error };
 };

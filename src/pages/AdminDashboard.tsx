@@ -1,426 +1,317 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
+import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from '@/utils/toast'; // Updated import
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from '@tanstack/react-query';
-
-// New Tab Content Components
-import DashboardTabContent from '@/components/admin/DashboardTabContent';
-import UsersAndDataTabContent from '@/components/admin/UsersAndDataTabContent';
-import SystemAndConfigTabContent from '@/components/admin/SystemAndConfigTabContent';
-import DevelopmentAndTestingTabContent from '@/components/admin/DevelopmentAndTestingTabContent';
-import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop'; // Import the repurpose component
-import CreateNewProduct from '@/components/admin/CreateNewProduct'; // Import the new component
-import ProductManager from '@/components/admin/ProductManager'; // Import ProductManager
-
-// Admin Components (now mostly consumed by new tab content components)
-import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
-import UploadTrackDialog from '@/components/admin/UploadTrackDialog'; // Added import
-import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog'; // Added import
-import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs'; // Added import
-
-import { 
-  LayoutDashboard, // Icon for Dashboard
-  Users, // Icon for Users & Data
-  Settings, // Icon for System & Configuration
-  Wrench, // Icon for Development & Testing
-  ShoppingCart // Icon for Shop Management
-} from 'lucide-react';
-
-// Custom Hooks (still used by DashboardTabContent)
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, PlusCircle, Loader2, Bell } from 'lucide-react';
+import Header from '@/components/Header';
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
-import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
 import { useRequestActions } from '@/hooks/admin/useRequestActions';
 import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
-import { useDeleteDialogs
- } from '@/hooks/admin/useDeleteDialogs';
-import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
+import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
+import RequestsTable from '@/components/admin/RequestsTable';
+import DashboardTabContent from '@/components/admin/DashboardTabContent';
+import IssueReportsTable from '@/components/admin/IssueReportsTable';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchUnreadIssueReportsCount } from '@/utils/admin-helpers';
+import { BackingRequest } from '@/utils/helpers';
+import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
+import { CreateNewProduct } from '@/components/admin/CreateNewProduct'; // Changed to named import
+import ProductManager from '@/components/admin/ProductManager';
+import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const AdminDashboard = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [adminEmail, setAdminEmail] = useState<string | undefined>(undefined);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
+const AdminDashboard: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
 
-  // Default to 'dashboard' for the new structure
-  const activeTab = searchParams.get('tab') || 'dashboard';
-
-  // Custom Hooks for state and logic (props for DashboardTabContent)
-  const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
-  const { 
-    searchTerm, setSearchTerm,
-    statusFilter, setStatusFilter,
-    backingTypeFilter, setBackingTypeFilter,
-    paymentStatusFilter, setPaymentStatusFilter, // Destructure new filter state and setter
-    viewMode, setViewMode,
-    selectedDate, setSelectedDate,
-    filteredRequests,
-    clearFilters,
-  } = useRequestFilters(requests);
-  const { 
-    updateStatus, updatePaymentStatus, shareTrack, 
-    deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests,
-    updateCost, // Destructure updateCost
-  } = useRequestActions(requests, setRequests);
+  const { requests, isLoading: loading, isError, error } = useAdminRequests(searchTerm);
   const {
-    uploadTrackId, setUploadTrackId,
-    uploadFile, handleFileChange,
-    uploadCaption, setUploadCaption, // Destructure new props
-    uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen,
-    selectedRequestForPlatforms, setSelectedRequestForPlatforms,
-    platforms, setPlatforms,
-    handleUploadTrack,
-    handleFileUpload,
-    handleDirectFileUpload,
-    openUploadPlatformsDialog,
-    saveUploadPlatforms,
-    updateTrackCaption, // Destructure the new function
-    isUploading, // Destructure isUploading from useUploadDialogs
-  } = useUploadDialogs(requests, setRequests);
+    updateStatus, updatePaymentStatus, shareTrack,
+    deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests, // Corrected destructuring
+    updateCost, uploadTrack,
+  } = useRequestActions(); // No arguments
   const {
-    selectedRequests, setSelectedRequests,
-    totalCost,
-    handleSelectAll,
-    handleSelectRequest,
-  } = useBatchSelection(filteredRequests);
+    uploadTrackDialogOpen, uploadTrackId, closeUploadTrackDialog, openUploadTrackDialog,
+  } = useUploadDialogs(); // No longer passing file state
   const {
-    deleteDialogOpen, setDeleteDialogOpen,
-    requestToDelete, setRequestToDelete,
-    batchDeleteDialogOpen, setBatchDeleteDialogOpen,
-    openDeleteDialog, confirmDeleteRequest,
-    openBatchDeleteDialog, confirmBatchDeleteRequests,
-  } = useDeleteDialogs(requests, setRequests, selectedRequests);
+    deleteDialogOpen, setDeleteDialogOpen, requestIdToDelete, openDeleteDialog, confirmDelete, isDeletingRequest,
+    bulkDeleteDialogOpen, setBulkDeleteDialogOpen, requestsToDelete, openBulkDeleteDialog, confirmBulkDelete, isBatchDeletingRequests,
+  } = useDeleteDialogs();
 
-  const { data: totalIssueReports = 0, isLoading: isLoadingTotalIssues } = useQuery<number, Error>({
-    queryKey: ['totalIssueReports'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('issue_reports')
-        .select('id', { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin && authChecked,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: unreadIssueReports = 0, isLoading: isLoadingUnreadIssues } = useQuery<number, Error>({
+  const { data: unreadCount } = useQuery<number | undefined>({
     queryKey: ['unreadIssueReportsCount'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('issue_reports')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_read', false);
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin && authChecked,
+    queryFn: fetchUnreadIssueReportsCount,
     refetchInterval: 30000,
-    staleTime: 10000,
   });
 
-
-  const checkAdminAccess = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      setIsAdmin(false);
-      setAdminEmail(undefined);
-      setAuthChecked(true);
-      navigate('/login');
-      return;
-    }
-    
-    const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-
-    if (adminEmails.includes(session.user.email)) {
-      setIsAdmin(true);
-      setAdminEmail(session.user.email);
-      setAuthChecked(true);
-      fetchRequests();
-      return;
-    }
-    
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (error) {
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
-          setAdminEmail(session.user.email);
-          setAuthChecked(true);
-          fetchRequests();
-        } else {
-          setIsAdmin(false);
-          setAdminEmail(undefined);
-          setAuthChecked(true);
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/');
-        }
-        return;
-      }
-      
-      if (adminEmails.includes(profile?.email)) {
-        setIsAdmin(true);
-        setAdminEmail(profile?.email);
-        setAuthChecked(true);
-        fetchRequests();
-      } else {
-        setIsAdmin(false);
-        setAdminEmail(undefined);
-        setAuthChecked(true);
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access this page.",
-          variant: "destructive",
-        });
-        navigate('/');
-      }
-    } catch (error: any) {
-      if (adminEmails.includes(session.user.email)) {
-        setIsAdmin(true);
-        setAdminEmail(session.user.email);
-        setAuthChecked(true);
-        fetchRequests();
-      } else {
-        setIsAdmin(false);
-        setAdminEmail(undefined);
-        setAuthChecked(true);
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access this page.",
-          variant: "destructive",
-        });
-        navigate('/');
-      }
-    } finally {
-      setAuthChecked(true);
-    }
-  }, [navigate, toast, fetchRequests]);
-
-  useEffect(() => {
-    checkAdminAccess();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      checkAdminAccess();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-
-  }, [checkAdminAccess]);
-
-  const openEmailGenerator = (request: any) => {
-    navigate(`/email-generator/${request.id}`);
-  };
-
-  const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value });
-  };
-
-  // Get existing track URLs for the currently selected request in the dialog
-  const currentRequestForUpload = requests.find(req => req.id === uploadTrackId);
-  const existingTrackUrls = currentRequestForUpload?.track_urls || [];
-
-  const handleRemoveTrack = async (urlToRemove: string) => {
-    if (!uploadTrackId) return;
-
-    try {
-      // Filter by the 'url' property of the TrackInfo object
-      const updatedTrackUrls = existingTrackUrls.filter(track => track.url !== urlToRemove);
-      
-      const { error } = await supabase
-        .from('backing_requests')
-        .update({ track_urls: updatedTrackUrls })
-        .eq('id', uploadTrackId);
-      
+  const { data: issueReports, isLoading: loadingIssueReports } = useQuery<any[], Error>({
+    queryKey: ['allIssueReports'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('issue_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
       if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60 * 1000,
+  });
 
-      setRequests(prev => prev.map(req => 
-        req.id === uploadTrackId ? { ...req, track_urls: updatedTrackUrls } : req
-      ));
+  const toggleIssueReportReadStatus = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('issue_reports')
+      .update({ is_read: !currentStatus })
+      .eq('id', id);
 
-      toast({
-        title: "Track Removed",
-        description: "The selected track has been removed.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: `Failed to remove track: ${error.message}`,
-        variant: "destructive",
-      });
+    if (error) {
+      showError(`Failed to update status: ${error.message}`);
+    } else {
+      showSuccess(`Issue report marked as ${!currentStatus ? 'read' : 'unread'}.`);
+      queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
     }
   };
 
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p>Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const deleteIssueReport = async (id: string) => {
+    const { error } = await supabase
+      .from('issue_reports')
+      .delete()
+      .eq('id', id);
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p>Access Denied</p>
-        </div>
-      </div>
-    );
-  }
+    if (error) {
+      showError(`Failed to delete report: ${error.message}`);
+    } else {
+      showSuccess("Issue report deleted permanently.");
+      queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
+    }
+  };
+
+  const handleTrackUploaded = (url: string, caption: string) => {
+    // This function is called by UploadTrackDialog when a track is successfully uploaded.
+    // It should trigger a re-fetch of the request details to show the new track.
+    queryClient.invalidateQueries({ queryKey: ['requestDetails', uploadTrackId] });
+    queryClient.invalidateQueries({ queryKey: ['adminRequests'] });
+    showSuccess(`Track "${caption}" uploaded and linked to request.`);
+    closeUploadTrackDialog();
+  };
+
+  const handleSelectRequest = (id: string, checked: boolean | 'indeterminate') => {
+    if (checked) {
+      setSelectedRequests(prev => [...prev, id]);
+    } else {
+      setSelectedRequests(prev => prev.filter(requestId => requestId !== id));
+    }
+  };
+
+  const handleSelectAllRequests = (checked: boolean | 'indeterminate') => {
+    if (checked && requests) {
+      setSelectedRequests(requests.map(request => request.id));
+    } else {
+      setSelectedRequests([]);
+    }
+  };
 
   return (
-    <> 
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-          <AdminDashboardHeader 
-            title="Admin Dashboard" 
-            description="Manage all backing track requests and system settings" 
-            adminEmail={adminEmail}
-          />
-          
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="dashboard" className="flex items-center">
-                <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="shop-management" className="flex items-center">
-                <ShoppingCart className="mr-2 h-4 w-4" /> Shop Management
-              </TabsTrigger>
-              <TabsTrigger value="users-data" className="flex items-center">
-                <Users className="mr-2 h-4 w-4" /> Users & Data
-              </TabsTrigger>
-              <TabsTrigger value="system-config" className="flex items-center">
-                <Settings className="mr-2 h-4 w-4" /> System & Config
-              </TabsTrigger>
-              <TabsTrigger value="dev-testing" className="flex items-center">
-                <Wrench className="mr-2 h-4 w-4" /> Dev & Testing
-              </TabsTrigger>
-            </TabsList>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Header />
+      <div className="flex-grow container mx-auto py-8 px-4">
+        <h1 className="text-4xl font-bold text-[#1C0357] mb-8 text-center">Admin Dashboard</h1>
 
-            {/* Dashboard Tab Content */}
-            <TabsContent value="dashboard">
-              <DashboardTabContent
-                requests={requests}
-                loading={loading}
-                totalIssueReports={totalIssueReports}
-                unreadIssueReports={unreadIssueReports}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                backingTypeFilter={backingTypeFilter}
-                setBackingTypeFilter={setBackingTypeFilter}
-                paymentStatusFilter={paymentStatusFilter}
-                setPaymentStatusFilter={setPaymentStatusFilter}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                filteredRequests={filteredRequests}
-                clearFilters={clearFilters}
-                selectedRequests={selectedRequests}
-                handleSelectAll={handleSelectAll}
-                handleSelectRequest={handleSelectRequest}
-                totalCost={totalCost}
-                updateStatus={updateStatus}
-                updatePaymentStatus={updatePaymentStatus}
-                uploadTrack={handleUploadTrack}
-                shareTrack={shareTrack}
-                openEmailGenerator={openEmailGenerator}
-                openDeleteDialog={openDeleteDialog}
-                openBatchDeleteDialog={confirmBatchDeleteRequests}
-                openUploadPlatformsDialog={openUploadPlatformsDialog}
-                onDirectFileUpload={handleDirectFileUpload}
-                updateTrackCaption={updateTrackCaption}
-                updateCost={updateCost}
-              />
-            </TabsContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
+            <TabsTrigger value="issues">
+              Issue Reports
+              {unreadCount !== undefined && unreadCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="shop">Shop Management</TabsTrigger>
+            <TabsTrigger value="new-product">New Product</TabsTrigger>
+          </TabsList>
 
-            {/* New Shop Management Tab Content */}
-            <TabsContent value="shop-management" className="mt-6 space-y-8">
-              <CreateNewProduct /> {/* New component for creating products */}
-              <RepurposeTrackToShop /> {/* Existing component for repurposing */}
-              <ProductManager /> {/* Existing component for managing products */}
-            </TabsContent>
+          <TabsContent value="dashboard" className="mt-6">
+            <DashboardTabContent /> {/* Removed requests and loading props */}
+          </TabsContent>
 
-            {/* Users & Data Tab Content */}
-            <TabsContent value="users-data" className="mt-6">
-              <UsersAndDataTabContent />
-            </TabsContent>
+          <TabsContent value="requests" className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search requests by title, artist, or email..."
+                  className="pl-9 pr-4 py-2 border rounded-md w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              {selectedRequests.length > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => openBulkDeleteDialog(selectedRequests)}
+                  disabled={isBatchDeletingRequests}
+                >
+                  {isBatchDeletingRequests ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    `Delete Selected (${selectedRequests.length})`
+                  )}
+                </Button>
+              )}
+            </div>
+            <RequestsTable
+              requests={requests || []}
+              loading={loading}
+              error={error}
+              updateStatus={updateStatus}
+              updatePaymentStatus={updatePaymentStatus}
+              updateCost={updateCost}
+              openUploadTrackDialog={openUploadTrackDialog}
+              shareTrack={shareTrack}
+              openDeleteDialog={openDeleteDialog}
+              selectedRequests={selectedRequests}
+              onSelectRequest={handleSelectRequest}
+              onSelectAllRequests={handleSelectAllRequests}
+            />
+          </TabsContent>
 
-            {/* System & Configuration Tab Content */}
-            <TabsContent value="system-config" className="mt-6">
-              <SystemAndConfigTabContent />
-            </TabsContent>
+          <TabsContent value="issues" className="mt-6">
+            <IssueReportsTable
+              reports={issueReports || []}
+              isLoading={loadingIssueReports}
+              toggleReadStatus={toggleIssueReportReadStatus}
+              openDeleteDialog={openDeleteDialog} // Reusing the general delete dialog for single report delete
+              deleteDialogOpen={deleteDialogOpen}
+              setDeleteDialogOpen={setDeleteDialogOpen}
+              confirmDelete={() => {
+                if (requestIdToDelete) {
+                  deleteIssueReport(requestIdToDelete);
+                  setDeleteDialogOpen(false);
+                  setRequestIdToDelete(null);
+                }
+              }}
+              isTogglingReadStatus={false} // Placeholder, actual state management for this would be more complex
+              isDeletingReport={isDeletingRequest} // Reusing general delete state
+            />
+          </TabsContent>
 
-            {/* Development & Testing Tab Content */}
-            <TabsContent value="dev-testing" className="mt-6">
-              <DevelopmentAndTestingTabContent />
-            </TabsContent>
-          </Tabs>
-          
-          <UploadTrackDialog
-            isOpen={!!uploadTrackId}
-            onOpenChange={() => { setUploadTrackId(null); handleFileChange(null); }}
-            requestId={uploadTrackId}
-            uploadFile={uploadFile}
-            onFileChange={handleFileChange}
-            uploadCaption={uploadCaption}
-            setUploadCaption={setUploadCaption}
-            onFileUpload={handleFileUpload}
-            existingTrackUrls={existingTrackUrls}
-            onRemoveTrack={handleRemoveTrack}
-            onUpdateTrackCaption={updateTrackCaption}
-            isUploading={isUploading}
-          />
-          
-          <UploadPlatformsDialog
-            isOpen={uploadPlatformsDialogOpen}
-            onOpenChange={() => setUploadPlatformsDialogOpen(false)}
-            requestId={selectedRequestForPlatforms}
-            platforms={platforms}
-            setPlatforms={setPlatforms}
-            onSavePlatforms={saveUploadPlatforms}
-          />
-          
-          <DeleteConfirmationDialogs
-            deleteDialogOpen={deleteDialogOpen}
-            setDeleteDialogOpen={setDeleteDialogOpen}
-            requestToDelete={requestToDelete}
-            onDeleteRequest={confirmDeleteRequest}
-            batchDeleteDialogOpen={batchDeleteDialogOpen}
-            setBatchDeleteDialogOpen={setBatchDeleteDialogOpen}
-            selectedRequestsCount={selectedRequests.length}
-            onBatchDeleteRequests={confirmBatchDeleteRequests}
-          />
-          
-          <MadeWithDyad />
-        </div>
+          <TabsContent value="shop" className="mt-6">
+            <ProductManager />
+          </TabsContent>
+
+          <TabsContent value="new-product" className="mt-6">
+            <CreateNewProduct />
+          </TabsContent>
+        </Tabs>
       </div>
-    </>
+
+      <MadeWithDyad />
+
+      {/* General Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <Bell className="mr-2 h-5 w-5 text-red-600" /> {/* Using Bell icon as a placeholder for general delete */}
+              Confirm Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this item? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeletingRequest}
+            >
+              {isDeletingRequest ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <Bell className="mr-2 h-5 w-5 text-red-600" />
+              Confirm Bulk Deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete {requestsToDelete.length} selected items? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isBatchDeletingRequests}
+            >
+              {isBatchDeletingRequests ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete All'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Upload Track Dialog */}
+      {uploadTrackId && (
+        <AlertDialog open={uploadTrackDialogOpen} onOpenChange={closeUploadTrackDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Upload Track for Request {uploadTrackId.substring(0, 8)}...</AlertDialogTitle>
+              <AlertDialogDescription>
+                Upload an audio file for this request. It will be made available to the client.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <UploadTrackDialog
+              requestId={uploadTrackId}
+              isOpen={uploadTrackDialogOpen}
+              onOpenChange={closeUploadTrackDialog}
+              onTrackUploaded={handleTrackUploaded}
+              existingTracks={requests?.find(req => req.id === uploadTrackId)?.track_urls || []}
+            />
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
   );
 };
 
