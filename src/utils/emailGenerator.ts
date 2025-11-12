@@ -18,7 +18,7 @@ export interface BackingRequest {
   track_purpose: string;
   backing_type: string[]; // Changed to array
   delivery_date: string;
-  special_requests: string;
+  special_requests?: string; // Made optional
   song_key: string;
   additional_services: string[];
   track_type: string;
