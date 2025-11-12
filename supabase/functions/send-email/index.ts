@@ -1,7 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient, AuthAdminApi } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
@@ -123,11 +123,14 @@ serve(async (req) => {
       // --- DEBUGGING LOGS END ---
 
       // 1. Get the Supabase user ID for the sender email using admin.getUserByEmail
-      // Ensure admin object exists before calling its methods
-      if (!(supabaseAdmin.auth as any).admin) {
-        throw new Error('Supabase admin auth client is not initialized. Cannot use admin functions.');
+      // Explicitly create AuthAdminApi if supabaseAdmin.auth.admin is not directly available
+      const authAdminClient = (supabaseAdmin.auth as any).admin || new AuthAdminApi(supabaseAdmin);
+
+      if (!authAdminClient || typeof authAdminClient.getUserByEmail !== 'function') {
+        throw new Error('Supabase admin auth client is not initialized or getUserByEmail is not a function. Cannot use admin functions.');
       }
-      const { data: userData, error: userLookupError } = await (supabaseAdmin.auth as any).admin.getUserByEmail(emailToFetchTokenFor);
+      
+      const { data: userData, error: userLookupError } = await authAdminClient.getUserByEmail(emailToFetchTokenFor);
 
       if (userLookupError) {
         console.error(`Error looking up user by email "${emailToFetchTokenFor}" using admin.getUserByEmail:`, userLookupError);
