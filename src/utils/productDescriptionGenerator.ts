@@ -11,7 +11,7 @@ export function generateProductDescriptionFromRequest(request: BackingRequest): 
   const clientName = request.name.split(' ')[0]; // Get first name for "originally created for"
   
   let trackQualityDescription = '';
-  if (request.track_type === 'One Take Recording') {
+  if (request.track_type === 'one-take') { // Corrected from 'One Take Recording'
     trackQualityDescription = 'This is a sight-read first recording through a DAW. While not a polished studio production, it offers good quality and an authentic performance feel.';
   } else {
     // Default description for other track types
