@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Loader2, Send } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
+import { showSuccess, showError } from '@/utils/toast'; // Updated import
 import { supabase } from '@/integrations/supabase/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +35,7 @@ const ReportIssueButton: React.FC = () => {
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const location = useLocation();
-  const { toast } = useToast();
+  // Removed: const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
 
@@ -94,21 +94,14 @@ const ReportIssueButton: React.FC = () => {
       return data;
     },
     onSuccess: () => {
-      toast({
-        title: "Issue Reported",
-        description: "Thank you for your feedback! We'll look into it.",
-      });
+      showSuccess("Issue Reported", "Thank you for your feedback! We'll look into it."); // Updated toast call
       setDialogOpen(false);
       form.reset(); // Reset form fields
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] }); // Invalidate unread count
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] }); // Invalidate all reports for admin dashboard
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: `Failed to submit report: ${error.message}`,
-        variant: "destructive",
-      });
+      showError("Error", `Failed to submit report: ${error.message}`); // Updated toast call
     },
   });
 

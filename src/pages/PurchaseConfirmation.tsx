@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from '@/utils/toast'; // Updated import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText, UserPlus } from 'lucide-react'; // Added UserPlus
@@ -40,7 +40,6 @@ interface Order {
 const PurchaseConfirmation: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<any>(null);
@@ -59,11 +58,7 @@ const PurchaseConfirmation: React.FC = () => {
       if (!sessionId) {
         setError(new Error('No session ID found in URL.'));
         setLoading(false);
-        toast({
-          title: "Error",
-          description: "Invalid access to confirmation page.",
-          variant: "destructive",
-        });
+        showError("Error", "Invalid access to confirmation page.");
         return;
       }
 
@@ -148,195 +143,170 @@ const PurchaseConfirmation: React.FC = () => {
         };
 
         setOrder(joinedOrder);
-        toast({
-          title: "Purchase Confirmed!",
-          description: "Thank you for your purchase. Your order details are below.",
-          action: <CheckCircle className="text-green-500" />,
-        });
+        showSuccess("Purchase Confirmed!", "Thank you for your purchase. Your order details are below.");
 
       } catch (err: any) {
         console.error('Error in purchase confirmation:', err);
         setError(err);
-        toast({
-          title: "Error",
-          description: `Failed to load purchase details: ${err.message}`,
-          variant: "destructive",
-        });
+        showError("Error", `Failed to load purchase details: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchConfirmationDetails();
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
-  const handleReportIssue = () => {
-    navigate('/?openFeedback=true');
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+          <p className="ml-4 text-lg text-gray-600">Loading purchase details...</p>
+        </div>
+        <MadeWithDyad />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 text-center">
+          <ErrorDisplay error={error} title="Purchase Confirmation Error" />
+          <Button onClick={() => navigate('/shop')} className="mt-6 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white">
+            Return to Shop
+          </Button>
+        </div>
+        <MadeWithDyad />
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <p>No order details found.</p>
+        </div>
+        <MadeWithDyad />
+      </div>
+    );
+  }
+
+  const product = order.products;
+  const hasTracks = product?.track_urls && product.track_urls.length > 0;
+  const hasSheetMusic = product?.sheet_music_url && product.show_sheet_music_url;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
       
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight text-[#1C0357]">
-            {order?.status === 'completed' ? 'Purchase Confirmed!' : 'Order Status'}
-          </h1>
-          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90">
-            {order?.status === 'completed' ? 'Thank you for your order.' : 'Checking your order details...'}
-          </p>
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-[#1C0357]">Purchase Confirmed!</h1>
+          <p className="text-lg text-[#1C0357]/90">Thank you for your order.</p>
         </div>
         
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-[#D1AAF2] to-[#F1E14F] py-6">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-center">
-              {loading ? (
-                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-              ) : error ? (
-                <XCircle className="mr-3 h-6 w-6 text-red-600" />
-              ) : (
-                <CheckCircle className="mr-3 h-6 w-6 text-green-600" />
-              )}
-              {loading ? 'Loading Order...' : error ? 'Order Failed' : 'Order Successful!'}
+        <Card className="shadow-lg mb-6 bg-white">
+          <CardHeader className="bg-green-100">
+            <CardTitle className="text-green-800 flex items-center">
+              <CheckCircle className="mr-2 h-5 w-5" /> Order #{order.id.substring(0, 8)}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-48">
-                <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
-                <p className="text-lg text-gray-600">Retrieving your order details...</p>
-              </div>
-            ) : error ? (
-              <div className="space-y-4">
-                <ErrorDisplay error={error} title="Failed to Load Order" />
-                <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800 font-medium">
-                    Your transaction may still be successful. Please check your email for the confirmation and download links.
-                  </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  Order Summary
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Product</p>
+                    <p className="font-medium text-[#1C0357]">{product?.title || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Amount Paid</p>
+                    <p className="font-medium text-[#1C0357]">{order.currency} {order.amount.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Customer Email</p>
+                    <p className="font-medium text-[#1C0357]">{order.customer_email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Order Date</p>
+                    <p className="font-medium text-[#1C0357]">{format(new Date(order.created_at), 'MMMM dd, yyyy HH:mm')}</p>
+                  </div>
                 </div>
               </div>
-            ) : order ? (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <p className="text-lg text-gray-700 mb-4">
-                    Your purchase of <strong>"{order.products?.title || 'Unknown Product'}"</strong> has been successfully processed.
-                  </p>
-                  <p className="text-md text-gray-600 flex items-center justify-center">
-                    <Mail className="mr-2 h-5 w-5 text-blue-500" />
-                    A confirmation email with your download link(s) has been sent to <strong>{order.customer_email}</strong>.
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Please check your spam or junk folder if you don't see it in your inbox within a few minutes.
-                  </p>
-                </div>
-
-                {order.products?.track_urls && order.products.track_urls.length > 0 && (
-                  <div className="border-t border-gray-200 pt-6 space-y-4">
-                    <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
-                      <Download className="mr-2 h-5 w-5" />
-                      Your Downloadable Tracks
-                    </h3>
-                    <div className="flex flex-col gap-2">
-                      {order.products.track_urls.map((track, index) => (
-                        <Button 
-                          key={index}
-                          size="lg" 
-                          className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-                          onClick={() => downloadTrack(track.url, track.caption || `${order.products?.title || 'track'}.mp3`)}
-                        >
-                          <Download className="w-5 h-5 mr-2" />
-                          {track.caption || `Download Track ${index + 1}`}
-                        </Button>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                  <Download className="mr-2 h-5 w-5" />
+                  Access Your Purchase
+                </h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Your purchase details and download links have also been sent to your email address: <strong>{order.customer_email}</strong>.
+                </p>
+                {hasTracks && (
+                  <div className="space-y-3 mb-4">
+                    <h4 className="font-medium text-md text-[#1C0357]">Downloadable Tracks:</h4>
+                    <ul className="space-y-2">
+                      {product?.track_urls?.map((track, index) => (
+                        <li key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                          <span className="font-medium text-sm">{track.caption || `Track ${index + 1}`}</span>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => downloadTrack(track.url, track.caption || `${product.title}.mp3`)}
+                          >
+                            <Download className="h-4 w-4 mr-2" /> Download
+                          </Button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
-
-                {order.products?.sheet_music_url && order.products?.show_sheet_music_url && (
-                  <div className="border-t border-gray-200 pt-6 space-y-4">
-                    <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
-                      <FileText className="mr-2 h-5 w-5" />
-                      Sheet Music
-                    </h3>
+                {hasSheetMusic && (
+                  <div className="mt-4">
                     <Button 
-                      size="lg" 
-                      className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
-                      onClick={() => window.open(order.products?.sheet_music_url || '', '_blank')}
+                      variant="outline" 
+                      onClick={() => window.open(product?.sheet_music_url || '#', '_blank')}
+                      className="w-full"
                     >
-                      <FileText className="h-5 w-5 mr-2" /> View Sheet Music PDF
+                      <FileText className="mr-2 h-4 w-4" /> View Sheet Music (PDF)
                     </Button>
                   </div>
                 )}
-
-                <div className="border-t border-gray-200 pt-6 space-y-4">
-                  <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
-                    <User className="mr-2 h-5 w-5" />
-                    Next Steps
-                  </h3>
-                  {!userSession ? (
-                    <div className="space-y-6">
-                      <Card className="bg-[#1C0357] text-white border-[#1C0357] shadow-lg">
-                        <CardContent className="p-6 text-center">
-                          <h4 className="text-2xl font-bold mb-3 flex items-center justify-center">
-                            <UserPlus className="mr-3 h-6 w-6" />
-                            Enhance Your Experience!
-                          </h4>
-                          <p className="text-lg mb-4 opacity-90">
-                            Create a free account to easily track all your purchases and custom requests in one place.
-                          </p>
-                          <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <Link to="/login">
-                              <Button size="lg" className="bg-white text-[#1C0357] hover:bg-gray-200 text-base px-6 py-3">
-                                Login / Create Account
-                              </Button>
-                            </Link>
-                            <Link to="/shop">
-                              <Button 
-                                variant="ghost" 
-                                size="lg" 
-                                className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
-                              >
-                                Continue Shopping as Guest
-                              </Button>
-                            </Link>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row justify-center gap-4">
-                      <Link to="/user-dashboard">
-                        <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3 w-full sm:w-auto">
-                          Go to My Dashboard
-                        </Button>
-                      </Link>
-                      <Link to="/shop">
-                        <Button variant="outline" className="text-[#1C0357] border-[#1C0357] hover:bg-[#1C0357]/10 text-lg px-6 py-3 w-full sm:w-auto">
-                          Continue Shopping
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                {!hasTracks && !hasSheetMusic && (
+                  <p className="text-gray-500 text-sm py-4 text-center">
+                    No digital content available for direct download here. Please check your email for instructions.
+                  </p>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <XCircle className="mx-auto h-16 w-16 text-red-600 mb-4" />
-                <p className="text-lg text-gray-700">
-                  We couldn't find details for your purchase. If you believe this is an error, please contact support.
-                </p>
-              </div>
-            )}
+            </div>
+            
             <div className="mt-8 text-center">
-              <Button 
-                variant="ghost" 
-                onClick={handleReportIssue}
-                className="text-gray-600 hover:text-gray-800 flex items-center mx-auto"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Report an Issue or Give Feedback
-              </Button>
+              <p className="text-md text-gray-700 mb-4">
+                If you have an account, this purchase is linked to your dashboard.
+              </p>
+              {userSession ? (
+                <Link to="/user-dashboard">
+                  <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3">
+                    <User className="mr-2 h-4 w-4" /> Go to My Tracks
+                  </Button>
+                </Link>
+              ) : (
+                <Link to="/login">
+                  <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3">
+                    <User className="mr-2 h-4 w-4" /> Login to My Tracks
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>
