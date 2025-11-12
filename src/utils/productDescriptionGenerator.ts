@@ -27,8 +27,9 @@ export function generateProductDescriptionFromRequest(request: BackingRequest): 
     : '';
 
   // Combine all parts, clean up extra spaces, and trim
+  // Removed redundant title/artist from the start of the description
   return `
-    ${trackQualityDescription} This piano backing track for "${request.song_title}" from ${request.musical_or_artist} was originally created for ${clientName}.
+    ${trackQualityDescription} Originally created for ${clientName}.
     ${purposeDescription}
     ${specialRequestsNotes}
   `.replace(/\s+/g, ' ').trim();

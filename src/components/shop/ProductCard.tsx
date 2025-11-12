@@ -1,16 +1,19 @@
+"use client";
+
 import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Music, DollarSign, Eye, ShoppingCart, Loader2, Theater, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText } from 'lucide-react'; // Replaced Mask with Theater
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns'; // Import date-fns utilities
 
 interface Product {
   id: string;
+  created_at: string;
   title: string;
   description: string;
   price: number;
@@ -26,7 +29,6 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
-  created_at: string; // Ensure created_at is present
 }
 
 interface ProductCardProps {
@@ -119,7 +121,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         )}
 
       </CardHeader>
-      <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10"> {/* Lighter purple background */}
+      <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10 text-left"> {/* Added text-left for alignment */}
         <div className="flex items-center justify-between mb-0.5">
           <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight">{product.title}</CardTitle>
           {isNew && (
@@ -132,7 +134,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           </p>
         )}
         
-        {/* Grouped Category, Vocal Ranges, Key, and Sheet Music */}
+        {/* Grouped Category, Vocal Ranges, and Sheet Music */}
         <div className="flex flex-wrap gap-1 mb-2">
           {product.category && (
             <Badge 
@@ -143,15 +145,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </Badge>
           )}
           {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
-            <Badge key={range} variant="secondary" className="bg-gray-200 text-gray-800 text-xs px-2 py-0.5 rounded-full">
+            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border border-[#F538BC] text-xs px-2 py-0.5 rounded-full font-semibold"> {/* Enhanced Vocal Range styling */}
               {range}
             </Badge>
           ))}
-          {product.key_signature && product.show_key_signature && (
-            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-gray-300 text-gray-700">
-              Key: {product.key_signature}
-            </Badge>
-          )}
+          {/* Key Signature removed from here */}
           {product.show_sheet_music_url && product.sheet_music_url && (
             <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-green-500 text-green-700">
               Sheet Music
@@ -191,16 +189,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       </CardContent>
       <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full">
         <Button 
-          variant="secondary" 
+          variant="outline" // Changed to outline for secondary action
           onClick={() => onViewDetails(product)}
-          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20 w-full"
+          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20 w-full justify-start" // Left-align text
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details
         </Button>
         <Button 
           onClick={() => onBuyNow(product)} 
-          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full"
+          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full justify-start" // Left-align text
           disabled={isBuying}
         >
           {isBuying ? (

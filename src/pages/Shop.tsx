@@ -226,7 +226,7 @@ const Shop = () => {
         <p className="text-lg text-gray-700 mb-8">Browse our collection of high-quality backing tracks.</p>
 
         <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
-          <div className="relative w-full md:w-1/3"> {/* Adjusted width */}
+          <div className="relative w-full md:flex-1"> {/* Adjusted width to take more space */}
             <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search Title or Artist</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -258,6 +258,43 @@ const Shop = () => {
             </Select>
           </div>
           
+          {/* Category Filter (moved out of sheet) */}
+          <div className="w-full md:w-[180px]">
+            <Label htmlFor="category-filter-main" className="text-sm font-medium text-gray-700 mb-1 block">Filter by Category</Label>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger id="category-filter-main" className="border border-gray-300">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="full-song">Full Song</SelectItem>
+                <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                <SelectItem value="note-bash">Note Bash</SelectItem>
+                <SelectItem value="general">General</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort Option (moved out of sheet) */}
+          <div className="w-full md:w-[180px]">
+            <Label htmlFor="sort-option-main" className="text-sm font-medium text-gray-700 mb-1 block">Sort By</Label>
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger id="sort-option-main" className="border border-gray-300">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="category_asc">Category: A-Z</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300"> {/* Added border */}
@@ -269,27 +306,10 @@ const Shop = () => {
               <SheetHeader>
                 <SheetTitle>Advanced Filters</SheetTitle>
                 <SheetDescription>
-                  Refine your search results by price, category, and sort options.
+                  Refine your search results by price.
                 </SheetDescription>
               </SheetHeader>
               <div className="py-6 space-y-6">
-                {/* CATEGORY FILTER */}
-                <div>
-                  <Label htmlFor="category-filter" className="mb-2 block">Category</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger id="category-filter" className="border border-gray-300"> {/* Added border */}
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="full-song">Full Song</SelectItem>
-                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                      <SelectItem value="note-bash">Note Bash</SelectItem>
-                      <SelectItem value="general">General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* PRICE RANGE FILTER */}
                 <div>
                   <Label htmlFor="price-range" className="mb-2 block">Price Range: ${priceRange[0].toFixed(2)} - ${priceRange[1].toFixed(2)}</Label>
@@ -302,26 +322,6 @@ const Shop = () => {
                     onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
                     className="w-full"
                   />
-                </div>
-
-                {/* SORT OPTION */}
-                <div>
-                  <Label htmlFor="sort-option" className="mb-2 block">Sort By</Label>
-                  <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger id="sort-option" className="border border-gray-300"> {/* Added border */}
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="category_asc">Category: A-Z</SelectItem>
-                      <SelectItem value="created_at_desc">Newest First</SelectItem>
-                      <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                      <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                      <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                      <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                      <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-                      <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {hasActiveFilters && (
@@ -366,6 +366,7 @@ const Shop = () => {
                     />
                   ))}
                 </div>
+                <div className="border-b border-gray-300 mt-10"></div> {/* Subtle visual separator */}
               </div>
             ))}
           </div>
