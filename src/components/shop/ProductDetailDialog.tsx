@@ -132,7 +132,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             {product.vocal_ranges && product.vocal_ranges.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {product.vocal_ranges.map((range, index) => (
-                  <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-sm font-bold"> {/* Enhanced Vocal Range styling */}
+                  <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-base px-3 py-1.5 rounded-full font-bold"> {/* Enhanced Vocal Range styling */}
                     {range}
                   </Badge>
                 ))}

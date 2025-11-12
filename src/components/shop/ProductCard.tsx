@@ -145,7 +145,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </Badge>
           )}
           {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
-            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-xs px-2 py-1 rounded-full font-bold"> {/* Enhanced Vocal Range styling */}
+            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-sm px-3 py-1.5 rounded-full font-bold"> {/* Enhanced Vocal Range styling */}
               {range}
             </Badge>
           ))}
@@ -189,9 +189,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       </CardContent>
       <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full">
         <Button 
-          variant="outline" // Changed to outline for secondary action
+          variant="ghost" // Changed to ghost for secondary action
           onClick={() => onViewDetails(product)}
-          className="bg-white hover:bg-gray-100 text-[#1C0357] border border-[#1C0357]/20 w-full justify-start" // Left-align text
+          className="text-[#1C0357] hover:bg-[#1C0357]/10 w-full justify-start" // Left-align text, adjusted hover
         >
           <Eye className="h-4 w-4 mr-2" />
           View Details

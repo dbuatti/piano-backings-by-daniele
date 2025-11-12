@@ -37,7 +37,7 @@ interface BackingRequest {
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
-  track_purpose?: string;
+  track_purpose: string; // Changed from optional to required to match emailGenerator.ts
   additional_services?: string[];
   sheet_music_url?: string;
   song_key?: string;
@@ -196,8 +196,11 @@ const RepurposeTrackToShop: React.FC = () => {
         autoArtist = selectedRequest.musical_or_artist;
       }
 
+      // Define normalizedBackingTypes here
+      const normalizedBackingTypes = getSafeBackingTypes(selectedRequest.backing_type);
+      
       // Use the new generator function for the description
-      const generatedDescription = generateProductDescriptionFromRequest(selectedRequest);
+      const generatedDescription = generateProductDescriptionFromRequest({ ...selectedRequest, track_purpose: selectedRequest.track_purpose || '' });
       
       const newTrackUrls = selectedRequest.track_urls?.map(track => {
         const originalCaption = track.caption;

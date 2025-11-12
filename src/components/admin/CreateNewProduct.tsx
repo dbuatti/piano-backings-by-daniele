@@ -16,6 +16,7 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
+import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator'; // Import the generator
 
 interface ProductForm {
   title: string;
@@ -218,7 +219,7 @@ const CreateNewProduct: React.FC = () => {
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [],
-        sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true,
+        sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
         track_type: '',
       });
       setImageFile(null);
@@ -619,7 +620,7 @@ const CreateNewProduct: React.FC = () => {
             {createProductMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding Product...
+                Add Product
               </>
             ) : (
               <>
