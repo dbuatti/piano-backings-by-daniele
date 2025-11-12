@@ -40,11 +40,46 @@ import Seo from "@/components/Seo"; // Import Seo component
 //   caption: string | boolean | null | undefined;
 // }
 
+interface BackingRequest {
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  song_title: string;
+  musical_or_artist: string;
+  song_key: string | null;
+  different_key: string | null;
+  key_for_track: string | null;
+  youtube_link: string | null;
+  voice_memo: string | null;
+  sheet_music_url: string | null;
+  track_purpose: string | null;
+  backing_type: string[] | string | null;
+  delivery_date: string | null;
+  additional_services: string[] | null;
+  special_requests: string | null;
+  category: string | null;
+  track_type: string | null;
+  additional_links: string | null;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  is_paid: boolean;
+  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
+  shared_link?: string | null;
+  dropbox_folder_id?: string | null;
+  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
+  cost?: number | null;
+  final_price?: number | null; // New field
+  estimated_cost_low?: number | null; // New field
+  estimated_cost_high?: number | null; // New field
+  user_id?: string | null; // Added for access control
+  guest_access_token?: string | null; // Added for access control
+}
+
 const ClientTrackView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [request, setRequest] = useState<any>(null);
+  const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -63,7 +98,7 @@ const ClientTrackView = () => {
       const guestAccessToken = urlParams.get('token'); // Get the guest access token
       
       try {
-        let requestData: any = null;
+        let requestData: BackingRequest | null = null;
         let fetchError: any = null;
 
         if (guestAccessToken) {
@@ -90,7 +125,7 @@ const ClientTrackView = () => {
             .from('backing_requests')
             .select('*')
             .eq('id', id)
-            .single();
+            .single<BackingRequest>();
           requestData = data;
           fetchError = error;
         }
@@ -174,9 +209,6 @@ const ClientTrackView = () => {
     }
   };
 
-  // downloadTrack function is now imported from helpers.ts
-  // const downloadTrack = (url: string, filenameSuggestion: string | boolean | null | undefined = 'download') => { ... };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -214,15 +246,33 @@ const ClientTrackView = () => {
   }
 
   const costBreakdown = calculateRequestCost(request);
-  const baseTotalCost = request.cost !== null ? request.cost : costBreakdown.totalCost;
-  
-  // Calculate the range for display, rounding down to the nearest multiple of 5
-  const rawMinCost = baseTotalCost * 0.5;
-  const rawMaxCost = baseTotalCost * 1.5;
-  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Round UP to nearest 5
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round DOWN to nearest 5
-
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+
+  // Determine displayed cost and range based on new fields
+  let displayedCostElement;
+  if (request.final_price !== null) {
+    displayedCostElement = (
+      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
+        Final Agreed Cost: ${request.final_price.toFixed(2)}
+      </div>
+    );
+  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null) {
+    displayedCostElement = (
+      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
+        Estimated Cost: ${request.estimated_cost_low.toFixed(2)} - ${request.estimated_cost_high.toFixed(2)}
+      </div>
+    );
+  } else {
+    // Fallback to calculated range if no manual values are set
+    const calculatedTotalCost = costBreakdown.totalCost;
+    const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
+    const calculatedHigh = (Math.floor((calculatedTotalCost * 1.5) / 5) * 5).toFixed(2);
+    displayedCostElement = (
+      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
+        Estimated Cost: ${calculatedLow} - ${calculatedHigh}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -413,10 +463,7 @@ const ClientTrackView = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <p className="mb-2">Estimated Cost for Your Track:</p>
-                    <div className="text-3xl font-bold mb-4">
-                      ${minCost} - ${maxCost}
-                    </div>
+                    {displayedCostElement} {/* Render the dynamically determined cost element */}
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
                     </p>

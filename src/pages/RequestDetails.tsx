@@ -30,7 +30,8 @@ import {
   DollarSign,
   Eye,
   Share2,
-  CreditCard
+  CreditCard,
+  Save
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
@@ -44,7 +45,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface TrackInfo {
   url: string;
-  caption: string;
+  caption: string | boolean | null | undefined;
 }
 
 interface BackingRequest {
@@ -75,7 +76,55 @@ interface BackingRequest {
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null;
+  final_price?: number | null; // New field
+  estimated_cost_low?: number | null; // New field
+  estimated_cost_high?: number | null; // New field
 }
+
+const keyOptions = [
+  { value: 'C Major (0)', label: 'C Major (0)' },
+  { value: 'G Major (1♯)', label: 'G Major (1♯)' },
+  { value: 'D Major (2♯)', label: 'D Major (2♯)' },
+  { value: 'A Major (3♯)', label: 'A Major (3♯)' },
+  { value: 'E Major (4♯)', label: 'E Major (4♯)' },
+  { value: 'B Major (5♯)', label: 'B Major (5♯)' },
+  { value: 'F♯ Major (6♯)', label: 'F♯ Major (6♯)' },
+  { value: 'C♯ Major (7♯)', label: 'C♯ Major (7♯)' },
+  { value: 'F Major (1♭)', label: 'F Major (1♭)' },
+  { value: 'B♭ Major (2♭)', label: 'B♭ Major (2♭)' },
+  { value: 'E♭ Major (3♭)', label: 'E♭ Major (3♭)' },
+  { value: 'A♭ Major (4♭)', label: 'A♭ Major (4♭)' },
+  { value: 'D♭ Major (5♭)', label: 'D♭ Major (5♭)' },
+  { value: 'G♭ Major (6♭)', label: 'G♭ Major (6♭)' },
+  { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
+];
+
+const categoryOptions = [
+  { value: 'Practice Tracks', label: 'Practice Tracks' },
+  { value: 'Audition Tracks', label: 'Audition Tracks' },
+  { value: 'Melody Bash Tracks', label: 'Melody Bash Tracks' },
+  { value: 'Performance Tracks', label: 'Performance Tracks' },
+  { value: 'General', label: 'General' }
+];
+
+const trackTypeOptions = [
+  { value: 'quick', label: 'Quick Reference' },
+  { value: 'one-take', label: 'One-Take Recording' },
+  { value: 'polished', label: 'Polished Backing' }
+];
+
+const backingTypeOptions = [
+  { value: 'full-song', label: 'Full Song Backing' },
+  { value: 'audition-cut', label: 'Audition Cut Backing' },
+  { value: 'note-bash', label: 'Note/Melody Bash' }
+];
+
+const additionalServiceOptions = [
+  { value: 'rush-order', label: 'Rush Order' },
+  { value: 'complex-songs', label: 'Complex Songs' },
+  { value: 'additional-edits', label: 'Additional Edits' },
+  { value: 'exclusive-ownership', label: 'Exclusive Ownership' }
+];
 
 const RequestDetails = () => {
   const { id } = useParams();
@@ -86,6 +135,12 @@ const RequestDetails = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUpdatingPricing, setIsUpdatingPricing] = useState(false); // New state for pricing update
+
+  // States for editable pricing fields
+  const [finalPriceInput, setFinalPriceInput] = useState<string>('');
+  const [estimatedLowInput, setEstimatedLowInput] = useState<string>('');
+  const [estimatedHighInput, setEstimatedHighInput] = useState<string>('');
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -125,6 +180,16 @@ const RequestDetails = () => {
       if (error) throw error;
       
       setRequest(data);
+
+      // Initialize pricing input fields
+      const calculatedCost = calculateRequestCost(data).totalCost;
+      const calculatedLow = (calculatedCost * 0.5);
+      const calculatedHigh = (calculatedCost * 1.5);
+
+      setFinalPriceInput(data.final_price !== null ? data.final_price.toFixed(2) : '');
+      setEstimatedLowInput(data.estimated_cost_low !== null ? data.estimated_cost_low.toFixed(2) : calculatedLow.toFixed(2));
+      setEstimatedHighInput(data.estimated_cost_high !== null ? data.estimated_cost_high.toFixed(2) : calculatedHigh.toFixed(2));
+
     } catch (error: any) {
       toast({
         title: "Error",
@@ -161,6 +226,63 @@ const RequestDetails = () => {
       });
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleUpdatePricing = async () => {
+    if (!request) return;
+    setIsUpdatingPricing(true);
+
+    const updates: Partial<BackingRequest> = {};
+
+    // Parse and validate final price
+    const parsedFinalPrice = finalPriceInput.trim() === '' ? null : parseFloat(finalPriceInput);
+    if (finalPriceInput.trim() !== '' && isNaN(parsedFinalPrice!)) {
+      toast({ title: "Validation Error", description: "Final Price must be a valid number.", variant: "destructive" });
+      setIsUpdatingPricing(false);
+      return;
+    }
+    updates.final_price = parsedFinalPrice;
+
+    // Parse and validate estimated low
+    const parsedEstimatedLow = estimatedLowInput.trim() === '' ? null : parseFloat(estimatedLowInput);
+    if (estimatedLowInput.trim() !== '' && isNaN(parsedEstimatedLow!)) {
+      toast({ title: "Validation Error", description: "Estimated Low must be a valid number.", variant: "destructive" });
+      setIsUpdatingPricing(false);
+      return;
+    }
+    updates.estimated_cost_low = parsedEstimatedLow;
+
+    // Parse and validate estimated high
+    const parsedEstimatedHigh = estimatedHighInput.trim() === '' ? null : parseFloat(estimatedHighInput);
+    if (estimatedHighInput.trim() !== '' && isNaN(parsedEstimatedHigh!)) {
+      toast({ title: "Validation Error", description: "Estimated High must be a valid number.", variant: "destructive" });
+      setIsUpdatingPricing(false);
+      return;
+    }
+    updates.estimated_cost_high = parsedEstimatedHigh;
+
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update(updates)
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      setRequest(prev => prev ? { ...prev, ...updates } : null);
+      toast({
+        title: "Pricing Updated",
+        description: "Manual pricing fields saved successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update pricing: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingPricing(false);
     }
   };
 
@@ -265,7 +387,7 @@ const RequestDetails = () => {
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
         <div className="flex items-center justify-center h-96">
-          <p>Request not found</p>
+          <p>Request not found.</p>
         </div>
       </div>
     );
@@ -285,15 +407,20 @@ const RequestDetails = () => {
   };
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const displayedCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
-  const isCostManuallySet = request.cost !== null;
+  const calculatedCostBreakdown = calculateRequestCost(request);
+  const calculatedTotalCost = calculatedCostBreakdown.totalCost;
+
+  // Determine displayed cost and range
+  const displayedFinalCost = request.final_price !== null ? request.final_price : calculatedTotalCost;
+  const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low : (calculatedTotalCost * 0.5);
+  const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high : (calculatedTotalCost * 1.5);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
       
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Button 
             onClick={() => navigate('/admin')} 
             variant="outline"
@@ -302,7 +429,7 @@ const RequestDetails = () => {
             ← Back to Dashboard
           </Button>
           <h1 className="text-3xl font-bold text-[#1C0357]">Request Details</h1>
-          <p className="text-lg text-[#1C0357]/90">Viewing request #{request.id.substring(0, 8)}</p>
+          <span className="text-lg text-[#1C0357]/90">#{request.id.substring(0, 8)}</span>
         </div>
 
         {/* Action Bar */}
@@ -420,10 +547,88 @@ const RequestDetails = () => {
                 </Label>
                 <div className="flex items-center h-10 border border-input rounded-md px-3 bg-gray-50">
                   <span className="font-bold text-lg">
-                    ${displayedCost.toFixed(2)}
+                    ${displayedFinalCost.toFixed(2)}
                   </span>
-                  {isCostManuallySet && <span className="ml-2 text-sm text-gray-600">(Manual)</span>}
+                  {request.final_price !== null && <span className="ml-2 text-sm text-gray-600">(Manual)</span>}
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* New Pricing Management Card */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader className="bg-[#D1AAF2]/20">
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+              <DollarSign className="mr-2 h-5 w-5" />
+              Pricing Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <p className="text-sm text-gray-600 mb-4">
+              Manually set the final agreed price and estimated range for this request.
+              These values will override the automatic calculation in client views and emails.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="final-price-input" className="text-sm mb-1">Final Agreed Price (AUD)</Label>
+                <Input
+                  id="final-price-input"
+                  type="number"
+                  step="0.01"
+                  value={finalPriceInput}
+                  onChange={(e) => setFinalPriceInput(e.target.value)}
+                  placeholder="e.g., 35.00"
+                  disabled={isUpdatingPricing}
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave empty to use calculated cost.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="estimated-low-input" className="text-sm mb-1">Estimated Cost Lower Bound (AUD)</Label>
+                  <Input
+                    id="estimated-low-input"
+                    type="number"
+                    step="0.01"
+                    value={estimatedLowInput}
+                    onChange={(e) => setEstimatedLowInput(e.target.value)}
+                    placeholder="e.g., 25.00"
+                    disabled={isUpdatingPricing}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
+                </div>
+                <div>
+                  <Label htmlFor="estimated-high-input" className="text-sm mb-1">Estimated Cost Upper Bound (AUD)</Label>
+                  <Input
+                    id="estimated-high-input"
+                    type="number"
+                    step="0.01"
+                    value={estimatedHighInput}
+                    onChange={(e) => setEstimatedHighInput(e.target.value)}
+                    placeholder="e.g., 45.00"
+                    disabled={isUpdatingPricing}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleUpdatePricing} 
+                  disabled={isUpdatingPricing}
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                >
+                  {isUpdatingPricing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving Pricing...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Pricing
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>

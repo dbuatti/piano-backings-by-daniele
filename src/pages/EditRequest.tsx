@@ -16,6 +16,7 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { calculateRequestCost } from '@/utils/pricing'; // Import calculateRequestCost
 
 interface BackingRequest {
   id: string;
@@ -45,6 +46,9 @@ interface BackingRequest {
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null; // Make cost nullable
+  final_price?: number | null; // New field
+  estimated_cost_low?: number | null; // New field
+  estimated_cost_high?: number | null; // New field
 }
 
 const keyOptions = [
@@ -147,6 +151,10 @@ const EditRequest: React.FC = () => {
         additional_services: normalizedAdditionalServices,
         // Format delivery_date for input type="date"
         delivery_date: data.delivery_date ? format(new Date(data.delivery_date), 'yyyy-MM-dd') : null,
+        // Ensure new pricing fields are numbers or null
+        final_price: data.final_price !== null ? parseFloat(data.final_price) : null,
+        estimated_cost_low: data.estimated_cost_low !== null ? parseFloat(data.estimated_cost_low) : null,
+        estimated_cost_high: data.estimated_cost_high !== null ? parseFloat(data.estimated_cost_high) : null,
       });
     } catch (err: any) {
       console.error('Error fetching request:', err);
@@ -164,7 +172,7 @@ const EditRequest: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === 'cost') {
+    if (name === 'cost' || name === 'final_price' || name === 'estimated_cost_low' || name === 'estimated_cost_high') {
       // Convert to number or null if empty
       setRequest(prev => prev ? { ...prev, [name]: value === '' ? null : parseFloat(value) } : null);
     } else {
@@ -203,6 +211,9 @@ const EditRequest: React.FC = () => {
         backing_type: Array.isArray(updates.backing_type) ? updates.backing_type : (updates.backing_type ? [updates.backing_type] : []),
         additional_services: Array.isArray(updates.additional_services) ? updates.additional_services : (updates.additional_services ? [updates.additional_services] : []),
         cost: updates.cost === null ? null : parseFloat(updates.cost.toString()), // Ensure cost is number or null
+        final_price: updates.final_price === null ? null : parseFloat(updates.final_price.toString()), // Ensure final_price is number or null
+        estimated_cost_low: updates.estimated_cost_low === null ? null : parseFloat(updates.estimated_cost_low.toString()), // Ensure estimated_cost_low is number or null
+        estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()), // Ensure estimated_cost_high is number or null
       };
 
       const { error } = await supabase
@@ -540,7 +551,7 @@ const EditRequest: React.FC = () => {
                   </div>
                   <div>
                     <Label htmlFor="cost" className="text-sm mb-1 flex items-center">
-                      <DollarSign className="mr-1 h-4 w-4" /> Actual Cost (AUD)
+                      <DollarSign className="mr-1 h-4 w-4" /> Calculated Cost (AUD)
                     </Label>
                     <Input 
                       id="cost" 
@@ -551,7 +562,53 @@ const EditRequest: React.FC = () => {
                       onChange={handleInputChange} 
                       placeholder="e.g., 25.00" 
                     />
-                    <p className="text-xs text-gray-500 mt-1">Enter the actual amount paid by the client. Leave empty for calculated estimate.</p>
+                    <p className="text-xs text-gray-500 mt-1">This is the automatically calculated cost.</p>
+                  </div>
+                  {/* New pricing fields */}
+                  <div>
+                    <Label htmlFor="final_price" className="text-sm mb-1 flex items-center">
+                      <DollarSign className="mr-1 h-4 w-4" /> Final Agreed Price (AUD)
+                    </Label>
+                    <Input 
+                      id="final_price" 
+                      name="final_price" 
+                      type="number" 
+                      step="0.01" 
+                      value={request.final_price?.toString() || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., 35.00" 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Overrides all other costs in client view.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="estimated_cost_low" className="text-sm mb-1 flex items-center">
+                      <DollarSign className="mr-1 h-4 w-4" /> Estimated Low (AUD)
+                    </Label>
+                    <Input 
+                      id="estimated_cost_low" 
+                      name="estimated_cost_low" 
+                      type="number" 
+                      step="0.01" 
+                      value={request.estimated_cost_low?.toString() || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., 25.00" 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="estimated_cost_high" className="text-sm mb-1 flex items-center">
+                      <DollarSign className="mr-1 h-4 w-4" /> Estimated High (AUD)
+                    </Label>
+                    <Input 
+                      id="estimated_cost_high" 
+                      name="estimated_cost_high" 
+                      type="number" 
+                      step="0.01" 
+                      value={request.estimated_cost_high?.toString() || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., 45.00" 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
                   </div>
                 </div>
               </div>
