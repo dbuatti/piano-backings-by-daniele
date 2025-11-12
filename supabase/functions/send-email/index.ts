@@ -109,23 +109,19 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
       
-      // 1. Get the Supabase user ID for the sender email by directly querying auth.users
-      const { data: userData, error: userLookupError } = await supabaseAdmin
-        .from('auth.users') // Directly query the auth.users table
-        .select('id')
-        .eq('email', emailToFetchTokenFor)
-        .single();
+      // 1. Get the Supabase user ID for the sender email using admin.getUserByEmail
+      const { data: userData, error: userLookupError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
 
       if (userLookupError) {
-        console.error(`Error looking up user by email "${emailToFetchTokenFor}" in auth.users:`, userLookupError);
+        console.error(`Error looking up user by email "${emailToFetchTokenFor}" using admin.getUserByEmail:`, userLookupError);
         throw new Error(`Supabase user lookup failed for sender email "${emailToFetchTokenFor}": ${userLookupError.message}. Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
       }
-      if (!userData?.id) {
-        console.error(`No user ID returned for email "${emailToFetchTokenFor}" after auth.users lookup.`);
+      if (!userData?.user?.id) {
+        console.error(`No user ID returned for email "${emailToFetchTokenFor}" after admin.getUserByEmail lookup.`);
         throw new Error(`Supabase user not found for sender email "${emailToFetchTokenFor}". Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
       }
       
-      const userIdToFetchTokenFor = userData.id;
+      const userIdToFetchTokenFor = userData.user.id;
       console.log(`Found Supabase user ID for sender email (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
 
       // 2. Get the stored refresh token for this user
