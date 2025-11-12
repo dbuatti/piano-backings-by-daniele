@@ -1,7 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
-import { createClient, AuthAdminApi } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
@@ -109,28 +109,9 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
       
-      // --- DEBUGGING LOGS START ---
-      console.log('DEBUG: Type of supabaseAdmin:', typeof supabaseAdmin);
-      console.log('DEBUG: supabaseAdmin.auth exists:', !!supabaseAdmin.auth);
-      if (supabaseAdmin.auth) {
-        console.log('DEBUG: Type of supabaseAdmin.auth:', typeof supabaseAdmin.auth);
-        console.log('DEBUG: supabaseAdmin.auth.admin exists:', !!(supabaseAdmin.auth as any).admin); // Cast to any to avoid TS error for logging
-        if ((supabaseAdmin.auth as any).admin) {
-          console.log('DEBUG: Type of supabaseAdmin.auth.admin:', typeof (supabaseAdmin.auth as any).admin);
-          console.log('DEBUG: supabaseAdmin.auth.admin methods:', Object.keys((supabaseAdmin.auth as any).admin));
-        }
-      }
-      // --- DEBUGGING LOGS END ---
-
       // 1. Get the Supabase user ID for the sender email using admin.getUserByEmail
-      // Explicitly create AuthAdminApi instance
-      const authAdminClient = new AuthAdminApi(supabaseAdmin);
-
-      if (!authAdminClient || typeof authAdminClient.getUserByEmail !== 'function') {
-        throw new Error('Supabase admin auth client is not initialized or getUserByEmail is not a function. Cannot use admin functions.');
-      }
-      
-      const { data: userData, error: userLookupError } = await authAdminClient.getUserByEmail(emailToFetchTokenFor);
+      // Access admin auth methods directly from supabaseAdmin.auth.admin
+      const { data: userData, error: userLookupError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
 
       if (userLookupError) {
         console.error(`Error looking up user by email "${emailToFetchTokenFor}" using admin.getUserByEmail:`, userLookupError);
