@@ -1,170 +1,191 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from '@/utils/toast';
-import { uploadFileToSupabase } from '@/utils/supabase-client';
+import { useToast } from '@/hooks/use-toast';
 
-export const useRequestActions = () => { // Removed requests, setRequests arguments
-  const queryClient = useQueryClient();
+interface BackingRequest {
+  id: string;
+  created_at: string;
+  name: string;
+  email: string;
+  song_title: string;
+  musical_or_artist: string;
+  backing_type: string | string[];
+  delivery_date: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  is_paid: boolean;
+  track_url?: string;
+  shared_link?: string;
+  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
+  cost?: number;
+}
 
-  const invalidateRequestQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['adminRequests'] });
-    queryClient.invalidateQueries({ queryKey: ['requestDetails'] });
-    queryClient.invalidateQueries({ queryKey: ['userRequests'] });
-  };
+export const useRequestActions = (requests: BackingRequest[], setRequests: React.Dispatch<React.SetStateAction<BackingRequest[]>>) => {
+  const { toast } = useToast();
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+  const updateStatus = async (id: string, status: BackingRequest['status']) => {
+    try {
       const { error } = await supabase
         .from('backing_requests')
         .update({ status })
         .eq('id', id);
+      
       if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess("Request status updated.");
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to update status: ${error.message}`);
-    },
-  });
+      
+      setRequests(prev => prev.map(req => 
+        req.id === id ? { ...req, status } : req
+      ));
+      
+      toast({
+        title: "Status Updated",
+        description: "Request status has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update status: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
 
-  const updatePaymentStatusMutation = useMutation({
-    mutationFn: async ({ id, isPaid }: { id: string; isPaid: boolean }) => {
+  const updatePaymentStatus = async (id: string, isPaid: boolean) => {
+    try {
       const { error } = await supabase
         .from('backing_requests')
         .update({ is_paid: isPaid })
         .eq('id', id);
+      
       if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess("Payment status updated.");
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to update payment status: ${error.message}`);
-    },
-  });
+      
+      setRequests(prev => prev.map(req => 
+        req.id === id ? { ...req, is_paid: isPaid } : req
+      ));
+      
+      toast({
+        title: "Payment Status Updated",
+        description: `Request marked as ${isPaid ? 'paid' : 'unpaid'}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update payment status: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
 
-  const updateCostMutation = useMutation({
-    mutationFn: async ({ id, newCost }: { id: string; newCost: number | null }) => {
+  const updateCost = async (id: string, newCost: number | null) => {
+    try {
       const { error } = await supabase
         .from('backing_requests')
         .update({ cost: newCost })
         .eq('id', id);
+
       if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess("Request cost updated.");
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to update request cost: ${error.message}`);
-    },
-  });
 
-  const uploadTrackMutation = useMutation({
-    mutationFn: async ({ requestId, file }: { requestId: string; file: File }) => {
-      const { data: { publicUrl }, error: uploadError } = await uploadFileToSupabase(file, 'backing-tracks', `requests/${requestId}`);
-      if (uploadError) throw uploadError;
+      setRequests(prev => prev.map(req =>
+        req.id === id ? { ...req, cost: newCost } : req
+      ));
 
+      toast({
+        title: "Cost Updated",
+        description: "Request cost has been updated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update cost: ${error.message}`,
+        variant: "destructive",
+      });
+      // Re-fetch requests to revert to original value if update fails
+      setRequests(prev => [...prev]);
+    }
+  };
+
+  const shareTrack = async (id: string) => {
+    try {
+      const request = requests.find(req => req.id === id);
+      if (!request) throw new Error('Request not found');
+      
+      const shareLink = `${window.location.origin}/user-dashboard?email=${encodeURIComponent(request.email)}`;
+      
       const { error } = await supabase
         .from('backing_requests')
-        .update({ track_urls: [{ url: publicUrl, caption: file.name }] }) // Store as an array of objects
-        .eq('id', requestId);
+        .update({ shared_link: shareLink })
+        .eq('id', id);
+      
       if (error) throw error;
-      return publicUrl;
-    },
-    onSuccess: () => {
-      showSuccess("Track uploaded successfully! The client can now view it."); // Concatenated message
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to upload track: ${error.message}`);
-    },
-  });
+      
+      setRequests(prev => prev.map(req => 
+        req.id === id ? { ...req, shared_link: shareLink } : req
+      ));
+      
+      toast({
+        title: "Track Shared",
+        description: "Shared link has been generated and sent to user.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to share track: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
 
-  const shareTrackMutation = useMutation({
-    mutationFn: async (requestId: string) => {
-      const clientViewUrl = `${window.location.origin}/track/${requestId}`;
-      await navigator.clipboard.writeText(clientViewUrl);
-      return clientViewUrl;
-    },
-    onSuccess: () => {
-      showSuccess("Link copied! The client view link has been copied to your clipboard."); // Concatenated message
-    },
-    onError: () => {
-      showError("Failed to copy link: Please try again.");
-    },
-  });
-
-  const updatePlatformsMutation = useMutation({
-    mutationFn: async ({ requestId, platforms }: { requestId: string; platforms: any }) => {
-      const { error } = await supabase
-        .from('backing_requests')
-        .update({ uploaded_platforms: platforms })
-        .eq('id', requestId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess("Platforms updated successfully.");
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to update platforms: ${error.message}`);
-    },
-  });
-
-  const deleteRequestMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const deleteRequest = async (id: string) => {
+    try {
       const { error } = await supabase
         .from('backing_requests')
         .delete()
         .eq('id', id);
+      
       if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess("Request deleted. The request has been permanently removed."); // Concatenated message
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to delete request: ${error.message}`);
-    },
-  });
+      
+      setRequests(prev => prev.filter(req => req.id !== id));
+      
+      toast({
+        title: "Request Deleted",
+        description: "The request has been deleted successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete request: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
 
-  const batchDeleteRequestsMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
+  const batchDeleteRequests = async (ids: string[]) => {
+    try {
       const { error } = await supabase
         .from('backing_requests')
         .delete()
         .in('id', ids);
+      
       if (error) throw error;
-    },
-    onSuccess: (data, ids) => {
-      showSuccess(`${ids.length} requests deleted successfully.`);
-      invalidateRequestQueries();
-    },
-    onError: (error: any) => {
-      showError(`Failed to delete requests: ${error.message}`);
-    },
-  });
+      
+      setRequests(prev => prev.filter(req => !ids.includes(req.id)));
+      
+      toast({
+        title: "Requests Deleted",
+        description: `${ids.length} requests have been deleted successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete requests: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
 
   return {
-    updateStatus: updateStatusMutation.mutate,
-    updatePaymentStatus: updatePaymentStatusMutation.mutate,
-    updateCost: updateCostMutation.mutate,
-    uploadTrack: uploadTrackMutation.mutate,
-    shareTrack: shareTrackMutation.mutate,
-    updatePlatforms: updatePlatformsMutation.mutate,
-    deleteRequest: deleteRequestMutation.mutate,
-    batchDeleteRequests: batchDeleteRequestsMutation.mutate, // Added batch delete
-    isUpdatingStatus: updateStatusMutation.isPending,
-    isUpdatingPaymentStatus: updatePaymentStatusMutation.isPending,
-    isUpdatingCost: updateCostMutation.isPending,
-    isUploadingTrack: uploadTrackMutation.isPending,
-    isSharingTrack: shareTrackMutation.isPending,
-    isUpdatingPlatforms: updatePlatformsMutation.isPending,
-    isDeletingRequest: deleteRequestMutation.isPending,
-    isBatchDeletingRequests: batchDeleteRequestsMutation.isPending, // Added pending state
+    updateStatus,
+    updatePaymentStatus,
+    updateCost, // Expose the new updateCost function
+    shareTrack,
+    deleteRequest,
+    batchDeleteRequests,
   };
 };
