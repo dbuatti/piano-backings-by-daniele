@@ -11,12 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon, DollarSign } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon, DollarSign, Mic } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { calculateRequestCost } from '@/utils/pricing'; // Import calculateRequestCost
+import { calculateRequestCost } from '@/utils/pricing';
+import FileInput from '@/components/FileInput'; // Import FileInput
+import { uploadFileToSupabase } from '@/utils/supabase-client'; // Import uploadFileToSupabase
 
 interface BackingRequest {
   id: string;
@@ -45,10 +47,10 @@ interface BackingRequest {
   shared_link?: string | null;
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
-  cost?: number | null; // Make cost nullable
-  final_price?: number | null; // New field
-  estimated_cost_low?: number | null; // New field
-  estimated_cost_high?: number | null; // New field
+  cost?: number | null;
+  final_price?: number | null;
+  estimated_cost_low?: number | null;
+  estimated_cost_high?: number | null;
 }
 
 const keyOptions = [
@@ -106,6 +108,10 @@ const EditRequest: React.FC = () => {
   const [error, setError] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // New states for file uploads
+  const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
+  const [voiceMemoFile, setVoiceMemoFile] = useState<File | null>(null);
+
   useEffect(() => {
     const checkAdminAccess = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -156,6 +162,9 @@ const EditRequest: React.FC = () => {
         estimated_cost_low: data.estimated_cost_low !== null ? parseFloat(data.estimated_cost_low) : null,
         estimated_cost_high: data.estimated_cost_high !== null ? parseFloat(data.estimated_cost_high) : null,
       });
+      // Reset file inputs when fetching new request data
+      setSheetMusicFile(null);
+      setVoiceMemoFile(null);
     } catch (err: any) {
       console.error('Error fetching request:', err);
       setError(err);
@@ -195,6 +204,23 @@ const EditRequest: React.FC = () => {
     });
   };
 
+  // Handler for FileInput component
+  const handleFileInputChange = (file: File | null, fieldName: 'sheetMusicFile' | 'voiceMemoFile') => {
+    if (fieldName === 'sheetMusicFile') {
+      setSheetMusicFile(file);
+      // If a new file is selected, clear the existing URL in the form state
+      if (file) {
+        setRequest(prev => prev ? { ...prev, sheet_music_url: null } : null);
+      }
+    } else if (fieldName === 'voiceMemoFile') {
+      setVoiceMemoFile(file);
+      // If a new file is selected, clear the existing URL in the form state
+      if (file) {
+        setRequest(prev => prev ? { ...prev, voice_memo: null } : null);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!request) return;
@@ -202,7 +228,30 @@ const EditRequest: React.FC = () => {
     setIsUpdating(true);
     setError(null);
 
+    let updatedSheetMusicUrl = request.sheet_music_url;
+    let updatedVoiceMemoUrl = request.voice_memo;
+
     try {
+      // Handle Sheet Music File Upload
+      if (sheetMusicFile) {
+        const { data: uploadData, error: uploadError } = await uploadFileToSupabase(sheetMusicFile, `sheet-music/${request.id}/`, 'sheet-music');
+        if (uploadError) throw new Error(`Sheet music upload failed: ${uploadError.message}`);
+        updatedSheetMusicUrl = uploadData?.path ? supabase.storage.from('sheet-music').getPublicUrl(uploadData.path).data.publicUrl : null;
+      } else if (request.sheet_music_url === null && currentRequest?.sheet_music_url) {
+        // If user cleared the URL and no new file, set to null
+        updatedSheetMusicUrl = null;
+      }
+
+      // Handle Voice Memo File Upload
+      if (voiceMemoFile) {
+        const { data: uploadData, error: uploadError } = await uploadFileToSupabase(voiceMemoFile, `voice-memos/${request.id}/`, 'voice-memos');
+        if (uploadError) throw new Error(`Voice memo upload failed: ${uploadError.message}`);
+        updatedVoiceMemoUrl = uploadData?.path ? supabase.storage.from('voice-memos').getPublicUrl(uploadData.path).data.publicUrl : null;
+      } else if (request.voice_memo === null && currentRequest?.voice_memo) {
+        // If user cleared the URL and no new file, set to null
+        updatedVoiceMemoUrl = null;
+      }
+
       const { id, created_at, track_urls, shared_link, dropbox_folder_id, uploaded_platforms, ...updates } = request;
       
       // Ensure backing_type and additional_services are stored as arrays
@@ -210,10 +259,12 @@ const EditRequest: React.FC = () => {
         ...updates,
         backing_type: Array.isArray(updates.backing_type) ? updates.backing_type : (updates.backing_type ? [updates.backing_type] : []),
         additional_services: Array.isArray(updates.additional_services) ? updates.additional_services : (updates.additional_services ? [updates.additional_services] : []),
-        cost: updates.cost === null ? null : parseFloat(updates.cost.toString()), // Ensure cost is number or null
-        final_price: updates.final_price === null ? null : parseFloat(updates.final_price.toString()), // Ensure final_price is number or null
-        estimated_cost_low: updates.estimated_cost_low === null ? null : parseFloat(updates.estimated_cost_low.toString()), // Ensure estimated_cost_low is number or null
-        estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()), // Ensure estimated_cost_high is number or null
+        cost: updates.cost === null ? null : parseFloat(updates.cost.toString()),
+        final_price: updates.final_price === null ? null : parseFloat(updates.final_price.toString()),
+        estimated_cost_low: updates.estimated_cost_low === null ? null : parseFloat(updates.estimated_cost_low.toString()),
+        estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()),
+        sheet_music_url: updatedSheetMusicUrl, // Use the potentially new URL
+        voice_memo: updatedVoiceMemoUrl, // Use the potentially new URL
       };
 
       const { error } = await supabase
@@ -288,6 +339,9 @@ const EditRequest: React.FC = () => {
       </div>
     );
   }
+
+  // Store the original request data to compare if files were cleared
+  const currentRequest = request;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -430,17 +484,67 @@ const EditRequest: React.FC = () => {
                   Materials
                 </h2>
                 <div className="space-y-4">
+                  {/* Sheet Music File Input */}
                   <div>
-                    <Label htmlFor="sheet_music_url" className="text-sm mb-1 flex items-center"><FileText className="mr-1 h-4 w-4" /> Sheet Music URL</Label>
-                    <Input id="sheet_music_url" name="sheet_music_url" value={request.sheet_music_url || ''} onChange={handleInputChange} placeholder="https://..." />
+                    <FileInput
+                      id="sheetMusicFile"
+                      label="Sheet Music (PDF)"
+                      icon={FileText}
+                      accept=".pdf"
+                      onChange={(file) => handleFileInputChange(file, 'sheetMusicFile')}
+                      note="Upload a new PDF to replace the existing one. Clear the file input to remove the current URL."
+                      disabled={isUpdating}
+                    />
+                    {request.sheet_music_url && !sheetMusicFile && (
+                      <div className="mt-2">
+                        <Label className="text-xs text-gray-500">Current URL:</Label>
+                        <a href={request.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                          {request.sheet_music_url}
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setRequest(prev => prev ? { ...prev, sheet_music_url: null } : null)}
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600 mt-1"
+                        >
+                          Clear Current Sheet Music
+                        </Button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Voice Memo File Input */}
+                  <div>
+                    <FileInput
+                      id="voiceMemoFile"
+                      label="Voice Memo (Audio File)"
+                      icon={Mic}
+                      accept="audio/*"
+                      onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                      note="Upload a new audio file to replace the existing one. Clear the file input to remove the current URL."
+                      disabled={isUpdating}
+                    />
+                    {request.voice_memo && !voiceMemoFile && (
+                      <div className="mt-2">
+                        <Label className="text-xs text-gray-500">Current URL:</Label>
+                        <a href={request.voice_memo} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                          {request.voice_memo}
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setRequest(prev => prev ? { ...prev, voice_memo: null } : null)}
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600 mt-1"
+                        >
+                          Clear Current Voice Memo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <Label htmlFor="youtube_link" className="text-sm mb-1 flex items-center"><LinkIcon className="mr-1 h-4 w-4" /> YouTube Link</Label>
                     <Input id="youtube_link" name="youtube_link" value={request.youtube_link || ''} onChange={handleInputChange} placeholder="https://www.youtube.com/watch?v=..." />
-                  </div>
-                  <div>
-                    <Label htmlFor="voice_memo" className="text-sm mb-1 flex items-center"><Headphones className="mr-1 h-4 w-4" /> Voice Memo Link</Label>
-                    <Input id="voice_memo" name="voice_memo" value={request.voice_memo || ''} onChange={handleInputChange} placeholder="https://..." />
                   </div>
                   <div>
                     <Label htmlFor="additional_links" className="text-sm mb-1 flex items-center"><LinkIcon className="mr-1 h-4 w-4" /> Additional Links</Label>

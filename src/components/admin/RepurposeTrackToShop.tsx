@@ -20,6 +20,7 @@ import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { FileAudio } from 'lucide-react'; // Added FileAudio import
 import { Badge } from '@/components/ui/badge'; // ADDED Badge IMPORT
+import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator'; // Import the generator
 
 interface BackingRequest {
   id: string;
@@ -183,8 +184,6 @@ const RepurposeTrackToShop: React.FC = () => {
   // Pre-fill form when a request is selected
   useEffect(() => {
     if (selectedRequest) {
-      const firstName = selectedRequest.name ? selectedRequest.name.split(' ')[0] : selectedRequest.email.split('@')[0];
-      
       let autoTitle = selectedRequest.song_title;
       let autoArtist = selectedRequest.musical_or_artist;
 
@@ -197,30 +196,8 @@ const RepurposeTrackToShop: React.FC = () => {
         autoArtist = selectedRequest.musical_or_artist;
       }
 
-      let defaultDescription = `A high-quality piano backing track for "${autoTitle}" from ${autoArtist}.`;
-      
-      if (firstName) {
-        defaultDescription += ` Originally created for ${firstName}.`;
-      }
-
-      const normalizedBackingTypes = getSafeBackingTypes(selectedRequest.backing_type);
-      if (normalizedBackingTypes.length > 0) {
-        defaultDescription += ` This track is a ${normalizedBackingTypes.map(type => type.replace('-', ' ')).join(' and ')} backing.`;
-      }
-
-      if (selectedRequest.track_purpose) {
-        defaultDescription += ` It's perfect for ${selectedRequest.track_purpose.replace('-', ' ')}.`;
-      } else {
-        defaultDescription += ` It's perfect for auditions, practice, or performance.`;
-      }
-
-      if (selectedRequest.special_requests) {
-        defaultDescription += ` Special notes from the original request: "${selectedRequest.special_requests}".`;
-      }
-
-      if (selectedRequest.additional_services && selectedRequest.additional_services.length > 0) {
-        defaultDescription += ` Additional services included: ${selectedRequest.additional_services.map(service => service.replace('-', ' ')).join(', ')}.`;
-      }
+      // Use the new generator function for the description
+      const generatedDescription = generateProductDescriptionFromRequest(selectedRequest);
       
       const newTrackUrls = selectedRequest.track_urls?.map(track => {
         const originalCaption = track.caption;
@@ -240,7 +217,7 @@ const RepurposeTrackToShop: React.FC = () => {
 
       setProductForm({
         title: autoTitle,
-        description: defaultDescription,
+        description: generatedDescription, // Use the generated description
         price: '25.00',
         currency: 'AUD',
         image_url: '',
