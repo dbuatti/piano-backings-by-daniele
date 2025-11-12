@@ -109,19 +109,22 @@ serve(async (req) => {
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
       console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
       
-      // 1. Get the Supabase user ID for the sender email using admin.getUserByEmail
-      const { data: userData, error: userLookupError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
+      // 1. Get the Supabase user ID for the sender email by listing users and filtering
+      const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
 
-      if (userLookupError) {
-        console.error(`Error looking up user by email "${emailToFetchTokenFor}" using admin.getUserByEmail:`, userLookupError);
-        throw new Error(`Supabase user lookup failed for sender email "${emailToFetchTokenFor}": ${userLookupError.message}. Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
+      if (listUsersError) {
+        console.error(`Error listing users for email "${emailToFetchTokenFor}":`, listUsersError);
+        throw new Error(`Supabase user lookup failed for sender email "${emailToFetchTokenFor}": ${listUsersError.message}. Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
       }
-      if (!userData?.user?.id) {
-        console.error(`No user ID returned for email "${emailToFetchTokenFor}" after admin.getUserByEmail lookup.`);
+
+      const userFound = usersData.users.find(u => u.email === emailToFetchTokenFor);
+
+      if (!userFound?.id) {
+        console.error(`No user ID found for email "${emailToFetchTokenFor}" after listing users.`);
         throw new Error(`Supabase user not found for sender email "${emailToFetchTokenFor}". Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
       }
       
-      const userIdToFetchTokenFor = userData.user.id;
+      const userIdToFetchTokenFor = userFound.id;
       console.log(`Found Supabase user ID for sender email (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
 
       // 2. Get the stored refresh token for this user
