@@ -79,6 +79,20 @@ const FormPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({}); // State for validation errors
   const [consentChecked, setConsentChecked] = useState(false); // New state for consent checkbox
 
+  // Refs for scrolling to errors
+  const formRefs = {
+    email: React.useRef<HTMLInputElement>(null),
+    confirmEmail: React.useRef<HTMLInputElement>(null),
+    songTitle: React.useRef<HTMLInputElement>(null),
+    musicalOrArtist: React.useRef<HTMLInputElement>(null),
+    category: React.useRef<HTMLDivElement>(null), // Select component
+    trackType: React.useRef<HTMLDivElement>(null), // RadioGroup component
+    songKey: React.useRef<HTMLDivElement>(null), // Select component
+    backingType: React.useRef<HTMLDivElement>(null), // Checkbox group
+    sheetMusic: React.useRef<HTMLDivElement>(null), // FileInput component
+    consent: React.useRef<HTMLDivElement>(null), // Checkbox div
+  };
+
   // Check user session on component mount
   useEffect(() => {
     const checkUser = async () => {
@@ -263,6 +277,13 @@ const FormPage = () => {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
+      
+      // Scroll to the first error
+      const firstErrorField = Object.keys(newErrors)[0] as keyof typeof formRefs;
+      if (formRefs[firstErrorField] && formRefs[firstErrorField].current) {
+        formRefs[firstErrorField].current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields and agree to the terms.",
@@ -615,12 +636,21 @@ const FormPage = () => {
               <p className="text-md text-gray-700 mb-6">
                 You will receive a copy of your submission via email shortly, and we'll be in touch within 24-48 hours with a quote and estimated delivery date.
               </p>
-              <Button 
-                onClick={() => navigate('/user-dashboard')}
-                className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-3"
-              >
-                View Your Request Status
-              </Button>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Button 
+                  onClick={() => navigate('/user-dashboard')}
+                  className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-3"
+                >
+                  View Your Request Status
+                </Button>
+                <Button 
+                  onClick={() => setIsSubmittedSuccessfully(false)}
+                  variant="outline"
+                  className="text-green-600 border-green-600 hover:bg-green-100 text-lg px-8 py-3"
+                >
+                  Submit Another Request
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -648,7 +678,7 @@ const FormPage = () => {
                           onChange={handleInputChange} 
                           placeholder="Your full name"
                           className="pl-8 py-2 text-sm"
-                          disabled={isHolidayModeActive || !!user} // Disable if logged in
+                          disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
                         />
                         <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -658,7 +688,7 @@ const FormPage = () => {
                       <Label htmlFor="email" className="flex items-center text-sm mb-1">
                         Email <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <div className="relative">
+                      <div className="relative" ref={formRefs.email}>
                         <Input 
                           id="email" 
                           name="email" 
@@ -668,7 +698,7 @@ const FormPage = () => {
                           required 
                           placeholder="your.email@example.com (Required for tracking, or sign in to pre-fill)" // Updated placeholder
                           className={cn("pl-8 py-2 text-sm", errors.email && "border-red-500")}
-                          disabled={isHolidayModeActive || !!user} // Disable if logged in
+                          disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
                         />
                         <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -679,7 +709,7 @@ const FormPage = () => {
                       <Label htmlFor="confirmEmail" className="flex items-center text-sm mb-1">
                         Confirm Email <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <div className="relative">
+                      <div className="relative" ref={formRefs.confirmEmail}>
                         <Input 
                           id="confirmEmail" 
                           name="confirmEmail" 
@@ -689,7 +719,7 @@ const FormPage = () => {
                           required 
                           placeholder="Confirm your email address"
                           className={cn("pl-8 py-2 text-sm", errors.confirmEmail && "border-red-500")}
-                          disabled={isHolidayModeActive || !!user} // Disable if logged in
+                          disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
                         />
                         <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -710,7 +740,7 @@ const FormPage = () => {
                           onChange={handleInputChange} 
                           placeholder="e.g., 0412 345 678"
                           className="pl-8 py-2 text-sm"
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -722,7 +752,7 @@ const FormPage = () => {
                       <Label htmlFor="songTitle" className="flex items-center text-sm mb-1">
                         Song Title <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <div className="relative">
+                      <div className="relative" ref={formRefs.songTitle}>
                         <Input 
                           id="songTitle" 
                           name="songTitle" 
@@ -731,7 +761,7 @@ const FormPage = () => {
                           required 
                           placeholder="e.g., Defying Gravity"
                           className={cn("pl-8 py-2 text-sm", errors.songTitle && "border-red-500")}
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -741,7 +771,7 @@ const FormPage = () => {
                       <Label htmlFor="musicalOrArtist" className="flex items-center text-sm mb-1">
                         Musical or Artist <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <div className="relative">
+                      <div className="relative" ref={formRefs.musicalOrArtist}>
                         <Input 
                           id="musicalOrArtist" 
                           name="musicalOrArtist" 
@@ -750,7 +780,7 @@ const FormPage = () => {
                           required 
                           placeholder="e.g., Wicked"
                           className={cn("pl-8 py-2 text-sm", errors.musicalOrArtist && "border-red-500")}
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <MusicIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -762,8 +792,8 @@ const FormPage = () => {
                     <Label htmlFor="category" className="flex items-center text-sm mb-1">
                       Category <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <div className="relative">
-                      <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category} disabled={isHolidayModeActive}>
+                    <div className="relative" ref={formRefs.category}>
+                      <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category} disabled={isSubmitting || isHolidayModeActive}>
                         <SelectTrigger className={cn("pl-8 py-2 text-sm", errors.category && "border-red-500")}>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -792,7 +822,8 @@ const FormPage = () => {
                     value={formData.trackType} 
                     onValueChange={(value) => handleSelectChange('trackType', value)}
                     className="grid grid-cols-1 md:grid-cols-3 gap-4" // Changed to grid layout
-                    disabled={isHolidayModeActive}
+                    disabled={isSubmitting || isHolidayModeActive}
+                    ref={formRefs.trackType}
                   >
                     <Label htmlFor="quick" className="flex flex-col items-center justify-center cursor-pointer">
                       <Card className={cn(
@@ -854,8 +885,8 @@ const FormPage = () => {
                       <Label htmlFor="songKey" className="flex items-center text-sm mb-1">
                         What key is the <span className="font-bold ml-1">sheet music you are uploading</span> in? <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <div className="relative">
-                        <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey} disabled={isHolidayModeActive}>
+                      <div className="relative" ref={formRefs.songKey}>
+                        <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey} disabled={isSubmitting || isHolidayModeActive}>
                           <SelectTrigger className={cn("pl-8 py-2 text-sm", errors.songKey && "border-red-500")}>
                             <SelectValue placeholder="Select key" />
                           </SelectTrigger>
@@ -877,7 +908,7 @@ const FormPage = () => {
                         Do you require the <span className="font-bold ml-1">final backing track</span> to be in a different key?
                       </Label>
                       <div className="relative">
-                        <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey} disabled={isHolidayModeActive}>
+                        <Select onValueChange={(value) => handleSelectChange('differentKey', value)} value={formData.differentKey} disabled={isSubmitting || isHolidayModeActive}>
                           <SelectTrigger className="pl-8 py-2 text-sm">
                             <SelectValue placeholder="Select option" />
                           </SelectTrigger>
@@ -896,7 +927,7 @@ const FormPage = () => {
                     <div className="mt-4">
                       <Label htmlFor="keyForTrack" className="text-sm mb-1">Which key do you require?</Label>
                       <div className="relative">
-                        <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isHolidayModeActive}>
+                        <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isSubmitting || isHolidayModeActive}>
                           <SelectTrigger className="pl-8 py-2 text-sm">
                             <SelectValue placeholder="Select key" />
                         </SelectTrigger>
@@ -923,17 +954,19 @@ const FormPage = () => {
                   
                   <div className="space-y-4">
                     {/* Using the new FileInput component */}
-                    <FileInput
-                      id="sheetMusic"
-                      label="Please upload your sheet music as a PDF"
-                      icon={FileTextIcon}
-                      accept=".pdf"
-                      onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
-                      required // This 'required' prop is for visual indication, actual validation is in handleSubmit
-                      note="Make sure it's clear and in the right key"
-                      error={errors.sheetMusic} // Pass error prop
-                      disabled={isHolidayModeActive}
-                    />
+                    <div ref={formRefs.sheetMusic}>
+                      <FileInput
+                        id="sheetMusic"
+                        label="Please upload your sheet music as a PDF"
+                        icon={FileTextIcon}
+                        accept=".pdf"
+                        onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
+                        required // This 'required' prop is for visual indication, actual validation is in handleSubmit
+                        note="Make sure it's clear and in the right key"
+                        error={errors.sheetMusic} // Pass error prop
+                        disabled={isSubmitting || isHolidayModeActive}
+                      />
+                    </div>
                     {errors.sheetMusic && <p className="text-red-500 text-xs mt-1">{errors.sheetMusic}</p>}
 
                     <div>
@@ -949,7 +982,7 @@ const FormPage = () => {
                           onChange={handleInputChange} 
                           placeholder="https://www.youtube.com/watch?v=..."
                           className="pl-8 py-2 text-sm"
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <Youtube className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -968,7 +1001,7 @@ const FormPage = () => {
                           onChange={handleInputChange} 
                           placeholder="e.g., Dropbox link, Spotify link"
                           className="pl-8 py-2 text-sm"
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -991,7 +1024,7 @@ const FormPage = () => {
                             onChange={handleInputChange} 
                             placeholder="https://example.com/voice-memo.mp3"
                             className="pl-8 py-2 text-sm"
-                            disabled={isHolidayModeActive || !!formData.voiceMemoFile} // Disable if file is selected
+                            disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemoFile} // Disable if file is selected
                           />
                           <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
@@ -1004,7 +1037,7 @@ const FormPage = () => {
                         accept="audio/*"
                         onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
                         note="Note: Voice memo uploads may not be available at this time"
-                        disabled={isHolidayModeActive || !!formData.voiceMemo} // Disable if link is provided
+                        disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemo} // Disable if link is provided
                       />
                     </div>
                   </div>
@@ -1017,7 +1050,7 @@ const FormPage = () => {
                     Backing Type <span className="text-red-500 ml-1">*</span>
                   </h2>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-4" ref={formRefs.backingType}>
                     {/* Multi-select for Backing Type */}
                     <div>
                       <h3 className="font-semibold mb-2 flex items-center text-sm">
@@ -1037,7 +1070,7 @@ const FormPage = () => {
                               checked={formData.backingType.includes('full-song')}
                               onCheckedChange={(checked) => handleBackingTypeChange('full-song', checked)}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <span className="font-bold text-sm text-[#1C0357]">Full Song Backing</span>
@@ -1058,7 +1091,7 @@ const FormPage = () => {
                               checked={formData.backingType.includes('audition-cut')}
                               onCheckedChange={(checked) => handleBackingTypeChange('audition-cut', checked)}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <span className="font-bold text-sm text-[#1C0357]">Audition Cut Backing</span>
@@ -1079,7 +1112,7 @@ const FormPage = () => {
                               checked={formData.backingType.includes('note-bash')}
                               onCheckedChange={(checked) => handleBackingTypeChange('note-bash', checked)}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <span className="font-bold text-sm text-[#1C0357]">Note/Melody Bash</span>
@@ -1114,7 +1147,7 @@ const FormPage = () => {
                           value={formData.deliveryDate} 
                           onChange={handleInputChange} 
                           className="pl-8 py-2 text-sm w-full"
-                          disabled={isHolidayModeActive}
+                          disabled={isSubmitting || isHolidayModeActive}
                         />
                         <CalendarIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                       </div>
@@ -1137,7 +1170,7 @@ const FormPage = () => {
                               checked={formData.additionalServices.includes('rush-order')}
                               onCheckedChange={(checked) => handleCheckboxChange('rush-order')}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <span className="font-bold text-sm text-[#1C0357]">Rush Order</span>
@@ -1158,7 +1191,7 @@ const FormPage = () => {
                               checked={formData.additionalServices.includes('complex-songs')}
                               onCheckedChange={(checked) => handleCheckboxChange('complex-songs')}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <Label htmlFor="complex-songs" className="font-bold text-sm text-[#1C0357] cursor-pointer">
@@ -1181,7 +1214,7 @@ const FormPage = () => {
                               checked={formData.additionalServices.includes('additional-edits')}
                               onCheckedChange={(checked) => handleCheckboxChange('additional-edits')}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <Label htmlFor="additional-edits" className="font-bold text-sm text-[#1C0357] cursor-pointer">
@@ -1204,7 +1237,7 @@ const FormPage = () => {
                               checked={formData.additionalServices.includes('exclusive-ownership')}
                               onCheckedChange={(checked) => handleCheckboxChange('exclusive-ownership')}
                               className="mt-1 mr-3"
-                              disabled={isHolidayModeActive}
+                              disabled={isSubmitting || isHolidayModeActive}
                             />
                             <div className="flex flex-col flex-1">
                               <Label htmlFor="exclusive-ownership" className="font-bold text-sm text-[#1C0357] cursor-pointer">
@@ -1230,7 +1263,7 @@ const FormPage = () => {
                         onChange={handleInputChange}
                         placeholder="Any special requests or notes..."
                         className="mt-1"
-                        disabled={isHolidayModeActive}
+                        disabled={isSubmitting || isHolidayModeActive}
                       />
                     </div>
                   </div>
@@ -1245,7 +1278,7 @@ const FormPage = () => {
                   <div className={cn(
                     "flex items-start space-x-2 p-4 border rounded-md bg-gray-50",
                     errors.consent && "border-red-500 bg-red-50"
-                  )}>
+                  )} ref={formRefs.consent}>
                     <Checkbox
                       id="consent-checkbox"
                       checked={consentChecked}
@@ -1254,7 +1287,7 @@ const FormPage = () => {
                         setErrors(prev => ({ ...prev, consent: '' })); // Clear error on change
                       }}
                       className="mt-1"
-                      disabled={isHolidayModeActive}
+                      disabled={isSubmitting || isHolidayModeActive}
                     />
                     <Label htmlFor="consent-checkbox" className="text-sm leading-relaxed cursor-pointer">
                       I understand that to keep costs low and tracks accessible, Piano Backings by Daniele may sell this track to other artists and/or upload it to public platforms like YouTube, <span className="font-bold">unless I purchase the 'Exclusive Ownership' option in Section 6.</span>
