@@ -106,66 +106,21 @@ serve(async (req) => {
     }
 
     // Function to refresh access token using refresh token
-    // This now uses the service role to access the tokens table
     const refreshAccessToken = async (emailToFetchTokenFor: string) => {
-      console.log(`Refreshing access token for ${emailToFetchTokenFor} using service role`);
+      console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
       
-      // Directly query the gmail_tokens table to get the user ID and tokens
-      // We'll need to find the user ID first by querying the auth.users table
-      let userIdToFetchTokenFor: string | null = null;
-      try {
-        console.log(`Attempting to get user ID for email: ${emailToFetchTokenFor}`);
-        
-        // First, we need to get the user ID from auth.users
-        // Since we can't directly query auth.users, we'll try a different approach
-        // Let's query the profiles table to find the user ID
-        const { data: profileData, error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .select('id')
-          .eq('email', emailToFetchTokenFor) // Assuming there's an email column in profiles
-          .single();
-        
-        if (profileError) {
-          console.log(`Profile not found for ${emailToFetchTokenFor}, trying alternative method`);
-          // If profile doesn't exist, we'll try to find the user ID in gmail_tokens
-          // by checking if any entry has an an email that matches
-          // This is a workaround since we can't directly query auth.users
-        }
-        
-        if (profileData) {
-          userIdToFetchTokenFor = profileData.id;
-          console.log(`User ID from profile for token retrieval (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
-        } else {
-          // If we can't find the user ID through profiles, we'll try another approach
-          // Let's check if there's only one entry in gmail_tokens and use that
-          const { data: allTokens, error: tokensError } = await supabaseAdmin
-            .from('gmail_tokens')
-            .select('user_id');
-          
-          if (tokensError) {
-            console.error('Error fetching gmail_tokens:', tokensError);
-            throw new Error(`Error fetching gmail_tokens: ${tokensError.message}`);
-          }
-          
-          if (allTokens && allTokens.length === 1) {
-            userIdToFetchTokenFor = allTokens[0].user_id;
-            console.log(`Using single user ID from gmail_tokens:`, userIdToFetchTokenFor);
-          } else if (allTokens && allTokens.length > 1) {
-            // If there are multiple entries, we'll use the first one for now
-            // In a production environment, you'd want a better way to identify the correct user
-            userIdToFetchTokenFor = allTokens[0].user_id;
-            console.log(`Multiple users found, using first user ID from gmail_tokens:`, userIdToFetchTokenFor);
-          } else {
-            throw new Error(`No user found for email ${emailToFetchTokenFor} and no tokens in gmail_tokens table`);
-          }
-        }
-      } catch (getUserError: any) {
-        // Catch any errors from the try block above
-        console.error(`Error in getUser ID block for ${emailToFetchTokenFor}:`, getUserError);
-        throw new Error(`Failed to fetch user ID for ${emailToFetchTokenFor}: ${getUserError.message}`);
-      }
+      // 1. Get the Supabase user ID for the sender email using the service role
+      const { data: userData, error: userLookupError } = await supabaseAdmin.auth.admin.getUserByEmail(emailToFetchTokenFor);
 
-      // Get the stored refresh token for this user
+      if (userLookupError || !userData?.user) {
+        console.error(`Error looking up user by email ${emailToFetchTokenFor}:`, userLookupError?.message || 'User not found');
+        throw new Error(`Supabase user not found for sender email "${emailToFetchTokenFor}". Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
+      }
+      
+      const userIdToFetchTokenFor = userData.user.id;
+      console.log(`Found Supabase user ID for sender email (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
+
+      // 2. Get the stored refresh token for this user
       const { data: tokenData, error: tokenError } = await supabaseAdmin
         .from('gmail_tokens')
         .select('refresh_token, access_token, expires_at')
@@ -173,15 +128,15 @@ serve(async (req) => {
         .single();
       
       if (tokenError || !tokenData) {
-        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}):`, tokenError);
-        throw new Error(`No Gmail tokens found for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}) in database. Please ensure this user has completed Gmail OAuth.`);
+        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}):`, tokenError?.message || 'No token data');
+        throw new Error(`No Gmail tokens found for user "${emailToFetchTokenFor}" (ID: ${userIdToFetchTokenFor}) in database. Please ensure this user has completed Gmail OAuth.`);
       }
       
       // Check if we have a refresh token
       if (!tokenData.refresh_token) {
-        // If we don't have a refresh token, check if access token is still valid
+        // If no refresh token, check if existing access token is still valid
         if (tokenData.expires_at && new Date(tokenData.expires_at) > new Date()) {
-          console.log("Using existing access token (no refresh token available)");
+          console.log("Using existing access token (no refresh token available, but access token is still valid)");
           return tokenData.access_token;
         }
         throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
@@ -224,7 +179,7 @@ serve(async (req) => {
           .eq('user_id', userIdToFetchTokenFor); // Update using the correct user's ID
         
         if (updateError) {
-          console.error('Error updating access token:', updateError);
+          console.error('Error updating access token in DB:', updateError);
           // Don't throw here, as we still have the token
         }
         
