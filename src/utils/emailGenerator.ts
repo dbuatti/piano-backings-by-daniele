@@ -239,8 +239,13 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
+  // Determine the recommended cost value
+  const recommendedCostValue = (request.final_price !== null && request.final_price !== undefined)
+    ? request.final_price
+    : calculatedCost;
+
   const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Recommended Cost:</strong> $${calculatedCost.toFixed(2)}
+                                 <strong>Recommended Cost:</strong> $${recommendedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
@@ -338,8 +343,13 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
+  // Determine the recommended cost value
+  const recommendedCostValue = (request.final_price !== null && request.final_price !== undefined)
+    ? request.final_price
+    : calculatedCost;
+
   const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Recommended Cost:</strong> $${calculatedCost.toFixed(2)}
+                                 <strong>Recommended Cost:</strong> $${recommendedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
