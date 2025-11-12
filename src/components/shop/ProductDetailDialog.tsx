@@ -89,9 +89,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 className="flex items-center justify-center w-full h-full text-white p-4 text-center"
                 style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
               >
-                <h3 className="text-3xl md:text-4xl font-bold italic leading-tight">
+                <h1 className="text-3xl md:text-4xl font-bold italic leading-tight">
                   {product.title}
-                </h3>
+                </h1>
               </div>
             )}
           </AspectRatio>
@@ -108,7 +108,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         
         <div className="p-6 space-y-4">
           <DialogHeader>
-            <DialogTitle className="text-3xl font-bold text-[#1C0357]">{product.title}</DialogTitle>
+            {/* Stage 2.1: Use h1 for the main product title */}
+            <h1 className="text-3xl font-bold text-[#1C0357]">{product.title}</h1>
+            
             {product.artist_name && (
               <p className="text-lg text-gray-700 flex items-center">
                 <Theater className="h-5 w-5 mr-2" /> {product.artist_name}
@@ -119,31 +121,41 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 <Tag className="h-4 w-4 mr-2" /> {product.category.replace('-', ' ')}
               </p>
             )}
-            {product.key_signature && product.show_key_signature && ( // Conditionally display key signature
-              <p className="text-md text-gray-600 flex items-center">
-                <Key className="h-4 w-4 mr-2" /> Key: {product.key_signature}
-              </p>
-            )}
-            {product.track_type && ( // Display track_type
-              <p className="text-md text-gray-600 flex items-center capitalize">
-                <Music className="h-4 w-4 mr-2" /> Type: {product.track_type.replace('-', ' ')}
-              </p>
-            )}
+            
+            {/* Stage 2.2: Ensure key information is visible as plain text */}
+            <div className="flex flex-wrap gap-4 pt-2">
+              {product.key_signature && product.show_key_signature && (
+                <div className="text-md text-gray-600 flex items-center">
+                  <Key className="h-4 w-4 mr-2" /> <strong>Key:</strong> {product.key_signature}
+                </div>
+              )}
+              {product.track_type && (
+                <div className="text-md text-gray-600 flex items-center capitalize">
+                  <Music className="h-4 w-4 mr-2" /> <strong>Type:</strong> {product.track_type.replace('-', ' ')}
+                </div>
+              )}
+            </div>
+
             {product.vocal_ranges && product.vocal_ranges.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {product.vocal_ranges.map((range, index) => (
-                  <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-base px-3 py-1.5 rounded-full font-bold"> {/* Enhanced Vocal Range styling */}
-                    {range}
-                  </Badge>
-                ))}
+              <div className="pt-2">
+                <h3 className="text-md font-semibold text-[#1C0357] mb-1">Vocal Ranges:</h3>
+                <div className="flex flex-wrap gap-1">
+                  {product.vocal_ranges.map((range, index) => (
+                    <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-base px-3 py-1.5 rounded-full font-bold">
+                      {range}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
-            <DialogDescription className="text-lg text-gray-700">
+            
+            {/* Use DialogDescription for the main description text */}
+            <DialogDescription className="text-lg text-gray-700 pt-4">
               {product.description}
             </DialogDescription>
           </DialogHeader>
 
-          {product.sheet_music_url && product.show_sheet_music_url && ( // Conditionally display PDF preview button
+          {product.sheet_music_url && product.show_sheet_music_url && (
             <div className="border-t pt-4">
               <Button 
                 variant="outline" 
@@ -163,7 +175,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <Button 
               onClick={() => onBuyNow(product)}
               className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
-              disabled={isBuying} // Disable button when buying
+              disabled={isBuying}
             >
               {isBuying ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -176,10 +188,10 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
           {product.track_urls && product.track_urls.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-xl font-semibold text-[#1C0357] flex items-center">
+              <h2 className="text-xl font-semibold text-[#1C0357] flex items-center">
                 <Music className="mr-2 h-5 w-5" />
-                10-Second Audio Sample
-              </h4>
+                Audio Sample(s)
+              </h2>
               <ul className="space-y-2">
                 {product.track_urls.map((track, index) => (
                   <li key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-md bg-gray-50">
