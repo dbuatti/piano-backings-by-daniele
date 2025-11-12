@@ -1,203 +1,98 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { showError } from '@/utils/toast'; // Updated import
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Filter, PlusCircle, Trash2, Mail, Upload, Share2 } from 'lucide-react';
-import AdminStatsCards from './AdminStatsCards';
-import RequestsTable from './RequestsTable';
-import IssueReportsTable from './IssueReportsTable';
-import { useRequestActions } from '@/hooks/admin/useRequestActions';
-import { calculateRequestCost } from '@/utils/pricing';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import UploadTrackDialog from './UploadTrackDialog';
-import UploadPlatformsDialog from './UploadPlatformsDialog';
-import { uploadFileToSupabase } from '@/utils/supabase-client';
-import AdminFiltersAndViews from './AdminFiltersAndViews'; // Import AdminFiltersAndViews
-import RequestsCalendar from './RequestsCalendar'; // Import RequestsCalendar
-import PricingMatrix from '../PricingMatrix'; // Import PricingMatrix
-import { Card, CardContent } from '@/components/ui/card'; // Import Card components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DollarSign, Users, Clock, CheckCircle, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import ErrorDisplay from '@/components/ErrorDisplay';
 
-interface TrackInfo {
-  url: string;
-  caption: string;
+interface DashboardStats {
+  total_requests: number;
+  pending_requests: number;
+  completed_requests: number;
+  total_revenue: number;
 }
 
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[];
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number | null;
-}
+const DashboardTabContent: React.FC = () => {
+  const { data: stats, isLoading, isError, error } = useQuery<DashboardStats, Error>({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      if (error) throw error;
+      return data[0]; // rpc returns an array, we expect one object
+    },
+    staleTime: 60 * 1000, // 1 minute
+  });
 
-interface DashboardTabContentProps {
-  requests: BackingRequest[];
-  loading: boolean;
-  totalIssueReports: number;
-  unreadIssueReports: number;
-  searchTerm: string;
-  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
-  statusFilter: string;
-  setStatusFilter: React.Dispatch<React.SetStateAction<string>>;
-  backingTypeFilter: string;
-  setBackingTypeFilter: React.Dispatch<React.SetStateAction<string>>;
-  paymentStatusFilter: string;
-  setPaymentStatusFilter: React.Dispatch<React.SetStateAction<string>>;
-  viewMode: 'list' | 'calendar' | 'pricing';
-  setViewMode: React.Dispatch<React.SetStateAction<'list' | 'calendar' | 'pricing'>>;
-  selectedDate: Date | null;
-  setSelectedDate: React.Dispatch<React.SetStateAction<Date | null>>;
-  filteredRequests: BackingRequest[];
-  clearFilters: () => void;
-  selectedRequests: string[];
-  handleSelectAll: () => void;
-  handleSelectRequest: (id: string) => void;
-  totalCost: number;
-  updateStatus: (id: string, status: BackingRequest['status']) => void;
-  updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  uploadTrack: (id: string) => void;
-  shareTrack: (id: string) => void;
-  openEmailGenerator: (request: BackingRequest) => void;
-  openDeleteDialog: (id: string) => void;
-  openBatchDeleteDialog: () => void;
-  openUploadPlatformsDialog: (id: string) => void;
-  onDirectFileUpload: (id: string, file: File) => void;
-  updateTrackCaption: (requestId: string, trackUrl: string, newCaption: string) => Promise<boolean>;
-  updateCost: (id: string, newCost: number | null) => Promise<void>; // Added updateCost
-}
+  useEffect(() => {
+    if (isError) {
+      showError(`Error fetching data: ${error.message}`); // Updated toast call
+    }
+  }, [isError, error]);
 
-const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
-  requests,
-  loading,
-  totalIssueReports,
-  unreadIssueReports,
-  searchTerm,
-  setSearchTerm,
-  statusFilter,
-  setStatusFilter,
-  backingTypeFilter,
-  setBackingTypeFilter,
-  paymentStatusFilter,
-  setPaymentStatusFilter,
-  viewMode,
-  setViewMode,
-  selectedDate,
-  setSelectedDate,
-  filteredRequests,
-  clearFilters, // Destructure clearFilters
-  selectedRequests,
-  handleSelectAll,
-  handleSelectRequest,
-  totalCost,
-  updateStatus,
-  updatePaymentStatus,
-  uploadTrack,
-  shareTrack,
-  openEmailGenerator,
-  openDeleteDialog,
-  openBatchDeleteDialog,
-  openUploadPlatformsDialog,
-  onDirectFileUpload,
-  updateTrackCaption,
-  updateCost, // Destructure updateCost
-}) => {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-10 w-10 animate-spin text-[#1C0357]" />
+        <p className="ml-3 text-gray-600">Loading dashboard data...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
-      <AdminStatsCards 
-        requests={requests} 
-        totalIssueReports={totalIssueReports}
-        unreadIssueReports={unreadIssueReports}
-      />
-
-      <Card className="shadow-lg mb-6 bg-white">
-        <CardContent className="p-4">
-          <AdminFiltersAndViews
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            backingTypeFilter={backingTypeFilter}
-            setBackingTypeFilter={setBackingTypeFilter}
-            paymentStatusFilter={paymentStatusFilter}
-            setPaymentStatusFilter={setPaymentStatusFilter}
-            clearFilters={clearFilters}
-            totalRequests={requests.length}
-            filteredRequestsCount={filteredRequests.length}
-          />
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end mb-4 space-x-2">
-        <Button 
-          variant={viewMode === 'list' ? 'default' : 'outline'} 
-          onClick={() => setViewMode('list')}
-          className={viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
-        >
-          List View
-        </Button>
-        <Button 
-          variant={viewMode === 'calendar' ? 'default' : 'outline'} 
-          onClick={() => setViewMode('calendar')}
-          className={viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
-        >
-          Calendar View
-        </Button>
-        <Button 
-          variant={viewMode === 'pricing' ? 'default' : 'outline'} 
-          onClick={() => setViewMode('pricing')}
-          className={viewMode === 'pricing' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
-        >
-          Pricing Matrix
-        </Button>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card className="shadow-lg bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats?.total_revenue?.toFixed(2) || '0.00'}</div>
+            <p className="text-xs text-muted-foreground">
+              Based on completed and paid requests
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-lg bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.total_requests || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              All requests ever submitted
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-lg bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.pending_requests || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Awaiting your action
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-lg bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed Requests</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.completed_requests || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Successfully delivered
+            </p>
+          </CardContent>
+        </Card>
       </div>
-
-      {viewMode === 'list' && (
-        <RequestsTable
-          filteredRequests={filteredRequests}
-          loading={loading}
-          selectedRequests={selectedRequests}
-          handleSelectAll={handleSelectAll}
-          handleSelectRequest={handleSelectRequest}
-          totalCost={totalCost}
-          updateStatus={updateStatus}
-          updatePaymentStatus={updatePaymentStatus}
-          updateCost={updateCost} // Pass updateCost
-          uploadTrack={uploadTrack}
-          shareTrack={shareTrack}
-          openEmailGenerator={openEmailGenerator}
-          openDeleteDialog={openDeleteDialog}
-          openBatchDeleteDialog={openBatchDeleteDialog}
-          openUploadPlatformsDialog={openUploadPlatformsDialog}
-          onDirectFileUpload={onDirectFileUpload}
-          clearFilters={clearFilters} // PASS clearFilters
-        />
-      )}
-
-      {viewMode === 'calendar' && (
-        <RequestsCalendar
-          requests={requests}
-          filteredRequests={filteredRequests}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          uploadTrack={uploadTrack}
-        />
-      )}
-
-      {viewMode === 'pricing' && (
-        <PricingMatrix />
-      )}
+      {isError && <ErrorDisplay error={error} title="Failed to Load Dashboard Stats" />}
     </div>
   );
 };

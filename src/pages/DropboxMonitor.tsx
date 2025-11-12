@@ -1,246 +1,130 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertCircle, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import Header from '@/components/Header';
+import { Loader2, RefreshCw, CheckCircle, XCircle, FolderOpen, FileAudio } from 'lucide-react';
+import { format } from 'date-fns';
 
-const DropboxMonitor = () => {
-  const { toast } = useToast();
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [error, setError] = useState<any>(null);
+interface DropboxFile {
+  name: string;
+  path_display: string;
+  id: string;
+  client_modified: string;
+  size: number;
+}
 
-  const testDropboxConnection = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    setError(null);
-    
+const DropboxMonitor: React.FC = () => {
+  const [files, setFiles] = useState<DropboxFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingFileId, setProcessingFileId] = useState<string | null>(null);
+
+  const fetchDropboxFiles = async () => {
+    setLoading(true);
     try {
-      // Get the session from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('You must be logged in to test this function');
-      }
-      
-      const response = await fetch(
-        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/test-dropbox`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({})
-        }
-      );
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        setTestResult(data);
-        toast({
-          title: "Test Completed",
-          description: "Check the results below for Dropbox connection status.",
-        });
-      } else {
-        throw new Error(data.error || `Function failed with status ${response.status}`);
-      }
-    } catch (err: any) {
-      console.error('Error testing Dropbox connection:', err);
-      setError(err);
-      toast({
-        title: "Error",
-        description: `There was a problem testing the connection: ${err.message}`,
-        variant: "destructive",
-      });
+      const { data, error } = await supabase.functions.invoke('list-dropbox-files');
+      if (error) throw error;
+      setFiles(data.files || []);
+    } catch (error: any) {
+      console.error('Error fetching Dropbox files:', error);
+      showError(`Error fetching Dropbox files: ${error.message}`);
     } finally {
-      setIsTesting(false);
+      setLoading(false);
     }
   };
 
+  const handleProcessFile = async (file: DropboxFile) => {
+    setProcessingFileId(file.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-dropbox-file', {
+        body: JSON.stringify({ filePath: file.path_display }),
+      });
+      if (error) throw error;
+      showSuccess(`File processed successfully! File ${file.name} has been moved to 'processed'.`);
+      fetchDropboxFiles(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error processing file:', error);
+      showError(`Error processing file: ${error.message}`);
+    } finally {
+      setProcessingFileId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchDropboxFiles();
+  }, []);
+
   return (
-    <>
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl text-[#1C0357]">Dropbox Connection Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <p className="mb-4">
-              This page tests if your Dropbox connection is properly configured and working.
-              Run this test periodically to ensure your refresh token is still valid.
-            </p>
-            
-            <Button 
-              onClick={testDropboxConnection}
-              disabled={isTesting}
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white h-12 px-6"
-            >
-              {isTesting ? (
-                <>
-                  <Clock className="mr-2 h-4 w-4 animate-spin" />
-                  Testing Connection...
-                </>
+    <div className="min-h-screen bg-gray-100">
+      <Header />
+      <div className="container mx-auto py-8 px-4">
+        <Card className="max-w-4xl mx-auto shadow-lg bg-white">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl font-bold text-[#1C0357] flex items-center">
+              <FolderOpen className="mr-2 h-5 w-5" />
+              Dropbox Monitor (New Backings)
+            </CardTitle>
+            <Button onClick={fetchDropboxFiles} disabled={loading} variant="outline">
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                'Test Dropbox Connection'
+                <RefreshCw className="mr-2 h-4 w-4" />
               )}
+              Refresh
             </Button>
-          </div>
-          
-          {error && (
-            <Card className="border-red-300 bg-red-50 mb-6">
-              <CardHeader>
-                <CardTitle className="text-red-800 flex items-center">
-                  <AlertCircle className="mr-2 h-5 w-5" />
-                  Connection Error
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre className="whitespace-pre-wrap break-words text-sm bg-red-100 p-4 rounded">
-                  {JSON.stringify(error, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
-          
-          {testResult && (
-            <Card className="border-blue-300 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="text-blue-800 flex items-center">
-                  {testResult.dropboxFolderId ? (
-                    <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
-                  ) : (
-                    <AlertTriangle className="mr-2 h-5 w-5 text-yellow-500" />
-                  )}
-                  Test Results
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-100 p-4 rounded-lg mb-4">
-                  <pre className="whitespace-pre-wrap break-words text-sm">
-                    {JSON.stringify(testResult, null, 2)}
-                  </pre>
-                </div>
-                
-                <div className="mt-4 p-4 rounded-lg bg-white border">
-                  <h4 className="font-semibold text-[#1C0357] mb-3">Connection Status Summary:</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span>Dropbox Credentials:</span>
-                      <span className={`font-semibold ${testResult.dropboxError && testResult.dropboxError.includes('not configured') ? 'text-red-600' : 'text-green-600'}`}>
-                        {testResult.dropboxError && testResult.dropboxError.includes('not configured') 
-                          ? 'NOT CONFIGURED' 
-                          : 'CONFIGURED'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span>Parent Folder Access:</span>
-                      <span className={`font-semibold ${testResult.parentFolderCheck ? 'text-green-600' : 'text-red-600'}`}>
-                        {testResult.parentFolderCheck ? 'SUCCESS' : 'FAILED'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span>Test Folder Creation:</span>
-                      <span className={`font-semibold ${testResult.dropboxFolderId ? 'text-green-600' : 'text-red-600'}`}>
-                        {testResult.dropboxFolderId ? 'SUCCESS' : 'FAILED'}
-                      </span>
-                    </div>
-                    
-                    {testResult.fullPath && (
-                      <div className="flex items-center justify-between">
-                        <span>Test Folder Path:</span>
-                        <span className="font-mono text-sm bg-gray-100 p-1 rounded">
-                          {testResult.fullPath}
-                        </span>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 mb-4">
+              This page displays new audio files uploaded to your designated Dropbox folder (e.g., `/New Backings`).
+              You can process these files to move them to a 'processed' subfolder.
+            </p>
+
+            {loading ? (
+              <div className="flex items-center justify-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
+                <p className="ml-3 text-gray-600">Loading Dropbox files...</p>
+              </div>
+            ) : files.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No new files found in Dropbox.</p>
+            ) : (
+              <div className="space-y-4">
+                {files.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between p-4 border rounded-md bg-gray-50">
+                    <div className="flex items-center">
+                      <FileAudio className="mr-3 h-6 w-6 text-[#1C0357]" />
+                      <div>
+                        <p className="font-medium text-[#1C0357]">{file.name}</p>
+                        <p className="text-sm text-gray-600">
+                          Size: {(file.size / (1024 * 1024)).toFixed(2)} MB | Modified: {format(new Date(file.client_modified), 'MMM dd, yyyy HH:mm')}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                    <Button
+                      onClick={() => handleProcessFile(file)}
+                      disabled={processingFileId === file.id}
+                      className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white"
+                    >
+                      {processingFileId === file.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Process File
+                        </>
+                      )}
+                    </Button>
                   </div>
-                </div>
-                
-                <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    What to do if connection fails:
-                  </h4>
-                  <ol className="list-decimal pl-5 space-y-2 text-sm">
-                    <li>Go to the Dropbox App Console</li>
-                    <li>Generate a new refresh token for your app</li>
-                    <li>Update the DROPBOX_REFRESH_TOKEN secret in Supabase</li>
-                    <li>Run this test again to confirm the connection</li>
-                  </ol>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {!testResult && !error && (
-            <div className="p-6 text-center bg-gray-50 rounded-lg">
-              <p className="text-gray-600">
-                Click "Test Dropbox Connection" to check your Dropbox integration status.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl text-[#1C0357]">Token Management Tips</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start">
-                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Set calendar reminders to test token every 30-60 days</span>
-              </li>
-              <li className="flex items-start">
-                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Bookmark your Dropbox App Console for quick access</span>
-              </li>
-              <li className="flex items-start">
-                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Keep a note of the token generation date</span>
-              </li>
-              <li className="flex items-start">
-                <CheckCircle className="mr-2 h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Test immediately after any Dropbox app changes</span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl text-[#1C0357]">Common Issues</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start">
-                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <span>Refresh token expires after app permission changes</span>
-              </li>
-              <li className="flex items-start">
-                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <span>Security settings may invalidate tokens</span>
-              </li>
-              <li className="flex items-start">
-                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <span>App reconfiguration requires new token</span>
-              </li>
-              <li className="flex items-start">
-                <AlertCircle className="mr-2 h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <span>Long periods of inactivity may expire tokens</span>
-              </li>
-            </ul>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 };
 

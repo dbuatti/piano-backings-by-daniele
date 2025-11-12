@@ -1,159 +1,107 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from "@/components/Header";
-import { useToast } from "@/hooks/use-toast";
+import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from '@/integrations/supabase/client';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { Loader2 } from "lucide-react";
+import { MadeWithDyad } from '@/components/made-with-dyad';
 
-const Login = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const Login: React.FC = () => {
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsAuthenticated(true);
-        navigate('/user-dashboard');
-      }
-    };
-    checkAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setIsAuthenticated(true);
-        navigate('/user-dashboard');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "You have been logged in successfully.",
-      });
+      showSuccess("Check your email: A magic link has been sent to you!");
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(`Login failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setLoading(true);
-
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin, // Redirect to home page after login
+        },
       });
-
       if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "Check your email to confirm your account.",
-      });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(`Login failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
-
-  if (isAuthenticated) {
-    return null; // Will redirect immediately
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+    <div className="min-h-screen flex flex-col bg-gray-100">
       <Header />
-      
-      <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Login</h1>
-          <p className="text-xl font-light text-[#1C0357]/90">Access your account</p>
-        </div>
-        
-        <Card className="shadow-lg">
+      <div className="flex-grow flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-[#1C0357]">Welcome Back</CardTitle>
-            <CardDescription>Sign in to access your backing tracks and requests</CardDescription>
+            <CardTitle className="text-3xl font-bold text-[#1C0357]">Welcome Back!</CardTitle>
+            <CardDescription className="text-gray-600">Sign in to access your dashboard.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Auth
-              supabaseClient={supabase}
-              providers={['google']}
-              appearance={{ theme: ThemeSupa }}
-              theme="light"
-              redirectTo={`${window.location.origin}/user-dashboard`}
-              localization={{
-                variables: {
-                  sign_in: {
-                    email_label: 'Email address',
-                    password_label: 'Your password',
-                    email_input_placeholder: 'Enter your email address',
-                    password_input_placeholder: 'Enter your password',
-                    button_label: 'Sign In',
-                    social_provider_text: 'Or continue with {{provider}}',
-                    link_text: 'Already have an account? Sign In',
-                  },
-                  sign_up: {
-                    email_label: 'Email address',
-                    password_label: 'Create a password',
-                    email_input_placeholder: 'Enter your email address',
-                    password_input_placeholder: 'Create a password',
-                    button_label: 'Sign Up',
-                    social_provider_text: 'Or continue with {{provider}}',
-                    link_text: 'Don\'t have an account? Sign Up',
-                  },
-                },
-              }}
-            />
-            
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>Don't have an account? Create one to save your requests and access all your tracks in one place.</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <Button type="submit" className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Magic Link...
+                  </>
+                ) : (
+                  "Send Magic Link"
+                )}
+              </Button>
+            </form>
+            <div className="relative flex py-5 items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="flex-shrink mx-4 text-gray-400">OR</span>
+              <div className="flex-grow border-t border-gray-300"></div>
             </div>
+            <Button
+              onClick={handleGoogleLogin}
+              className="w-full bg-[#F538BC] hover:bg-[#F538BC]/90 text-white"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in with Google...
+                </>
+              ) : (
+                "Sign In with Google"
+              )}
+            </Button>
           </CardContent>
         </Card>
-        
-        <MadeWithDyad />
       </div>
+      <MadeWithDyad />
     </div>
   );
 };

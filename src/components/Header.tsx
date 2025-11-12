@@ -1,12 +1,8 @@
-"use client";
-
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart } from "lucide-react"; // Import ShoppingCart icon
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { showSuccess, showError } from "@/utils/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,342 +11,252 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Menu, LogOut, User, Settings, ShoppingCart, LayoutDashboard, Bell, Music } from "lucide-react"; // Added Music
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUnreadIssueReportsCount } from "@/utils/admin-helpers"; // Updated import path
+import { useHolidayMode } from "@/hooks/useHolidayMode";
 
-const Header = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const location = useLocation();
-  const [session, setSession] = React.useState<any>(null);
-  const [isAdmin, setIsAdmin] = React.useState(false);
+const Header: React.FC = () => {
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const location = useLocation();
+  const { isHolidayModeActive } = useHolidayMode();
 
-  React.useEffect(() => {
-    const checkSession = async () => {
+  const { data: unreadCount } = useQuery<number | undefined>({ // Explicitly type unreadCount
+    queryKey: ['unreadIssueReportsCount'],
+    queryFn: fetchUnreadIssueReportsCount,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: isAdmin, // Only fetch if user is admin
+  });
+
+  useEffect(() => {
+    const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      
-      if (session) {
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
-        }
-      }
-    };
-    
-    checkSession();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      
-      if (session) {
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
+      if (session?.user) {
+        setUserEmail(session.user.email);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching profile:", error);
         } else {
-          setIsAdmin(false);
+          setIsAdmin(profile?.is_admin || false);
         }
       } else {
+        setUserEmail(null);
+        setIsAdmin(false);
+      }
+    };
+
+    fetchUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email);
+        // Re-fetch admin status on auth state change
+        supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile, error }) => {
+            if (error) console.error("Error fetching profile on auth change:", error);
+            setIsAdmin(profile?.is_admin || false);
+          });
+      } else {
+        setUserEmail(null);
         setIsAdmin(false);
       }
     });
-    
+
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setIsAdmin(false);
-      setMobileMenuOpen(false);
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
-      navigate('/');
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-        variant: "destructive",
-      });
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      showError(`Error logging out: ${error.message}`);
+    } else {
+      showSuccess("Logged out successfully.");
+      navigate("/login");
     }
   };
 
+  const navItems = [
+    { name: "Home", path: "/" },
+    { name: "Request a Backing", path: "/form-page" },
+    { name: "Shop", path: "/shop" },
+    // { name: "Test Backings", path: "/test-backings" },
+    // { name: "Test Email", path: "/test-email" },
+    // { name: "Test Dropbox", path: "/test-dropbox" },
+    // { name: "Test Dropbox Credentials", path: "/test-dropbox-credentials" },
+    // { name: "Dropbox Monitor", path: "/dropbox-monitor" },
+    // { name: "Test Email Notification", path: "/test-email-notification" },
+    // { name: "Data Importer", path: "/data-importer" },
+  ];
+
   return (
-    <header className="bg-[#FF00B3] text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20"> {/* Reduced height on mobile */}
-          {/* Logo */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center">
-              <img 
-                className="h-12 md:h-16 w-auto rounded-lg" 
-                src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
-                alt="Piano Backings By Daniele Logo" // Added alt attribute
-              />
-            </Link>
-          </div>
+    <header className="sticky top-0 z-40 w-full border-b bg-white shadow-sm">
+      <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+        <Link to="/" className="flex items-center gap-2 text-lg font-semibold text-[#1C0357]">
+          <Music className="h-6 w-6" />
+          <span>Backing Tracks</span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            <Link to="/form-page">
-              <Button 
-                className={cn(
-                  "ml-1 px-4 py-2 rounded-full text-sm font-bold transition-all duration-300",
-                  "bg-white text-[#FF00B3] hover:bg-gray-100 hover:text-[#1C0357]",
-                  "border-2 border-white shadow-lg hover:shadow-xl",
-                  "transform hover:scale-105"
-                )}
-              >
-                <Music className="mr-1 h-4 w-4" />
-                Order Track
-              </Button>
-            </Link>
-            
-            <Link to="/shop">
-              <Button 
-                variant="ghost" 
-                className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-              >
-                <ShoppingCart className="mr-1 h-4 w-4" />
-                Shop
-              </Button>
-            </Link>
-
-            {session && (
-              <Link to="/user-dashboard">
-                <Button 
-                  variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-                >
-                  <User className="mr-1 h-4 w-4" />
-                  My Tracks
-                </Button>
-              </Link>
-            )}
-            
-            {isAdmin && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-                  >
-                    <Shield className="mr-1 h-4 w-4" />
-                    Admin <Settings className="ml-1 h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  <DropdownMenuLabel>Admin Tools</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin?tab=issue-reports">
-                      <AlertCircle className="mr-2 h-4 w-4" />
-                      Issue Reports
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin?tab=system-config">
-                      <Settings className="mr-2 h-4 w-4" />
-                      App Settings
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            
-            {session ? (
-              <Button 
-                onClick={handleLogout}
-                variant="ghost" 
-                className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-              >
-                <LogIn className="mr-1 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (
-              <Link to="/login">
-                <Button 
-                  variant="ghost" 
-                  className="ml-1 text-white hover:bg-white/20 flex items-center px-3"
-                >
-                  <LogIn className="mr-1 h-4 w-4" />
-                  Login
-                </Button>
-              </Link>
-            )}
-          </nav>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white hover:bg-white/20"
-              onClick={() => setMobileMenuOpen(true)}
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-4">
+          {navItems.map((item) => (
+            <Link
+              key={item.name}
+              to={item.path}
+              className={`text-sm font-medium transition-colors hover:text-[#F538BC] ${
+                location.pathname === item.path ? "text-[#F538BC]" : "text-gray-600"
+              }`}
             >
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </div>
+              {item.name}
+            </Link>
+          ))}
+          {userEmail && (
+            <Link
+              to="/user-dashboard"
+              className={`text-sm font-medium transition-colors hover:text-[#F538BC] ${
+                location.pathname === "/user-dashboard" ? "text-[#F538BC]" : "text-gray-600"
+              }`}
+            >
+              My Dashboard
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`text-sm font-medium transition-colors hover:text-[#F538BC] ${
+                location.pathname.startsWith("/admin") ? "text-[#F538BC]" : "text-gray-600"
+              } flex items-center`}
+            >
+              Admin
+              {unreadCount !== undefined && unreadCount > 0 && ( // Check for undefined and then > 0
+                <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+        </nav>
+
+        {/* User/Auth Controls */}
+        <div className="flex items-center gap-4">
+          {userEmail ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${userEmail}`} alt="User Avatar" />
+                    <AvatarFallback>{userEmail[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{userEmail}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {isAdmin ? "Administrator" : "User"}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/user-dashboard")}>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  <span>My Dashboard</span>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/admin")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin Dashboard</span>
+                    {unreadCount !== undefined && unreadCount > 0 && ( // Check for undefined and then > 0
+                      <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button variant="outline" size="sm">Log In</Button>
+            </Link>
+          )}
+
+          {/* Mobile Navigation Toggle */}
+          <Sheet>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="outline" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <nav className="flex flex-col gap-4 py-6">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={`text-lg font-medium hover:text-[#F538BC] ${
+                      location.pathname === item.path ? "text-[#F538BC]" : "text-gray-600"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                {userEmail && (
+                  <Link
+                    to="/user-dashboard"
+                    className={`text-lg font-medium hover:text-[#F538BC] ${
+                      location.pathname === "/user-dashboard" ? "text-[#F538BC]" : "text-gray-600"
+                    }`}
+                  >
+                    My Dashboard
+                  </Link>
+                )}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className={`text-lg font-medium hover:text-[#F538BC] ${
+                      location.pathname.startsWith("/admin") ? "text-[#F538BC]" : "text-gray-600"
+                    } flex items-center`}
+                  >
+                    Admin
+                    {unreadCount !== undefined && unreadCount > 0 && ( // Check for undefined and then > 0
+                      <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                )}
+                {!userEmail && (
+                  <Link to="/login" className="text-lg font-medium hover:text-[#F538BC]">
+                    Log In
+                  </Link>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50" 
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          
-          <div className="fixed inset-y-0 right-0 max-w-full flex">
-            <div className="relative w-screen max-w-xs"> {/* Reduced max-w-md to max-w-xs for better iPhone fit */}
-              <div className="h-full flex flex-col bg-[#FF00B3] shadow-xl">
-                <div className="px-4 py-4 bg-[#1C0357]"> {/* Reduced padding */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <img 
-                        className="h-10 w-auto rounded-lg" 
-                        src="/pasted-image-2025-09-19T05-15-20-729Z.png" 
-                        alt="Piano Backings By Daniele Logo"
-                      />
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-white hover:bg-white/20"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <X className="h-6 w-6" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto py-6 px-4"> {/* Reduced padding */}
-                  <nav className="space-y-1">
-                    <div className="pt-4 border-t border-white/20">
-                      <Link 
-                        to="/form-page"
-                        className={cn(
-                          "block w-full px-4 py-3 rounded-md text-base font-bold text-center flex items-center justify-center",
-                          "bg-white text-[#FF00B3] hover:bg-gray-100"
-                        )}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Music className="mr-2 h-5 w-5" />
-                        Order Track
-                      </Link>
-                    </div>
-
-                    <Link 
-                      to="/shop"
-                      className={cn(
-                        "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                        "text-white hover:bg-white/20"
-                      )}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <ShoppingCart className="mr-3 h-5 w-5" />
-                      Shop
-                    </Link>
-                    
-                    {session && (
-                      <Link 
-                        to="/user-dashboard"
-                        className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                          "text-white hover:bg-white/20"
-                        )}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <User className="mr-3 h-5 w-5" />
-                        My Tracks
-                      </Link>
-                    )}
-                    
-                    {isAdmin && (
-                      <>
-                        <h3 className="text-white font-bold text-lg mt-4 mb-2 px-4">Admin Tools</h3>
-                        <Link 
-                          to="/admin"
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Shield className="mr-3 h-5 w-5" />
-                          Admin Dashboard
-                        </Link>
-                        <Link 
-                          to="/admin?tab=issue-reports" 
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <AlertCircle className="mr-3 h-5 w-5" />
-                          Issue Reports
-                        </Link>
-                        <Link 
-                          to="/admin?tab=system-config" 
-                          className={cn(
-                            "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                            "text-white hover:bg-white/20"
-                          )}
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Settings className="mr-3 h-5 w-5" />
-                          App Settings
-                        </Link>
-                      </>
-                    )}
-                    
-                    {session ? (
-                      <Button 
-                        onClick={handleLogout}
-                        variant="ghost" 
-                        className="w-full justify-start px-4 py-3 text-base font-medium text-white hover:bg-white/20 flex items-center"
-                      >
-                        <LogIn className="mr-3 h-5 w-5" />
-                        Logout
-                      </Button>
-                    ) : (
-                      <Link 
-                        to="/login"
-                        className={cn(
-                          "block px-4 py-3 rounded-md text-base font-medium flex items-center",
-                          "text-white hover:bg-white/20"
-                        )}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <LogIn className="mr-3 h-5 w-5" />
-                        Login
-                      </Link>
-                    )}
-                  </nav>
-                </div>
-                
-                <div className="border-t border-white/20 py-6 px-4">
-                  <div className="text-center text-sm text-white/80">
-                    © {new Date().getFullYear()} Piano Backings By Daniele
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
