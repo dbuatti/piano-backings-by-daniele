@@ -53,7 +53,7 @@ import {
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from '@/utils/toast'; // Updated import
 
 interface RequestTableRowProps {
   request: any;
@@ -91,7 +91,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
   );
   const [isUpdatingCost, setIsUpdatingCost] = useState(false);
-  const { toast } = useToast();
 
   // Update currentCost if request.cost changes from outside (e.g., initial load or another admin edits)
   React.useEffect(() => {
@@ -164,11 +163,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           setIsDirectUploading(false);
         }
       } else {
-        toast({
-          title: "Invalid File Type",
-          description: "Only audio files (e.g., MP3) can be uploaded here.",
-          variant: "destructive",
-        });
+        showError("Only audio files (e.g., MP3) can be uploaded here."); // Updated toast call
       }
     }
   };

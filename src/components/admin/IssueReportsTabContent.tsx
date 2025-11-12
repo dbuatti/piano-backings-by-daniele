@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from "@/utils/toast"; // Updated import
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageSquare, Trash2, Loader2 } from 'lucide-react'; // Added Trash2 and Loader2
@@ -30,7 +30,6 @@ interface IssueReport {
 }
 
 const IssueReportsTabContent: React.FC = () => {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
@@ -91,12 +90,12 @@ const IssueReportsTabContent: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Status Updated", description: "Report read status toggled." });
+      showSuccess("Report read status toggled."); // Updated toast call
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to update status: ${err.message}`, variant: "destructive" });
+      showError(`Failed to update status: ${err.message}`); // Updated toast call
     }
   });
 
@@ -110,12 +109,12 @@ const IssueReportsTabContent: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Report Deleted", description: "Issue report has been permanently removed." });
+      showSuccess("Issue report has been permanently removed."); // Updated toast call
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to delete report: ${err.message}`, variant: "destructive" });
+      showError(`Failed to delete report: ${err.message}`); // Updated toast call
     }
   });
 

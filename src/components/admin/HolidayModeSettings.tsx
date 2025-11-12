@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Plane, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { showSuccess, showError } from "@/utils/toast"; // Updated import
 import ErrorDisplay from '@/components/ErrorDisplay';
 
 interface AppSettings {
@@ -21,7 +21,6 @@ interface AppSettings {
 }
 
 const HolidayModeSettings: React.FC = () => {
-  const { toast } = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -45,11 +44,7 @@ const HolidayModeSettings: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching app settings:', err);
       setError(err);
-      toast({
-        title: "Error",
-        description: `Failed to fetch app settings: ${err.message}`,
-        variant: "destructive",
-      });
+      showError(`Failed to fetch app settings: ${err.message}`); // Updated toast call
     } finally {
       setLoading(false);
     }
@@ -69,18 +64,11 @@ const HolidayModeSettings: React.FC = () => {
       if (error) throw error;
 
       setSettings(prev => ({ ...prev!, ...updatedFields }));
-      toast({
-        title: "Settings Updated",
-        description: "Holiday mode settings saved successfully.",
-      });
+      showSuccess("Holiday mode settings saved successfully."); // Updated toast call
     } catch (err: any) {
       console.error('Error updating app settings:', err);
       setError(err);
-      toast({
-        title: "Error",
-        description: `Failed to update settings: ${err.message}`,
-        variant: "destructive",
-      });
+      showError(`Failed to update settings: ${err.message}`); // Updated toast call
     } finally {
       setIsUpdating(false);
     }
