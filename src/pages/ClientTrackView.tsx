@@ -27,7 +27,9 @@ import {
   Banknote,
   Play,
   FileAudio,
-  DollarSign // Added DollarSign icon
+  DollarSign, // Added DollarSign icon
+  UserPlus, // Added UserPlus icon
+  Chrome // Added Chrome icon for Google sign-in
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
@@ -82,6 +84,9 @@ const ClientTrackView = () => {
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [userSession, setUserSession] = useState<any>(null); // To store the current user session
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false); // State for the login prompt
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
 
   useEffect(() => {
     const fetchRequest = async () => {
@@ -97,6 +102,10 @@ const ClientTrackView = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const guestAccessToken = urlParams.get('token'); // Get the guest access token
       
+      // Fetch user session first
+      const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
+      setUserSession(session);
+
       try {
         let requestData: BackingRequest | null = null;
         let fetchError: any = null;
@@ -142,7 +151,6 @@ const ClientTrackView = () => {
         }
 
         // Now, determine access based on user_id, email, and admin status
-        const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
         const loggedInUserId = session?.user?.id;
         const loggedInUserEmail = session?.user?.email;
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
@@ -171,6 +179,12 @@ const ClientTrackView = () => {
 
         if (hasAccess) {
           setRequest(requestData);
+          // Show login prompt if no user session and access was granted via guest token
+          if (!session && (guestAccessToken || requestData.guest_access_token)) {
+            setShowLoginPrompt(true);
+          } else {
+            setShowLoginPrompt(false);
+          }
         } else {
           setAccessDenied(true);
           toast({
@@ -206,6 +220,32 @@ const ClientTrackView = () => {
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningInWithGoogle(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/user-dashboard`, // Redirect to user dashboard after successful sign-in
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+      // No need for toast.success here, as the redirect will happen.
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
+      toast({
+        title: "Sign In Error",
+        description: `Failed to sign in with Google: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningInWithGoogle(false);
     }
   };
 
@@ -615,6 +655,52 @@ const ClientTrackView = () => {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Login/Signup Prompt for Unauthenticated Users */}
+        {showLoginPrompt && !userSession && (
+          <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357] relative">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-2xl font-bold mb-4 flex items-center justify-center">
+                <UserPlus className="mr-3 h-6 w-6" />
+                Secure Your Track!
+              </h3>
+              <p className="text-lg mb-6 max-w-2xl mx-auto opacity-90">
+                You're viewing this track as a guest. Create an account to permanently save this request, 
+                track its status, and access all your downloads in one place.
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Button
+                  onClick={handleGoogleSignIn}
+                  disabled={isSigningInWithGoogle}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-base px-6 py-3 flex items-center justify-center"
+                >
+                  {isSigningInWithGoogle ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...
+                    </>
+                  ) : (
+                    <>
+                      <Chrome className="mr-2 h-4 w-4" /> Sign In with Google
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={() => navigate('/login')}
+                  className="bg-white text-[#1C0357] hover:bg-gray-200 text-base px-6 py-3"
+                >
+                  Sign In with Email
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
+                  onClick={() => setShowLoginPrompt(false)} // Dismiss the prompt
+                >
+                  Continue as Guest
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <div className="flex justify-end gap-4">
           <Button 
