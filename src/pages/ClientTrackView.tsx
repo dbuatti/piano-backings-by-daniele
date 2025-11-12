@@ -29,7 +29,8 @@ import {
   FileAudio,
   DollarSign, // Added DollarSign icon
   UserPlus, // Added UserPlus icon
-  Chrome // Added Chrome icon for Google sign-in
+  Chrome, // Added Chrome icon for Google sign-in
+  Loader2 // Imported Loader2 icon
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
