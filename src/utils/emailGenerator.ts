@@ -33,6 +33,9 @@ export interface BackingRequest {
   category?: string; // Added category
   user_id?: string | null; // Added user_id
   guest_access_token?: string | null; // Added guest_access_token
+  final_price?: number | null; // New field
+  estimated_cost_low?: number | null; // New field
+  estimated_cost_high?: number | null; // New field
 }
 
 // New interface for Product
@@ -213,16 +216,11 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
 
   // Directly call fallback
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
-  return generateFallbackPaymentReminderEmail(request, trackCost);
+  return generateFallbackPaymentReminderEmail(request);
 };
 
-const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost: number) => {
+const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
@@ -236,6 +234,26 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
+  let costDisplayHtml = '';
+  if (request.final_price !== null && request.final_price !== undefined) {
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The final agreed cost for your track is: $${request.final_price.toFixed(2)}
+                       </p>`;
+  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null && 
+             request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The estimated cost for your track is: $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                       </p>`;
+  } else {
+    // Fallback to calculated range if no manual values are set
+    const calculatedCost = calculateRequestCost(request).totalCost;
+    const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
+    const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The estimated cost for your track is: $${calculatedLow} - $${calculatedHigh}
+                       </p>`;
+  }
+
   return {
     subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
     html: `
@@ -244,9 +262,7 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest, trackCost
         <p>I hope you're having a good week!</p>
         <p>This is a friendly reminder regarding your recent piano backing track request for <strong>"${request.song_title}"</strong>.</p>
         ${trackListHtml}
-        <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-          The estimated cost for your track is: $${minCost} - $${maxCost}
-        </p>
+        ${costDisplayHtml}
         <p>You can view the full details of your request and make your payment via the link below:</p>
         <p style="text-align: center; margin: 30px 0;">
           <a href="${clientPortalLink}" 
@@ -287,16 +303,11 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   // Removed: try { const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); ... } catch (error) { ... }
 
   // Directly call fallback
-  const trackCost = request.cost !== undefined ? request.cost : calculateRequestCost(request).totalCost;
-  return generateFallbackCompletionAndPaymentEmail(request, trackCost);
+  return generateFallbackCompletionAndPaymentEmail(request);
 };
 
-const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trackCost: number) => {
+const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
-  const rawMinCost = trackCost * 0.5;
-  const rawMaxCost = trackCost * 1.5;
-  const minCost = (Math.ceil(rawMinCost / 5) * 5).toFixed(2); // Changed to Math.ceil
-  const maxCost = (Math.floor(rawMaxCost / 5) * 5).toFixed(2); // Round down
   
   let clientPortalLink = `${window.location.origin}/track/${request.id}`;
   if (request.user_id) {
@@ -309,6 +320,26 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
 
   const feedbackLink = `${window.location.origin}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
+
+  let costDisplayHtml = '';
+  if (request.final_price !== null && request.final_price !== undefined) {
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The final agreed cost for your track is: $${request.final_price.toFixed(2)}
+                       </p>`;
+  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
+             request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The estimated cost for your track is: $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                       </p>`;
+  } else {
+    // Fallback to calculated range if no manual values are set
+    const calculatedCost = calculateRequestCost(request).totalCost;
+    const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
+    const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
+    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
+                         The estimated cost for your track is: $${calculatedLow} - $${calculatedHigh}
+                       </p>`;
+  }
 
   const trackAccessSection = `
     <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
@@ -331,9 +362,7 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest, trac
         ${trackAccessSection}
         <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
-        <p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-          The estimated cost for your track is: $${minCost} - $${maxCost}
-        </p>
+        ${costDisplayHtml}
         <p style="margin-top: 20px;">
           Alternatively, you can pay directly using one of the methods below:
         </p>
