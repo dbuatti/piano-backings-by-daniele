@@ -11,7 +11,8 @@ const Index = () => {
       <Seo
         title="Home | Piano Backings by Daniele"
         description="Get custom piano backing tracks for your auditions, performances, or practice sessions. High-quality, personalized musical accompaniment tailored to your needs."
-        ogImage={`${window.location.origin}/images/social-share-home.jpg`} {/* Specific image for home page */}
+        // Specific image for home page
+        ogImage={`${window.location.origin}/images/social-share-home.jpg`} 
         ogType="website"
         twitterCard="summary_large_image"
       />
