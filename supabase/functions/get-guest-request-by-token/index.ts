@@ -41,6 +41,10 @@ serve(async (req) => {
     
     const { request_id, token } = requestBody;
 
+    // Add logging for received parameters
+    console.log("Received request_id:", request_id);
+    console.log("Received token:", token);
+
     if (!request_id || !token) {
       return new Response(JSON.stringify({ error: "Missing 'request_id' or 'token' in request body" }), { 
         status: 400,
@@ -58,7 +62,7 @@ serve(async (req) => {
       .single(); // Expecting a single result
 
     if (error) {
-      console.error('Error fetching request:', error);
+      console.error('Supabase query error:', error); // Log the Supabase error
       // Return 404 if no data found, otherwise 500 for other errors
       if (error.code === 'PGRST116') { // PGRST116 is "no rows found"
         return new Response(JSON.stringify({ error: "Request not found or invalid token." }), { 
@@ -70,6 +74,7 @@ serve(async (req) => {
     }
 
     console.log(`Found request for ID: ${request_id}`);
+    console.log('Supabase query data:', data); // Log the data returned by Supabase
 
     return new Response(
       JSON.stringify({ 
