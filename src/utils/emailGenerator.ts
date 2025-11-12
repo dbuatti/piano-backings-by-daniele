@@ -239,13 +239,13 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
-  // Determine the recommended cost value
-  const recommendedCostValue = (request.final_price !== null && request.final_price !== undefined)
+  // Determine the suggested cost value
+  const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
-    : calculatedCost;
+    : calculatedCost; // Fallback to calculated cost if final_price is not set
 
-  const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Recommended Cost:</strong> $${recommendedCostValue.toFixed(2)}
+  const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                                 <strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
@@ -260,16 +260,8 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
                           </p>`;
   }
 
-  if (request.final_price !== null && request.final_price !== undefined) {
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The final agreed cost for your track is: $${request.final_price.toFixed(2)}
-                       </p>
-                       ${recommendedCostHtml}
-                       ${estimatedRangeHtml}`;
-  } else {
-    costDisplayHtml = `${estimatedRangeHtml}
-                       ${recommendedCostHtml}`;
-  }
+  // Combine them in the desired order
+  costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
 
   return {
     subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
@@ -343,13 +335,13 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
-  // Determine the recommended cost value
-  const recommendedCostValue = (request.final_price !== null && request.final_price !== undefined)
+  // Determine the suggested cost value
+  const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
-    : calculatedCost;
+    : calculatedCost; // Fallback to calculated cost if final_price is not set
 
-  const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Recommended Cost:</strong> $${recommendedCostValue.toFixed(2)}
+  const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                                 <strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
@@ -364,18 +356,8 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
                           </p>`;
   }
 
-  if (request.final_price !== null && request.final_price !== undefined) {
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The final agreed cost for your track is: $${request.final_price.toFixed(2)}
-                       </p>
-                       ${recommendedCostHtml}
-                       ${estimatedRangeHtml}`;
-  } else {
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         ${estimatedRangeHtml}
-                         ${recommendedCostHtml}
-                       </p>`;
-  }
+  // Combine them in the desired order
+  costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
 
   const trackAccessSection = `
     <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
