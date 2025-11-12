@@ -360,7 +360,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200
-    }); // Trailing comma removed
+    });
   } catch (error) {
     console.error('Error in stripe-webhook function:', error);
     return new Response(
@@ -368,7 +368,7 @@ serve(async (req) => {
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
-      }, // Trailing comma removed
+      }
     );
   }
 });
