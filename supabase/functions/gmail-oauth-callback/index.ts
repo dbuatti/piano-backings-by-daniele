@@ -28,12 +28,12 @@ serve(async (req) => {
     // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
-    const GMAIL_REDIRECT_URI = Deno.env.get("GMAIL_REDIRECT_URI") || `${Deno.env.get("SITE_URL")}/gmail-oauth-callback`;
+    // GMAIL_REDIRECT_URI and SITE_URL are no longer directly used for the token exchange redirect_uri
+    // but SITE_URL might still be used for other purposes in other functions or emails.
     
     console.log("Environment variables check:", {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
       GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
-      GMAIL_REDIRECT_URI: GMAIL_REDIRECT_URI
     });
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
@@ -94,7 +94,7 @@ serve(async (req) => {
       throw new Error('Invalid JSON in request body');
     }
     
-    const { code } = requestBody;
+    const { code, redirectUri } = requestBody; // Extract redirectUri from the request body
 
     if (!code) {
       return new Response(JSON.stringify({ error: "Missing authorization code" }), { 
@@ -103,8 +103,15 @@ serve(async (req) => {
       });
     }
 
+    if (!redirectUri) { // Validate that redirectUri is provided
+      return new Response(JSON.stringify({ error: "Missing redirectUri in request body" }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Exchange authorization code for tokens
-    console.log("Exchanging authorization code for tokens");
+    console.log("Exchanging authorization code for tokens with redirect_uri:", redirectUri);
     const tokenUrl = 'https://oauth2.googleapis.com/token';
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
@@ -116,7 +123,7 @@ serve(async (req) => {
         client_secret: GMAIL_CLIENT_SECRET,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: GMAIL_REDIRECT_URI
+        redirect_uri: redirectUri // Use the redirectUri from the client
       })
     });
 

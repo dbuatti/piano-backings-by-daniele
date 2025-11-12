@@ -19,7 +19,8 @@ const GmailOAuthCallback = () => {
     const handleOAuthCallback = async () => {
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
-      
+      const redirectUri = `${window.location.origin}/gmail-oauth-callback`; // Get the redirect URI from the client
+
       if (errorParam) {
         const errorMessage = errorParam === 'access_denied' 
           ? 'Access denied. You need to grant permission to connect your Gmail account.' 
@@ -72,7 +73,7 @@ const GmailOAuthCallback = () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`
             },
-            body: JSON.stringify({ code })
+            body: JSON.stringify({ code, redirectUri }) // Pass redirectUri from client
           }
         );
         
