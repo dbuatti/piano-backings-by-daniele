@@ -257,6 +257,9 @@ const ClientTrackView = () => {
   const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
   const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
 
+  // Determine the suggested cost to display
+  const displayedSuggestedCost = request.final_price !== null ? request.final_price.toFixed(2) : calculatedTotalCost.toFixed(2);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Seo 
@@ -446,14 +449,14 @@ const ClientTrackView = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    {request.final_price !== null && (
-                      <div className="text-3xl font-bold mb-2 text-white"> {/* Changed color to white */}
-                        Final Agreed Cost: ${request.final_price.toFixed(2)}
-                      </div>
-                    )}
-                    <div className="text-2xl font-bold mb-4 text-white"> {/* Also changed color to white */}
+                    <div className="text-2xl font-bold mb-2 text-white"> {/* Changed color to white */}
                       Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
                     </div>
+                    {request.final_price !== null && (
+                      <div className="text-3xl font-bold mb-2 text-white"> {/* Changed color to white */}
+                        Suggested Cost: ${displayedSuggestedCost}
+                      </div>
+                    )}
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
                     </p>
