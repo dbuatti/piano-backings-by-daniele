@@ -28,6 +28,8 @@ import ProductDetailDialog from '@/components/shop/ProductDetailDialog'; // Use 
 import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Label } from '@/components/ui/label'; // Import Label
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import Seo from "@/components/Seo"; // Import Seo
 
 // Define the Product interface, ensuring it uses the imported TrackInfo
 interface Product {
@@ -52,6 +54,7 @@ interface Product {
 
 const Shop = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all'); // Changed default to 'all'
   const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
@@ -137,10 +140,44 @@ const Shop = () => {
     return matchesSearchTerm && matchesCategory && matchesVocalRange && matchesPriceRange;
   }) || [];
 
+  // 1. Handle opening the dialog and setting the URL
   const handleViewDetails = useCallback((product: Product) => {
     setSelectedProductForDetail(product);
     setIsDetailDialogOpen(true);
-  }, []);
+    setSearchParams(prev => {
+      prev.set('product', product.id);
+      return prev;
+    }, { replace: true }); // Use replace to avoid history clutter
+  }, [setSearchParams]);
+
+  // 2. Handle closing the dialog and clearing the URL
+  const handleCloseDetails = useCallback(() => {
+    setIsDetailDialogOpen(false);
+    setSelectedProductForDetail(null);
+    setSearchParams(prev => {
+      prev.delete('product');
+      return prev;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // 3. Check URL on load to open dialog
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    if (productId && products && !selectedProductForDetail) {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        setSelectedProductForDetail(product);
+        setIsDetailDialogOpen(true);
+      } else if (!isLoading) {
+        // If product ID is in URL but not found in fetched data (e.g., inactive or deleted)
+        setSearchParams(prev => {
+          prev.delete('product');
+          return prev;
+        }, { replace: true });
+      }
+    }
+  }, [searchParams, products, isLoading, selectedProductForDetail, setSearchParams]);
+
 
   const handleBuyNow = useCallback(async (product: Product) => {
     setIsBuying(true);
@@ -220,6 +257,15 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      {/* Conditional SEO for Product Detail View (Stage 1.2, 1.3, 1.4) */}
+      {selectedProductForDetail && (
+        <Seo
+          title={`${selectedProductForDetail.title} (${selectedProductForDetail.artist_name}) Piano Backing Track | ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}`}
+          description={`High-quality piano backing track for "${selectedProductForDetail.title}" from ${selectedProductForDetail.artist_name}. ${selectedProductForDetail.description.substring(0, 150)}... Price: ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}. Vocal Ranges: ${selectedProductForDetail.vocal_ranges.join(', ')}.`}
+          keywords={`${selectedProductForDetail.title}, ${selectedProductForDetail.artist_name}, piano backing track, ${selectedProductForDetail.category}, ${selectedProductForDetail.vocal_ranges.join(', ')}`}
+          canonicalUrl={`${window.location.origin}/shop?product=${selectedProductForDetail.id}`}
+        />
+      )}
       <Header />
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-extrabold text-[#1C0357] mb-4">Shop</h1>
@@ -376,7 +422,13 @@ const Shop = () => {
       {selectedProductForDetail && (
         <ProductDetailDialog
           isOpen={isDetailDialogOpen}
-          onOpenChange={setIsDetailDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleCloseDetails();
+            } else {
+              setIsDetailDialogOpen(true);
+            }
+          }}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}
