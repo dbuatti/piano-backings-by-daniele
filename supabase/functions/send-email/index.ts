@@ -29,6 +29,8 @@ serve(async (req) => {
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com'; // Use ADMIN_EMAIL secret or default
+    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com']; // Hardcoded secondary admin email
 
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
@@ -61,25 +63,36 @@ serve(async (req) => {
     
     let { to, subject, html, cc, bcc, replyTo, senderEmail } = requestBody;
 
-    // Get the authenticated user (this will be the Supabase user, not the the sender of the email)
-    // We still check for a user token for logging purposes, but it's not required for operation
+    // --- Authorization Check ---
     const authHeader = req.headers.get('Authorization');
-    console.log("Auth header present:", !!authHeader);
-    
+    let callingUserEmail: string | null = null;
+    let isCallingUserAdmin = false;
+
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
         
         if (!userError && user) {
-          console.log("Authenticated Supabase user (for logging):", user.email);
+          callingUserEmail = user.email;
+          isCallingUserAdmin = adminEmails.includes(user.email!);
+          console.log("Authenticated Supabase user (for authorization):", callingUserEmail);
         }
       } catch (authError) {
-        console.log("Could not parse auth header for logging, continuing with service role");
+        console.log("Could not authenticate calling user, proceeding with strict sender check.");
       }
-    } else {
-      console.log("No auth header provided, proceeding with service role access");
     }
+
+    // CRITICAL SECURITY CHECK: Ensure the calling user is authorized to send as senderEmail
+    if (!isCallingUserAdmin && callingUserEmail !== senderEmail) {
+        return new Response(JSON.stringify({ 
+            error: `Forbidden: You are not authorized to send emails as ${senderEmail}.` 
+        }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+    // --- End Authorization Check ---
     
     if (!to || !subject || !html || !senderEmail) {
       return new Response(JSON.stringify({ error: "Missing 'to', 'subject', 'html', or 'senderEmail' content" }), { 
