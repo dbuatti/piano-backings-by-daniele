@@ -248,31 +248,14 @@ const ClientTrackView = () => {
   const costBreakdown = calculateRequestCost(request);
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
-  // Determine displayed cost and range based on new fields
-  let displayedCostElement;
-  if (request.final_price !== null) {
-    displayedCostElement = (
-      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
-        Final Agreed Cost: ${request.final_price.toFixed(2)}
-      </div>
-    );
-  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null) {
-    displayedCostElement = (
-      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
-        Estimated Cost: ${request.estimated_cost_low.toFixed(2)} - ${request.estimated_cost_high.toFixed(2)}
-      </div>
-    );
-  } else {
-    // Fallback to calculated range if no manual values are set
-    const calculatedTotalCost = costBreakdown.totalCost;
-    const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
-    const calculatedHigh = (Math.floor((calculatedTotalCost * 1.5) / 5) * 5).toFixed(2);
-    displayedCostElement = (
-      <div className="text-3xl font-bold mb-4 text-[#1C0357]">
-        Estimated Cost: ${calculatedLow} - ${calculatedHigh}
-      </div>
-    );
-  }
+  // Calculate estimated range based on costBreakdown.totalCost
+  const calculatedTotalCost = costBreakdown.totalCost;
+  const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
+  const calculatedHigh = (Math.floor((calculatedTotalCost * 1.5) / 5) * 5).toFixed(2);
+
+  // Determine the estimated range to display
+  const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
+  const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
@@ -463,7 +446,14 @@ const ClientTrackView = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    {displayedCostElement} {/* Render the dynamically determined cost element */}
+                    {request.final_price !== null && (
+                      <div className="text-3xl font-bold mb-2 text-white"> {/* Changed color to white */}
+                        Final Agreed Cost: ${request.final_price.toFixed(2)}
+                      </div>
+                    )}
+                    <div className="text-2xl font-bold mb-4 text-white"> {/* Also changed color to white */}
+                      Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
+                    </div>
                     <p className="text-sm opacity-90">
                       The final price may vary slightly based on complexity and additional services.
                     </p>
