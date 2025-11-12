@@ -42,6 +42,7 @@ import { calculateRequestCost } from '@/utils/pricing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils'; // Import cn for conditional classNames
 
 interface TrackInfo {
   url: string;
@@ -138,7 +139,8 @@ const RequestDetails = () => {
   const [isUpdatingPricing, setIsUpdatingPricing] = useState(false); // New state for pricing update
 
   // States for editable pricing fields
-  const [finalPriceInput, setFinalPriceInput] = useState<string>('');
+  const [editableFinalPrice, setEditableFinalPrice] = useState<string>(''); // Renamed from finalPriceInput
+  const [isUpdatingFinalPrice, setIsUpdatingFinalPrice] = useState(false); // New state for final price update
   const [estimatedLowInput, setEstimatedLowInput] = useState<string>('');
   const [estimatedHighInput, setEstimatedHighInput] = useState<string>('');
 
@@ -186,7 +188,7 @@ const RequestDetails = () => {
       const calculatedLow = (calculatedCost * 0.5);
       const calculatedHigh = (calculatedCost * 1.5);
 
-      setFinalPriceInput(data.final_price !== null ? data.final_price.toFixed(2) : '');
+      setEditableFinalPrice(data.final_price !== null ? data.final_price.toFixed(2) : calculatedCost.toFixed(2)); // Use calculated cost as default
       setEstimatedLowInput(data.estimated_cost_low !== null ? data.estimated_cost_low.toFixed(2) : calculatedLow.toFixed(2));
       setEstimatedHighInput(data.estimated_cost_high !== null ? data.estimated_cost_high.toFixed(2) : calculatedHigh.toFixed(2));
 
@@ -229,20 +231,59 @@ const RequestDetails = () => {
     }
   };
 
+  const handleFinalPriceInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditableFinalPrice(e.target.value);
+  };
+
+  const handleFinalPriceBlur = async () => {
+    const parsedPrice = editableFinalPrice.trim() === '' ? null : parseFloat(editableFinalPrice);
+    const currentFinalPrice = request?.final_price !== null ? request?.final_price : calculateRequestCost(request!).totalCost;
+
+    if (parsedPrice !== currentFinalPrice) { // Only update if value changed
+      await handleUpdateFinalPrice(parsedPrice);
+    }
+  };
+
+  const handleFinalPriceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleUpdateFinalPrice = async (newPrice: number | null) => {
+    if (!request) return;
+    setIsUpdatingFinalPrice(true);
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ final_price: newPrice })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      setRequest(prev => prev ? { ...prev, final_price: newPrice } : null);
+      toast({
+        title: "Price Updated",
+        description: "Final agreed price saved successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update final price: ${error.message}`,
+        variant: "destructive",
+      });
+      // Revert input to original value on error
+      setEditableFinalPrice(request.final_price !== null ? request.final_price.toFixed(2) : calculateRequestCost(request!).totalCost.toFixed(2));
+    } finally {
+      setIsUpdatingFinalPrice(false);
+    }
+  };
+
   const handleUpdatePricing = async () => {
     if (!request) return;
     setIsUpdatingPricing(true);
 
     const updates: Partial<BackingRequest> = {};
-
-    // Parse and validate final price
-    const parsedFinalPrice = finalPriceInput.trim() === '' ? null : parseFloat(finalPriceInput);
-    if (finalPriceInput.trim() !== '' && isNaN(parsedFinalPrice!)) {
-      toast({ title: "Validation Error", description: "Final Price must be a valid number.", variant: "destructive" });
-      setIsUpdatingPricing(false);
-      return;
-    }
-    updates.final_price = parsedFinalPrice;
 
     // Parse and validate estimated low
     const parsedEstimatedLow = estimatedLowInput.trim() === '' ? null : parseFloat(estimatedLowInput);
@@ -411,7 +452,6 @@ const RequestDetails = () => {
   const calculatedTotalCost = calculatedCostBreakdown.totalCost;
 
   // Determine displayed cost and range
-  const displayedFinalCost = request.final_price !== null ? request.final_price : calculatedTotalCost;
   const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low : (calculatedTotalCost * 0.5);
   const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high : (calculatedTotalCost * 1.5);
 
@@ -485,6 +525,7 @@ const RequestDetails = () => {
                     className="bg-green-500 hover:bg-green-600 text-white"
                   >
                     <Share2 className="h-4 w-4" />
+                    <span className="sr-only">Share Track Link</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -541,48 +582,48 @@ const RequestDetails = () => {
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="cost-display" className="text-sm mb-1 flex items-center">
-                  <DollarSign className="mr-1 h-4 w-4" /> Cost (AUD)
+              <div className="relative">
+                <Label htmlFor="final-price-input-quick" className="text-sm mb-1 flex items-center">
+                  <DollarSign className="mr-1 h-4 w-4" /> Final Agreed Price (AUD)
                 </Label>
-                <div className="flex items-center h-10 border border-input rounded-md px-3 bg-gray-50">
-                  <span className="font-bold text-lg">
-                    ${displayedFinalCost.toFixed(2)}
-                  </span>
-                  {request.final_price !== null && <span className="ml-2 text-sm text-gray-600">(Manual)</span>}
-                </div>
+                <Input
+                  id="final-price-input-quick"
+                  type="number"
+                  step="0.01"
+                  value={editableFinalPrice}
+                  onChange={handleFinalPriceInputChange}
+                  onBlur={handleFinalPriceBlur}
+                  onKeyDown={handleFinalPriceKeyDown}
+                  placeholder={calculatedTotalCost.toFixed(2)} // Show calculated as placeholder
+                  className={cn(
+                    "w-full h-10 p-2 text-lg font-bold border-none focus:ring-0 focus:outline-none",
+                    isUpdatingFinalPrice ? "opacity-70" : ""
+                  )}
+                  disabled={isUpdatingFinalPrice}
+                />
+                {isUpdatingFinalPrice && (
+                  <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                )}
+                {request.final_price !== null && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">(Manual)</span>}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* New Pricing Management Card */}
+        {/* Pricing Management Card */}
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
               <DollarSign className="mr-2 h-5 w-5" />
-              Pricing Management
+              Estimated Pricing Range
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <p className="text-sm text-gray-600 mb-4">
-              Manually set the final agreed price and estimated range for this request.
-              These values will override the automatic calculation in client views and emails.
+              Manually set the estimated cost range for this request.
+              These values will override the automatic calculation in client views and emails until a "Final Agreed Price" is set.
             </p>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="final-price-input" className="text-sm mb-1">Final Agreed Price (AUD)</Label>
-                <Input
-                  id="final-price-input"
-                  type="number"
-                  step="0.01"
-                  value={finalPriceInput}
-                  onChange={(e) => setFinalPriceInput(e.target.value)}
-                  placeholder="e.g., 35.00"
-                  disabled={isUpdatingPricing}
-                />
-                <p className="text-xs text-gray-500 mt-1">Leave empty to use calculated cost.</p>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="estimated-low-input" className="text-sm mb-1">Estimated Cost Lower Bound (AUD)</Label>
@@ -592,7 +633,7 @@ const RequestDetails = () => {
                     step="0.01"
                     value={estimatedLowInput}
                     onChange={(e) => setEstimatedLowInput(e.target.value)}
-                    placeholder="e.g., 25.00"
+                    placeholder={displayedEstimatedLow.toFixed(2)}
                     disabled={isUpdatingPricing}
                   />
                   <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
@@ -605,7 +646,7 @@ const RequestDetails = () => {
                     step="0.01"
                     value={estimatedHighInput}
                     onChange={(e) => setEstimatedHighInput(e.target.value)}
-                    placeholder="e.g., 45.00"
+                    placeholder={displayedEstimatedHigh.toFixed(2)}
                     disabled={isUpdatingPricing}
                   />
                   <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
@@ -620,12 +661,12 @@ const RequestDetails = () => {
                   {isUpdatingPricing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving Pricing...
+                      Saving Range...
                     </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save Pricing
+                      Save Estimated Range
                     </>
                   )}
                 </Button>
