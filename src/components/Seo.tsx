@@ -1,51 +1,47 @@
 import React from 'react';
-import { Helmet } from 'react-helmet-async';
+import { Helmet } from 'react-helmet';
 
 interface SeoProps {
-  title?: string;
-  description?: string;
+  title: string;
+  description: string;
   keywords?: string;
-  ogTitle?: string;
-  ogDescription?: string;
-  ogImage?: string;
-  ogUrl?: string;
   canonicalUrl?: string;
+  ogImage?: string;
+  ogType?: string;
+  twitterCard?: string;
 }
 
 const Seo: React.FC<SeoProps> = ({
-  title = "Piano Backings by Daniele - Custom Tracks for Musicals, Auditions & Performances",
-  description = "Get high-quality custom piano backing tracks for musicals, auditions, and performances. Order personalized tracks or browse our shop for instant downloads.",
-  keywords = "piano backing tracks, musical theatre, audition tracks, custom piano tracks, Daniele Buatti, performance tracks, sheet music, vocal ranges",
-  ogTitle,
-  ogDescription,
-  ogImage,
-  ogUrl,
+  title,
+  description,
+  keywords,
   canonicalUrl,
+  ogImage,
+  ogType = 'website',
+  twitterCard = 'summary',
 }) => {
-  const defaultOgUrl = window.location.href;
+  const siteUrl = window.location.origin; // Dynamically get the current site URL
 
   return (
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
-      <meta name="keywords" content={keywords} />
+      {keywords && <meta name="keywords" content={keywords} />}
+      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
       
       {/* Open Graph / Facebook */}
-      <meta property="og:type" content="website" />
-      <meta property="og:url" content={ogUrl || defaultOgUrl} />
-      <meta property="og:title" content={ogTitle || title} />
-      <meta property="og:description" content={ogDescription || description} />
+      <meta property="og:type" content={ogType} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
       {ogImage && <meta property="og:image" content={ogImage} />}
+      <meta property="og:url" content={canonicalUrl || siteUrl} /> {/* Explicitly set og:url */}
+      <meta property="og:site_name" content="Piano Backings by Daniele" /> {/* Explicitly set site name */}
       
       {/* Twitter */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:url" content={ogUrl || defaultOgUrl} />
-      <meta name="twitter:title" content={ogTitle || title} />
-      <meta name="twitter:description" content={ogDescription || description} />
+      <meta name="twitter:card" content={twitterCard} />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
       {ogImage && <meta name="twitter:image" content={ogImage} />}
-
-      {/* Canonical URL */}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
     </Helmet>
   );
 };
