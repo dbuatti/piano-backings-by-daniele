@@ -34,8 +34,8 @@ const Seo: React.FC<SeoProps> = ({
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       {ogImage && <meta property="og:image" content={ogImage} />}
-      <meta property="og:url" content={canonicalUrl || siteUrl} /> {/* Explicitly set og:url */}
-      <meta property="og:site_name" content="Piano Backings by Daniele" /> {/* Explicitly set site name */}
+      <meta property="og:url" content={canonicalUrl || siteUrl} />
+      <meta property="og:site_name" content="Piano Backings by Daniele" />
       
       {/* Twitter */}
       <meta name="twitter:card" content={twitterCard} />

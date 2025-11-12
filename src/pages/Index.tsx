@@ -1,340 +1,214 @@
-import { Link } from "react-router-dom";
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileTextIcon, LinkIcon, Coffee, Music, Users, Mail, DollarSign, Headphones, Instagram, Facebook, Youtube, UserCheck, Lock, Eye, Edit, Plane, Loader2, Mic, Sparkles } from "lucide-react"; // Import Mic and Sparkles
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
-import { format } from 'date-fns';
-import Seo from "@/components/Seo"; // Import Seo component
+import { MadeWithDyad } from "@/components/made-with-dyad";
+import Seo from "@/components/Seo";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Coffee, Youtube, Instagram, Facebook, Mail, Info, Music, DollarSign, CreditCard, Phone } from 'lucide-react';
 
 const Index = () => {
-  const [session, setSession] = useState<any>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const { isHolidayModeActive, holidayReturnDate, isLoading: isLoadingHolidayMode } = useHolidayMode(); // Use the hook
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoadingAuth(false);
-    };
-
-    checkAuthStatus();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  const orderButtonContent = isHolidayModeActive ? (
-    <span className="flex items-center">
-      <Plane className="mr-2 h-5 w-5" />
-      Holiday Mode Active
-    </span>
-  ) : (
-    <span className="flex items-center">
-      <Music className="mr-2 h-5 w-5" />
-      Order Custom Track
-    </span>
-  );
-
-  const holidayMessage = holidayReturnDate
-    ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}.`
-    : `We're currently on holiday.`;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo 
-        title="Piano Backings by Daniele - Custom Tracks for Musicals, Auditions & Performances"
-        description="Get high-quality custom piano backing tracks for musicals, auditions, and performances. Order personalized tracks or browse our shop for instant downloads."
-        keywords="piano backing tracks, musical theatre, audition tracks, custom piano tracks, Daniele Buatti, performance tracks, sheet music, vocal ranges"
-        ogImage="/pasted-image-2025-09-19T05-15-20-729Z.png"
-        canonicalUrl={window.location.origin}
+      <Seo
+        title="Home | Piano Backings by Daniele"
+        description="Get custom piano backing tracks for your auditions, performances, or practice sessions. High-quality, personalized musical accompaniment tailored to your needs."
+        keywords="piano backing tracks, custom piano accompaniment, musical auditions, performance tracks, Daniele Buatti, musical theatre, vocal practice"
+        ogImage={`${window.location.origin}/images/social-share-home.jpg`} // Ensure this image exists in public/images
+        ogType="website"
+        twitterCard="summary_large_image"
+        canonicalUrl={`${window.location.origin}/`}
       />
       <Header />
-      
-      {/* Hero Section */}
-      <section id="hero" className="bg-white/50 text-center py-16 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-[#1C0357]">Professional Piano Backing Tracks</h1>
-          <p className="text-xl md:text-2xl font-light text-[#1C0357]/90 mb-8">For Musicals, Auditions & Performances</p>
-          
+      <main className="flex flex-col items-center justify-center flex-1 py-12 px-4 text-center">
+        <h1 className="text-5xl font-bold text-[#1C0357] mb-6">
+          Professional Piano Backing Tracks
+        </h1>
+        <p className="text-xl text-[#1C0357]/90 mb-8 max-w-2xl">
+          For Musicals, Auditions & Performances
+        </p>
+        <div className="space-x-4">
           <Link to="/form-page">
-            <Button 
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
-              disabled={isHolidayModeActive || isLoadingHolidayMode} // Keep disabled while loading holiday mode
-            >
-              {isLoadingHolidayMode ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
-                </>
-              ) : (
-                orderButtonContent
-              )}
+            <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg">
+              Order Custom Track
             </Button>
           </Link>
-
-          {isHolidayModeActive && (
-            <p className="mt-4 text-red-600 font-semibold text-lg">
-              {holidayMessage} New orders will be processed upon our return.
-            </p>
-          )}
+          <Link to="/shop">
+            <Button variant="outline" className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/10 px-8 py-3 text-lg">
+              Browse Shop Tracks
+            </Button>
+          </Link>
         </div>
-      </section>
+      </main>
 
-      {/* Why Create an Account Section - NEW (Conditional) */}
-      {!session && !loadingAuth && (
-        <section className="py-12 px-4 sm:px-6 bg-[#1C0357] text-white">
-          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-6 flex items-center justify-center">
-              <UserCheck className="mr-3" />
-              Why Create an Account?
-            </h2>
-            <p className="text-xl mb-10 max-w-3xl mx-auto">
-              Unlock the full potential of your Piano Backings experience.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-              <Card className="bg-white/10 border-white/20 text-white">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <Eye className="h-12 w-12 mb-4 text-[#F538BC]" />
-                  <h3 className="text-xl font-bold mb-2">Track Your Orders</h3>
-                  <p>View the status of all your requests in one convenient dashboard.</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 border-white/20 text-white">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <Lock className="h-12 w-12 mb-4 text-[#F538BC]" />
-                  <h3 className="text-xl font-bold mb-2">Secure Access</h3>
-                  <p>Download your tracks anytime, from any device, with a secure login.</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 border-white/20 text-white">
-                <CardContent className="p-6 flex flex-col items-center text-center">
-                  <Edit className="h-12 w-12 mb-4 text-[#F538BC]" />
-                  <h3 className="text-xl font-bold mb-2">Manage Requests</h3>
-                  <p>Easily review and update your order details after submission.</p>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/login">
-                <Button size="lg" className="bg-white text-[#1C0357] hover:bg-gray-200 text-lg px-8 py-3">
-                  Create Your Free Account
-                </Button>
-              </Link>
-              <Link to="/form-page#request-guidelines">
-                <Button 
-                  variant="ghost" 
-                  size="lg" 
-                  className="bg-transparent border border-white text-white hover:bg-white/10 text-lg px-8 py-3"
-                  disabled={isHolidayModeActive} // Disable if holiday mode is active
-                >
-                  Order Track Anonymously
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6">
-        {/* Introduction Section */}
-        <section id="about" className="mb-16 pt-20 -mt-20">
-          <Card className="shadow-lg">
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-12">
+        {/* About Section */}
+        <section id="about" className="text-center">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">About Piano Backings by Daniele</CardTitle>
+              <CardTitle className="text-3xl font-bold text-[#1C0357] flex items-center justify-center">
+                <Info className="mr-2 h-7 w-7" />
+                About Piano Backings by Daniele
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="mb-4">
-                Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. 
-                What started as a "pay what you feel" service has evolved into a professional offering with transparent pricing.
-              </p>
-              
-              <div className="bg-[#F538BC]/10 border-l-4 border-[#F538BC] p-4 mb-6">
-                <p className="font-semibold text-[#1C0357]">
-                  Note: Songs by Stephen Sondheim, Jason Robert Brown, or Adam Guettel may require additional time and carry a price adjustment due to their complexity.
-                </p>
-              </div>
-              
+            <CardContent className="text-lg text-gray-700 space-y-4">
               <p>
-                This platform streamlines the ordering process and keeps all your requests in one place. 
-                Your feedback helps improve the service—feel free to reach out with suggestions.
+                Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. What started as a "pay what you feel" service has evolved into a professional offering with transparent pricing.
+              </p>
+              <p className="italic text-gray-600">
+                Note: Songs by Stephen Sondheim, Jason Robert Brown, or Adam Guettel may require additional time and carry a price adjustment due to their complexity.
+              </p>
+              <p>
+                This platform streamlines the ordering process and keeps all your requests in one place. Your feedback helps improve the service—feel free to reach out with suggestions.
               </p>
             </CardContent>
           </Card>
         </section>
 
-        {/* Services Section */}
-        <section id="services" className="mb-16 pt-20 -mt-20">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">Track Options</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow text-center">
-                  <Mic className="h-10 w-10 text-blue-500 mx-auto mb-3" />
-                  <h3 className="font-bold text-lg mb-2">Quick Reference</h3>
-                  <p className="text-sm">
-                    Fast voice memo for learning or audition notes. Not suitable for professional use.
-                  </p>
-                </div>
-                
-                <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow text-center">
-                  <Headphones className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
-                  <h3 className="font-bold text-lg mb-2">One-Take Recording</h3>
-                  <p className="text-sm">
-                    Single-pass DAW recording with potential minor errors. Suitable for self-tapes and quick references.
-                  </p>
-                </div>
-                
-                <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <Sparkles className="h-10 w-10 text-[#F538BC] mx-auto mb-3" />
-                  <h3 className="font-bold text-lg mb-2">Polished Backing</h3>
-                  <p className="text-sm">
-                    Refined, accurate track with correct notes and rhythm. Ideal for auditions, performances, and dedicated practice.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Track Options Section */}
+        <section id="track-options">
+          <h2 className="text-4xl font-bold text-[#1C0357] text-center mb-8">Track Options</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                  <Music className="mr-2 h-6 w-6" />
+                  Quick Reference
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-gray-700">
+                Fast voice memo for learning or audition notes. Not suitable for professional use.
+              </CardContent>
+            </Card>
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                  <Music className="mr-2 h-6 w-6" />
+                  One-Take Recording
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-gray-700">
+                Single-pass DAW recording with potential minor errors. Suitable for self-tapes and quick references.
+              </CardContent>
+            </Card>
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                  <Music className="mr-2 h-6 w-6" />
+                  Polished Backing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-gray-700">
+                Refined, accurate track with correct notes and rhythm. Ideal for auditions, performances, and dedicated practice.
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="mb-16 pt-20 -mt-20">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl text-[#1C0357]">Pricing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-2xl font-bold text-[#1C0357] mb-3">2-5 ☕</div>
-                  <h3 className="font-bold text-lg mb-2">16 Bar Cut</h3>
-                  <p className="text-sm">(roughly 30-45 seconds)</p>
-                </div>
-                
-                <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-2xl font-bold text-[#1C0357] mb-3">3-6 ☕</div>
-                  <h3 className="font-bold text-lg mb-2">32 Bar Cut</h3>
-                  <p className="text-sm">(roughly 60-90 seconds)</p>
-                </div>
-                
-                <div className="border rounded-lg p-6 text-center bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="text-2xl font-bold text-[#1C0357] mb-3">4-8 ☕</div>
-                  <h3 className="font-bold text-lg mb-2">Full Song</h3>
-                  <p className="text-sm">(entire song)</p>
-                </div>
-              </div>
-              
-              <div className="mt-8 p-6 bg-[#D1AAF2]/30 rounded-lg">
-                <h3 className="font-bold text-lg mb-3">Payment Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="mb-2"><strong>Timing:</strong> Pay before or after completion</p>
-                    <p><strong>Delivery:</strong> On the date specified in your order</p>
-                  </div>
-                  <div>
-                    <p className="mb-2"><strong>Methods:</strong> Bank transfer or Buy Me a Coffee</p>
-                    <p><strong>Bank Details:</strong> BSB: 923100 | Account: 301110875</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Contact Section */}
-        <section id="contact" className="mb-16 pt-20 -mt-20">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="shadow-lg">
+        <section id="pricing">
+          <h2 className="text-4xl font-bold text-[#1C0357] text-center mb-8">Pricing</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm text-center">
               <CardHeader>
-                <CardTitle className="text-2xl text-[#1C0357]">Connect</CardTitle>
+                <CardTitle className="text-2xl text-[#1C0357]">16 Bar Cut</CardTitle>
+                <CardDescription className="text-gray-600">(roughly 30-45 seconds)</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-center">
-                    <Youtube className="mr-3 h-5 w-5 text-red-600" />
-                    <a href="https://www.youtube.com/channel/UCVJkC6aGbh2gIeZvd2tmcIg" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                      YouTube Channel
-                    </a>
-                  </li>
-                  <li className="flex items-center">
-                    <Instagram className="mr-3 h-5 w-5 text-pink-500" />
-                    <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                      Instagram
-                    </a>
-                  </li>
-                  <li className="flex items-center">
-                    <Facebook className="mr-3 h-5 w-5 text-blue-600" />
-                    <a href="https://www.facebook.com/PianoBackingsbyDaniele" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                      Facebook Page
-                    </a>
-                  </li>
-                  <li className="flex items-center">
-                    <Mail className="mr-3 h-5 w-5" />
-                    <span><a href="mailto:pianobackingsbydaniele@gmail.com" className="text-[#1C0357] hover:underline">pianobackingsbydaniele@gmail.com</a></span>
-                  </li>
-                </ul>
+                <p className="text-4xl font-bold text-[#1C0357]">2-5 ☕</p>
               </CardContent>
             </Card>
-            
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm text-center">
               <CardHeader>
-                <CardTitle className="text-2xl text-[#1C0357]">Support</CardTitle>
+                <CardTitle className="text-2xl text-[#1C0357]">32 Bar Cut</CardTitle>
+                <CardDescription className="text-gray-600">(roughly 60-90 seconds)</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="mb-4">
-                  Your support helps me continue creating quality backing tracks for the performing arts community.
-                </p>
-                <a 
-                  href="https://buymeacoffee.com/Danielebuatti" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-block"
-                >
-                  <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white">
-                    ☕ Buy Me a Coffee
-                  </Button>
-                </a>
-                <div className="mt-6 pt-4 border-t">
-                  <p>
-                    For more information:{" "}
-                    <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">
-                      www.danielebuatti.com/piano-backings
-                    </a>
-                  </p>
-                </div>
+                <p className="text-4xl font-bold text-[#1C0357]">3-6 ☕</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-lg bg-white/80 backdrop-blur-sm text-center">
+              <CardHeader>
+                <CardTitle className="text-2xl text-[#1C0357]">Full Song</CardTitle>
+                <CardDescription className="text-gray-600">(entire song)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-4xl font-bold text-[#1C0357]">4-8 ☕</p>
               </CardContent>
             </Card>
           </div>
         </section>
 
-        {/* Closing */}
-        <section className="text-center mb-12 pt-20 -mt-20">
-          <Card className="shadow-lg bg-[#D1AAF2] border-0">
-            <CardContent className="py-8">
-              <p className="text-xl text-[#1C0357] font-medium">
+        {/* Payment Information Section */}
+        <section id="payment">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-[#1C0357] flex items-center justify-center">
+                <CreditCard className="mr-2 h-7 w-7" />
+                Payment Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-lg text-gray-700 space-y-4">
+              <p><span className="font-semibold">Timing:</span> Pay before or after completion</p>
+              <p><span className="font-semibold">Delivery:</span> On the date specified in your order</p>
+              <p><span className="font-semibold">Methods:</span> Bank transfer or Buy Me a Coffee</p>
+              <p><span className="font-semibold">Bank Details:</span> BSB: 923100 | Account: 301110875</p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Connect Section */}
+        <section id="connect">
+          <h2 className="text-4xl font-bold text-[#1C0357] text-center mb-8">Connect</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <a href="https://www.youtube.com/@danielebuatti" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-6 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <Youtube className="h-12 w-12 text-red-600 mb-3" />
+              <span className="text-lg font-semibold text-[#1C0357]">YouTube Channel</span>
+            </a>
+            <a href="https://www.instagram.com/danielebuatti/" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-6 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <Instagram className="h-12 w-12 text-pink-600 mb-3" />
+              <span className="text-lg font-semibold text-[#1C0357]">Instagram</span>
+            </a>
+            <a href="https://www.facebook.com/danielebuattimusic" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center p-6 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <Facebook className="h-12 w-12 text-blue-600 mb-3" />
+              <span className="text-lg font-semibold text-[#1C0357]">Facebook Page</span>
+            </a>
+            <a href="mailto:pianobackingsbydaniele@gmail.com" className="flex flex-col items-center p-6 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <Mail className="h-12 w-12 text-gray-700 mb-3" />
+              <span className="text-lg font-semibold text-[#1C0357]">Email</span>
+            </a>
+          </div>
+        </section>
+
+        {/* Support Section */}
+        <section id="support" className="text-center">
+          <Card className="shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-[#1C0357] flex items-center justify-center">
+                <Phone className="mr-2 h-7 w-7" />
+                Support
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-lg text-gray-700 space-y-4">
+              <p>
+                Your support helps me continue creating quality backing tracks for the performing arts community.
+              </p>
+              <a href="https://www.buymeacoffee.com/danielebuatti" target="_blank" rel="noopener noreferrer">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3 text-lg">
+                  <Coffee className="mr-2 h-5 w-5" /> Buy Me a Coffee
+                </Button>
+              </a>
+              <p className="pt-4">
+                For more information: <a href="https://www.danielebuatti.com/piano-backings" target="_blank" rel="noopener noreferrer" className="text-[#1C0357] hover:underline">www.danielebuatti.com/piano-backings</a>
+              </p>
+              <p className="font-semibold text-[#1C0357]">
                 Thank you for choosing Piano Backings by Daniele. I look forward to crafting your perfect backing track!
               </p>
             </CardContent>
           </Card>
         </section>
-
-        <MadeWithDyad />
       </div>
+      <MadeWithDyad />
     </div>
   );
 };
