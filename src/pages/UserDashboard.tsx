@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { showError } from '@/utils/toast'; // Updated import
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Download, Play, Share2, Music, UserPlus, Calendar, Clock, CheckCircle, Eye, User as UserIcon, ChevronDown, ShoppingCart } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,7 +60,7 @@ const UserDashboard = () => {
   const [user, setUser] = useState<any>(null); // The currently logged-in user
   const [showAccountPrompt, setShowAccountPrompt] = useState(false); // State to control visibility of the new card
   const navigate = useNavigate();
-  // Removed: const { toast } = useToast();
+  const { toast } = useToast();
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [allUsersForAdmin, setAllUsersForAdmin] = useState<UserProfileForAdmin[]>([]);
@@ -112,11 +112,15 @@ const UserDashboard = () => {
 
       setRequests(fetchedRequests);
     } catch (error: any) {
-      showError("Error", `Failed to fetch backing requests: ${error.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to fetch backing requests: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, []); // Removed toast from dependency array
+  }, [toast]);
 
   const fetchPurchasesForTarget = useCallback(async (targetUserId: string | null, targetUserEmail: string | null) => {
     setLoadingPurchases(true);
@@ -163,11 +167,15 @@ const UserDashboard = () => {
       
       setPurchases(joinedPurchases);
     } catch (error: any) {
-      showError("Error", `Failed to fetch purchases: ${error.message}`); // Updated toast call
+      toast({
+        title: "Error",
+        description: `Failed to fetch purchases: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setLoadingPurchases(false);
     }
-  }, []); // Removed toast from dependency array
+  }, [toast]);
 
   // Main function to check user and determine which data to fetch
   const checkUserAndDetermineTarget = useCallback(async () => {
@@ -236,7 +244,7 @@ const UserDashboard = () => {
       setLoading(false);
       setLoadingPurchases(false);
     }
-  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, setUser, setIsAdmin, setShowAccountPrompt]); // Removed toast from dependency array
+  }, [navigate, selectedUserForView, fetchRequestsForTarget, fetchPurchasesForTarget, toast, setUser, setIsAdmin, setShowAccountPrompt]);
 
   // Effect for initial load and auth state changes
   useEffect(() => {
@@ -276,7 +284,7 @@ const UserDashboard = () => {
         setAllUsersForAdmin(result.users || []);
       } catch (error: any) {
         console.error('Error fetching all users for admin:', error);
-        showError("Error", `Failed to load users for admin view: ${error.message}`); // Updated toast call
+        toast({ title: "Error", description: `Failed to load users for admin view: ${error.message}`, variant: "destructive" });
         setAllUsersForAdmin([]);
       } finally {
         setLoadingAllUsersForAdmin(false);
@@ -284,7 +292,7 @@ const UserDashboard = () => {
     };
 
     fetchAllUsers();
-  }, [isAdmin, user]); // Removed toast from dependency array
+  }, [isAdmin, user, toast]);
 
 
   const getStatusBadge = (status: string) => {
@@ -306,3 +314,389 @@ const UserDashboard = () => {
   const createAccount = () => {
     navigate('/login');
   };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Header />
+      
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-[#1C0357]">Your Tracks Dashboard</h1>
+            <p className="text-lg text-[#1C0357]/90">Access your backing tracks and request history</p>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center space-x-2 mt-4 md:mt-0">
+              <UserIcon className="h-5 w-5 text-[#1C0357]" />
+              <Select
+                value={selectedUserForView || ''}
+                onValueChange={(value) => setSelectedUserForView(value === 'admin-self' ? null : value)}
+                disabled={loadingAllUsersForAdmin}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={loadingAllUsersForAdmin ? "Loading users..." : "View as user..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin-self">View My Own Dashboard</SelectItem>
+                  {allUsersForAdmin.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        
+        {showAccountPrompt && (
+          <Alert className="mb-6 bg-[#1C0357] text-white border-[#1C0357]">
+            <UserPlus className="h-4 w-4" />
+            <AlertTitle>Create an Account</AlertTitle>
+            <AlertDescription>
+              <p className="mb-3">
+                You're viewing your tracks as a guest. Create an account to save your requests, 
+                access all your tracks in one place, and get notified about updates!
+              </p>
+              <Button 
+                onClick={createAccount}
+                className="bg-white text-[#1C0357] hover:bg-gray-100"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Create Account
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">{requests.length}</p>
+                </div>
+                <Music className="h-10 w-10 text-[#D1AAF2]" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Completed Tracks</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    {requests.filter(r => r.status === 'completed').length}
+                  </p>
+                </div>
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">In Progress</p>
+                  <p className="text-2xl font-bold text-[#1C0357]">
+                    {requests.filter(r => r.status === 'in-progress').length}
+                  </p>
+                </div>
+                <Clock className="h-10 w-10 text-yellow-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span className="flex items-center">
+                <Music className="mr-2" />
+                Your Custom Backing Track Requests
+              </span>
+              <Link to="/form-page">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                  Order New Track
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <p>Loading your requests...</p>
+              </div>
+            ) : (
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[800px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">Date</TableHead>
+                      <TableHead>Song</TableHead>
+                      <TableHead className="hidden sm:table-cell">Backing Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Delivery Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requests.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="text-center">
+                            <Music className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No custom requests yet</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                              Get started by ordering your first custom backing track.
+                            </p>
+                            <div className="mt-6">
+                              <Link to="/form-page">
+                                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                                  Order Your First Track
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      requests.map((request) => {
+                        const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+
+                        return (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              <div className="font-medium">{format(new Date(request.created_at), 'MMM dd')}</div>
+                              <div className="text-sm text-gray-500 hidden md:block">{format(new Date(request.created_at), 'HH:mm')}</div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div>{request.song_title}</div>
+                              <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <div className="flex flex-wrap gap-1">
+                                {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                                  <Badge key={index} variant="outline" className="capitalize">
+                                    {type.replace('-', ' ')}
+                                  </Badge>
+                                )) : <Badge variant="outline">Not specified</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                                {request.delivery_date 
+                                  ? format(new Date(request.delivery_date), 'MMM dd, yyyy') 
+                                  : 'N/A'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(request.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {request.status === 'completed' && request.track_urls && request.track_urls.length > 0 && (
+                                  <Button 
+                                    size="icon" // Changed to icon size
+                                    variant="outline" 
+                                    onClick={() => downloadTrack(request.track_urls[0].url, request.track_urls[0].caption || `${request.song_title}.mp3`)}
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Link to={`/track/${request.id}${request.guest_access_token ? `?token=${request.guest_access_token}` : ''}`}>
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="w-4 h-4 mr-1" /> View
+                                  </Button>
+                                </Link>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* New Card for My Purchases */}
+        <Card className="shadow-lg mb-6">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+              <span className="flex items-center">
+                <ShoppingCart className="mr-2" />
+                My Purchases
+              </span>
+              <Link to="/shop">
+                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                  Browse Shop
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingPurchases ? (
+              <div className="flex items-center justify-center h-64">
+                <p>Loading your purchases...</p>
+              </div>
+            ) : (
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="hidden sm:table-cell">Amount</TableHead>
+                      <TableHead className="hidden md:table-cell">Status</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchases.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <div className="text-center">
+                            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No purchases yet</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                              Explore our shop and find your next backing track!
+                            </p>
+                            <div className="mt-6">
+                              <Link to="/shop">
+                                <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+                                  Go to Shop
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      purchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell>
+                            <div className="font-medium">{format(new Date(purchase.created_at), 'MMM dd')}</div>
+                            <div className="text-sm text-gray-500 hidden md:block">{format(new Date(purchase.created_at), 'HH:mm')}</div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {purchase.products?.title || 'N/A'}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {purchase.currency} {purchase.amount.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <Badge variant="default" className="bg-green-500">Completed</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              {purchase.products?.track_urls && purchase.products.track_urls.length > 0 ? (
+                                purchase.products.track_urls.map((track, index) => (
+                                  <Button 
+                                    key={index}
+                                    size="icon" // Changed to icon size
+                                    variant="outline" 
+                                    onClick={() => downloadTrack(track.url, track.caption || `${purchase.products?.title || 'track'}.mp3`)}
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                ))
+                              ) : (
+                                <Badge variant="secondary">No Download</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357]">
+                How to Access Your Tracks
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <Download className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold">Download Tracks</h3>
+                    <p className="text-sm text-gray-600">Click the Download button next to completed requests or purchases to get your backing track.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <Eye className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold">View Track Details</h3>
+                    <p className="text-sm text-gray-600">Click "View Details" to see your order information, payment options, and download your track when ready.</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <UserPlus className="h-5 w-5 text-[#1C0357] mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold">Create Account</h3>
+                    <p className="text-sm text-gray-600">Save all your requests and access them anytime from your dashboard.</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[#1C0357]">
+                Need Help?
+              </CardTitle>
+            </CardHeader> {/* Removed duplicate </CardTitle> */}
+            <CardContent>
+              <div className="space-y-4">
+                <p>
+                  Having trouble accessing your tracks? Contact support for assistance.
+                </p>
+                <Button 
+                  className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  onClick={() => window.location.href = 'mailto:pianobackingsbydaniele@gmail.com'}
+                >
+                  Contact Support
+                </Button>
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold mb-2">Quick Links</h3>
+                  <ul className="space-y-2">
+                    <li>
+                      <Link to="/form-page" className="text-[#1C0357] hover:underline flex items-center">
+                        <Music className="mr-2 h-4 w-4" /> Order New Track
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/#pricing" className="text-[#1C0357] hover:underline flex items-center">
+                        <span className="mr-2">💰</span> View Pricing
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <MadeWithDyad />
+      </div>
+    </div>
+  );
+};
+
+export default UserDashboard;

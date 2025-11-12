@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { showError } from '@/utils/toast'; // Updated import
+import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,13 +51,14 @@ interface Product {
 }
 
 const Shop = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all'); // Changed default to 'all'
   const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null); // Initialize with null
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [sortOption, setSortOption] = useState('category_asc'); // New state for sort option, default to category_asc
   const [isBuying, setIsBuying] = useState(false); // New state for loading indicator during purchase
 
@@ -173,11 +174,15 @@ const Shop = () => {
 
     } catch (err: any) {
       console.error('Error during buy now:', err);
-      showError("Purchase Error", `Failed to initiate purchase: ${err.message}`);
+      toast({
+        title: "Purchase Error",
+        description: `Failed to initiate purchase: ${err.message}`,
+        variant: "destructive",
+      });
     } finally {
       setIsBuying(false);
     }
-  }, []);
+  }, [toast]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -213,151 +218,148 @@ const Shop = () => {
     }));
   }, [filteredProducts]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-          <p className="ml-4 text-lg text-gray-600">Loading shop products...</p>
-        </div>
-        <MadeWithDyad />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 text-center">
-          <ErrorDisplay error={error} title="Failed to Load Shop Products" />
-          <Button onClick={() => window.location.reload()} className="mt-6 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white">
-            Retry Loading Shop
-          </Button>
-        </div>
-        <MadeWithDyad />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings Shop</h1>
-          <p className="text-lg md:text-xl font-light text-[#1C0357]/90">Browse our collection of ready-to-purchase backing tracks</p>
-        </div>
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <h1 className="text-4xl font-extrabold text-[#1C0357] mb-4">Shop</h1>
+        <p className="text-lg text-gray-700 mb-8">Browse our collection of high-quality backing tracks.</p>
 
-        {/* Filter and Sort Section */}
-        <div className="mb-8 p-4 bg-white rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-[#1C0357] flex items-center">
-              <Filter className="mr-2 h-5 w-5" /> Filters & Sorting
-            </h2>
-            <Button variant="ghost" size="icon" onClick={() => setIsFilterSheetOpen(true)}>
-              <Filter className="h-5 w-5" />
-              <span className="sr-only">Open Filters</span>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
+          <div className="relative w-full md:w-1/3"> {/* Adjusted width */}
+            <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search Title or Artist</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
-                placeholder="Search by title, artist, description..."
+                id="search-input"
+                type="text"
+                placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-4 py-2 border rounded-md w-full"
               />
             </div>
-            <div className="relative">
-              <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="pl-10">
-                  <SelectValue placeholder="Filter by Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="full-song">Full Song</SelectItem>
-                  <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                  <SelectItem value="note-bash">Note Bash</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="relative">
-              <Music className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
-                <SelectTrigger className="pl-10">
-                  <SelectValue placeholder="Filter by Vocal Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vocal Ranges</SelectItem>
-                  <SelectItem value="Soprano">Soprano</SelectItem>
-                  <SelectItem value="Alto">Alto</SelectItem>
-                  <SelectItem value="Tenor">Tenor</SelectItem>
-                  <SelectItem value="Bass">Bass</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-          <div className="mt-4 flex justify-between items-center">
-            <div className="relative w-full md:w-1/3">
-              <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger className="pl-10">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at_desc">Newest First</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                  <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                  <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                  <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-                  <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
-                  <SelectItem value="category_asc">Category</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          
+          {/* PROMINENT VOCAL RANGE FILTER */}
+          <div className="w-full md:w-[180px]">
+            <Label htmlFor="vocal-range-filter-main" className="text-sm font-medium text-gray-700 mb-1 block">Filter by Vocal Range</Label>
+            <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
+              <SelectTrigger id="vocal-range-filter-main" className="border border-gray-300"> {/* Added border */}
+                <SelectValue placeholder="All Ranges" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ranges</SelectItem>
+                <SelectItem value="Soprano">Soprano</SelectItem>
+                <SelectItem value="Alto">Alto</SelectItem>
+                <SelectItem value="Tenor">Tenor</SelectItem>
+                <SelectItem value="Bass">Bass</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300"> {/* Added border */}
+                <Filter className="h-5 w-5" /> More Filters
+                {hasActiveFilters && <Badge className="ml-1 px-2 py-0.5 rounded-full bg-[#D1AAF2] text-[#1C0357]">Active</Badge>}
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Advanced Filters</SheetTitle>
+                <SheetDescription>
+                  Refine your search results by price, category, and sort options.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-6 space-y-6">
+                {/* CATEGORY FILTER */}
+                <div>
+                  <Label htmlFor="category-filter" className="mb-2 block">Category</Label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger id="category-filter" className="border border-gray-300"> {/* Added border */}
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="full-song">Full Song</SelectItem>
+                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                      <SelectItem value="note-bash">Note Bash</SelectItem>
+                      <SelectItem value="general">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* PRICE RANGE FILTER */}
+                <div>
+                  <Label htmlFor="price-range" className="mb-2 block">Price Range: ${priceRange[0].toFixed(2)} - ${priceRange[1].toFixed(2)}</Label>
+                  <Slider
+                    id="price-range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={priceRange}
+                    onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* SORT OPTION */}
+                <div>
+                  <Label htmlFor="sort-option" className="mb-2 block">Sort By</Label>
+                  <Select value={sortOption} onValueChange={setSortOption}>
+                    <SelectTrigger id="sort-option" className="border border-gray-300"> {/* Added border */}
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="category_asc">Category: A-Z</SelectItem>
+                      <SelectItem value="created_at_desc">Newest First</SelectItem>
+                      <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                      <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                      <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                      <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                      <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                      <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearFilters} className="w-full flex items-center gap-2">
+                    <XCircle className="h-4 w-4" /> Clear All Filters
+                  </Button>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
+            <p className="text-lg text-gray-600">Loading products...</p>
+          </div>
+        ) : filteredProducts.length === 0 && !isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-xl text-gray-600">No products found matching your criteria.</p>
             {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters} className="ml-4">
-                <XCircle className="mr-2 h-4 w-4" /> Clear Filters
+              <Button variant="link" onClick={clearFilters} className="mt-4">
+                Clear all filters
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Product Listing */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-12">
-            <ShoppingCart className="mx-auto h-16 w-16 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No products found</h3>
-            <p className="mt-1 text-gray-500">
-              Try adjusting your search or filter criteria.
-            </p>
-            {hasActiveFilters && (
-              <div className="mt-6">
-                <Button onClick={clearFilters} variant="outline">
-                  Clear Filters
-                </Button>
-              </div>
-            )}
-          </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10"> {/* Added space-y for separation between categories */}
             {groupedProducts.map(group => (
               <div key={group.category}>
-                <h2 className="text-3xl font-bold text-[#1C0357] mb-6 text-left capitalize">
+                <h2 className="text-2xl font-bold text-[#1C0357] mb-6 capitalize">
                   {group.category}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {group.products.map(product => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
                       onViewDetails={handleViewDetails}
                       onBuyNow={handleBuyNow}
                       isBuying={isBuying}
@@ -368,109 +370,18 @@ const Shop = () => {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
-      <ProductDetailDialog
-        isOpen={isDetailDialogOpen}
-        onOpenChange={setIsDetailDialogOpen}
-        product={selectedProductForDetail}
-        onBuyNow={handleBuyNow}
-        isBuying={isBuying}
-      />
-
-      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Filter className="mr-2 h-6 w-6" />
-              Advanced Filters
-            </SheetTitle>
-            <SheetDescription>
-              Refine your search with more specific criteria.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="grid gap-6 py-6">
-            <div className="space-y-2">
-              <Label htmlFor="sheet-search">Search</Label>
-              <Input
-                id="sheet-search"
-                placeholder="Search by title, artist, description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sheet-category">Category</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger id="sheet-category">
-                  <SelectValue placeholder="Filter by Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="full-song">Full Song</SelectItem>
-                  <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                  <SelectItem value="note-bash">Note Bash</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sheet-vocal-range">Vocal Range</Label>
-              <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
-                <SelectTrigger id="sheet-vocal-range">
-                  <SelectValue placeholder="Filter by Vocal Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Vocal Ranges</SelectItem>
-                  <SelectItem value="Soprano">Soprano</SelectItem>
-                  <SelectItem value="Alto">Alto</SelectItem>
-                  <SelectItem value="Tenor">Tenor</SelectItem>
-                  <SelectItem value="Bass">Bass</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sheet-price-range">Price Range (A$)</Label>
-              <Slider
-                id="sheet-price-range"
-                min={0}
-                max={200}
-                step={5}
-                value={priceRange}
-                onValueChange={(value: [number, number]) => setPriceRange(value)}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>A${priceRange[0].toFixed(2)}</span>
-                <span>A${priceRange[1].toFixed(2)}</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sheet-sort-option">Sort By</Label>
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger id="sheet-sort-option">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at_desc">Newest First</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                  <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                  <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                  <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-                  <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
-                  <SelectItem value="category_asc">Category</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" onClick={clearFilters}>Clear All</Button>
-            <Button onClick={() => setIsFilterSheetOpen(false)} className="bg-[#1C0357] hover:bg-[#1C0357]/90">Apply Filters</Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
+      {selectedProductForDetail && (
+        <ProductDetailDialog
+          isOpen={isDetailDialogOpen}
+          onOpenChange={setIsDetailDialogOpen}
+          product={selectedProductForDetail}
+          onBuyNow={handleBuyNow}
+          isBuying={isBuying}
+        />
+      )}
+      
       <MadeWithDyad />
     </div>
   );

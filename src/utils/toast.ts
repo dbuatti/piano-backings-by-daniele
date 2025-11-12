@@ -1,11 +1,11 @@
 import { toast } from "sonner";
 
-export const showSuccess = (message: string, description?: string) => {
-  toast.success(description ? `${message}: ${description}` : message);
+export const showSuccess = (message: string) => {
+  toast.success(message);
 };
 
-export const showError = (message: string, description?: string) => {
-  toast.error(description ? `${message}: ${description}` : message);
+export const showError = (message: string) => {
+  toast.error(message);
 };
 
 export const showLoading = (message: string) => {

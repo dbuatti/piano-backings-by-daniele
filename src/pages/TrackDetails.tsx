@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { showError } from '@/utils/toast'; // Updated import
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import {
   Music,
@@ -49,6 +49,7 @@ const TrackDetails = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -69,148 +70,147 @@ const TrackDetails = () => {
       } catch (err: any) {
         console.error("Error fetching product:", err);
         setError(`Failed to load track details: ${err.message}`);
-        showError("Error", `Failed to load track details: ${err.message}`);
+        toast({
+          title: "Error",
+          description: `Failed to load track details: ${err.message}`,
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchProduct();
-  }, [id]);
+  }, [id, toast]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-          <p className="ml-4 text-lg text-gray-600">Loading track details...</p>
-        </div>
-        <MadeWithDyad />
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-[#1C0357]">Loading track details...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 text-center">
-          <ErrorDisplay error={error} title="Track Loading Error" />
-          <Button onClick={() => navigate('/shop')} className="mt-6 bg-[#1C0357] hover:bg-[#1C0357]/90 text-white">
-            Return to Shop
-          </Button>
-        </div>
-        <MadeWithDyad />
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p>Product not found.</p>
-        </div>
-        <MadeWithDyad />
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-[#1C0357]">Track not found.</p>
       </div>
     );
   }
 
-  const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
+  // Helper for track type tooltip
+  const getTrackTypeDescription = (type: string) => {
+    switch (type) {
+      case 'quick': return 'Fast voice memo for quick learning.';
+      case 'one-take': return 'Single-pass recording, may contain minor imperfections.';
+      case 'polished': return 'Refined, accurate track with correct notes and rhythm.';
+      default: return '';
+    }
+  };
+
+  // Assuming the first track_url is the sample for preview
+  const audioSample = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0] : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-[#1C0357]">{product.title}</h1>
-          <p className="text-lg text-[#1C0357]/90">{product.description}</p>
-        </div>
-        
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Music className="mr-2 h-5 w-5" />
-              Product Details
+        <Card className="shadow-lg">
+          <CardHeader className="bg-[#1C0357] text-white py-4 px-6 rounded-t-lg">
+            <CardTitle className="text-3xl font-bold flex items-center">
+              <Music className="mr-3 h-7 w-7" />
+              {product.title}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <DollarSign className="mr-2 h-5 w-5" />
-                  Pricing
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Price</p>
-                    <p className="font-medium">{product.currency} {product.price.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Key className="mr-2 h-5 w-5" />
-                  Musical Information
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Key</p>
-                    <p className="font-medium">{product.key}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Vocal Range</p>
-                    <p className="font-medium">{product.vocal_range.join(', ')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Track Type</p>
-                    <p className="font-medium capitalize">{product.track_type.replace('-', ' ')}</p>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center text-gray-600 mb-4 gap-x-4 gap-y-2">
+              <span className="flex items-center">
+                <Key className="h-4 w-4 mr-1 text-[#F538BC]" />
+                Key: {product.key}
+              </span>
+              <span className="flex items-center">
+                <Headphones className="h-4 w-4 mr-1 text-[#F538BC]" />
+                Type: {product.track_type.charAt(0).toUpperCase() + product.track_type.slice(1)}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 ml-1 text-gray-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{getTrackTypeDescription(product.track_type)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+              {/* Vocal Range moved here */}
+              {product.vocal_range && product.vocal_range.length > 0 && (
+                <span className="flex items-center">
+                  <Music className="h-4 w-4 mr-1 text-[#F538BC]" />
+                  Vocal Range:
+                  {product.vocal_range.map((range, index) => (
+                    <Badge key={index} variant="secondary" className="ml-1 bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80">
+                      {range}
+                    </Badge>
+                  ))}
+                </span>
+              )}
             </div>
-            
-            {firstTrackUrl && (
-              <div className="mt-6 border-t pt-6">
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Headphones className="mr-2 h-5 w-5" />
-                  Audio Sample
+
+            {/* Audio Preview Section - Moved up */}
+            {audioSample && (
+              <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 flex items-center text-[#1C0357]">
+                  <PlayCircle className="mr-2 h-5 w-5 text-[#F538BC]" />
+                  10-Second Audio Sample
                 </h3>
-                <audio controls src={firstTrackUrl} className="w-full" />
+                <audio controls className="w-full">
+                  <source src={audioSample.url} type="audio/mpeg" />
+                  Your browser does not support the audio element.
+                </audio>
+                {audioSample.caption && <p className="text-sm text-gray-600 mt-2">{audioSample.caption}</p>}
               </div>
             )}
-            
+
+            <p className="text-gray-700 mb-6 leading-relaxed">
+              {product.description}
+            </p>
+
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-4xl font-extrabold text-[#1C0357] flex items-center">
+                <DollarSign className="h-8 w-8 mr-2 text-[#F538BC]" />
+                {product.currency} {product.price.toFixed(2)}
+              </span>
+              <Button className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 rounded-lg">
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Buy Now
+              </Button>
+            </div>
+
             {product.sheet_music_url && (
-              <div className="mt-6 border-t pt-6">
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Sheet Music
-                </h3>
-                <a 
-                  href={product.sheet_music_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-blue-600 hover:underline"
-                >
-                  View Sheet Music PDF <LinkIcon className="ml-1 h-4 w-4" />
-                </a>
+              <div className="mb-6">
+                <Link to={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="w-full py-3 text-lg border-[#1C0357] text-[#1C0357] hover:bg-[#D1AAF2]/20">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Preview Sheet Music (Preview Cut)
+                  </Button>
+                </Link>
               </div>
             )}
+
+            <div className="text-sm text-gray-500 mt-8">
+              Created on: {format(new Date(product.created_at), 'MMM dd, yyyy')}
+            </div>
           </CardContent>
         </Card>
-        
-        <div className="flex justify-center mt-8">
-          <Link to="/shop">
-            <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-8 py-3">
-              <ShoppingCart className="mr-2 h-4 w-4" /> Back to Shop
-            </Button>
-          </Link>
-        </div>
-        
         <MadeWithDyad />
       </div>
     </div>
