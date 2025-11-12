@@ -13,7 +13,7 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/
 import { downloadTrack, TrackInfo } from '@/utils/helpers';
 
 interface Product {
-  id: string;
+  id: string; // Add id to Product interface for joining
   title: string;
   description: string;
   track_urls?: TrackInfo[];
@@ -35,6 +35,7 @@ interface Order {
   user_id?: string;
   products?: Product;
   checkout_session_id: string;
+  guest_access_token?: string; // Added new field
 }
 
 const PurchaseConfirmation: React.FC = () => {
@@ -67,6 +68,24 @@ const PurchaseConfirmation: React.FC = () => {
         return;
       }
 
+      // 1. Fetch the session details from Stripe to get the guest_access_token (if available)
+      // We need the token to securely fetch the order via RLS.
+      let guestAccessToken: string | undefined;
+      try {
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('orders')
+          .select('guest_access_token')
+          .eq('checkout_session_id', sessionId)
+          .single();
+        
+        if (sessionError && sessionError.code !== 'PGRST116') throw sessionError;
+        
+        guestAccessToken = sessionData?.guest_access_token;
+      } catch (err) {
+        console.warn('Could not retrieve guest access token from DB using session ID:', err);
+      }
+
+      // 2. Create a Supabase client configured with the secure header
       const supabaseWithHeaders = createClient(
         SUPABASE_URL,
         SUPABASE_PUBLISHABLE_KEY,
@@ -74,7 +93,10 @@ const PurchaseConfirmation: React.FC = () => {
           global: {
             fetch: async (input, init) => {
               const headers = new Headers(init?.headers);
-              headers.set('x-checkout-session-id', sessionId);
+              // Use the secure token for RLS access
+              if (guestAccessToken) {
+                headers.set('x-order-access-token', guestAccessToken);
+              }
               return fetch(input, { ...init, headers });
             },
           },
@@ -90,6 +112,7 @@ const PurchaseConfirmation: React.FC = () => {
       try {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
           try {
+            // Fetch using checkout_session_id. RLS will use the x-order-access-token header if present.
             const { data, error } = await supabaseWithHeaders
               .from('orders')
               .select('*')

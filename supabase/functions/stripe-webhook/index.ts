@@ -217,6 +217,7 @@ serve(async (req) => {
       const paymentIntentId = session.payment_intent as string;
       const userId = session.client_reference_id; // Extract user_id from client_reference_id
       const checkoutSessionId = session.id; // Get the checkout session ID
+      const guestAccessToken = crypto.randomUUID(); // Generate secure token for RLS access
 
       if (!productId || !customerEmail || amountTotal === null || currency === null || !checkoutSessionId) {
         console.error('Missing essential data in checkout.session.completed event:', { productId, customerEmail, amountTotal, currency, checkoutSessionId });
@@ -253,6 +254,7 @@ serve(async (req) => {
           payment_intent_id: paymentIntentId,
           user_id: userId, // Store the user_id if available
           checkout_session_id: checkoutSessionId, // Store the checkout session ID
+          guest_access_token: guestAccessToken, // Store the secure token
         })
         .select();
 
