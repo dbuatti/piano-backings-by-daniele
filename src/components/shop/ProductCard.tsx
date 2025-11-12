@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isWithinInterval, subDays } from 'date-fns'; // Import date-fns utilities
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
+  created_at: string; // Ensure created_at is present
 }
 
 interface ProductCardProps {
@@ -69,6 +71,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   const trackIcon = getTrackTypeIcon(product.track_type);
   const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
 
+  // Logic for "NEW" badge
+  const isNew = isWithinInterval(new Date(product.created_at), {
+    start: subDays(new Date(), 7),
+    end: new Date(),
+  });
+
   return (
     <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full border border-gray-200 bg-white min-h-[400px]">
       <CardHeader className="p-0 relative overflow-hidden">
@@ -112,7 +120,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
 
       </CardHeader>
       <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10"> {/* Lighter purple background */}
-        <CardTitle className="text-xl font-bold text-[#1C0357] mb-0 leading-tight">{product.title}</CardTitle>
+        <div className="flex items-center justify-between mb-0.5">
+          <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight">{product.title}</CardTitle>
+          {isNew && (
+            <Badge className="bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse-slow">NEW</Badge>
+          )}
+        </div>
         {product.artist_name && (
           <p className="text-sm text-gray-700 mb-2 leading-tight flex items-center">
             <Theater className="h-4 w-4 mr-2 text-gray-500" /> {product.artist_name}
