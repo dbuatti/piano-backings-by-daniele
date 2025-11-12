@@ -1,7 +1,7 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
-import { createClient, AuthAdminApi } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // Declare Deno namespace for TypeScript
 declare const Deno: {
@@ -110,27 +110,25 @@ serve(async (req) => {
       console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
       
       // --- DEBUGGING LOGS START ---
-      console.log('DEBUG: Type of supabaseAdmin:', typeof supabaseAdmin);
-      console.log('DEBUG: supabaseAdmin.auth exists:', !!supabaseAdmin.auth);
-      if (supabaseAdmin.auth) {
-        console.log('DEBUG: Type of supabaseAdmin.auth:', typeof supabaseAdmin.auth);
-        console.log('DEBUG: supabaseAdmin.auth.admin exists:', !!(supabaseAdmin.auth as any).admin); // Cast to any to avoid TS error for logging
-        if ((supabaseAdmin.auth as any).admin) {
-          console.log('DEBUG: Type of supabaseAdmin.auth.admin:', typeof (supabaseAdmin.auth as any).admin);
-          console.log('DEBUG: supabaseAdmin.auth.admin methods:', Object.keys((supabaseAdmin.auth as any).admin));
-        }
+      console.log('DEBUG: Inspecting supabaseAdmin.auth object:');
+      console.log('DEBUG: typeof supabaseAdmin.auth:', typeof supabaseAdmin.auth);
+      console.log('DEBUG: Object.keys(supabaseAdmin.auth):', Object.keys(supabaseAdmin.auth));
+      console.log('DEBUG: supabaseAdmin.auth.admin exists:', !!(supabaseAdmin.auth as any).admin);
+      if ((supabaseAdmin.auth as any).admin) {
+        console.log('DEBUG: typeof supabaseAdmin.auth.admin:', typeof (supabaseAdmin.auth as any).admin);
+        console.log('DEBUG: Object.keys(supabaseAdmin.auth.admin):', Object.keys((supabaseAdmin.auth as any).admin));
+        console.log('DEBUG: typeof supabaseAdmin.auth.admin.getUserByEmail:', typeof (supabaseAdmin.auth as any).admin.getUserByEmail);
       }
       // --- DEBUGGING LOGS END ---
 
       // 1. Get the Supabase user ID for the sender email using admin.getUserByEmail
-      // Explicitly create AuthAdminApi if supabaseAdmin.auth.admin is not directly available
-      const authAdminClient = (supabaseAdmin.auth as any).admin || new AuthAdminApi(supabaseAdmin);
-
-      if (!authAdminClient || typeof authAdminClient.getUserByEmail !== 'function') {
+      // Directly access admin.getUserByEmail, assuming it should be there.
+      // If it's not, the logs above will show us why.
+      if (!(supabaseAdmin.auth as any).admin || typeof (supabaseAdmin.auth as any).admin.getUserByEmail !== 'function') {
         throw new Error('Supabase admin auth client is not initialized or getUserByEmail is not a function. Cannot use admin functions.');
       }
       
-      const { data: userData, error: userLookupError } = await authAdminClient.getUserByEmail(emailToFetchTokenFor);
+      const { data: userData, error: userLookupError } = await (supabaseAdmin.auth as any).admin.getUserByEmail(emailToFetchTokenFor);
 
       if (userLookupError) {
         console.error(`Error looking up user by email "${emailToFetchTokenFor}" using admin.getUserByEmail:`, userLookupError);
