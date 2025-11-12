@@ -235,23 +235,35 @@ const generateFallbackPaymentReminderEmail = (request: BackingRequest) => {
   const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
 
   let costDisplayHtml = '';
+  const calculatedCost = calculateRequestCost(request).totalCost;
+  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
+  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
+
+  const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                                 <strong>Recommended Cost:</strong> $${calculatedCost.toFixed(2)}
+                               </p>`;
+
+  let estimatedRangeHtml = '';
+  if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
+      request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
+    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                            <strong>Estimated Range:</strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                          </p>`;
+  } else {
+    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                            <strong>Estimated Range:</strong> $${calculatedLow} - $${calculatedHigh}
+                          </p>`;
+  }
+
   if (request.final_price !== null && request.final_price !== undefined) {
     costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
                          The final agreed cost for your track is: $${request.final_price.toFixed(2)}
-                       </p>`;
-  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null && 
-             request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The estimated cost for your track is: $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
-                       </p>`;
+                       </p>
+                       ${recommendedCostHtml}
+                       ${estimatedRangeHtml}`;
   } else {
-    // Fallback to calculated range if no manual values are set
-    const calculatedCost = calculateRequestCost(request).totalCost;
-    const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
-    const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The estimated cost for your track is: $${calculatedLow} - $${calculatedHigh}
-                       </p>`;
+    costDisplayHtml = `${estimatedRangeHtml}
+                       ${recommendedCostHtml}`;
   }
 
   return {
@@ -322,22 +334,36 @@ const generateFallbackCompletionAndPaymentEmail = (request: BackingRequest) => {
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
   let costDisplayHtml = '';
+  const calculatedCost = calculateRequestCost(request).totalCost;
+  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
+  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
+
+  const recommendedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                                 <strong>Recommended Cost:</strong> $${calculatedCost.toFixed(2)}
+                               </p>`;
+
+  let estimatedRangeHtml = '';
+  if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
+      request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
+    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                            <strong>Estimated Range:</strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                          </p>`;
+  } else {
+    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
+                            <strong>Estimated Range:</strong> $${calculatedLow} - $${calculatedHigh}
+                          </p>`;
+  }
+
   if (request.final_price !== null && request.final_price !== undefined) {
     costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
                          The final agreed cost for your track is: $${request.final_price.toFixed(2)}
-                       </p>`;
-  } else if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
-             request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
-    costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The estimated cost for your track is: $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
-                       </p>`;
+                       </p>
+                       ${recommendedCostHtml}
+                       ${estimatedRangeHtml}`;
   } else {
-    // Fallback to calculated range if no manual values are set
-    const calculatedCost = calculateRequestCost(request).totalCost;
-    const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
-    const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
     costDisplayHtml = `<p style="margin-top: 20px; font-size: 1.1em; font-weight: bold; color: #1C0357;">
-                         The estimated cost for your track is: $${calculatedLow} - $${calculatedHigh}
+                         ${estimatedRangeHtml}
+                         ${recommendedCostHtml}
                        </p>`;
   }
 
