@@ -41,19 +41,45 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const timeoutRef = useRef<number | null>(null);
 
   const handlePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+    if (!audioRef.current || !product.track_urls || product.track_urls.length === 0) return;
+
+    if (isPlaying) {
+      // Pause immediately
+      audioRef.current.pause();
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
-      setIsPlaying(!isPlaying);
+      setIsPlaying(false);
+    } else {
+      // Start playing from the beginning
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      setIsPlaying(true);
+
+      // Set timeout to stop after 10 seconds
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0; // Reset for next play
+        }
+        setIsPlaying(false);
+        timeoutRef.current = null;
+      }, 10000); // 10 seconds
     }
   };
 
   const handleAudioEnded = () => {
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setIsPlaying(false);
   };
   
