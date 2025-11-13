@@ -162,9 +162,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 className="flex items-center justify-center w-full h-full text-white p-4 text-center"
                 style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
               >
-                <h1 className="text-3xl md:text-4xl font-bold italic leading-tight">
+                <div className="text-3xl md:text-4xl font-bold italic leading-tight"> {/* Changed h1 to div */}
                   {product.title}
-                </h1>
+                </div>
               </div>
             )}
           </AspectRatio>
@@ -182,8 +182,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         {/* Scrollable Content Area */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <DialogHeader>
-            <DialogTitle> {/* Wrapped h1 with DialogTitle */}
-              <h1 className="text-3xl font-bold text-[#1C0357]">{product.title}</h1>
+            <DialogTitle className="text-3xl font-bold text-[#1C0357]"> {/* Applied h1 styling directly to DialogTitle */}
+              {product.title}
             </DialogTitle>
             
             {product.artist_name && (
