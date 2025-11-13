@@ -148,157 +148,155 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* FIX: Added max-h-[90vh] and overflow-y-auto to DialogContent */}
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden max-h-[90vh] [&>button]:hidden">
-        <div className="relative flex flex-col h-full">
-          {/* Image Header */}
-          <div className="relative flex-shrink-0">
-            <AspectRatio ratio={16 / 9}>
-              {product.image_url ? (
-                <img 
-                  src={product.image_url} 
-                  alt={product.title} 
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <div 
-                  className="flex items-center justify-center w-full h-full text-white p-4 text-center"
-                  style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
-                >
-                  <h1 className="text-3xl md:text-4xl font-bold italic leading-tight">
-                    {product.title}
-                  </h1>
-                </div>
-              )}
-            </AspectRatio>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="absolute top-2 right-2 text-white hover:bg-white/20 hover:text-white z-10"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-5 w-5" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
-          
-          {/* Scrollable Content Area */}
-          <div className="p-6 space-y-6 overflow-y-auto flex-1">
-            <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0"> {/* Removed overflow-hidden, added flex-col */}
+        <div className="relative flex-shrink-0">
+          <AspectRatio ratio={16 / 9}>
+            {product.image_url ? (
+              <img 
+                src={product.image_url} 
+                alt={product.title} 
+                className="w-full h-full object-cover" 
+              />
+            ) : (
+              <div 
+                className="flex items-center justify-center w-full h-full text-white p-4 text-center"
+                style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
+              >
+                <h1 className="text-3xl md:text-4xl font-bold italic leading-tight">
+                  {product.title}
+                </h1>
+              </div>
+            )}
+          </AspectRatio>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute top-2 right-2 text-white hover:bg-white/20 hover:text-white z-10"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+        
+        {/* Scrollable Content Area */}
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          <DialogHeader>
+            <DialogTitle> {/* Wrapped h1 with DialogTitle */}
               <h1 className="text-3xl font-bold text-[#1C0357]">{product.title}</h1>
-              
-              {product.artist_name && (
-                <p className="text-lg text-gray-700 flex items-center">
-                  <Theater className="h-5 w-5 mr-2" /> {product.artist_name}
-                </p>
-              )}
-              
-              {/* Key Details Group */}
-              <div className="flex flex-wrap gap-4 pt-2 border-b pb-4 border-gray-100">
-                {product.category && (
-                  <div className="text-md text-gray-600 flex items-center capitalize">
-                    <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', ' ')}
-                  </div>
-                )}
-                {product.key_signature && product.show_key_signature && (
-                  <div className="text-md text-gray-600 flex items-center">
-                    <Key className="h-4 w-4 mr-2" /> <strong>Key:</strong> {product.key_signature}
-                  </div>
-                )}
-                {product.track_type && (
-                  <div className="text-md text-gray-600 flex items-center capitalize">
-                    {trackIcon && <trackIcon.Icon className={cn("h-4 w-4 mr-2", trackIcon.color)} />}
-                    <strong>Type:</strong> {product.track_type.replace('-', ' ')}
-                  </div>
-                )}
-              </div>
-
-              {product.vocal_ranges && product.vocal_ranges.length > 0 && (
-                <div className="pt-2">
-                  <h3 className="text-md font-semibold text-[#1C0357] mb-1">Vocal Ranges:</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {product.vocal_ranges.map((range, index) => (
-                      <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-base px-3 py-1.5 rounded-full font-bold">
-                        {range}
-                      </Badge>
-                    ))}
-                  </div>
+            </DialogTitle>
+            
+            {product.artist_name && (
+              <p className="text-lg text-gray-700 flex items-center">
+                <Theater className="h-5 w-5 mr-2" /> {product.artist_name}
+              </p>
+            )}
+            
+            {/* Key Details Group */}
+            <div className="flex flex-wrap gap-4 pt-2 border-b pb-4 border-gray-100">
+              {product.category && (
+                <div className="text-md text-gray-600 flex items-center capitalize">
+                  <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', ' ')}
                 </div>
               )}
-              
-              <DialogDescription className="text-lg text-gray-700 pt-4">
-                {product.description}
-              </DialogDescription>
-            </DialogHeader>
-
-            {/* Audio Sample Section */}
-            {firstTrackUrl && (
-              <div className="space-y-3 p-4 border rounded-lg bg-[#D1AAF2]/10">
-                <h2 className="text-xl font-semibold text-[#1C0357] flex items-center">
-                  <Music className="mr-2 h-5 w-5" />
-                  Audio Sample
-                </h2>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-800 flex items-center">
-                    <LinkIcon className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
-                    {String(product.track_urls[0].caption || 'Main Track Sample')}
-                  </span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={handlePlayPause} 
-                        className="text-[#1C0357] hover:bg-[#1C0357]/10"
-                        disabled={isBuying}
-                      >
-                        {isPlaying ? <PauseCircle className="h-8 w-8" /> : <PlayCircle className="h-8 w-8" />}
-                        <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
-                    </TooltipContent>
-                  </Tooltip>
+              {product.key_signature && product.show_key_signature && (
+                <div className="text-md text-gray-600 flex items-center">
+                  <Key className="h-4 w-4 mr-2" /> <strong>Key:</strong> {product.key_signature}
                 </div>
-                <p className="text-sm text-gray-600">Note: This is a 10-second audio sample. Full access is granted upon purchase.</p>
-                <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
-              </div>
-            )}
-
-            {product.sheet_music_url && product.show_sheet_music_url && (
-              <div className="border-t pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePreviewPdf}
-                  className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
-                  disabled={isBuying}
-                >
-                  <FileText className="h-4 w-4 mr-2" /> Preview Sheet Music (PDF)
-                </Button>
-              </div>
-            )}
-          </div>
-          
-          {/* Fixed Footer/Action Bar */}
-          <div className="flex items-center justify-between p-6 border-t bg-gray-50 flex-shrink-0">
-            <div className="flex items-center">
-              <DollarSign className="h-6 w-6 text-[#1C0357] mr-2" />
-              <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+              )}
+              {product.track_type && (
+                <div className="text-md text-gray-600 flex items-center capitalize">
+                  {trackIcon && <trackIcon.Icon className={cn("h-4 w-4 mr-2", trackIcon.color)} />}
+                  <strong>Type:</strong> {product.track_type.replace('-', ' ')}
+                </div>
+              )}
             </div>
-            <Button 
-              onClick={() => onBuyNow(product)}
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
-              disabled={isBuying}
-            >
-              {isBuying ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <ShoppingCart className="ml-2 h-5 w-5" />
-              )}
-              {isBuying ? 'Processing...' : 'Buy Now'}
-            </Button>
+
+            {product.vocal_ranges && product.vocal_ranges.length > 0 && (
+              <div className="pt-2">
+                <h3 className="text-md font-semibold text-[#1C0357] mb-1">Vocal Ranges:</h3>
+                <div className="flex flex-wrap gap-1">
+                  {product.vocal_ranges.map((range, index) => (
+                    <Badge key={index} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-base px-3 py-1.5 rounded-full font-bold">
+                      {range}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <DialogDescription className="text-lg text-gray-700 pt-4">
+              {product.description}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Audio Sample Section */}
+          {firstTrackUrl && (
+            <div className="space-y-3 p-4 border rounded-lg bg-[#D1AAF2]/10">
+              <h2 className="text-xl font-semibold text-[#1C0357] flex items-center">
+                <Music className="mr-2 h-5 w-5" />
+                Audio Sample
+              </h2>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-gray-800 flex items-center">
+                  <LinkIcon className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
+                  {String(product.track_urls[0].caption || 'Main Track Sample')}
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handlePlayPause} 
+                      className="text-[#1C0357] hover:bg-[#1C0357]/10"
+                      disabled={isBuying}
+                    >
+                      {isPlaying ? <PauseCircle className="h-8 w-8" /> : <PlayCircle className="h-8 w-8" />}
+                      <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <p className="text-sm text-gray-600">Note: This is a 10-second audio sample. Full access is granted upon purchase.</p>
+              <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
+            </div>
+          )}
+
+          {product.sheet_music_url && product.show_sheet_music_url && (
+            <div className="border-t pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handlePreviewPdf}
+                className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
+                disabled={isBuying}
+              >
+                <FileText className="h-4 w-4 mr-2" /> Preview Sheet Music (PDF)
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        {/* Fixed Footer/Action Bar */}
+        <div className="flex items-center justify-between p-6 border-t bg-gray-50 flex-shrink-0">
+          <div className="flex items-center">
+            <DollarSign className="h-6 w-6 text-[#1C0357] mr-2" />
+            <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
+          <Button 
+            onClick={() => onBuyNow(product)}
+            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
+            disabled={isBuying}
+          >
+            {isBuying ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <ShoppingCart className="ml-2 h-5 w-5" />
+            )}
+            {isBuying ? 'Processing...' : 'Buy Now'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
