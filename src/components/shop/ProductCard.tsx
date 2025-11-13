@@ -71,7 +71,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         }
         setIsPlaying(false);
         timeoutRef.current = null;
-      }, 10000); // 10 seconds
+      }, 10000) as unknown as number; // Explicitly cast to number
     }
   };
 

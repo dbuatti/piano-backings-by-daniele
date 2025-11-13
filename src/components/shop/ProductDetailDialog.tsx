@@ -97,7 +97,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         }
         setIsPlaying(false);
         timeoutRef.current = null;
-      }, 10000); // 10 seconds
+      }, 10000) as unknown as number; // Explicitly cast to number
     }
   };
 
