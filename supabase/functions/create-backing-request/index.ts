@@ -943,7 +943,7 @@ serve(async (req) => {
     
     try {
       console.log('Sending client confirmation email...');
-      await fetch(sendEmailUrl, {
+      const clientEmailResponse = await fetch(sendEmailUrl, { // Store response
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -956,7 +956,8 @@ serve(async (req) => {
           senderEmail: defaultSenderEmail
         })
       });
-      console.log('Client confirmation email sent successfully.');
+      const clientEmailResult = await clientEmailResponse.json(); // Parse response
+      console.log('Client confirmation email sent successfully. Response:', clientEmailResult); // Log response
     } catch (emailError: any) {
       console.error('Failed to send client confirmation email:', emailError);
       // Log notification failure to database
@@ -1038,8 +1039,8 @@ serve(async (req) => {
     
     try {
       console.log('Sending admin notification email...');
-      // Send to all admin notification recipients
-      await fetch(sendEmailUrl, {
+      console.log('Admin notification recipients:', adminNotificationRecipients); // Log recipients
+      const adminEmailResponse = await fetch(sendEmailUrl, { // Store response
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1052,7 +1053,8 @@ serve(async (req) => {
           senderEmail: defaultSenderEmail
         })
       });
-      console.log('Admin notification email sent successfully.');
+      const adminEmailResult = await adminEmailResponse.json(); // Parse response
+      console.log('Admin notification email sent successfully. Response:', adminEmailResult); // Log response
     } catch (emailError: any) {
       console.error('Failed to send admin notification email:', emailError);
       // Log notification failure to database
