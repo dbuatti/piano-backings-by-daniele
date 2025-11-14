@@ -249,6 +249,7 @@ const FormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleSubmit initiated.');
 
     if (isHolidayModeActive) {
       toast({
@@ -256,6 +257,7 @@ const FormPage = () => {
         description: "New requests cannot be submitted while on holiday. Please check back later.",
         variant: "destructive",
       });
+      console.log('Submission prevented: Holiday Mode Active.');
       return;
     }
 
@@ -289,16 +291,20 @@ const FormPage = () => {
         description: "Please fill in all required fields and agree to the terms.",
         variant: "destructive",
       });
+      console.log('Submission prevented: Client-side validation failed.', newErrors);
       return;
     }
 
     try {
+      console.log('Validation passed. Attempting to get Supabase session.');
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Supabase session:', session);
       
       // Upload sheet music if provided
       let sheetMusicUrl = null;
       if (formData.sheetMusic) {
+        console.log('Attempting to upload sheet music.');
         try {
           const fileExt = formData.sheetMusic.name.split('.').pop();
           const fileName = `sheet-music-${Date.now()}.${fileExt}`;
@@ -313,7 +319,7 @@ const FormPage = () => {
             });
           
           if (uploadError) {
-            console.error('Storage upload error:', uploadError);
+            console.error('Storage upload error (sheet music):', uploadError);
             throw new Error(`File upload error: ${uploadError.message}`);
           }
           
@@ -324,19 +330,22 @@ const FormPage = () => {
             .getPublicUrl(fileName);
           
           sheetMusicUrl = publicUrl;
+          console.log('Sheet music uploaded successfully:', sheetMusicUrl);
         } catch (uploadError: any) {
-          console.error('File upload error:', uploadError);
+          console.error('File upload error (sheet music):', uploadError);
           toast({
             title: "Warning",
             description: `Sheet music upload failed: ${uploadError.message}. Request will still be submitted.`,
             variant: "destructive",
           });
+          // Do NOT re-throw here, allow the form submission to continue without the sheet music URL
         }
       }
       
       // Upload voice memo file if provided
       let voiceMemoFileUrl = null;
       if (formData.voiceMemoFile) {
+        console.log('Attempting to upload voice memo file.');
         try {
           const fileExt = formData.voiceMemoFile.name.split('.').pop();
           const fileName = `voice-memo-${Date.now()}.${fileExt}`;
@@ -374,6 +383,7 @@ const FormPage = () => {
               .getPublicUrl(fileName);
             
             voiceMemoFileUrl = publicUrl;
+            console.log('Voice memo uploaded successfully:', voiceMemoFileUrl);
           }
         } catch (uploadError: any) {
           console.error('Voice memo upload error:', uploadError);
@@ -382,6 +392,7 @@ const FormPage = () => {
             description: `Voice memo upload failed: ${uploadError.message}. Request will still be submitted.`,
             variant: "destructive",
           });
+          // Do NOT re-throw here, allow the form submission to continue without the voice memo URL
         }
       }
       
@@ -409,6 +420,7 @@ const FormPage = () => {
           trackType: formData.trackType
         }
       };
+      console.log('Submission data prepared:', submissionData);
       
       // Prepare headers - Include Authorization header with anon key for public Edge Functions
       const headers: Record<string, string> = {
@@ -418,10 +430,13 @@ const FormPage = () => {
       // If a user is logged in, use their access token. Otherwise, use the anon key.
       if (session) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
+        console.log('Using authenticated session token for Edge Function call.');
       } else {
         headers['Authorization'] = `Bearer ${SUPABASE_PUBLISHABLE_KEY}`;
+        console.log('Using anon key for Edge Function call (no active session).');
       }
       
+      console.log('Attempting to call create-backing-request Edge Function.');
       // Submit to Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
@@ -431,23 +446,28 @@ const FormPage = () => {
           body: JSON.stringify(submissionData),
         }
       );
+      console.log('Received response from Edge Function.');
       
       const responseText = await response.text();
+      console.log('Raw response text:', responseText);
       
       let result;
       try {
         result = JSON.parse(responseText);
+        console.log('Parsed response:', result);
       } catch (parseError) {
         console.error('Error parsing response:', parseError);
         throw new Error(`Invalid response from server: ${responseText}`);
       }
       
       if (!response.ok) {
+        console.error('Edge Function response not OK:', result.error || `Status: ${response.status} ${response.statusText}`);
         throw new Error(result.error || `Failed to submit form: ${response.status} ${response.statusText}`);
       }
       
       // Set success state to true
       setIsSubmittedSuccessfully(true);
+      console.log('Form submitted successfully. Setting success state.');
       
       // Clear form
       setFormData({
@@ -478,11 +498,13 @@ const FormPage = () => {
       // Show account prompt if user is not logged in
       if (!session) {
         setShowAccountPrompt(true);
+        console.log('No session, showing account prompt.');
       } else {
         // No redirect here, the success message will handle navigation
+        console.log('Session active, not showing account prompt.');
       }
     } catch (error: any) {
-      console.error('Error submitting form:', error);
+      console.error('Error submitting form (caught by main try/catch):', error);
       toast({
         title: "Error",
         description: `There was a problem submitting your request: ${error.message}`,
@@ -490,6 +512,7 @@ const FormPage = () => {
       });
     } finally {
       setIsSubmitting(false);
+      console.log('handleSubmit finished. isSubmitting set to false.');
     }
   };
 
