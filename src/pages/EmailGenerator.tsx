@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,17 +55,27 @@ const EmailGenerator = () => {
   const [isSending, setIsSending] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', html: '' });
   const [recipientEmails, setRecipientEmails] = useState('');
+  const [lastAutoPopulatedEmail, setLastAutoPopulatedEmail] = useState(''); // NEW: State to track last auto-populated email
   const [showPreview, setShowPreview] = useState(false);
   const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom'>('completion-payment');
   
   const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
   const [loadingAllRequests, setLoadingAllRequests] = useState(true);
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]); // Will now hold at most one ID
-  const [displayedRequest, setDisplayedRequest] = useState<BackingRequest | null>(null); // The request whose details are shown
+  // Removed displayedRequest state, will derive it
   const [allProducts, setAllProducts] = useState<Product[]>([]); // New state for products
   const [loadingAllProducts, setLoadingAllProducts] = useState(true);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null); // New state for selected product
-  const [displayedProduct, setDisplayedProduct] = useState<Product | null>(null); // The product whose details are shown
+  // Removed displayedProduct state, will derive it
+
+  // Derived states for the currently displayed request/product
+  const displayedRequest = useMemo(() => {
+    return allRequests.find(req => selectedRequestIds.includes(req.id!)) || null;
+  }, [selectedRequestIds, allRequests]);
+
+  const displayedProduct = useMemo(() => {
+    return allProducts.find(prod => prod.id === selectedProductId) || null;
+  }, [selectedProductId, allProducts]);
 
   const handleGenerateEmail = useCallback(async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom', itemToUse?: BackingRequest | Product) => {
     setIsGenerating(true);
@@ -181,36 +191,43 @@ const EmailGenerator = () => {
       }
 
       if (initialRequest) {
-        setDisplayedRequest(initialRequest);
         setSelectedRequestIds([initialRequest.id!]); // Select only this one
       }
     }
   }, [id, location.state, allRequests]);
 
-  // Update recipient emails and displayed item when selected item changes
+  // Update recipient emails and trigger email generation when selected item changes
   useEffect(() => {
+    let newAutoPopulatedEmail = '';
     if (templateType === 'product-delivery') {
-      const selected = allProducts.find(prod => prod.id === selectedProductId);
-      setDisplayedProduct(selected || null);
-      setRecipientEmails(selected ? selected.id : ''); // Use product ID as placeholder for email
-      if (selected) {
-        handleGenerateEmail(templateType, selected);
+      newAutoPopulatedEmail = displayedProduct ? displayedProduct.id : '';
+    } else {
+      newAutoPopulatedEmail = displayedRequest ? displayedRequest.email : '';
+    }
+
+    // Only update recipientEmails if it hasn't been manually changed
+    // OR if a new item is selected and the current recipientEmails matches the *previous* auto-populated value
+    // This ensures manual edits persist unless a new item is selected AND the field was previously auto-populated
+    if (recipientEmails === lastAutoPopulatedEmail || recipientEmails === '') {
+      setRecipientEmails(newAutoPopulatedEmail);
+    }
+    setLastAutoPopulatedEmail(newAutoPopulatedEmail); // Always update this tracker to reflect what *should* be auto-populated
+
+    // Trigger email generation
+    if (templateType === 'product-delivery') {
+      if (displayedProduct) {
+        handleGenerateEmail(templateType, displayedProduct);
       } else {
         setEmailData({ subject: '', html: '' });
       }
     } else {
-      const selected = allRequests.filter(req => selectedRequestIds.includes(req.id!));
-      setDisplayedRequest(selected.length > 0 ? selected[0] : null);
-      setRecipientEmails(selected.map(req => req.email).join(', '));
       if (displayedRequest) {
-        handleGenerateEmail(templateType);
-      } else if (selected.length > 0 && !id) {
-        handleGenerateEmail(templateType, selected[0]);
-      } else if (selected.length === 0 && !id) {
+        handleGenerateEmail(templateType, displayedRequest);
+      } else if (selectedRequestIds.length === 0 && !id) {
         setEmailData({ subject: '', html: '' });
       }
     }
-  }, [selectedRequestIds, selectedProductId, allRequests, allProducts, id, templateType, displayedRequest, displayedProduct, handleGenerateEmail]);
+  }, [selectedRequestIds, selectedProductId, allRequests, allProducts, id, templateType, handleGenerateEmail, displayedRequest, displayedProduct]); // Removed lastAutoPopulatedEmail from dependencies to prevent infinite loop
 
   const handleSendEmail = async () => {
     setIsSending(true);
@@ -339,7 +356,6 @@ const EmailGenerator = () => {
               value={displayedRequest?.id || ''}
               onValueChange={(requestId) => {
                 const selected = allRequests.find(req => req.id === requestId);
-                setDisplayedRequest(selected || null);
                 setSelectedRequestIds(selected ? [selected.id!] : []);
               }}
               disabled={loadingAllRequests}
@@ -388,7 +404,6 @@ const EmailGenerator = () => {
               value={displayedProduct?.id || ''}
               onValueChange={(productId) => {
                 const selected = allProducts.find(prod => prod.id === productId);
-                setDisplayedProduct(selected || null);
                 setSelectedProductId(selected ? selected.id : null);
               }}
               disabled={loadingAllProducts}
@@ -553,7 +568,7 @@ const EmailGenerator = () => {
                     placeholder="client@example.com"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">This field is automatically populated from the selected item.</p>
+                  <p className="text-xs text-gray-500 mt-1">This field is automatically populated from the selected item, but you can edit it.</p>
                 </div>
 
                 <div>
