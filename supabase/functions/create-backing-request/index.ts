@@ -336,7 +336,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       'note-bash': '00. NOTE BASH'
     };
     
-    const primaryBackingType = sanitizedData.backingType.length > 0 
+    const primaryBackingType = Array.isArray(sanitizedData.backingType) && sanitizedData.backingType.length > 0 
       ? sanitizedData.backingType[0] 
       : null;
 
