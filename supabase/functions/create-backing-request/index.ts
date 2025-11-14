@@ -208,7 +208,7 @@ interface DropboxResult {
   voiceMemoUploadSuccess: boolean;
   voiceMemoUploadError: string | null;
   summaryUploadSuccess: boolean;
-  summaryUploadError: boolean;
+  summaryUploadError: string | null; // Changed to string | null
   parentFolderUsed: string;
   folderNameUsed: string;
   logicFileNameUsed: string;
@@ -294,7 +294,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     voiceMemoUploadSuccess: false,
     voiceMemoUploadError: null,
     summaryUploadSuccess: false,
-    summaryUploadError: false,
+    summaryUploadError: null, // Initialized as null
     parentFolderUsed: '',
     folderNameUsed: '',
     logicFileNameUsed: '',
@@ -703,11 +703,11 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     } else {
       const errorText = await dropboxUploadResponse.text();
       result.summaryUploadError = `Dropbox order summary upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-      console.error(result.summaryError);
+      console.error(result.summaryUploadError); // Corrected property name
     }
   } catch (error: any) {
     result.summaryUploadError = `Order summary upload error: ${error.message}`;
-    console.error(result.summaryError);
+    console.error(result.summaryUploadError); // Corrected property name
   }
 
   return result;
