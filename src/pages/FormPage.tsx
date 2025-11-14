@@ -26,7 +26,7 @@ import {
   MessageSquare, // New icon for special requests
   Plane, // Added Plane icon for holiday mode
   CheckCircle, // Added CheckCircle for success message
-  Phone // Added Phone icon
+  Phone
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -309,8 +309,8 @@ const FormPage = () => {
           const fileExt = formData.sheetMusic.name.split('.').pop();
           const fileName = `sheet-music-${Date.now()}.${fileExt}`;
           
-          // Upload to Supabase storage
-          const { error: uploadError } = await supabase
+          console.log('Uploading sheet music file:', fileName);
+          const { data: uploadData, error: uploadError } = await supabase
             .storage
             .from('sheet-music')
             .upload(fileName, formData.sheetMusic, {
@@ -327,7 +327,7 @@ const FormPage = () => {
           const { data: { publicUrl } } = supabase
             .storage
             .from('sheet-music')
-            .getPublicUrl(fileName);
+            .getPublicUrl(uploadData.path); // Use uploadData.path here
           
           sheetMusicUrl = publicUrl;
           console.log('Sheet music uploaded successfully:', sheetMusicUrl);
@@ -350,8 +350,8 @@ const FormPage = () => {
           const fileExt = formData.voiceMemoFile.name.split('.').pop();
           const fileName = `voice-memo-${Date.now()}.${fileExt}`;
           
-          // Upload to Supabase storage
-          const { error: uploadError } = await supabase
+          console.log('Uploading voice memo file:', fileName);
+          const { data: uploadData, error: uploadError } = await supabase
             .storage
             .from('voice-memos')
             .upload(fileName, formData.voiceMemoFile, {
@@ -380,7 +380,7 @@ const FormPage = () => {
             const { data: { publicUrl } } = supabase
               .storage
               .from('voice-memos')
-              .getPublicUrl(fileName);
+              .getPublicUrl(uploadData.path); // Use uploadData.path here
             
             voiceMemoFileUrl = publicUrl;
             console.log('Voice memo uploaded successfully:', voiceMemoFileUrl);
