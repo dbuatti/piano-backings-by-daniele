@@ -320,7 +320,7 @@ const FormPage = () => {
             });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Sheet music upload timed out after 30 seconds.')), 30000)
+            setTimeout(() => reject(new Error('Sheet music upload timed out after 60 seconds.')), 60000) // Increased timeout
           );
 
           const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
@@ -368,7 +368,7 @@ const FormPage = () => {
             });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Voice memo upload timed out after 30 seconds.')), 30000)
+            setTimeout(() => reject(new Error('Voice memo upload timed out after 60 seconds.')), 60000) // Increased timeout
           );
 
           const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
