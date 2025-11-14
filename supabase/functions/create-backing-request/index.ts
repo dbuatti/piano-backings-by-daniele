@@ -53,7 +53,11 @@ declare const Deno: {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    // Handle CORS preflight request
+    return new Response(null, {
+      status: 204, // No Content
+      headers: corsHeaders,
+    });
   }
 
   try {
