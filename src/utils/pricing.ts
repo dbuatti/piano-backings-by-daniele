@@ -2,8 +2,8 @@
 
 export const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
   'quick': 5.00,
-  'one-take': 15.00,
-  'polished': 25.00,
+  'one-take': 10.00, // Changed from 15.00 to 10.00
+  'polished': 15.00, // Changed from 25.00 to 15.00
 };
 
 export const BACKING_TYPE_MODIFIERS: Record<string, number> = {
