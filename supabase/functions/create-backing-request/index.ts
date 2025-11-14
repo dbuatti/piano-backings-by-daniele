@@ -759,7 +759,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
     const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000';
-    
+    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Get ADMIN_EMAIL
+    const adminNotificationRecipients = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'].filter((email, i, arr) => arr.indexOf(email) === i); // Ensure unique emails
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // --- 1. Authentication and User Info ---
@@ -1036,6 +1038,7 @@ serve(async (req) => {
     
     try {
       console.log('Sending admin notification email...');
+      // Send to all admin notification recipients
       await fetch(sendEmailUrl, {
         method: 'POST',
         headers: {
@@ -1043,7 +1046,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${supabaseServiceKey}`
         },
         body: JSON.stringify({
-          to: defaultSenderEmail,
+          to: adminNotificationRecipients, // Use the array of admin emails
           subject: adminEmailSubject,
           html: adminEmailHtml,
           senderEmail: defaultSenderEmail
@@ -1057,7 +1060,7 @@ serve(async (req) => {
         .from('notifications')
         .insert([
           {
-            recipient: defaultSenderEmail,
+            recipient: adminNotificationRecipients.join(', '), // Store all recipients
             sender: defaultSenderEmail,
             subject: adminEmailSubject,
             content: adminEmailHtml,

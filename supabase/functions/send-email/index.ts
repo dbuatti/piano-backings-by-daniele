@@ -249,6 +249,7 @@ serve(async (req) => {
       .replace(/=+$/, '');
     
     console.log("Sending email via Gmail API...");
+    console.log(`Email details: To: ${recipientList.join(', ')}, From: ${GMAIL_USER}, Subject: ${subject}`); // Log actual recipients and sender
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for Gmail API send
 
@@ -280,7 +281,7 @@ serve(async (req) => {
       }
       
       const gmailData = await gmailResponse.json();
-      console.log("Email sent successfully via Gmail API", gmailData);
+      console.log("Email sent successfully via Gmail API", gmailData); // Log Gmail API's success response
       
       // Store a record in the notifications table for tracking
       await supabaseAdmin
