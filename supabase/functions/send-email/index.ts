@@ -30,7 +30,7 @@ serve(async (req) => {
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com'; // Use ADMIN_EMAIL secret or default
-    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com']; // Hardcoded secondary admin email
+    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'].filter((email, i, arr) => arr.indexOf(email) === i); // Ensure unique emails
 
     console.log('Environment variables status:', {
       GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
@@ -67,6 +67,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     let callingUserEmail: string | null = null;
     let isCallingUserAdmin = false;
+    let isUserTokenValid = false; // Flag to indicate if a valid user token was found
 
     if (authHeader) {
       try {
@@ -76,15 +77,24 @@ serve(async (req) => {
         if (!userError && user) {
           callingUserEmail = user.email;
           isCallingUserAdmin = adminEmails.includes(user.email!);
+          isUserTokenValid = true; // A valid user token was found
           console.log("Authenticated Supabase user (for authorization):", callingUserEmail);
+        } else {
+          console.log("No valid user token found, might be a service role call or unauthenticated.");
         }
       } catch (authError) {
-        console.log("Could not authenticate calling user, proceeding with strict sender check.");
+        console.warn('Error during user token verification:', authError.message);
       }
     }
 
-    // CRITICAL SECURITY CHECK: Ensure the calling user is authorized to send as senderEmail
-    if (!isCallingUserAdmin && callingUserEmail !== senderEmail) {
+    // CRITICAL SECURITY CHECK: Ensure the calling entity is authorized to send as senderEmail
+    // Allowed if:
+    // 1. A valid user token is present AND (the user is an admin OR the user's email matches senderEmail)
+    // 2. NO valid user token is present (implying an internal service call with service_role_key) AND senderEmail is an admin email.
+    if (
+        (isUserTokenValid && (!isCallingUserAdmin && callingUserEmail !== senderEmail)) ||
+        (!isUserTokenValid && !adminEmails.includes(senderEmail)) 
+    ) {
         return new Response(JSON.stringify({ 
             error: `Forbidden: You are not authorized to send emails as ${senderEmail}.` 
         }), {
