@@ -208,7 +208,7 @@ interface DropboxResult {
   voiceMemoUploadSuccess: boolean;
   voiceMemoUploadError: string | null;
   summaryUploadSuccess: boolean;
-  summaryUploadError: string | null;
+  summaryUploadError: boolean;
   parentFolderUsed: string;
   folderNameUsed: string;
   logicFileNameUsed: string;
@@ -216,6 +216,7 @@ interface DropboxResult {
 
 // Function to get a new access token using the refresh token
 async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
+  console.log('Attempting to get Dropbox access token...');
   if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
     throw new Error('Dropbox credentials not fully configured in Supabase secrets');
   }
@@ -239,11 +240,13 @@ async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
   }
   
   const tokenData = await response.json();
+  console.log('Dropbox access token obtained.');
   return tokenData.access_token;
 }
 
 // Helper function to create a fallback reference file
 async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFolderPath: string, youtubeLink: string, mp3FileName: string) {
+  console.log('Creating fallback reference file...');
   try {
     const textContent = `YouTube Reference Link: ${youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
     const textEncoder = new TextEncoder();
@@ -270,7 +273,9 @@ async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFo
       const errorText = await dropboxUploadResponse.text();
       throw new Error(`Dropbox reference text upload error: ${dropboxUploadResponse.status} - ${errorText}`);
     }
+    console.log('Fallback reference file created successfully.');
   } catch (error) {
+    console.error('Error creating fallback reference file:', error);
     throw error;
   }
 }
@@ -289,7 +294,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     voiceMemoUploadSuccess: false,
     voiceMemoUploadError: null,
     summaryUploadSuccess: false,
-    summaryUploadError: null,
+    summaryUploadError: false,
     parentFolderUsed: '',
     folderNameUsed: '',
     logicFileNameUsed: '',
@@ -299,13 +304,15 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   
   if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
     result.dropboxError = 'Dropbox credentials not configured';
+    console.error(result.dropboxError);
     return result;
   }
 
   try {
     dropboxAccessToken = await getDropboxAccessToken(config);
-  } catch (error) {
+  } catch (error: any) {
     result.dropboxError = `Dropbox token error: ${error.message}`;
+    console.error(result.dropboxError);
     return result;
   }
 
@@ -350,6 +357,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   result.dropboxFolderPath = fullPath;
 
   // 1. Create Folder
+  console.log('Attempting to create Dropbox folder:', fullPath);
   try {
     const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
       method: 'POST',
@@ -363,7 +371,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     });
     
     if (parentCheckResponse.ok) {
-      // Parent folder exists
+      console.log('Parent folder exists.');
     } else {
       const parentErrorText = await parentCheckResponse.text();
       throw new Error(`Parent folder check failed: ${parentCheckResponse.status} - ${parentErrorText}`);
@@ -384,12 +392,14 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     if (dropboxResponse.ok) {
       const dropboxData = await dropboxResponse.json();
       result.dropboxFolderId = dropboxData.metadata.id;
+      console.log('Dropbox folder created successfully with ID:', result.dropboxFolderId);
     } else {
       const errorText = await dropboxResponse.text();
       // Handle conflict (folder already exists)
       try {
         const errorObj = JSON.parse(errorText);
         if (errorObj.error_summary && errorObj.error_summary.includes('path/conflict')) {
+          console.warn('Dropbox folder already exists, attempting to retrieve metadata.');
           const listResponse = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
             method: 'POST',
             headers: {
@@ -404,26 +414,33 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
           if (listResponse.ok) {
             const listData = await listResponse.json();
             result.dropboxFolderId = listData.id;
+            console.log('Retrieved existing Dropbox folder ID:', result.dropboxFolderId);
           } else {
-            result.dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+            result.dropboxError = `Dropbox API error (conflict, metadata fetch failed): ${listResponse.status} - ${await listResponse.text()}`;
+            console.error(result.dropboxError);
           }
         } else {
-          result.dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+          result.dropboxError = `Dropbox API error (create folder): ${dropboxResponse.status} - ${errorText}`;
+          console.error(result.dropboxError);
         }
       } catch (parseError) {
-        result.dropboxError = `Dropbox API error: ${dropboxResponse.status} - ${errorText}`;
+        result.dropboxError = `Dropbox API error (create folder, parse error): ${dropboxResponse.status} - ${errorText}`;
+        console.error(result.dropboxError);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     result.dropboxError = `Dropbox folder creation error: ${error.message}`;
+    console.error(result.dropboxError);
     return result;
   }
 
   if (!result.dropboxFolderId) {
+    console.error('No Dropbox folder ID available, skipping subsequent Dropbox operations.');
     return result;
   }
 
   // 2. Copy Logic Pro X template file
+  console.log('Attempting to copy Logic Pro X template...');
   if (config.templateFilePath) {
     try {
       const newFileName = `${logicFileName}.logicx`;
@@ -444,16 +461,22 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       
       if (copyResponse.ok) {
         result.templateCopySuccess = true;
+        console.log('Logic Pro X template copied successfully.');
       } else {
         const errorText = await copyResponse.text();
         result.templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
+        console.error(result.templateCopyError);
       }
-    } catch (error) {
+    } catch (error: any) {
       result.templateCopyError = `Template copy error: ${error.message}`;
+      console.error(result.templateCopyError);
     }
+  } else {
+    console.log('No templateFilePath configured, skipping template copy.');
   }
 
   // 3. Download YouTube video as MP3 and upload to Dropbox
+  console.log('Attempting YouTube MP3 download and upload...');
   if (sanitizedData.youtubeLink) {
     try {
       const mp3FileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
@@ -465,6 +488,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       }
       
       if (!config.rapidApiKey) {
+        console.warn('RapidAPI key not configured, creating fallback reference text file for YouTube link.');
         await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
         result.youtubeMp3Success = true;
         result.youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to missing API key';
@@ -505,21 +529,25 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
               
               if (dropboxUploadResponse.ok) {
                 result.youtubeMp3Success = true;
+                console.log('YouTube MP3 uploaded successfully.');
               } else {
                 const errorText = await dropboxUploadResponse.text();
                 result.youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+                console.error(result.youtubeMp3Error);
                 await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
                 result.youtubeMp3Success = true;
                 result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
               }
             } else {
               result.youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
+              console.error(result.youtubeMp3Error);
               await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
               result.youtubeMp3Success = true;
               result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
             }
           } else {
             result.youtubeMp3Error = 'No download URL found in API response';
+            console.error(result.youtubeMp3Error);
             await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
             result.youtubeMp3Success = true;
             result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
@@ -531,24 +559,30 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
           } else {
             result.youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
           }
+          console.error(result.youtubeMp3Error);
           await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
           result.youtubeMp3Success = true;
           result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
         }
       }
-    } catch (apiError) {
+    } catch (apiError: any) {
       result.youtubeMp3Error = `YouTube MP3 processing error: ${apiError.message}`;
+      console.error(result.youtubeMp3Error);
       try {
         const mp3FileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
         await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
         result.youtubeMp3Success = true;
         result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
-      } catch (fallbackError) {
+      } catch (fallbackError: any) {
+        console.error('Error creating YouTube fallback reference file:', fallbackError);
       }
     }
+  } else {
+    console.log('No YouTube link provided, skipping YouTube MP3 download.');
   }
 
   // 4. Upload PDF to Dropbox folder if provided
+  console.log('Attempting PDF upload...');
   if (sanitizedData.sheetMusicUrl) {
     try {
       const pdfResponse = await fetch(sanitizedData.sheetMusicUrl);
@@ -578,16 +612,22 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       
       if (dropboxUploadResponse.ok) {
         result.pdfUploadSuccess = true;
+        console.log('PDF uploaded successfully.');
       } else {
         const errorText = await dropboxUploadResponse.text();
         result.pdfUploadError = `Dropbox PDF upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        console.error(result.pdfUploadError);
       }
-    } catch (error) {
+    } catch (error: any) {
       result.pdfUploadError = `PDF upload error: ${error.message}`;
+      console.error(result.pdfUploadError);
     }
+  } else {
+    console.log('No sheetMusicUrl provided, skipping PDF upload.');
   }
 
   // 5. Upload voice memo to Dropbox folder if provided
+  console.log('Attempting voice memo upload...');
   if (sanitizedData.voiceMemoFileUrl) {
     try {
       const voiceMemoResponse = await fetch(sanitizedData.voiceMemoFileUrl);
@@ -618,16 +658,22 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       
       if (dropboxUploadResponse.ok) {
         result.voiceMemoUploadSuccess = true;
+        console.log('Voice memo uploaded successfully.');
       } else {
         const errorText = await dropboxUploadResponse.text();
         result.voiceMemoUploadError = `Dropbox voice memo upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+        console.error(result.voiceMemoUploadError);
       }
-    } catch (error) {
+    } catch (error: any) {
       result.voiceMemoUploadError = `Voice memo upload error: ${error.message}`;
+      console.error(result.voiceMemoUploadError);
     }
+  } else {
+    console.log('No voiceMemoFileUrl provided, skipping voice memo upload.');
   }
 
   // 6. Create and upload order summary text file
+  console.log('Creating and uploading order summary...');
   try {
     const summaryContent = createOrderSummary(sanitizedData);
     const textEncoder = new TextEncoder();
@@ -653,12 +699,15 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     
     if (dropboxUploadResponse.ok) {
       result.summaryUploadSuccess = true;
+      console.log('Order summary uploaded successfully.');
     } else {
       const errorText = await dropboxUploadResponse.text();
       result.summaryUploadError = `Dropbox order summary upload error: ${dropboxUploadResponse.status} - ${errorText}`;
+      console.error(result.summaryError);
     }
-  } catch (error) {
+  } catch (error: any) {
     result.summaryUploadError = `Order summary upload error: ${error.message}`;
+    console.error(result.summaryError);
   }
 
   return result;
@@ -730,6 +779,7 @@ serve(async (req) => {
           userName = user.user_metadata?.full_name || null;
         }
       } catch (authError) {
+        console.warn('Authentication failed for incoming request:', authError.message);
         // Ignore auth errors if the request is anonymous
       }
     }
@@ -737,7 +787,7 @@ serve(async (req) => {
     let requestBody;
     try {
       requestBody = await req.json();
-    } catch (parseError) {
+    } catch (parseError: any) {
       const rawBody = await req.text();
       throw new Error(`Invalid JSON in request body: ${parseError.message}. Raw body: ${rawBody.substring(0, 200)}...`);
     }
@@ -829,6 +879,7 @@ serve(async (req) => {
       .select();
 
     if (insertError) {
+      console.error('Supabase insert error:', insertError);
       throw insertError;
     }
 
@@ -840,7 +891,7 @@ serve(async (req) => {
     // --- 6. Email Notifications ---
     const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
     const clientTrackViewLink = `${siteUrl}/track/${newRequestData.id}?token=${guestAccessToken}`;
-    const firstName = userName ? userName.split(' ')[0] : 'there';
+    const clientFirstName = userName ? userName.split(' ')[0] : 'there';
 
     // --- Client Confirmation Email ---
     const clientEmailSubject = `Confirmation: Your Backing Track Request for "${sanitizedData.songTitle}"`;
@@ -848,7 +899,7 @@ serve(async (req) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <h2 style="color: #1C0357;">Request Submitted Successfully!</h2>
         
-        <p>Hi ${firstName},</p>
+        <p>Hi ${clientFirstName},</p>
         <p>Thank you for submitting your custom piano backing track request for <strong>"${sanitizedData.songTitle}"</strong> from <strong>${sanitizedData.musicalOrArtist}</strong>.</p>
         <p>We have received your request and will be in touch within <strong>24-48 hours</strong> with a quote and estimated delivery date.</p>
         
@@ -888,19 +939,39 @@ serve(async (req) => {
       ${EMAIL_SIGNATURE_HTML}
     `;
     
-    await fetch(sendEmailUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseServiceKey}`
-      },
-      body: JSON.stringify({
-        to: sanitizedData.email,
-        subject: clientEmailSubject,
-        html: clientEmailHtml,
-        senderEmail: defaultSenderEmail
-      })
-    });
+    try {
+      console.log('Sending client confirmation email...');
+      await fetch(sendEmailUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({
+          to: sanitizedData.email,
+          subject: clientEmailSubject,
+          html: clientEmailHtml,
+          senderEmail: defaultSenderEmail
+        })
+      });
+      console.log('Client confirmation email sent successfully.');
+    } catch (emailError: any) {
+      console.error('Failed to send client confirmation email:', emailError);
+      // Log notification failure to database
+      await supabaseAdmin
+        .from('notifications')
+        .insert([
+          {
+            recipient: sanitizedData.email,
+            sender: defaultSenderEmail,
+            subject: clientEmailSubject,
+            content: clientEmailHtml,
+            status: 'failed',
+            type: 'client_confirmation',
+            error_message: emailError.message
+          }
+        ]);
+    }
 
     // --- Admin Notification Email ---
     const adminEmailSubject = `New Backing Track Request: ${sanitizedData.songTitle}`;
@@ -963,19 +1034,39 @@ serve(async (req) => {
       ${EMAIL_SIGNATURE_HTML}
     `;
     
-    await fetch(sendEmailUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseServiceKey}`
-      },
-      body: JSON.stringify({
-        to: defaultSenderEmail,
-        subject: adminEmailSubject,
-        html: adminEmailHtml,
-        senderEmail: defaultSenderEmail
-      })
-    });
+    try {
+      console.log('Sending admin notification email...');
+      await fetch(sendEmailUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        },
+        body: JSON.stringify({
+          to: defaultSenderEmail,
+          subject: adminEmailSubject,
+          html: adminEmailHtml,
+          senderEmail: defaultSenderEmail
+        })
+      });
+      console.log('Admin notification email sent successfully.');
+    } catch (emailError: any) {
+      console.error('Failed to send admin notification email:', emailError);
+      // Log notification failure to database
+      await supabaseAdmin
+        .from('notifications')
+        .insert([
+          {
+            recipient: defaultSenderEmail,
+            sender: defaultSenderEmail,
+            subject: adminEmailSubject,
+            content: adminEmailHtml,
+            status: 'failed',
+            type: 'admin_notification',
+            error_message: emailError.message
+          }
+        ]);
+    }
 
     // --- 7. Final Response ---
     const responsePayload: any = { 
@@ -996,7 +1087,8 @@ serve(async (req) => {
         status: 200
       }
     );
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error in create-backing-request function (top level catch):', error);
     return new Response(
       JSON.stringify({ 
         error: error.message 
