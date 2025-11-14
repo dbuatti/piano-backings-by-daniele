@@ -2,10 +2,19 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-// @ts-ignore
-// import { calculateRequestCost, sanitizeString, validateEmail, validateUrl } from './utils.ts'; // Removed import
-// @ts-ignore
-// import { handleDropboxAutomation } from './dropbox.ts'; // Removed import
+
+// Declare Deno namespace for TypeScript
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
+// Setup CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 // --- Pricing Logic (inlined from utils.ts) ---
 const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
@@ -655,12 +664,6 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   return result;
 }
 
-// Setup CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 // HTML Email signature template (Defined locally for Deno compatibility)
 const EMAIL_SIGNATURE_HTML = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -691,13 +694,6 @@ const EMAIL_SIGNATURE_HTML = `
   </table>
 </div>
 `;
-
-// Declare Deno namespace for TypeScript
-declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
