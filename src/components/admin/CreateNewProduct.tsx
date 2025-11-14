@@ -613,7 +613,6 @@ const CreateNewProduct: React.FC = () => {
                 />
                 <Label htmlFor="is_active">Active in Shop</Label>
               </div>
-            </div>
             <div className="flex justify-end mt-6">
               <Button
                 onClick={handleCreateProduct}
@@ -636,7 +635,6 @@ const CreateNewProduct: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </Card>
   );
 };
 
