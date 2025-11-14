@@ -310,13 +310,20 @@ const FormPage = () => {
           const fileName = `sheet-music-${Date.now()}.${fileExt}`;
           
           console.log('Uploading sheet music file:', fileName);
-          const { data: uploadData, error: uploadError } = await supabase
+          const uploadPromise = supabase
             .storage
             .from('sheet-music')
             .upload(fileName, formData.sheetMusic, {
               cacheControl: '3600',
-              upsert: false
+              upsert: false,
+              contentType: formData.sheetMusic.type, // Ensure content type is set
             });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Sheet music upload timed out after 30 seconds.')), 30000)
+          );
+
+          const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
           
           if (uploadError) {
             console.error('Storage upload error (sheet music):', uploadError);
@@ -351,13 +358,20 @@ const FormPage = () => {
           const fileName = `voice-memo-${Date.now()}.${fileExt}`;
           
           console.log('Uploading voice memo file:', fileName);
-          const { data: uploadData, error: uploadError } = await supabase
+          const uploadPromise = supabase
             .storage
             .from('voice-memos')
             .upload(fileName, formData.voiceMemoFile, {
               cacheControl: '3600',
-              upsert: false
+              upsert: false,
+              contentType: formData.voiceMemoFile.type, // Ensure content type is set
             });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Voice memo upload timed out after 30 seconds.')), 30000)
+          );
+
+          const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
           
           if (uploadError) {
             console.error('Voice memo upload error:', uploadError);
