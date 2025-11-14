@@ -72,6 +72,7 @@ serve(async (req) => {
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '');
+        // Attempt to get user from token. This will fail for service_role_key, which is expected for internal calls.
         const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
         
         if (!userError && user) {
@@ -86,6 +87,17 @@ serve(async (req) => {
         console.warn('Error during user token verification:', authError.message);
       }
     }
+
+    // --- DEBUG LOGGING FOR AUTHORIZATION ---
+    console.log('--- Auth Debug Info ---');
+    console.log(`isUserTokenValid: ${isUserTokenValid}`);
+    console.log(`callingUserEmail: ${callingUserEmail}`);
+    console.log(`isCallingUserAdmin: ${isCallingUserAdmin}`);
+    console.log(`senderEmail (from request body): ${senderEmail}`);
+    console.log(`adminEmails (from env): ${JSON.stringify(adminEmails)}`);
+    console.log(`adminEmails.includes(senderEmail): ${adminEmails.includes(senderEmail)}`);
+    console.log('-----------------------');
+    // --- END DEBUG LOGGING ---
 
     // CRITICAL SECURITY CHECK: Ensure the calling entity is authorized to send as senderEmail
     // Allowed if:
