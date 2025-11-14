@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -272,7 +272,7 @@ const RepurposeTrackToShop: React.FC = () => {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const handleVocalRangeChange = (range: string, checked: boolean | 'indeterminate') => {
+  const handleVocalRangeChange = useCallback((range: string, checked: boolean | 'indeterminate') => {
     setProductForm(prev => {
       const newRanges = checked
         ? [...prev.vocal_ranges, range]
@@ -280,7 +280,7 @@ const RepurposeTrackToShop: React.FC = () => {
       setFormErrors(prevErrors => ({ ...prevErrors, vocal_ranges: '' }));
       return { ...prev, vocal_ranges: newRanges };
     });
-  };
+  }, [setProductForm, setFormErrors]);
 
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {

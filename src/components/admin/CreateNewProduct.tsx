@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -85,7 +85,7 @@ const CreateNewProduct: React.FC = () => {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const handleVocalRangeChange = (range: string, checked: boolean | 'indeterminate') => {
+  const handleVocalRangeChange = useCallback((range: string, checked: boolean | 'indeterminate') => {
     setProductForm(prev => {
       const newRanges = checked
         ? [...prev.vocal_ranges, range]
@@ -93,7 +93,7 @@ const CreateNewProduct: React.FC = () => {
       setFormErrors(prevErrors => ({ ...prevErrors, vocal_ranges: '' }));
       return { ...prev, vocal_ranges: newRanges };
     });
-  };
+  }, [setProductForm, setFormErrors]);
 
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
@@ -170,6 +170,7 @@ const CreateNewProduct: React.FC = () => {
   };
 
   const validateForm = () => {
+    console.log('validateForm called');
     const errors: Record<string, string> = {};
     if (!productForm.title.trim()) errors.title = 'Title is required.';
     if (!productForm.description.trim()) errors.description = 'Description is required.';
@@ -179,6 +180,8 @@ const CreateNewProduct: React.FC = () => {
     if (!productForm.category.trim()) errors.category = 'Category is required.';
     if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
+    console.log('Validating track_urls:', productForm.track_urls);
+
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
       if (!track.url && !track.file) { // Require either URL or file
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`
@@ -204,7 +207,7 @@ const CreateNewProduct: React.FC = () => {
         .from('products')
         .insert([{
           ...fieldsToCreate,
-          track_urls: tracksToSave,
+          track_urls: tracksToSave, // This is the array being inserted
         }])
         .select();
       
@@ -529,108 +532,110 @@ const CreateNewProduct: React.FC = () => {
                       <MinusCircle className="h-4 w-4" /> Remove
                     </Button>
                   </div>
-                  
-                  <div>
-                    <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
-                    <Input
-                      id={`track-url-${index}`}
-                      name={`track_urls[${index}].url`}
-                      value={track.url || ''}
-                      onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
-                      placeholder="https://example.com/track.mp3"
-                      className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
-                      disabled={!!track.file} // Disable if a file is selected
-                    />
-                    {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
-                  </div>
-                  
-                  {/* Replaced FileInput with standard input for audio upload */}
-                  <div className="space-y-1">
-                    <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
-                          <FileAudio className="mr-1" size={14} />
-                          Upload Audio File (Optional)
-                        </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id={`track-file-upload-${index}`}
-                        type="file"
-                        accept="audio/*"
-                        onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
-                        className="flex-1"
-                        disabled={!!track.url} // Disable if a URL is entered
-                      />
-                    </div>
-                    {track.file && (
-                      <p className="text-xs text-gray-500 mt-1">Selected: {track.file.name}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">Upload an audio file (e.g., MP3) for this track. This will override any URL above.</p>
-                  </div>
+                      
+                      <div>
+                        <Label htmlFor={`track-url-${index}`} className="text-xs text-gray-500">URL (Optional, if uploading file)</Label>
+                        <Input
+                          id={`track-url-${index}`}
+                          name={`track_urls[${index}].url`}
+                          value={track.url || ''}
+                          onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
+                          placeholder="https://example.com/track.mp3"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
+                          disabled={!!track.file} // Disable if a file is selected
+                        />
+                        {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
+                      </div>
+                      
+                      {/* Replaced FileInput with standard input for audio upload */}
+                      <div className="space-y-1">
+                        <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
+                              <FileAudio className="mr-1" size={14} />
+                              Upload Audio File (Optional)
+                            </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`track-file-upload-${index}`}
+                            type="file"
+                            accept="audio/*"
+                            onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
+                            className="flex-1"
+                            disabled={!!track.url} // Disable if a URL is entered
+                          />
+                        </div>
+                        {track.file && (
+                          <p className="text-xs text-gray-500 mt-1">Selected: {track.file.name}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Upload an audio file (e.g., MP3) for this track. This will override any URL above.</p>
+                      </div>
 
-                  <div>
-                    <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
-                    <Input
-                      id={`track-caption-${index}`}
-                      name={`track_urls[${index}].caption`}
-                      value={track.caption} // Caption is now always a string
-                      onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
-                      placeholder="Track Caption (e.g., Main Mix, Instrumental)"
-                      className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
-                    />
-                    {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
+                      <div>
+                        <Label htmlFor={`track-caption-${index}`} className="text-xs text-gray-500">Caption</Label>
+                        <Input
+                          id={`track-caption-${index}`}
+                          name={`track_urls[${index}].caption`}
+                          value={track.caption} // Caption is now always a string
+                          onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
+                          placeholder="Track Caption (e.g., Main Mix, Instrumental)"
+                          className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                        />
+                        {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <FileInput
+                  id="product-image-upload"
+                  label="Product Image (optional)"
+                  icon={UploadCloud}
+                  accept="image/*"
+                  onChange={handleImageFileChange}
+                  note="Upload a cover image for your product. If left empty, a text-based image will be generated."
+                  error={formErrors.image_url}
+                />
+                {productForm.image_url && (
+                  <div className="mt-2">
+                    <Label className="text-xs text-gray-500">Image Preview:</Label>
+                    <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
                   </div>
-                </Card>
-              ))}
+                )}
+                {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_active"
+                  name="is_active"
+                  checked={productForm.is_active}
+                  onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
+                />
+                <Label htmlFor="is_active">Active in Shop</Label>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <Button
+                onClick={handleCreateProduct}
+                disabled={createProductMutation.isPending}
+                className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+              >
+                {createProductMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Add Product
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add to Shop
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-
-          <div>
-            <FileInput
-              id="product-image-upload"
-              label="Product Image (optional)"
-              icon={UploadCloud}
-              accept="image/*"
-              onChange={handleImageFileChange}
-              note="Upload a cover image for your product. If left empty, a text-based image will be generated."
-              error={formErrors.image_url}
-            />
-            {productForm.image_url && (
-              <div className="mt-2">
-                <Label className="text-xs text-gray-500">Image Preview:</Label>
-                <img src={productForm.image_url} alt="Product Preview" className="mt-1 h-24 w-auto object-cover rounded-md border" />
-              </div>
-            )}
-            {formErrors.image_url && <p className="text-red-500 text-xs mt-1">{formErrors.image_url}</p>}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_active"
-              name="is_active"
-              checked={productForm.is_active}
-              onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked as boolean }))}
-            />
-            <Label htmlFor="is_active">Active in Shop</Label>
-          </div>
-        </div>
-        <div className="flex justify-end mt-6">
-          <Button
-            onClick={handleCreateProduct}
-            disabled={createProductMutation.isPending}
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-          >
-            {createProductMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Add Product
-              </>
-            ) : (
-              <>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add to Shop
-              </>
-            )}
-          </Button>
-        </div>
-      </CardContent>
+        </CardContent>
+      </Card>
     </Card>
   );
 };
