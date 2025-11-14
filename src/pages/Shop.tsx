@@ -287,60 +287,7 @@ const Shop = () => {
             </div>
           </div>
           
-          {/* PROMINENT VOCAL RANGE FILTER */}
-          <div className="w-full md:w-[180px]">
-            <Label htmlFor="vocal-range-filter-main" className="text-sm font-medium text-gray-700 mb-1 block">Filter by Vocal Range</Label>
-            <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
-              <SelectTrigger id="vocal-range-filter-main" className="border border-gray-300"> {/* Added border */}
-                <SelectValue placeholder="All Ranges" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Ranges</SelectItem>
-                <SelectItem value="Soprano">Soprano</SelectItem>
-                <SelectItem value="Alto">Alto</SelectItem>
-                <SelectItem value="Tenor">Tenor</SelectItem>
-                <SelectItem value="Bass">Bass</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Category Filter (moved out of sheet) */}
-          <div className="w-full md:w-[180px]">
-            <Label htmlFor="category-filter-main" className="text-sm font-medium text-gray-700 mb-1 block">Filter by Category</Label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger id="category-filter-main" className="border border-gray-300">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="full-song">Full Song</SelectItem>
-                <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                <SelectItem value="note-bash">Note Bash</SelectItem>
-                <SelectItem value="general">General</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sort Option (moved out of sheet) */}
-          <div className="w-full md:w-[180px]">
-            <Label htmlFor="sort-option-main" className="text-sm font-medium text-gray-700 mb-1 block">Sort By</Label>
-            <Select value={sortOption} onValueChange={setSortOption}>
-              <SelectTrigger id="sort-option-main" className="border border-gray-300">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="category_asc">Category: A-Z</SelectItem>
-                <SelectItem value="created_at_desc">Newest First</SelectItem>
-                <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-                <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
+          {/* More Filters Sheet Trigger */}
           <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300"> {/* Added border */}
@@ -350,12 +297,66 @@ const Shop = () => {
             </SheetTrigger>
             <SheetContent>
               <SheetHeader>
-                <SheetTitle>Advanced Filters</SheetTitle>
+                <SheetTitle>Advanced Filters & Sorting</SheetTitle>
                 <SheetDescription>
-                  Refine your search results by price.
+                  Refine your search results and change sorting options.
                 </SheetDescription>
               </SheetHeader>
               <div className="py-6 space-y-6">
+                {/* VOCAL RANGE FILTER */}
+                <div>
+                  <Label htmlFor="vocal-range-filter-sheet" className="mb-2 block">Filter by Vocal Range</Label>
+                  <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
+                    <SelectTrigger id="vocal-range-filter-sheet" className="border border-gray-300">
+                      <SelectValue placeholder="All Ranges" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Ranges</SelectItem>
+                      <SelectItem value="Soprano">Soprano</SelectItem>
+                      <SelectItem value="Alto">Alto</SelectItem>
+                      <SelectItem value="Tenor">Tenor</SelectItem>
+                      <SelectItem value="Bass">Bass</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Category Filter */}
+                <div>
+                  <Label htmlFor="category-filter-sheet" className="mb-2 block">Filter by Category</Label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger id="category-filter-sheet" className="border border-gray-300">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="full-song">Full Song</SelectItem>
+                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                      <SelectItem value="note-bash">Note Bash</SelectItem>
+                      <SelectItem value="general">General</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sort Option */}
+                <div>
+                  <Label htmlFor="sort-option-sheet" className="mb-2 block">Sort By</Label>
+                  <Select value={sortOption} onValueChange={setSortOption}>
+                    <SelectTrigger id="sort-option-sheet" className="border border-gray-300">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="category_asc">Category: A-Z</SelectItem>
+                      <SelectItem value="created_at_desc">Newest First</SelectItem>
+                      <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                      <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                      <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                      <SelectItem value="title_desc">Title: Z-A</SelectItem>
+                      <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+                      <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* PRICE RANGE FILTER */}
                 <div>
                   <Label htmlFor="price-range" className="mb-2 block">Price Range: ${priceRange[0].toFixed(2)} - ${priceRange[1].toFixed(2)}</Label>
