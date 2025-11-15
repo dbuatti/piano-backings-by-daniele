@@ -237,10 +237,14 @@ const RequestDetails = () => {
 
   const handleFinalPriceBlur = async () => {
     const parsedPrice = editableFinalPrice.trim() === '' ? null : parseFloat(editableFinalPrice);
-    const currentFinalPrice = request?.final_price !== null ? request?.final_price : calculateRequestCost(request!).totalCost;
+    const currentFinalPrice = request?.final_price; // Use the actual stored final_price
 
-    if (parsedPrice !== currentFinalPrice) { // Only update if value changed
+    // Only update if the parsed price is different from the stored price
+    if (parsedPrice !== currentFinalPrice) {
       await handleUpdateFinalPrice(parsedPrice);
+    } else {
+      // If the value is the same, just ensure the input displays the formatted value
+      setEditableFinalPrice(currentFinalPrice !== null ? currentFinalPrice.toFixed(2) : '');
     }
   };
 
