@@ -20,45 +20,55 @@ import {
   Youtube,
   Target,
   Mail,
-  Mic, // Added Mic icon
-  Headphones, // Added Headphones icon
-  Sparkles, // Added Sparkles icon
-  MessageSquare, // New icon for special requests
-  Plane, // Added Plane icon for holiday mode
-  CheckCircle, // Added CheckCircle for success message
-  Phone
+  Mic,
+  Headphones,
+  Sparkles,
+  MessageSquare,
+  Plane,
+  CheckCircle,
+  Phone,
+  XCircle, // Import XCircle for closure banner
+  Loader2 // Import Loader2
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { useNavigate, useLocation, Link } from 'react-router-dom'; // Import Link
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn } from "@/lib/utils"; // Import cn for conditional classNames
-import FileInput from "@/components/FileInput"; // Import the new FileInput component
-import AccountPromptCard from '@/components/AccountPromptCard'; // Import the new AccountPromptCard
-import { useHolidayMode } from '@/hooks/useHolidayMode'; // Import useHolidayMode
+import { cn } from "@/lib/utils";
+import FileInput from "@/components/FileInput";
+import AccountPromptCard from '@/components/AccountPromptCard';
+import { useAppSettings } from '@/hooks/useAppSettings'; // Use the renamed hook
 import { format } from 'date-fns';
-import Seo from "@/components/Seo"; // Import Seo component
+import Seo from "@/components/Seo";
 
 const FormPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false); // New state for success message
-  const [showAccountPrompt, setShowAccountPrompt] = useState(false); // State to control visibility of the new card
+  const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false); // New state for admin status
+  const [isAdmin, setIsAdmin] = useState(false);
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
   const [loadingTrackCount, setLoadingTrackCount] = useState(true);
-  const { isHolidayModeActive, holidayReturnDate, isLoading: isLoadingHolidayMode } = useHolidayMode(); // Use the hook
+  
+  // Use the new hook and destructure all relevant states
+  const { 
+    isHolidayModeActive, 
+    holidayReturnDate, 
+    isServiceClosed, 
+    closureReason, 
+    isLoading: isLoadingAppSettings 
+  } = useAppSettings();
 
   const [formData, setFormData] = useState({
     email: '',
-    confirmEmail: '', // New field for email confirmation
+    confirmEmail: '',
     name: '',
-    phone: '', // New field for phone number
+    phone: '',
     songTitle: '',
     musicalOrArtist: '',
     songKey: '',
@@ -68,16 +78,16 @@ const FormPage = () => {
     voiceMemoFile: null as File | null,
     sheetMusic: null as File | null,
     youtubeLink: '',
-    additionalLinks: '', // New field for additional links
-    backingType: [] as string[], // Changed to array for multi-select
+    additionalLinks: '',
+    backingType: [] as string[],
     deliveryDate: '',
     additionalServices: [] as string[],
     specialRequests: '',
     category: '',
     trackType: ''
   });
-  const [errors, setErrors] = useState<Record<string, string>>({}); // State for validation errors
-  const [consentChecked, setConsentChecked] = useState(false); // New state for consent checkbox
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [consentChecked, setConsentChecked] = useState(false);
 
   // Refs for scrolling to errors
   const formRefs = {
@@ -85,12 +95,12 @@ const FormPage = () => {
     confirmEmail: React.useRef<HTMLInputElement>(null),
     songTitle: React.useRef<HTMLInputElement>(null),
     musicalOrArtist: React.useRef<HTMLInputElement>(null),
-    category: React.useRef<HTMLDivElement>(null), // Select component
-    trackType: React.useRef<HTMLDivElement>(null), // RadioGroup component
-    songKey: React.useRef<HTMLDivElement>(null), // Select component
-    backingType: React.useRef<HTMLDivElement>(null), // Checkbox group
-    sheetMusic: React.useRef<HTMLDivElement>(null), // FileInput component
-    consent: React.useRef<HTMLDivElement>(null), // Checkbox div
+    category: React.useRef<HTMLDivElement>(null),
+    trackType: React.useRef<HTMLDivElement>(null),
+    songKey: React.useRef<HTMLDivElement>(null),
+    backingType: React.useRef<HTMLDivElement>(null),
+    sheetMusic: React.useRef<HTMLDivElement>(null),
+    consent: React.useRef<HTMLDivElement>(null),
   };
 
   // Check user session on component mount
@@ -102,16 +112,15 @@ const FormPage = () => {
         setFormData(prev => ({
           ...prev,
           email: session.user.email || '',
-          confirmEmail: session.user.email || '', // Pre-fill confirm email too
+          confirmEmail: session.user.email || '',
           name: session.user.user_metadata?.full_name || ''
         }));
-        // Check if user is admin
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         setIsAdmin(adminEmails.includes(session.user.email));
-        setShowAccountPrompt(false); // Hide prompt if logged in
+        setShowAccountPrompt(false);
       } else {
-        setIsAdmin(false); // Ensure isAdmin is false if no session
-        setShowAccountPrompt(true); // Show prompt if not logged in
+        setIsAdmin(false);
+        setShowAccountPrompt(true);
       }
     };
     checkUser();
@@ -123,7 +132,6 @@ const FormPage = () => {
       const id = location.hash.replace('#', '');
       const element = document.getElementById(id);
       if (element) {
-        // Use a small timeout to ensure the element is rendered
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -145,7 +153,7 @@ const FormPage = () => {
         setIncompleteTracksCount(count);
       } catch (error: any) {
         console.error('Error fetching incomplete track count:', error);
-        setIncompleteTracksCount(0); // Default to 0 on error
+        setIncompleteTracksCount(0);
         toast({
           title: "Error",
           description: `Failed to load current track queue: ${error.message}`,
@@ -161,11 +169,11 @@ const FormPage = () => {
 
   const getWaitTimeMessage = () => {
     if (incompleteTracksCount === null || loadingTrackCount) {
-      return null; // Or a loading indicator
+      return null;
     }
 
     if (incompleteTracksCount === 0) {
-      return null; // No notice if 0 pending tracks
+      return null;
     } else if (incompleteTracksCount >= 7) {
       return "3 week wait";
     } else if (incompleteTracksCount >= 4) {
@@ -181,18 +189,17 @@ const FormPage = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' })); // Clear error on change
+    setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' })); // Clear error on change
+    setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  // Updated handler for the new FileInput component
   const handleFileInputChange = (file: File | null, fieldName: string) => {
     setFormData(prev => ({ ...prev, [fieldName]: file }));
-    setErrors(prev => ({ ...prev, [fieldName]: '' })); // Clear error on change
+    setErrors(prev => ({ ...prev, [fieldName]: '' }));
   };
 
   const handleCheckboxChange = (service: string) => {
@@ -204,7 +211,6 @@ const FormPage = () => {
     });
   };
 
-  // New handler for multi-select backing types
   const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
     setFormData(prev => {
       const newBackingTypes = checked
@@ -212,15 +218,15 @@ const FormPage = () => {
         : prev.backingType.filter(t => t !== type);
       return { ...prev, backingType: newBackingTypes };
     });
-    setErrors(prev => ({ ...prev, backingType: '' })); // Fix: Correctly clear error on change
+    setErrors(prev => ({ ...prev, backingType: '' }));
   };
 
   const fillDummyData = () => {
     setFormData({
       email: user?.email || 'test@example.com',
-      confirmEmail: user?.email || 'test@example.com', // Fill confirm email too
+      confirmEmail: user?.email || 'test@example.com',
       name: user?.user_metadata?.full_name || 'Test User',
-      phone: '0412345678', // Dummy phone number
+      phone: '0412345678',
       songTitle: 'Defying Gravity',
       musicalOrArtist: 'Wicked',
       songKey: 'C Major (0)',
@@ -229,17 +235,17 @@ const FormPage = () => {
       voiceMemo: '',
       voiceMemoFile: null,
       sheetMusic: null,
-      youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY', // Added a dummy YouTube link
-      additionalLinks: 'https://example.com/extra-reference', // Dummy additional link
-      backingType: ['full-song', 'audition-cut'], // Dummy multi-select
+      youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY',
+      additionalLinks: 'https://example.com/extra-reference',
+      backingType: ['full-song', 'audition-cut'],
       deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       additionalServices: ['rush-order'],
       specialRequests: 'Please make sure the tempo matches the reference exactly.',
       category: 'Practice Tracks',
       trackType: 'polished'
     });
-    setErrors({}); // Clear any existing errors
-    setConsentChecked(true); // Also check consent for dummy data
+    setErrors({});
+    setConsentChecked(true);
     
     toast({
       title: "Sample Data Filled",
@@ -260,27 +266,36 @@ const FormPage = () => {
       console.log('Submission prevented: Holiday Mode Active.');
       return;
     }
+    
+    if (isServiceClosed) {
+      toast({
+        title: "Service Closed",
+        description: "New requests cannot be submitted while the service is closed. Please check back later.",
+        variant: "destructive",
+      });
+      console.log('Submission prevented: Service Closed.');
+      return;
+    }
 
     setIsSubmitting(true);
     const newErrors: Record<string, string> = {};
 
     // Client-side validation
     if (!formData.email) newErrors.email = 'Email is required.';
-    if (formData.email !== formData.confirmEmail) newErrors.confirmEmail = 'Emails do not match.'; // New validation
+    if (formData.email !== formData.confirmEmail) newErrors.confirmEmail = 'Emails do not match.';
     if (!formData.songTitle) newErrors.songTitle = 'Song Title is required.';
     if (!formData.musicalOrArtist) newErrors.musicalOrArtist = 'Musical or Artist is required.';
     if (!formData.category) newErrors.category = 'Category is required.';
     if (!formData.trackType) newErrors.trackType = 'Track Type is required.';
-    if (!formData.songKey) newErrors.songKey = 'Sheet music key is required.'; // NEW: Make sheet music key required
+    if (!formData.songKey) newErrors.songKey = 'Sheet music key is required.';
     if (formData.backingType.length === 0) newErrors.backingType = 'At least one backing type is required.';
     if (!formData.sheetMusic) newErrors.sheetMusic = 'Sheet music is required. Please upload a PDF file.';
-    if (!consentChecked) newErrors.consent = 'You must agree to the terms to submit your request.'; // New consent validation
+    if (!consentChecked) newErrors.consent = 'You must agree to the terms to submit your request.';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
       
-      // Scroll to the first error
       const firstErrorField = Object.keys(newErrors)[0] as keyof typeof formRefs;
       if (formRefs[firstErrorField] && formRefs[firstErrorField].current) {
         formRefs[firstErrorField].current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -297,7 +312,6 @@ const FormPage = () => {
 
     try {
       console.log('Validation passed. Attempting to get Supabase session.');
-      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       console.log('Supabase session:', session);
       
@@ -316,11 +330,11 @@ const FormPage = () => {
             .upload(fileName, formData.sheetMusic, {
               cacheControl: '3600',
               upsert: false,
-              contentType: formData.sheetMusic.type, // Ensure content type is set
+              contentType: formData.sheetMusic.type,
             });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Sheet music upload timed out after 60 seconds.')), 60000) // Increased timeout
+            setTimeout(() => reject(new Error('Sheet music upload timed out after 60 seconds.')), 60000)
           );
 
           const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
@@ -330,11 +344,10 @@ const FormPage = () => {
             throw new Error(`File upload error: ${uploadError.message}`);
           }
           
-          // Get public URL for the uploaded file
           const { data: { publicUrl } } = supabase
             .storage
             .from('sheet-music')
-            .getPublicUrl(uploadData.path); // Use uploadData.path here
+            .getPublicUrl(uploadData.path);
           
           sheetMusicUrl = publicUrl;
           console.log('Sheet music uploaded successfully:', sheetMusicUrl);
@@ -345,7 +358,6 @@ const FormPage = () => {
             description: `Sheet music upload failed: ${uploadError.message}. Request will still be submitted.`,
             variant: "destructive",
           });
-          // Do NOT re-throw here, allow the form submission to continue without the sheet music URL
         }
       }
       
@@ -364,18 +376,17 @@ const FormPage = () => {
             .upload(fileName, formData.voiceMemoFile, {
               cacheControl: '3600',
               upsert: false,
-              contentType: formData.voiceMemoFile.type, // Ensure content type is set
+              contentType: formData.voiceMemoFile.type,
             });
 
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Voice memo upload timed out after 60 seconds.')), 60000) // Increased timeout
+            setTimeout(() => reject(new Error('Voice memo upload timed out after 60 seconds.')), 60000)
           );
 
           const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { data: { path: string } | null, error: any };
           
           if (uploadError) {
             console.error('Voice memo upload error:', uploadError);
-            // Show a more user-friendly error message
             if (uploadError.message.includes('Bucket not found')) {
               toast({
                 title: "Warning",
@@ -390,11 +401,10 @@ const FormPage = () => {
               });
             }
           } else {
-            // Get public URL for the uploaded file
             const { data: { publicUrl } } = supabase
               .storage
               .from('voice-memos')
-              .getPublicUrl(uploadData.path); // Use uploadData.path here
+              .getPublicUrl(uploadData.path);
             
             voiceMemoFileUrl = publicUrl;
             console.log('Voice memo uploaded successfully:', voiceMemoFileUrl);
@@ -406,7 +416,6 @@ const FormPage = () => {
             description: `Voice memo upload failed: ${uploadError.message}. Request will still be submitted.`,
             variant: "destructive",
           });
-          // Do NOT re-throw here, allow the form submission to continue without the voice memo URL
         }
       }
       
@@ -415,18 +424,18 @@ const FormPage = () => {
         formData: {
           email: formData.email,
           name: formData.name,
-          phone: formData.phone, // Include phone number
+          phone: formData.phone,
           songTitle: formData.songTitle,
           musicalOrArtist: formData.musicalOrArtist,
           songKey: formData.songKey,
           differentKey: formData.differentKey,
           keyForTrack: formData.keyForTrack,
           youtubeLink: formData.youtubeLink,
-          additionalLinks: formData.additionalLinks, // Include the new field
+          additionalLinks: formData.additionalLinks,
           voiceMemo: formData.voiceMemo,
           voiceMemoFileUrl: voiceMemoFileUrl,
           sheetMusicUrl: sheetMusicUrl,
-          backingType: formData.backingType, // Now an array
+          backingType: formData.backingType,
           deliveryDate: formData.deliveryDate,
           additionalServices: formData.additionalServices,
           specialRequests: formData.specialRequests,
@@ -441,7 +450,6 @@ const FormPage = () => {
         'Content-Type': 'application/json'
       };
       
-      // If a user is logged in, use their access token. Otherwise, use the anon key.
       if (session) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
         console.log('Using authenticated session token for Edge Function call.');
@@ -451,7 +459,6 @@ const FormPage = () => {
       }
       
       console.log('Attempting to call create-backing-request Edge Function.');
-      // Submit to Supabase function
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`,
         {
@@ -479,7 +486,6 @@ const FormPage = () => {
         throw new Error(result.error || `Failed to submit form: ${response.status} ${response.statusText}`);
       }
       
-      // Set success state to true
       setIsSubmittedSuccessfully(true);
       console.log('Form submitted successfully. Setting success state.');
       
@@ -498,23 +504,21 @@ const FormPage = () => {
         voiceMemoFile: null,
         sheetMusic: null,
         youtubeLink: '',
-        additionalLinks: '', // Clear the new field
-        backingType: [], // Clear as array
+        additionalLinks: '',
+        backingType: [],
         deliveryDate: '',
         additionalServices: [],
         specialRequests: '',
         category: '',
         trackType: ''
       });
-      setErrors({}); // Clear any existing errors
-      setConsentChecked(false); // Clear consent checkbox
+      setErrors({});
+      setConsentChecked(false);
       
-      // Show account prompt if user is not logged in
       if (!session) {
         setShowAccountPrompt(true);
         console.log('No session, showing account prompt.');
       } else {
-        // No redirect here, the success message will handle navigation
         console.log('Session active, not showing account prompt.');
       }
     } catch (error: any) {
@@ -564,6 +568,58 @@ const FormPage = () => {
     ? `We're on holiday until ${format(holidayReturnDate, 'MMMM d, yyyy')}. New orders will be processed upon our return.`
     : `We're currently on holiday. New orders will be processed upon our return.`;
 
+  // --- Service Closure Logic ---
+  if (isLoadingAppSettings) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+          <p className="ml-4 text-lg text-gray-600">Loading app settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isServiceClosed) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Piano Backings Request</h1>
+            <p className="text-base md:text-xl font-light text-[#1C0357]/90">Custom Track Submission</p>
+          </div>
+          <Card className="shadow-lg mb-6 bg-red-50 border-4 border-red-500">
+            <CardHeader className="bg-red-100 py-6 px-4">
+              <CardTitle className="text-2xl md:text-3xl text-red-800 flex items-center justify-center">
+                <XCircle className="mr-3 h-7 w-7" />
+                Custom Requests Temporarily Closed
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-center">
+              <p className="text-lg text-red-700 mb-6">
+                {closureReason || "We are currently unable to accept new custom backing track requests. Please check back soon!"}
+              </p>
+              <p className="text-md text-gray-700">
+                You can still browse and purchase existing tracks in our shop.
+              </p>
+              <div className="mt-8">
+                <Link to="/shop">
+                  <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3">
+                    Browse Shop Tracks
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+          <MadeWithDyad />
+        </div>
+      </div>
+    );
+  }
+  // --- End Service Closure Logic ---
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Seo 
@@ -580,15 +636,7 @@ const FormPage = () => {
           <p className="text-base md:text-xl font-light text-[#1C0357]/90">Submit Your Custom Track Request</p>
         </div>
 
-        {isLoadingHolidayMode ? (
-          <Alert className="mb-4 bg-blue-100 border-blue-500 text-blue-800">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Loading Status</AlertTitle>
-            <AlertDescription>
-              Checking app status...
-            </AlertDescription>
-          </Alert>
-        ) : isHolidayModeActive ? (
+        {isHolidayModeActive ? (
           <Alert className="mb-4 bg-red-100 border-red-500 text-red-800">
             <Plane className="h-4 w-4" />
             <AlertTitle>Holiday Mode Active!</AlertTitle>
@@ -646,7 +694,7 @@ const FormPage = () => {
             {/* "Before You Start" Checklist is now conditionally rendered */}
             {!isSubmittedSuccessfully && (
               <Card className="shadow-lg mb-6">
-                <CardHeader id="request-guidelines" className="bg-[#D1AAF2]/20 py-3 px-4"> {/* Added id here */}
+                <CardHeader id="request-guidelines" className="bg-[#D1AAF2]/20 py-3 px-4">
                   <CardTitle className="text-lg md:text-xl text-[#1C0357] flex items-center">
                     <MusicIcon className="mr-2" size={16} />
                     Before You Start: Preparation Checklist
@@ -674,7 +722,7 @@ const FormPage = () => {
                     <li>✔️ Any additional reference links (optional)</li>
                   </ul>
                   
-                  {isAdmin && ( // Conditionally render the button
+                  {isAdmin && (
                     <div className="mt-4">
                       <Button 
                         type="button" 
@@ -691,7 +739,7 @@ const FormPage = () => {
             )}
 
             <Card className="shadow-lg">
-              <CardHeader id="request-form" className="bg-[#1C0357] text-white py-3 px-4"> {/* Retained id for 'Request Form' in case it's needed elsewhere */}
+              <CardHeader id="request-form" className="bg-[#1C0357] text-white py-3 px-4">
                 <CardTitle className="text-lg md:text-xl">Request Form</CardTitle>
               </CardHeader>
               <CardContent className="p-4">
@@ -714,7 +762,7 @@ const FormPage = () => {
                             onChange={handleInputChange} 
                             placeholder="Your full name"
                             className="pl-8 py-2 text-sm"
-                            disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
+                            disabled={isSubmitting || isHolidayModeActive || !!user}
                           />
                           <UserIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
@@ -732,9 +780,9 @@ const FormPage = () => {
                             value={formData.email} 
                             onChange={handleInputChange} 
                             required 
-                            placeholder="your.email@example.com (Required for tracking, or sign in to pre-fill)" // Updated placeholder
+                            placeholder="your.email@example.com (Required for tracking, or sign in to pre-fill)"
                             className={cn("pl-8 py-2 text-sm", errors.email && "border-red-500")}
-                            disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
+                            disabled={isSubmitting || isHolidayModeActive || !!user}
                           />
                           <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
@@ -755,7 +803,7 @@ const FormPage = () => {
                             required 
                             placeholder="Confirm your email address"
                             className={cn("pl-8 py-2 text-sm", errors.confirmEmail && "border-red-500")}
-                            disabled={isSubmitting || isHolidayModeActive || !!user} // Disable if logged in
+                            disabled={isSubmitting || isHolidayModeActive || !!user}
                           />
                           <Mail className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                         </div>
@@ -857,7 +905,7 @@ const FormPage = () => {
                     <RadioGroup 
                       value={formData.trackType} 
                       onValueChange={(value) => handleSelectChange('trackType', value)}
-                      className="grid grid-cols-1 md:grid-cols-3 gap-4" // Changed to grid layout
+                      className="grid grid-cols-1 md:grid-cols-3 gap-4"
                       disabled={isSubmitting || isHolidayModeActive}
                       ref={formRefs.trackType}
                     >
@@ -868,10 +916,10 @@ const FormPage = () => {
                           formData.trackType === 'quick' ? "border-2 border-[#F538BC] shadow-lg bg-[#F538BC]/10" : "border border-gray-200 bg-white",
                           errors.trackType && "border-red-500"
                         )}>
-                          <RadioGroupItem value="quick" id="quick" className="sr-only" /> {/* Hidden radio button */}
+                          <RadioGroupItem value="quick" id="quick" className="sr-only" />
                           <Mic className={cn("h-8 w-8 mb-2", formData.trackType === 'quick' ? "text-[#F538BC]" : "text-gray-500")} />
                           <span className="font-bold text-sm text-[#1C0357]">Quick Reference</span>
-                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$5 - $10</span> {/* BOLDED */}
+                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$5 - $10</span>
                           <span className="text-xs mt-1 text-gray-600">Fast voice memo for quick learning</span>
                         </Card>
                       </Label>
@@ -886,7 +934,7 @@ const FormPage = () => {
                           <RadioGroupItem value="one-take" id="one-take" className="sr-only" />
                           <Headphones className={cn("h-8 w-8 mb-2", formData.trackType === 'one-take' ? "text-[#F538BC]" : "text-gray-500")} />
                           <span className="font-bold text-sm text-[#1C0357]">One-Take Recording</span>
-                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$10 - $20</span> {/* BOLDED */}
+                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$10 - $20</span>
                           <span className="text-xs mt-1 text-gray-600">Single-pass DAW recording</span>
                         </Card>
                       </Label>
@@ -901,7 +949,7 @@ const FormPage = () => {
                           <RadioGroupItem value="polished" id="polished" className="sr-only" />
                           <Sparkles className={cn("h-8 w-8 mb-2", formData.trackType === 'polished' ? "text-[#F538BC]" : "text-gray-500")} />
                           <span className="font-bold text-sm text-[#1C0357]">Polished Backing</span>
-                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$15 - $35</span> {/* BOLDED */}
+                          <span className="text-[#1C0357] font-bold mt-1 text-xs">$15 - $35</span>
                           <span className="text-xs mt-1 text-gray-600">Refined track for auditions</span>
                         </Card>
                       </Label>
@@ -966,7 +1014,7 @@ const FormPage = () => {
                           <Select onValueChange={(value) => handleSelectChange('keyForTrack', value)} value={formData.keyForTrack} disabled={isSubmitting || isHolidayModeActive}>
                             <SelectTrigger className="pl-8 py-2 text-sm">
                               <SelectValue placeholder="Select key" />
-                          </SelectTrigger>
+                            </SelectTrigger>
                             <SelectContent>
                               {keyOptions.map((key) => (
                                 <SelectItem key={key.value} value={key.value} className="text-sm">
@@ -997,9 +1045,9 @@ const FormPage = () => {
                           icon={FileTextIcon}
                           accept=".pdf"
                           onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
-                          required // This 'required' prop is for visual indication, actual validation is in handleSubmit
+                          required
                           note="Make sure it's clear and in the right key"
-                          error={errors.sheetMusic} // Pass error prop
+                          error={errors.sheetMusic}
                           disabled={isSubmitting || isHolidayModeActive}
                         />
                       </div>
@@ -1060,7 +1108,7 @@ const FormPage = () => {
                               onChange={handleInputChange} 
                               placeholder="https://example.com/voice-memo.mp3"
                               className="pl-8 py-2 text-sm"
-                              disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemoFile} // Disable if file is selected
+                              disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemoFile}
                             />
                             <LinkIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                           </div>
@@ -1073,7 +1121,7 @@ const FormPage = () => {
                           accept="audio/*"
                           onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
                           note="Note: Voice memo uploads may not be available at this time"
-                          disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemo} // Disable if link is provided
+                          disabled={isSubmitting || isHolidayModeActive || !!formData.voiceMemo}
                         />
                       </div>
                     </div>
@@ -1194,7 +1242,7 @@ const FormPage = () => {
                           <MusicIcon className="mr-1" size={14} />
                           Additional Services
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Added grid layout */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Label htmlFor="rush-order" className="flex flex-col items-center justify-center cursor-pointer w-full">
                             <div className={cn(
                               "w-full p-4 flex items-start transition-all duration-200 rounded-lg",
@@ -1320,7 +1368,7 @@ const FormPage = () => {
                         checked={consentChecked}
                         onCheckedChange={(checked) => {
                           setConsentChecked(checked as boolean);
-                          setErrors(prev => ({ ...prev, consent: '' })); // Clear error on change
+                          setErrors(prev => ({ ...prev, consent: '' }));
                         }}
                         className="mt-1"
                         disabled={isSubmitting || isHolidayModeActive}
@@ -1352,7 +1400,7 @@ const FormPage = () => {
                   <div className="flex justify-end">
                     <Button 
                       type="submit" 
-                      disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)} // Disable if prompt is visible and not logged in
+                      disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
                     >
                       {isSubmitting ? 'Submitting...' : 'Submit Request'}
@@ -1369,7 +1417,7 @@ const FormPage = () => {
           <AccountPromptCard 
             onDismiss={handleDismissAccountPrompt} 
             isHolidayModeActive={isHolidayModeActive}
-            isLoadingHolidayMode={isLoadingHolidayMode}
+            isLoadingHolidayMode={isLoadingAppSettings}
           />
         )}
 

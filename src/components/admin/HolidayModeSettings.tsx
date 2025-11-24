@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { useAppSettings } from '@/hooks/useAppSettings'; // Updated import
 
 interface AppSettings {
   id: string;
@@ -22,53 +23,53 @@ interface AppSettings {
 
 const HolidayModeSettings: React.FC = () => {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { 
+    isHolidayModeActive: initialIsActive, 
+    holidayReturnDate: initialReturnDate, 
+    isLoading, 
+    error: fetchError 
+  } = useAppSettings(); // Use the new hook
+
+  const [isActive, setIsActive] = useState(false);
+  const [returnDate, setReturnDate] = useState<Date | undefined>(undefined);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<any>(null);
 
+  // Sync local state with hook state once loaded
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      setSettings(data);
-    } catch (err: any) {
-      console.error('Error fetching app settings:', err);
-      setError(err);
-      toast({
-        title: "Error",
-        description: `Failed to fetch app settings: ${err.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    if (!isLoading && !fetchError) {
+      setIsActive(initialIsActive);
+      setReturnDate(initialReturnDate || undefined);
     }
-  };
+  }, [isLoading, fetchError, initialIsActive, initialReturnDate]);
 
   const updateSettings = async (updatedFields: Partial<AppSettings>) => {
-    if (!settings) return;
-
     setIsUpdating(true);
     setError(null);
     try {
-      const { error } = await supabase
+      // Fetch the single settings record ID
+      const { data: currentSettings, error: fetchIdError } = await supabase
+        .from('app_settings')
+        .select('id')
+        .single();
+
+      if (fetchIdError) throw fetchIdError;
+
+      const { error: updateError } = await supabase
         .from('app_settings')
         .update(updatedFields)
-        .eq('id', settings.id);
+        .eq('id', currentSettings.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      setSettings(prev => ({ ...prev!, ...updatedFields }));
+      // Manually update local state to reflect change immediately
+      if (updatedFields.is_holiday_mode_active !== undefined) {
+        setIsActive(updatedFields.is_holiday_mode_active);
+      }
+      if (updatedFields.holiday_mode_return_date !== undefined) {
+        setReturnDate(updatedFields.holiday_mode_return_date ? new Date(updatedFields.holiday_mode_return_date) : undefined);
+      }
+
       toast({
         title: "Settings Updated",
         description: "Holiday mode settings saved successfully.",
@@ -94,7 +95,7 @@ const HolidayModeSettings: React.FC = () => {
     updateSettings({ holiday_mode_return_date: date ? format(date, 'yyyy-MM-dd') : null });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="shadow-lg bg-white">
         <CardHeader>
@@ -111,7 +112,7 @@ const HolidayModeSettings: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (fetchError) {
     return (
       <Card className="shadow-lg bg-white">
         <CardHeader>
@@ -121,8 +122,7 @@ const HolidayModeSettings: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ErrorDisplay error={error} title="Failed to Load Holiday Settings" />
-          <Button onClick={fetchSettings} className="mt-4">Retry Load</Button>
+          <ErrorDisplay error={fetchError} title="Failed to Load Holiday Settings" />
         </CardContent>
       </Card>
     );
@@ -150,7 +150,7 @@ const HolidayModeSettings: React.FC = () => {
             </Label>
             <Switch
               id="holiday-mode-switch"
-              checked={settings?.is_holiday_mode_active || false}
+              checked={isActive}
               onCheckedChange={handleToggleHolidayMode}
               disabled={isUpdating}
             />
@@ -167,13 +167,13 @@ const HolidayModeSettings: React.FC = () => {
                   variant={"outline"}
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !settings?.holiday_mode_return_date && "text-muted-foreground"
+                    !returnDate && "text-muted-foreground"
                   )}
                   disabled={isUpdating}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {settings?.holiday_mode_return_date ? (
-                    format(new Date(settings.holiday_mode_return_date), "PPP")
+                  {returnDate ? (
+                    format(returnDate, "PPP")
                   ) : (
                     <span>Pick a date</span>
                   )}
@@ -182,7 +182,7 @@ const HolidayModeSettings: React.FC = () => {
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={settings?.holiday_mode_return_date ? new Date(settings.holiday_mode_return_date) : undefined}
+                  selected={returnDate}
                   onSelect={handleDateSelect}
                   initialFocus
                 />

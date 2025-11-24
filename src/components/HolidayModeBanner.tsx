@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useHolidayMode } from '@/hooks/useHolidayMode';
+import { useAppSettings } from '@/hooks/useAppSettings'; // Updated import
 import { Plane, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 const HolidayModeBanner: React.FC = () => {
-  const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useHolidayMode();
+  const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useAppSettings(); // Use the new hook
   const [isDismissed, setIsDismissed] = useState(false);
 
   // Reset dismissal state if holiday mode changes (e.g., turns off and then back on)

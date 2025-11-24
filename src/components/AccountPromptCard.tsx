@@ -4,21 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Lock, Edit, UserPlus, X, Key, Loader2, Chrome } from 'lucide-react'; // Added Chrome
-import { supabase } from '@/integrations/supabase/client'; // Import supabase
-import { useToast } from '@/hooks/use-toast'; // Import useToast for error handling
+import { Eye, Lock, Edit, UserPlus, X, Key, Loader2, Chrome } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AccountPromptCardProps {
   onDismiss?: () => void;
-  isHolidayModeActive: boolean; // New prop
-  isLoadingHolidayMode: boolean; // New prop
+  isHolidayModeActive: boolean;
+  isLoadingHolidayMode: boolean;
 }
 
 const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHolidayModeActive, isLoadingHolidayMode }) => {
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const [loadingAuth, setLoadingAuth] = useState(true); // To prevent flickering
-  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false); // New state for Google sign-in loading
-  const { toast } = useToast(); // Initialize useToast
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -45,14 +45,13 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/user-dashboard`, // Redirect to user dashboard after successful sign-in
+          redirectTo: `${window.location.origin}/user-dashboard`,
         },
       });
 
       if (error) {
         throw error;
       }
-      // No need for toast.success here, as the redirect will happen.
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
       toast({
@@ -66,11 +65,11 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
   };
 
   if (loadingAuth) {
-    return null; // Or a loading spinner if preferred, while auth status is being checked
+    return null;
   }
 
   if (isSignedIn) {
-    return null; // Don't show the card if the user is signed in
+    return null;
   }
 
   return (
@@ -105,7 +104,7 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
         </Button>
 
         <h3 className="text-2xl font-bold mb-4 flex items-center justify-center">
-          <Key className="mr-3 h-6 w-6" /> {/* Changed icon to Key */}
+          <Key className="mr-3 h-6 w-6" />
           Track Your Order Securely
         </h3>
         <p className="text-lg mb-6 max-w-2xl mx-auto opacity-90">
@@ -123,7 +122,7 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
             <p className="text-sm opacity-80">View and download all past and current orders in your "My Tracks."</p>
           </div>
           <div className="flex flex-col items-center">
-            <UserPlus className="h-10 w-10 mb-3 text-[#F538BC]" /> {/* Changed icon to UserPlus */}
+            <UserPlus className="h-10 w-10 mb-3 text-[#F538BC]" />
             <h4 className="text-lg font-semibold mb-1">Pre-fill Forms</h4>
             <p className="text-sm opacity-80">Save your name and email for future quick requests.</p>
           </div>
@@ -140,7 +139,7 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
             size="lg" 
             className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
             onClick={onDismiss}
-            disabled={isHolidayModeActive || isLoadingHolidayMode} // Disable if holiday mode is active or loading
+            disabled={isHolidayModeActive || isLoadingHolidayMode}
           >
             {isLoadingHolidayMode ? (
               <>
