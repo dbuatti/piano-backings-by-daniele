@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Loader2, XCircle, Save } from "lucide-react";
+import { AlertTriangle, Loader2, XCircle, Save, CheckCircle } from "lucide-react"; // Added CheckCircle
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ErrorDisplay from '@/components/ErrorDisplay';
