@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch"; // Import Switch
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -895,7 +896,7 @@ const ProductManager: React.FC = () => {
                   placeholder="https://dropbox.com/sh/..."
                   className="mt-1"
                 />
-                <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads.</p>
+                <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
               </div>
 
               {/* Multiple Track URLs Section */}
