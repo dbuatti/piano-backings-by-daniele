@@ -8,10 +8,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, PauseCircle, Theater, Tag, Key, FileText, Loader2, Mic, Headphones, Sparkles } from 'lucide-react';
+import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, PauseCircle, Theater, Tag, Key, FileText, Loader2, Mic, Headphones, Sparkles, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { TrackInfo } from '@/utils/helpers';
+import { TrackInfo, downloadTrack } from '@/utils/helpers'; // Import downloadTrack
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -116,9 +116,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       let previewUrl = product.sheet_music_url;
 
       if (product.sheet_music_url.includes('supabase.co/storage')) {
-        const baseUrl = product.sheet_music_url.split('?')[0];
-        previewUrl = `${baseUrl}?download=${encodeURIComponent(deidentifiedFilename)}`;
-        window.open(previewUrl, '_blank');
+        // Use downloadTrack utility to handle Supabase URLs correctly
+        downloadTrack(product.sheet_music_url, deidentifiedFilename);
       } else {
         window.open(previewUrl, '_blank');
         toast({
@@ -149,7 +148,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0"> {/* Removed overflow-hidden, added flex-col */}
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
         <div className="relative flex-shrink-0">
           <AspectRatio ratio={16 / 9}>
             {product.image_url ? (
@@ -163,7 +162,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 className="flex items-center justify-center w-full h-full text-white p-4 text-center"
                 style={{ backgroundColor: '#ff08b0', fontFamily: '"Playfair Display", serif' }}
               >
-                <div className="text-3xl md:text-4xl font-bold italic leading-tight"> {/* Changed h1 to div */}
+                <div className="text-3xl md:text-4xl font-bold italic leading-tight">
                   {product.title}
                 </div>
               </div>
@@ -183,7 +182,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         {/* Scrollable Content Area */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <DialogHeader>
-            <DialogTitle className="text-3xl font-bold text-[#1C0357]"> {/* Applied h1 styling directly to DialogTitle */}
+            <DialogTitle className="text-3xl font-bold text-[#1C0357]">
               {product.title}
             </DialogTitle>
             
@@ -197,7 +196,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <div className="flex flex-wrap gap-4 pt-2 border-b pb-4 border-gray-100">
               {product.category && (
                 <div className="text-md text-gray-600 flex items-center capitalize">
-                  <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', '')}
+                  <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', ' ')}
                 </div>
               )}
               {product.key_signature && product.show_key_signature && (
@@ -249,10 +248,13 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       variant="ghost" 
                       size="icon" 
                       onClick={handlePlayPause} 
-                      className="text-[#1C0357] hover:bg-[#1C0357]/10"
+                      className={cn(
+                        "h-10 w-10 rounded-full transition-colors",
+                        isPlaying ? "bg-red-500 hover:bg-red-600 text-white" : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
+                      )}
                       disabled={isBuying}
                     >
-                      {isPlaying ? <PauseCircle className="h-8 w-8" /> : <PlayCircle className="h-8 w-8" />}
+                      {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
                       <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</span>
                     </Button>
                   </TooltipTrigger>
@@ -278,17 +280,48 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               </Button>
             </div>
           )}
+          
+          {/* Track List Section (if master link is not present) */}
+          {product.track_urls && product.track_urls.length > 1 && !product.master_download_link && (
+            <div className="border-t pt-4">
+              <h3 className="text-xl font-semibold text-[#1C0357] mb-3 flex items-center">
+                <Download className="mr-2 h-5 w-5" />
+                Included Tracks
+              </h3>
+              <ul className="space-y-2 text-sm text-gray-700">
+                {product.track_urls.map((track, index) => (
+                  <li key={index} className="flex items-center p-2 bg-gray-50 rounded-md">
+                    <FileText className="h-4 w-4 mr-2 text-[#1C0357]" />
+                    {track.caption || `Track ${index + 1}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Master Download Link Section (if present) */}
+          {product.master_download_link && (
+            <div className="border-t pt-4">
+              <h3 className="text-xl font-semibold text-[#1C0357] mb-3 flex items-center">
+                <LinkIcon className="mr-2 h-5 w-5" />
+                Download Access
+              </h3>
+              <p className="text-sm text-gray-700">
+                This product is delivered via a single master download link (e.g., Dropbox shared folder) which will be provided immediately upon purchase.
+              </p>
+            </div>
+          )}
         </div>
         
         {/* Fixed Footer/Action Bar */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50 flex-shrink-0">
+        <div className="flex items-center justify-between p-6 border-t bg-[#D1AAF2]/50 flex-shrink-0">
           <div className="flex items-center">
             <DollarSign className="h-6 w-6 text-[#1C0357] mr-2" />
             <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
           <Button 
             onClick={() => onBuyNow(product)}
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-6 py-3"
+            className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-6 py-3"
             disabled={isBuying}
           >
             {isBuying ? (

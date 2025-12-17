@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Filter, XCircle, CheckCircle, ShoppingCart, Music, DollarSign, Key, FileText, ArrowUpDown } from 'lucide-react';
+import { Loader2, Search, Filter, XCircle, CheckCircle, ShoppingCart, Music, DollarSign, Key, FileText, ArrowUpDown, Mic, Headphones, Sparkles } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -23,13 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import ProductCard from '@/components/shop/ProductCard'; // Use the updated ProductCard
-import ProductDetailDialog from '@/components/shop/ProductDetailDialog'; // Use the updated ProductDetailDialog
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-import { Badge } from '@/components/ui/badge'; // Import Badge
-import { Label } from '@/components/ui/label'; // Import Label
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import Seo from "@/components/Seo"; // Import Seo
+import ProductCard from '@/components/shop/ProductCard';
+import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
+import { TrackInfo } from '@/utils/helpers';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import Seo from "@/components/Seo";
 
 // Define the Product interface, ensuring it uses the imported TrackInfo
 interface Product {
@@ -40,7 +40,7 @@ interface Product {
   price: number;
   currency: string;
   image_url: string;
-  track_urls: TrackInfo[]; // Use the imported TrackInfo
+  track_urls: TrackInfo[];
   is_active: boolean;
   artist_name: string;
   category: string;
@@ -50,24 +50,24 @@ interface Product {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
-  master_download_link: string | null; // NEW FIELD
+  master_download_link: string | null;
 }
 
 const Shop = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all'); // Changed default to 'all'
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
-  const [sortOption, setSortOption] = useState('category_asc'); // New state for sort option, default to category_asc
-  const [isBuying, setIsBuying] = useState(false); // New state for loading indicator during purchase
+  const [sortOption, setSortOption] = useState('category_asc');
+  const [isBuying, setIsBuying] = useState(false);
 
   const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
+    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption],
     queryFn: async () => {
       let query = supabase
         .from('products')
@@ -112,7 +112,7 @@ const Shop = () => {
         case 'artist_name_desc':
           query = query.order('artist_name', { ascending: false });
           break;
-        case 'category_asc': // New sort option
+        case 'category_asc':
           query = query.order('category', { ascending: true }).order('title', { ascending: true });
           break;
         case 'created_at_desc':
@@ -126,7 +126,7 @@ const Shop = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   const filteredProducts = products?.filter(product => {
@@ -135,7 +135,7 @@ const Shop = () => {
                               product.artist_name.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesVocalRange = vocalRangeFilter === 'all' || product.vocal_ranges.includes(vocalRangeFilter);
+    const matchesVocalRange = vocalRangeFilter === 'all' || product.vocal_ranges?.includes(vocalRangeFilter);
     const matchesPriceRange = product.price >= priceRange[0] && product.price <= priceRange[1];
 
     return matchesSearchTerm && matchesCategory && matchesVocalRange && matchesPriceRange;
@@ -148,7 +148,7 @@ const Shop = () => {
     setSearchParams(prev => {
       prev.set('product', product.id);
       return prev;
-    }, { replace: true }); // Use replace to avoid history clutter
+    }, { replace: true });
   }, [setSearchParams]);
 
   // 2. Handle closing the dialog and clearing the URL
@@ -170,7 +170,6 @@ const Shop = () => {
         setSelectedProductForDetail(product);
         setIsDetailDialogOpen(true);
       } else if (!isLoading) {
-        // If product ID is in URL but not found in fetched data (e.g., inactive or deleted)
         setSearchParams(prev => {
           prev.delete('product');
           return prev;
@@ -201,11 +200,11 @@ const Shop = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || `Failed to create checkout session: ${response.status} ${response.statusText}`);
+        throw new Error(result.error || `Function failed with status ${response.status}`);
       }
 
       if (result.url) {
-        window.location.href = result.url; // Redirect to Stripe Checkout
+        window.location.href = result.url;
       } else {
         throw new Error('Stripe checkout URL not received.');
       }
@@ -227,7 +226,7 @@ const Shop = () => {
     setCategoryFilter('all');
     setVocalRangeFilter('all');
     setPriceRange([0, 100]);
-    setSortOption('category_asc'); // Reset sort option as well
+    setSortOption('category_asc');
   };
 
   const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || vocalRangeFilter !== 'all' || priceRange[0] !== 0 || priceRange[1] !== 100 || sortOption !== 'category_asc';
@@ -245,7 +244,7 @@ const Shop = () => {
 
     // Sort categories alphabetically
     const sortedCategoryNames = Object.keys(groups).sort((a, b) => {
-      if (a === 'Uncategorized') return 1; // Push 'Uncategorized' to the end
+      if (a === 'Uncategorized') return 1;
       if (b === 'Uncategorized') return -1;
       return a.localeCompare(b);
     });
@@ -258,7 +257,6 @@ const Shop = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      {/* Conditional SEO for Product Detail View (Stage 1.2, 1.3, 1.4) */}
       {selectedProductForDetail && (
         <Seo
           title={`${selectedProductForDetail.title} (${selectedProductForDetail.artist_name}) Piano Backing Track | ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}`}
@@ -269,31 +267,62 @@ const Shop = () => {
       )}
       <Header />
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-extrabold text-[#1C0357] mb-4">Shop</h1>
-        <p className="text-lg text-gray-700 mb-8">Browse our collection of high-quality backing tracks.</p>
+        
+        {/* NEW: Hero Section */}
+        <div className="text-center py-16 mb-10 bg-white/50 rounded-xl shadow-xl backdrop-blur-sm border border-white/80">
+          <h1 className="text-5xl md:text-7xl font-extrabold text-[#1C0357] mb-4 tracking-tighter">
+            The Backing Track Library
+          </h1>
+          <p className="text-xl md:text-2xl text-[#1C0357]/90 max-w-3xl mx-auto">
+            Instantly download high-quality piano accompaniments for auditions, practice, and performance.
+          </p>
+          <Link to="/form-page">
+            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-md">
+              <Music className="mr-2 h-5 w-5" /> Need a Custom Track?
+            </Button>
+          </Link>
+        </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
-          <div className="relative w-full md:flex-1"> {/* Adjusted width to take more space */}
-            <Label htmlFor="search-input" className="text-sm font-medium text-gray-700 mb-1 block">Search Title or Artist</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                id="search-input"
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-md w-full"
-              />
-            </div>
+        {/* Filter and Sort Bar */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-lg shadow-md border border-gray-100">
+          
+          {/* Search Input */}
+          <div className="relative w-full md:w-1/3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              id="search-input"
+              type="text"
+              placeholder="Search title, artist, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-md w-full h-10"
+            />
           </div>
           
+          {/* Sort Option */}
+          <div className="w-full md:w-1/4">
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="h-10 border border-gray-300">
+                <ArrowUpDown className="h-4 w-4 mr-2 text-gray-500" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="category_asc">Category: A-Z</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* More Filters Sheet Trigger */}
           <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300"> {/* Added border */}
-                <Filter className="h-5 w-5" /> More Filters
-                {hasActiveFilters && <Badge className="ml-1 px-2 py-0.5 rounded-full bg-[#D1AAF2] text-[#1C0357]">Active</Badge>}
+              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300">
+                <Filter className="h-5 w-5" /> Advanced Filters
+                {hasActiveFilters && <Badge className="ml-1 px-2 py-0.5 rounded-full bg-[#F538BC] text-white">Active</Badge>}
               </Button>
             </SheetTrigger>
             <SheetContent>
@@ -338,22 +367,24 @@ const Shop = () => {
                   </Select>
                 </div>
 
-                {/* Sort Option */}
+                {/* Track Type Filter (New) */}
                 <div>
-                  <Label htmlFor="sort-option-sheet" className="mb-2 block">Sort By</Label>
-                  <Select value={sortOption} onValueChange={setSortOption}>
-                    <SelectTrigger id="sort-option-sheet" className="border border-gray-300">
-                      <SelectValue placeholder="Sort by" />
+                  <Label htmlFor="track-type-filter-sheet" className="mb-2 block">Filter by Track Quality</Label>
+                  <Select value={searchParams.get('track_type') || 'all'} onValueChange={(value) => {
+                    if (value === 'all') {
+                      setSearchParams(prev => { prev.delete('track_type'); return prev; }, { replace: true });
+                    } else {
+                      setSearchParams(prev => { prev.set('track_type', value); return prev; }, { replace: true });
+                    }
+                  }}>
+                    <SelectTrigger id="track-type-filter-sheet" className="border border-gray-300">
+                      <SelectValue placeholder="All Qualities" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="category_asc">Category: A-Z</SelectItem>
-                      <SelectItem value="created_at_desc">Newest First</SelectItem>
-                      <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                      <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                      <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                      <SelectItem value="title_desc">Title: Z-A</SelectItem>
-                      <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-                      <SelectItem value="artist_name_desc">Artist: Z-A</SelectItem>
+                      <SelectItem value="all">All Qualities</SelectItem>
+                      <SelectItem value="quick">Quick Reference</SelectItem>
+                      <SelectItem value="one-take">One-Take Recording</SelectItem>
+                      <SelectItem value="polished">Polished Backing</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -382,6 +413,7 @@ const Shop = () => {
           </Sheet>
         </div>
 
+        {/* Product Display */}
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
@@ -397,10 +429,10 @@ const Shop = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-10"> {/* Added space-y for separation between categories */}
+          <div className="space-y-10">
             {groupedProducts.map(group => (
               <div key={group.category}>
-                <h2 className="text-2xl font-bold text-[#1C0357] mb-6 capitalize">
+                <h2 className="text-3xl font-bold text-[#1C0357] mb-6 capitalize border-b-2 border-[#F538BC]/50 pb-2">
                   {group.category}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -414,7 +446,6 @@ const Shop = () => {
                     />
                   ))}
                 </div>
-                <div className="border-b border-gray-300 mt-10"></div> {/* Subtle visual separator */}
               </div>
             ))}
           </div>

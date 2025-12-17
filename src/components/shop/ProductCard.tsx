@@ -107,7 +107,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   });
 
   return (
-    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full border border-gray-200 bg-white min-h-[400px]">
+    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
       <CardHeader className="p-0 relative overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
@@ -128,7 +128,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           )}
         </AspectRatio>
         
-        {/* Top Right: Track Type Icon (New) */}
+        {/* Top Right: Track Type Icon */}
         {trackIcon && (
           <div className="absolute top-2 right-2">
             <Tooltip>
@@ -146,23 +146,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </Tooltip>
           </div>
         )}
+        
+        {/* Top Left: NEW Badge */}
+        {isNew && (
+          <Badge className="absolute top-2 left-2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow">NEW</Badge>
+        )}
 
       </CardHeader>
-      <CardContent className="flex-1 p-4 bg-[#D1AAF2]/10 text-left"> {/* Added text-left for alignment */}
-        <div className="flex items-center justify-between mb-0.5">
-          <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight">{product.title}</CardTitle>
-          {isNew && (
-            <Badge className="bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse-slow">NEW</Badge>
-          )}
-        </div>
+      <CardContent className="flex-1 p-4 bg-white text-left">
+        <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
         {product.artist_name && (
-          <p className="text-sm text-gray-700 mb-2 leading-tight flex items-center">
+          <p className="text-sm text-gray-700 mb-3 leading-tight flex items-center">
             <Theater className="h-4 w-4 mr-2 text-gray-500" /> {product.artist_name}
           </p>
         )}
         
-        {/* Grouped Category, Vocal Ranges, and Sheet Music */}
-        <div className="flex flex-wrap gap-1 mb-2">
+        {/* Info Badges */}
+        <div className="flex flex-wrap gap-1 mb-3">
           {product.category && (
             <Badge 
               variant="default" 
@@ -172,24 +172,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </Badge>
           )}
           {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
-            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#F538BC] text-sm px-3 py-1.5 rounded-full font-bold"> {/* Enhanced Vocal Range styling */}
+            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-xs px-2 py-0.5 rounded-full font-medium">
               {range}
             </Badge>
           ))}
-          {/* Key Signature removed from here */}
-          {product.show_sheet_music_url && product.sheet_music_url && (
-            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-green-500 text-green-700">
-              Sheet Music
+          {product.show_key_signature && product.key_signature && (
+            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-gray-400 text-gray-700">
+              <Key className="h-3 w-3 mr-1" /> {product.key_signature}
             </Badge>
           )}
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3 mb-3">{product.description}</p>
+        <p className="text-sm text-gray-600 line-clamp-3 mb-4">{product.description}</p>
         
-        <div className="flex items-center justify-between mt-3">
+        {/* Price and Play Button */}
+        <div className="flex items-center justify-between mt-auto">
           <div className="flex items-center">
-            <DollarSign className="h-5 w-5 text-[#1C0357] mr-1" />
-            <span className="text-xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+            <DollarSign className="h-6 w-6 text-[#1C0357] mr-1" />
+            <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
           {firstTrackUrl && (
             <Tooltip>
@@ -198,9 +198,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                   variant="ghost" 
                   size="icon" 
                   onClick={handlePlayPause} 
-                  className="text-[#1C0357] hover:bg-[#1C0357]/10"
+                  className={cn(
+                    "h-10 w-10 rounded-full transition-colors",
+                    isPlaying ? "bg-red-500 hover:bg-red-600 text-white" : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
+                  )}
                 >
-                  {isPlaying ? <PauseCircle className="h-6 w-6" /> : <PlayCircle className="h-6 w-6" />}
+                  {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
                   <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play Sample'}</span>
                 </Button>
               </TooltipTrigger>
@@ -216,16 +219,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       </CardContent>
       <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full">
         <Button 
-          variant="ghost" // Changed to ghost for secondary action
+          variant="outline"
           onClick={() => onViewDetails(product)}
-          className="text-[#1C0357] hover:bg-[#1C0357]/10 w-full justify-start" // Left-align text, adjusted hover
+          className="text-[#1C0357] border-[#1C0357]/30 hover:bg-[#1C0357]/10 w-full justify-center"
         >
           <Eye className="h-4 w-4 mr-2" />
-          View Details
+          View Full Details
         </Button>
         <Button 
           onClick={() => onBuyNow(product)} 
-          className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full justify-start" // Left-align text
+          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center"
           disabled={isBuying}
         >
           {isBuying ? (
@@ -237,7 +240,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               <ShoppingCart className="mr-2 h-4 w-4" />
             )
           )}
-          {isBuying ? 'Processing...' : 'Buy Now'}
+          {isBuying ? 'Processing...' : `Buy Now (${product.currency} ${product.price.toFixed(2)})`}
         </Button>
       </CardFooter>
     </Card>
