@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon } from 'lucide-react';
+import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
@@ -122,7 +122,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           ) : (
             <div 
               className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
-              style={{ backgroundColor: '#F538BC', fontFamily: '"Playfair Display", serif' }}
+              style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }}
             >
               <h3 className="text-xl md:text-2xl font-bold leading-snug line-clamp-3">
                 {product.title} {product.artist_name && `- ${product.artist_name}`}
@@ -137,7 +137,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={cn(
-                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white", // Changed background and text color
+                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white",
                 )}>
                   <trackIcon.Icon className="h-5 w-5" />
                 </div>
@@ -163,8 +163,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       >
         <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
         {product.artist_name && (
-          <p className="text-sm text-gray-700 mb-3 leading-tight flex items-center">
-            <Theater className="h-4 w-4 mr-2 text-gray-500" /> {product.artist_name}
+          <p className="text-base font-medium text-gray-700 mb-3 leading-tight flex items-center">
+            <Music className="h-4 w-4 mr-2 text-[#F538BC]" /> {product.artist_name}
           </p>
         )}
         
@@ -195,7 +195,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         {/* Price and Play Button */}
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
           <div className="flex items-center">
-            <DollarSign className="h-6 w-6 text-[#1C0357] mr-1" />
+            <DollarSign className="h-6 w-6 text-[#F538BC] mr-1" />
             <span className="text-3xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
           {firstTrackUrl && (
@@ -209,7 +209,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                     "h-10 w-10 rounded-full transition-colors shadow-md",
                     isPlaying 
                       ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
-                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white" // Changed to accent color
+                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white"
                   )}
                 >
                   {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
