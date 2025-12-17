@@ -135,15 +135,15 @@ const generateProductDeliveryEmail = (product: Product, customerEmail: string, s
   }
 
   const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges:</strong> ${product.vocal_ranges.join(', ')}</p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges: </strong> ${product.vocal_ranges.join(', ')}</p>`
     : '';
   
   const keySignatureHtml = product.key_signature
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature:</strong> ${product.key_signature}</p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature: </strong> ${product.key_signature}</p>`
     : '';
 
   const sheetMusicHtml = product.sheet_music_url
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music:</strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music: </strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
     : '';
 
   return {

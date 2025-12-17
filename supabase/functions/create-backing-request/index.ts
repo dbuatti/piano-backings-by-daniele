@@ -19,8 +19,8 @@ const corsHeaders = {
 // --- Pricing Logic (inlined from utils.ts) ---
 const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
   'quick': 5.00,
-  'one-take': 15.00,
-  'polished': 25.00,
+  'one-take': 10.00,
+  'polished': 15.00,
 };
 
 const BACKING_TYPE_MODIFIERS: Record<string, number> = {
@@ -908,22 +908,22 @@ serve(async (req) => {
         <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <h3 style="margin-top: 0; color: #1C0357;">Your Request Details:</h3>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Song Title:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songTitle}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Musical/Artist:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.musicalOrArtist}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Category:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.category?.replace('-', ' ') || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Track Type:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.trackType?.replace('-', ' ') || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music Key:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songKey || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Different Key Required:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.differentKey || 'No'}</td></tr>
-            ${sanitizedData.differentKey === 'Yes' ? `<tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Requested Key:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.keyForTrack || 'N/A'}</td></tr>` : ''}
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Backing Type(s):</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') || 'Not specified'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Delivery Date:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.deliveryDate ? new Date(sanitizedData.deliveryDate).toLocaleDateString() : 'Not specified'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Services:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.additionalServices.map((service: string) => service.replace('-', ' ')).join(', ') || 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">YouTube Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.youtubeLink ? `<a href="${sanitizedData.youtubeLink}">${sanitizedData.youtubeLink}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.additionalLinks ? `<a href="${sanitizedData.additionalLinks}">${sanitizedData.additionalLinks}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl ? `<a href="${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.sheetMusicUrl ? `<a href="${sanitizedData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone Number:</td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.phone || 'Not provided'}</td></tr>
-            <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests:</td><td style="padding: 5px 0;">${sanitizedData.specialRequests || 'None'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Song Title: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songTitle}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Musical/Artist: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.musicalOrArtist}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Category: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.category?.replace('-', ' ') || 'N/A'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Track Type: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.trackType?.replace('-', ' ') || 'N/A'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music Key: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songKey || 'N/A'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Different Key Required: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.differentKey || 'No'}</td></tr>
+            ${sanitizedData.differentKey === 'Yes' ? `<tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Requested Key: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.keyForTrack || 'N/A'}</td></tr>` : ''}
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Backing Type(s): </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') || 'Not specified'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Delivery Date: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.deliveryDate ? new Date(sanitizedData.deliveryDate).toLocaleDateString() : 'Not specified'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Services: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.additionalServices.map((service: string) => service.replace('-', ' ')).join(', ') || 'None'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">YouTube Link: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.youtubeLink ? `<a href="${sanitizedData.youtubeLink}">${sanitizedData.youtubeLink}</a>` : 'None'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.additionalLinks ? `<a href="${sanitizedData.additionalLinks}">${sanitizedData.additionalLinks}</a>` : 'None'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl ? `<a href="${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.sheetMusicUrl ? `<a href="${sanitizedData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
+            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone Number: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.phone || 'Not provided'}</td></tr>
+            <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests: </td><td style="padding: 5px 0;">${sanitizedData.specialRequests || 'None'}</td></tr>
           </table>
         </div>
 

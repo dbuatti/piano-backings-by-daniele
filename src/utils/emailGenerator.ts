@@ -209,18 +209,18 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
     : calculatedCost; // Fallback to calculated cost if final_price is not set
 
   const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}
+                                 <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
   if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
       request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
     estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range:</strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                            <strong>Estimated Range: </strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
                           </p>`;
   } else {
     estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range:</strong> $${calculatedLow} - $${calculatedHigh}
+                            <strong>Estimated Range: </strong> $${calculatedLow} - $${calculatedHigh}
                           </p>`;
   }
 
@@ -296,18 +296,18 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
     : calculatedCost; // Fallback to calculated cost if final_price is not set
 
   const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}
+                                 <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
                                </p>`;
 
   let estimatedRangeHtml = '';
   if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
       request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
     estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range:</strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
+                            <strong>Estimated Range: </strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
                           </p>`;
   } else {
     estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range:</strong> $${calculatedLow} - $${calculatedHigh}
+                            <strong>Estimated Range: </strong> $${calculatedLow} - $${calculatedHigh}
                           </p>`;
   }
 
@@ -376,15 +376,15 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   }
 
   const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges:</strong> ${product.vocal_ranges.join(', ')}</p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges: </strong> ${product.vocal_ranges.join(', ')}</p>`
     : '';
   
   const keySignatureHtml = product.key_signature
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature:</strong> ${product.key_signature}</p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature: </strong> ${product.key_signature}</p>`
     : '';
 
   const sheetMusicHtml = product.sheet_music_url
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music:</strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
+    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music: </strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
     : '';
 
   return {
