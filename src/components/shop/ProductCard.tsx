@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, Theater, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText } from 'lucide-react'; // Replaced Mask with Theater
+import { Music, DollarSign, Eye, ShoppingCart, Loader2, Theater, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText, Link as LinkIcon } from 'lucide-react'; // Replaced Mask with Theater
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { TrackInfo } from '@/utils/helpers';
@@ -29,6 +29,7 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
+  master_download_link?: string | null; // NEW FIELD
 }
 
 interface ProductCardProps {
@@ -230,7 +231,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           {isBuying ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <ShoppingCart className="mr-2 h-4 w-4" />
+            product.master_download_link ? (
+              <LinkIcon className="mr-2 h-4 w-4" />
+            ) : (
+              <ShoppingCart className="mr-2 h-4 w-4" />
+            )
           )}
           {isBuying ? 'Processing...' : 'Buy Now'}
         </Button>

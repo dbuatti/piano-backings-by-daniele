@@ -50,6 +50,7 @@ interface Product {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
+  master_download_link: string | null; // NEW FIELD
 }
 
 const Shop = () => {

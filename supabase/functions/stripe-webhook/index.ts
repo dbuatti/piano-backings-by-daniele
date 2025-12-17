@@ -41,6 +41,7 @@ export interface Product {
   key_signature?: string | null; // New field
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
+  master_download_link?: string | null; // NEW FIELD
 }
 
 // HTML Email signature template (Defined locally for Deno compatibility)
@@ -75,7 +76,26 @@ const EMAIL_SIGNATURE_HTML = `
 `;
 
 // Inlined Helper to generate track list HTML for products
-const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
+const generateProductTrackListHtml = (product: Product) => {
+  // If master link is present, use that instead of individual tracks
+  if (product.master_download_link) {
+    return `
+      <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+        <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s) (Master Link):</p>
+        <p style="margin-top: 10px;">
+          <a href="${product.master_download_link}" style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+            Download All Tracks
+          </a>
+        </p>
+        <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+          This link provides access to the entire product folder/file.
+        </p>
+      </div>
+    `;
+  }
+
+  // Fallback to individual tracks
+  const trackUrls = product.track_urls;
   if (!trackUrls || trackUrls.length === 0) return '';
   
   const listItems = trackUrls.map(track => `
@@ -104,11 +124,14 @@ const generateProductDeliveryEmail = (product: Product, customerEmail: string, s
   const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
+  const productTrackListHtml = generateProductTrackListHtml(product); // Pass the full product object
 
 
   if (!product.track_urls || product.track_urls.length === 0) {
-    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
+    // If no individual tracks AND no master link, throw error
+    if (!product.master_download_link) {
+      throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls or master_download_link for delivery.`);
+    }
   }
 
   const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
@@ -230,7 +253,7 @@ serve(async (req) => {
       // Fetch product details to ensure it exists and get its price and track_urls
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
-        .select('id, title, description, price, track_urls, vocal_ranges, sheet_music_url, key_signature') // Added sheet_music_url and key_signature
+        .select('id, title, description, price, track_urls, vocal_ranges, sheet_music_url, key_signature, master_download_link') // Added master_download_link
         .eq('id', productId)
         .single();
 
@@ -266,7 +289,8 @@ serve(async (req) => {
       console.log('Order created successfully:', order);
 
       // Implement digital product delivery here (send download link via email)
-      if (product.track_urls && product.track_urls.length > 0) { // Check for track_urls array
+      // Check if we have individual tracks OR a master download link
+      if ((product.track_urls && product.track_urls.length > 0) || product.master_download_link) { 
         try {
           // Invoke the send-email Edge Function
           const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
@@ -328,7 +352,7 @@ serve(async (req) => {
             .from('notifications')
             .insert([
               {
-                recipient: customerEmail,
+                recipient: 'system@pianobackings.com',
                 sender: 'system@pianobackings.com',
                 subject: `Failed to deliver product: ${product.title}`,
                 content: `Error: ${emailSendError.message}`,
@@ -339,7 +363,7 @@ serve(async (req) => {
             ]);
         }
       } else {
-        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_urls. No delivery email sent.`);
+        console.warn(`Product ${product.title} (ID: ${product.id}) has no track_urls or master_download_link. No delivery email sent.`);
         // Optionally, log a notification that a product without a track_url was purchased
         await supabaseAdmin
           .from('notifications')
@@ -347,8 +371,8 @@ serve(async (req) => {
             {
               recipient: defaultSenderEmail, // Notify admin
               sender: 'system@pianobackings.com',
-              subject: `Warning: Product purchased without track_urls - ${product.title}`,
-              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_urls was set for delivery. Manual intervention required.`,
+              subject: `Warning: Product purchased without track_urls or master link - ${product.title}`,
+              content: `Customer: ${customerEmail} purchased product ID: ${product.id} but no track_urls or master_download_link was set for delivery. Manual intervention required.`,
               status: 'warning',
               type: 'system_alert'
             }

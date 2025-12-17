@@ -7,7 +7,7 @@ import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText, UserPlus } from 'lucide-react'; // Added UserPlus
+import { CheckCircle, XCircle, Loader2, Mail, ShoppingCart, User, MessageSquare, Download, FileText, UserPlus, Link as LinkIcon } from 'lucide-react'; // Added LinkIcon
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { downloadTrack, TrackInfo } from '@/utils/helpers';
@@ -22,6 +22,7 @@ interface Product {
   key_signature?: string | null;
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
+  master_download_link?: string | null; // NEW FIELD
 }
 
 interface Order {
@@ -154,6 +155,10 @@ const PurchaseConfirmation: React.FC = () => {
     navigate('/?openFeedback=true');
   };
 
+  const product = order?.products;
+  const masterLink = product?.master_download_link;
+  const individualTracks = product?.track_urls;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -200,7 +205,7 @@ const PurchaseConfirmation: React.FC = () => {
               <div className="space-y-6">
                 <div className="text-center">
                   <p className="text-lg text-gray-700 mb-4">
-                    Your purchase of <strong>"{order.products?.title || 'Unknown Product'}"</strong> has been successfully processed.
+                    Your purchase of <strong>"{product?.title || 'Unknown Product'}"</strong> has been successfully processed.
                   </p>
                   <p className="text-md text-gray-600 flex items-center justify-center">
                     <Mail className="mr-2 h-5 w-5 text-blue-500" />
@@ -211,29 +216,43 @@ const PurchaseConfirmation: React.FC = () => {
                   </p>
                 </div>
 
-                {order.products?.track_urls && order.products.track_urls.length > 0 && (
+                {/* Download Section - Prioritize Master Link */}
+                {(masterLink || (individualTracks && individualTracks.length > 0)) && (
                   <div className="border-t border-gray-200 pt-6 space-y-4">
                     <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
                       <Download className="mr-2 h-5 w-5" />
                       Your Downloadable Tracks
                     </h3>
-                    <div className="flex flex-col gap-2">
-                      {order.products.track_urls.map((track, index) => (
+                    
+                    {masterLink ? (
+                      <a href={masterLink} target="_blank" rel="noopener noreferrer">
                         <Button 
-                          key={index}
                           size="lg" 
                           className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
-                          onClick={() => downloadTrack(track.url, track.caption || `${order.products?.title || 'track'}.mp3`)}
                         >
-                          <Download className="w-5 h-5 mr-2" />
-                          {track.caption || `Download Track ${index + 1}`}
+                          <LinkIcon className="w-5 h-5 mr-2" />
+                          Download All Tracks (Master Link)
                         </Button>
-                      ))}
-                    </div>
+                      </a>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {individualTracks?.map((track, index) => (
+                          <Button 
+                            key={index}
+                            size="lg" 
+                            className="w-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                            onClick={() => downloadTrack(track.url, track.caption || `${product?.title || 'track'}.mp3`)}
+                          >
+                            <Download className="w-5 h-5 mr-2" />
+                            {track.caption || `Download Track ${index + 1}`}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {order.products?.sheet_music_url && order.products?.show_sheet_music_url && (
+                {product?.sheet_music_url && product?.show_sheet_music_url && (
                   <div className="border-t border-gray-200 pt-6 space-y-4">
                     <h3 className="text-xl font-semibold text-[#1C0357] flex items-center">
                       <FileText className="mr-2 h-5 w-5" />
@@ -242,7 +261,7 @@ const PurchaseConfirmation: React.FC = () => {
                     <Button 
                       size="lg" 
                       className="w-full bg-[#D1AAF2]/30 hover:bg-[#D1AAF2]/50 text-[#1C0357]"
-                      onClick={() => window.open(order.products?.sheet_music_url || '', '_blank')}
+                      onClick={() => window.open(product?.sheet_music_url || '', '_blank')}
                     >
                       <FileText className="h-5 w-5 mr-2" /> View Sheet Music PDF
                     </Button>

@@ -64,6 +64,7 @@ interface Product {
   show_sheet_music_url?: boolean; // New field
   show_key_signature?: boolean; // New field
   track_type?: string; // Add track_type here
+  master_download_link?: string | null; // NEW FIELD
 }
 
 interface ProductFormState {
@@ -83,6 +84,7 @@ interface ProductFormState {
   show_sheet_music_url: boolean; // New field
   show_key_signature: boolean; // New field
   track_type: string; // Add track_type here
+  master_download_link: string; // NEW FIELD
 }
 
 const ProductManager: React.FC = () => {
@@ -108,6 +110,7 @@ const ProductManager: React.FC = () => {
     show_sheet_music_url: true, // Default to true
     show_key_signature: true, // Default to true
     track_type: '', // Initialize new field
+    master_download_link: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
   const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
@@ -285,6 +288,7 @@ const ProductManager: React.FC = () => {
       show_sheet_music_url: product.show_sheet_music_url ?? true, // Set new field with default
       show_key_signature: product.show_key_signature ?? true, // Set new field with default
       track_type: product.track_type || '', // Set new field with default
+      master_download_link: product.master_download_link || '', // NEW FIELD
     });
     setImageFile(null); // Clear image file state for new edit
     setEditSheetMusicFile(null); // Clear sheet music file state for new edit
@@ -549,7 +553,7 @@ const ProductManager: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
-            />
+              />
           </div>
           <div className="relative w-full sm:w-1/3">
             <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -643,7 +647,19 @@ const ProductManager: React.FC = () => {
                       {product.track_type?.replace('-', ' ') || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {product.track_urls && product.track_urls.length > 0 ? (
+                      {product.master_download_link ? ( // Check for master link
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a href={product.master_download_link} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center text-sm max-w-[200px] truncate font-semibold">
+                              <Link className="h-3 w-3 mr-1 flex-shrink-0" />
+                              Master Link
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{product.master_download_link}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : product.track_urls && product.track_urls.length > 0 ? (
                         <div className="flex flex-col space-y-1">
                           {product.track_urls.map((track, index) => (
                             <a key={index} href={track.url || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
@@ -865,10 +881,27 @@ const ProductManager: React.FC = () => {
                 </div>
               </div>
               
+              {/* NEW: Master Download Link Override in Edit Dialog */}
+              <div className="border-t pt-4">
+                <Label htmlFor="edit-master_download_link" className="flex items-center text-base font-medium">
+                  <Link className="mr-2 h-5 w-5" />
+                  Master Download Link (Optional Override)
+                </Label>
+                <Input
+                  id="edit-master_download_link"
+                  name="master_download_link"
+                  value={productForm.master_download_link}
+                  onChange={handleFormChange}
+                  placeholder="https://dropbox.com/sh/..."
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads.</p>
+              </div>
+
               {/* Multiple Track URLs Section */}
               <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Product Tracks</Label>
+                  <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.filter(t => t.selected).length} selected)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
                     <PlusCircle className="h-4 w-4 mr-2" /> Add Track
                   </Button>
@@ -878,7 +911,7 @@ const ProductManager: React.FC = () => {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {productForm.track_urls.map((track, index) => (
-                    <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
+                    <Card key={index} className={cn("p-3 flex flex-col gap-2 bg-white shadow-sm", !track.selected && "opacity-50")}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Checkbox

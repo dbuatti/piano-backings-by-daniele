@@ -45,7 +45,7 @@ serve(async (req) => {
     // We join the products table here to get product details
     const { data: order, error } = await supabaseAdmin
       .from('orders')
-      .select('*, products(id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature)')
+      .select('*, products(id, title, description, track_urls, vocal_ranges, sheet_music_url, key_signature, show_sheet_music_url, show_key_signature, master_download_link)') // ADDED master_download_link
       .eq('checkout_session_id', sessionId)
       .single();
 

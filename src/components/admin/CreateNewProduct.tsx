@@ -34,6 +34,7 @@ interface ProductForm {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
+  master_download_link: string; // NEW FIELD
 }
 
 const CreateNewProduct: React.FC = () => {
@@ -56,6 +57,7 @@ const CreateNewProduct: React.FC = () => {
     show_sheet_music_url: true,
     show_key_signature: true,
     track_type: '',
+    master_download_link: '', // Initialize new field
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
@@ -223,7 +225,7 @@ const CreateNewProduct: React.FC = () => {
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
-        track_type: '',
+        track_type: '', master_download_link: '',
       });
       setImageFile(null);
       setSheetMusicFile(null);
@@ -512,9 +514,26 @@ const CreateNewProduct: React.FC = () => {
             </div>
           </div>
           
+          {/* NEW: Master Download Link Override */}
+          <div className="border-t pt-4">
+            <Label htmlFor="master_download_link" className="flex items-center text-base font-medium">
+              <Link className="mr-2 h-5 w-5" />
+              Master Download Link (Optional Override)
+            </Label>
+            <Input
+              id="master_download_link"
+              name="master_download_link"
+              value={productForm.master_download_link}
+              onChange={handleFormChange}
+              placeholder="https://dropbox.com/sh/..."
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
+          </div>
+
           <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Product Tracks</Label>
+              <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.filter(t => t.selected).length} selected)</Label>
               <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
                 <PlusCircle className="h-4 w-4 mr-2" /> Add Track
               </Button>
@@ -524,18 +543,18 @@ const CreateNewProduct: React.FC = () => {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {productForm.track_urls.map((track, index) => (
-                <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
+                <Card key={index} className={cn("p-3 flex flex-col gap-2 bg-white shadow-sm", !track.selected && "opacity-50")}>
                   <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`track-selected-${index}`}
-                            checked={track.selected}
-                            onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
-                          />
-                          <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
-                            Track {index + 1}
-                          </Label>
-                        </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`track-selected-${index}`}
+                        checked={track.selected}
+                        onCheckedChange={(checked) => handleTrackChange(index, 'selected', checked as boolean)}
+                      />
+                      <Label htmlFor={`track-selected-${index}`} className="font-semibold text-sm">
+                        Track {index + 1}
+                      </Label>
+                    </div>
                     <Button type="button" variant="destructive" size="sm" onClick={() => removeTrackUrl(index)}>
                       <MinusCircle className="h-4 w-4" /> Remove
                     </Button>
@@ -550,12 +569,11 @@ const CreateNewProduct: React.FC = () => {
                           onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
                           placeholder="https://example.com/track.mp3"
                           className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
-                          disabled={!!track.file} // Disable if a file is selected
+                          disabled={!!track.file}
                         />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
                       
-                      {/* Replaced FileInput with standard input for audio upload */}
                       <div className="space-y-1">
                         <Label htmlFor={`track-file-upload-${index}`} className="flex items-center text-sm mb-1">
                               <FileAudio className="mr-1" size={14} />
@@ -568,7 +586,7 @@ const CreateNewProduct: React.FC = () => {
                             accept="audio/*"
                             onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
                             className="flex-1"
-                            disabled={!!track.url} // Disable if a URL is entered
+                            disabled={!!track.url}
                           />
                         </div>
                         {track.file && (
@@ -582,7 +600,7 @@ const CreateNewProduct: React.FC = () => {
                         <Input
                           id={`track-caption-${index}`}
                           name={`track_urls[${index}].caption`}
-                          value={track.caption} // Caption is now always a string
+                          value={track.caption}
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
@@ -621,6 +639,7 @@ const CreateNewProduct: React.FC = () => {
                 />
                 <Label htmlFor="is_active">Active in Shop</Label>
               </div>
+            </div>
             <div className="flex justify-end mt-6">
               <Button
                 onClick={handleCreateProduct}
@@ -642,8 +661,13 @@ const CreateNewProduct: React.FC = () => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      ) : (
+        <CardContent>
+          <p className="text-center text-gray-500 py-4">Select one or more completed requests above to define a new product or bundle.</p>
+        </CardContent>
+      )}
+    </Card>
   );
 };
 
-export default CreateNewProduct;
+export default RepurposeTrackToShop;

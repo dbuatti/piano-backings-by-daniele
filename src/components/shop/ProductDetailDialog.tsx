@@ -32,6 +32,7 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
+  master_download_link?: string | null; // NEW FIELD
 }
 
 interface ProductDetailDialogProps {
@@ -196,7 +197,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             <div className="flex flex-wrap gap-4 pt-2 border-b pb-4 border-gray-100">
               {product.category && (
                 <div className="text-md text-gray-600 flex items-center capitalize">
-                  <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', ' ')}
+                  <Tag className="h-4 w-4 mr-2" /> <strong>Category:</strong> {product.category.replace('-', '')}
                 </div>
               )}
               {product.key_signature && product.show_key_signature && (
@@ -293,7 +294,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             {isBuying ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
-              <ShoppingCart className="ml-2 h-5 w-5" />
+              product.master_download_link ? (
+                <LinkIcon className="mr-2 h-5 w-5" />
+              ) : (
+                <ShoppingCart className="ml-2 h-5 w-5" />
+              )
             )}
             {isBuying ? 'Processing...' : 'Buy Now'}
           </Button>

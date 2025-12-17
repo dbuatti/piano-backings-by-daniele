@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch"; // Import Switch
 import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
@@ -67,14 +68,79 @@ interface ProductForm {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
+  master_download_link: string; // NEW FIELD
 }
+
+// Helper to truncate URL for display
+const truncateUrl = (url: string | null, maxLength: number = 40) => {
+  if (!url) return 'N/A';
+  if (url.length <= maxLength) return url;
+  const start = url.substring(0, maxLength / 2 - 2);
+  const end = url.substring(url.length - maxLength / 2 + 2);
+  return `${start}...${end}`;
+};
+
+// Helper to derive filename from URL
+const getFilenameFromUrl = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const parts = pathname.split('/');
+    const filenameWithQuery = parts[parts.length - 1];
+    const filename = filenameWithQuery.split('?')[0];
+    return decodeURIComponent(filename);
+  } catch (e) {
+    return 'Unnamed Track';
+  }
+};
+
+// Function to generate a descriptive caption (kept for Option B)
+const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string | boolean | null | undefined, trackUrl: string): string => {
+  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+  const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
+
+  const parts = [];
+  if (request.song_title) parts.push(request.song_title);
+  if (request.musical_or_artist) parts.push(request.musical_or_artist);
+
+  let descriptiveDetails = [];
+  if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
+  if (request.song_key) descriptiveDetails.push(request.song_key);
+  if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
+
+  let newCaption = '';
+  if (parts.length > 0) {
+    newCaption = parts.join(' - ');
+    if (descriptiveDetails.length > 0) {
+      newCaption += ` (${descriptiveDetails.join(', ')})`;
+    }
+  } else {
+    newCaption = 'Untitled Track';
+  }
+
+  const urlParts = trackUrl.split('/');
+  const filenameWithExt = urlParts[urlParts.length - 1].split('?')[0];
+  const urlExtensionMatch = filenameWithExt.match(/\.([0-9a-z]+)$/i);
+  const urlExtension = urlExtensionMatch?.[1] || '';
+  
+  if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
+    newCaption += `.${urlExtension}`;
+  } else if (!urlExtension && trackUrl.includes('/tracks/') && !newCaption.includes('.')) {
+    newCaption += '.mp3';
+  }
+
+  return newCaption;
+};
+
 
 const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
-  const [isFormPreFilled, setIsFormPreFilled] = useState(false); // New state to control form visibility/pre-fill
+  const [isFormPreFilled, setIsFormPreFilled] = useState(false);
+  const [useFilenameCaption, setUseFilenameCaption] = useState(true); // NEW: Caption toggle state
+  
   const [productForm, setProductForm] = useState<ProductForm>({
     title: '',
     description: '',
@@ -91,58 +157,11 @@ const RepurposeTrackToShop: React.FC = () => {
     show_sheet_music_url: true,
     show_key_signature: true,
     track_type: '',
+    master_download_link: '', // NEW FIELD
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  // Helper to truncate URL for display
-  const truncateUrl = (url: string | null, maxLength: number = 40) => {
-    if (!url) return 'N/A';
-    if (url.length <= maxLength) return url;
-    const start = url.substring(0, maxLength / 2 - 2);
-    const end = url.substring(url.length - maxLength / 2 + 2);
-    return `${start}...${end}`;
-  };
-
-  // Function to generate a descriptive caption
-  const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string | boolean | null | undefined, trackUrl: string): string => {
-    const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-    const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
-
-    const parts = [];
-    if (request.song_title) parts.push(request.song_title);
-    if (request.musical_or_artist) parts.push(request.musical_or_artist);
-
-    let descriptiveDetails = [];
-    if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
-    if (request.song_key) descriptiveDetails.push(request.song_key);
-    if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
-
-    let newCaption = '';
-    if (parts.length > 0) {
-      newCaption = parts.join(' - ');
-      if (descriptiveDetails.length > 0) {
-        newCaption += ` (${descriptiveDetails.join(', ')})`;
-      }
-    } else {
-      newCaption = 'Untitled Track';
-    }
-
-    const urlParts = trackUrl.split('/');
-    const filenameWithExt = urlParts[urlParts.length - 1].split('?')[0];
-    const urlExtensionMatch = filenameWithExt.match(/\.([0-9a-z]+)$/i);
-    const urlExtension = urlExtensionMatch?.[1] || '';
-    
-    if (urlExtension && !newCaption.toLowerCase().endsWith(`.${urlExtension.toLowerCase()}`)) {
-      newCaption += `.${urlExtension}`;
-    } else if (!urlExtension && trackUrl.includes('/tracks/') && !newCaption.includes('.')) {
-      newCaption += '.mp3';
-    }
-
-    return newCaption;
-  };
-
 
   // Fetch completed backing requests
   const { data: requests, isLoading: isLoadingRequests, isError: isErrorRequests, error: requestsError } = useQuery<BackingRequest[], Error>({
@@ -194,7 +213,7 @@ const RepurposeTrackToShop: React.FC = () => {
     return requests?.filter(req => selectedRequestIds.includes(req.id)) || [];
   }, [selectedRequestIds, requests]);
 
-  // --- New: Function to pre-fill the form based on current selection ---
+  // --- Function to pre-fill the form based on current selection ---
   const preFillForm = useCallback(() => {
     if (selectedRequests.length === 0) {
       setIsFormPreFilled(false);
@@ -204,12 +223,16 @@ const RepurposeTrackToShop: React.FC = () => {
     const firstRequest = selectedRequests[0];
     const isBundle = selectedRequests.length > 1;
     
-    // 1. Aggregate Track URLs
+    // 1. Aggregate ALL Track URLs from ALL selected requests
     const aggregatedTrackUrls: TrackInfo[] = [];
     selectedRequests.forEach(req => {
       req.track_urls?.forEach(track => {
         if (track.url) {
-          const captionToUse = generateDescriptiveCaption(req, track.caption, track.url);
+          // Use the current caption logic based on the toggle state
+          const captionToUse = useFilenameCaption 
+            ? getFilenameFromUrl(track.url)
+            : generateDescriptiveCaption(req, track.caption, track.url);
+
           aggregatedTrackUrls.push({ 
             url: track.url, 
             caption: captionToUse, 
@@ -265,14 +288,22 @@ const RepurposeTrackToShop: React.FC = () => {
       sheet_music_url: autoSheetMusicUrl,
       key_signature: autoKeySignature,
       track_type: autoTrackType,
+      master_download_link: '', // Clear master link on pre-fill
     }));
     setImageFile(null);
     setSheetMusicFile(null);
     setFormErrors({});
     setIsFormPreFilled(true); // Mark form as pre-filled
-  }, [selectedRequests, generateDescriptiveCaption]);
+  }, [selectedRequests, useFilenameCaption]); // Depend on useFilenameCaption
 
-  // --- End New: Function to pre-fill the form based on current selection ---
+  // Effect to re-run preFillForm when the caption toggle changes, if the form is already filled
+  useEffect(() => {
+    if (isFormPreFilled && selectedRequestIds.length > 0) {
+      preFillForm();
+    }
+  }, [useFilenameCaption]); // Only run when the toggle changes
+
+  // --- End Function to pre-fill the form based on current selection ---
 
   const handleToggleRequestSelection = (requestId: string) => {
     setSelectedRequestIds(prev => 
@@ -287,7 +318,8 @@ const RepurposeTrackToShop: React.FC = () => {
     setIsFormPreFilled(false); // Reset form visibility
     setProductForm({
       title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true, track_type: '',
+      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
+      track_type: '', master_download_link: '',
     });
     toast({
       title: "Source Cleared",
@@ -447,7 +479,7 @@ const RepurposeTrackToShop: React.FC = () => {
       setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
-        track_type: '',
+        track_type: '', master_download_link: '',
       });
       setImageFile(null);
       setSheetMusicFile(null);
@@ -851,19 +883,48 @@ const RepurposeTrackToShop: React.FC = () => {
                 </div>
               </div>
               
+              {/* NEW: Master Download Link Override */}
+              <div className="border-t pt-4">
+                <Label htmlFor="master_download_link" className="flex items-center text-base font-medium">
+                  <Link className="mr-2 h-5 w-5" />
+                  Master Download Link (Optional Override)
+                </Label>
+                <Input
+                  id="master_download_link"
+                  name="master_download_link"
+                  value={productForm.master_download_link}
+                  onChange={handleFormChange}
+                  placeholder="https://dropbox.com/sh/..."
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
+              </div>
+
               <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.length} total)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
-                    <PlusCircle className="h-4 w-4 mr-2" /> Add Track
-                  </Button>
+                  <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.filter(t => t.selected).length} selected)</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="caption-toggle"
+                        checked={useFilenameCaption}
+                        onCheckedChange={setUseFilenameCaption}
+                      />
+                      <Label htmlFor="caption-toggle" className="text-sm">
+                        {useFilenameCaption ? 'Use MP3 Filename' : 'Use Rewritten Name'}
+                      </Label>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
+                      <PlusCircle className="h-4 w-4 mr-2" /> Add Track
+                    </Button>
+                  </div>
                 </div>
                 {productForm.track_urls.length === 0 && (
                   <p className="text-sm text-gray-500">No tracks added yet. Click "Add Track" to start.</p>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {productForm.track_urls.map((track, index) => (
-                    <Card key={index} className="p-3 flex flex-col gap-2 bg-white shadow-sm">
+                    <Card key={index} className={cn("p-3 flex flex-col gap-2 bg-white shadow-sm", !track.selected && "opacity-50")}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Checkbox
