@@ -124,7 +124,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
               style={{ backgroundColor: '#F538BC', fontFamily: '"Playfair Display", serif' }}
             >
-              <h3 className="text-2xl md:text-3xl font-bold leading-snug">
+              <h3 className="text-xl md:text-2xl font-bold leading-snug line-clamp-3">
                 {product.title} {product.artist_name && `- ${product.artist_name}`}
               </h3>
             </div>
@@ -137,8 +137,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={cn(
-                  "p-2 rounded-full bg-white/90 shadow-lg",
-                  trackIcon.color
+                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white", // Changed background and text color
                 )}>
                   <trackIcon.Icon className="h-5 w-5" />
                 </div>
@@ -210,7 +209,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                     "h-10 w-10 rounded-full transition-colors shadow-md",
                     isPlaying 
                       ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
-                      : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
+                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white" // Changed to accent color
                   )}
                 >
                   {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
