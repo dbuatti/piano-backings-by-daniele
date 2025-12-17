@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription, // Import DialogDescription
+  DialogFooter, // ADDED DialogFooter
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -976,7 +977,7 @@ const ProductManager: React.FC = () => {
               </div>
             </div>
           )}
-          <div className="flex justify-end space-x-2">
+          <DialogFooter> {/* Correctly using DialogFooter */}
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
