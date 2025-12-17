@@ -4,11 +4,13 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music } from 'lucide-react';
+import { DollarSign, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music, Heart, FileText, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from '@/components/ui/progress'; // Import Progress component
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface Product {
   id: string;
@@ -61,8 +63,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   isBuying 
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const timeoutRef = useRef<number | null>(null);
+  const PREVIEW_DURATION = 10; // seconds
+  const { toast } = useToast(); // Initialize useToast
 
   const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
   const trackIcon = getTrackTypeIcon(product.track_type);
@@ -79,8 +84,17 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         timeoutRef.current = null;
       }
       setIsPlaying(false);
+      setProgress(0);
     }
   }, [isOpen]);
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      const currentTime = audioRef.current.currentTime;
+      const newProgress = (currentTime / PREVIEW_DURATION) * 100;
+      setProgress(Math.min(newProgress, 100));
+    }
+  };
 
   const handlePlayPause = () => {
     if (!audioRef.current || !firstTrackUrl) return;
@@ -96,6 +110,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       audioRef.current.currentTime = 0;
       audioRef.current.play();
       setIsPlaying(true);
+      setProgress(0);
 
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
@@ -106,8 +121,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           audioRef.current.currentTime = 0;
         }
         setIsPlaying(false);
+        setProgress(0);
         timeoutRef.current = null;
-      }, 10000) as unknown as number;
+      }, PREVIEW_DURATION * 1000) as unknown as number;
     }
   };
 
@@ -117,6 +133,17 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       timeoutRef.current = null;
     }
     setIsPlaying(false);
+    setProgress(0);
+  };
+
+  // Helper to display descriptive quality terms
+  const getTrackQualityDescription = (type: string | undefined) => {
+    switch (type) {
+      case 'quick': return 'Quick Reference (Basic Quality)';
+      case 'one-take': return 'One-Take Recording (Good Quality)';
+      case 'polished': return 'Polished Backing (Studio Quality)';
+      default: return 'Not specified';
+    }
   };
 
   return (
@@ -138,7 +165,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 ) : (
                   <div 
                     className="flex items-center justify-center w-full h-full text-white p-4 text-center rounded-lg shadow-md"
-                    style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }} // Dark primary color for contrast
+                    style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }}
                   >
                     <h3 className="text-3xl font-bold leading-snug">
                       {product.title}
@@ -152,7 +179,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             {firstTrackUrl && (
               <div className="mt-4 p-4 bg-white rounded-lg shadow-inner border border-gray-200">
                 <h4 className="text-lg font-semibold text-[#1C0357] mb-2 flex items-center">
-                  <Music className="h-5 w-5 mr-2 text-[#F538BC]" /> Listen to Sample (10s)
+                  <Music className="h-5 w-5 mr-2 text-[#F538BC]" /> Preview Track (10s Sample)
                 </h4>
                 <div className="flex items-center space-x-4">
                   <Tooltip>
@@ -160,7 +187,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       <Button 
                         onClick={handlePlayPause}
                         className={cn(
-                          "h-12 w-12 rounded-full transition-colors shadow-lg",
+                          "h-12 w-12 rounded-full transition-colors shadow-lg flex-shrink-0",
                           isPlaying 
                             ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
                             : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
@@ -173,13 +200,37 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
                     </TooltipContent>
                   </Tooltip>
-                  <p className="text-sm text-gray-600">
-                    {isPlaying ? 'Playing...' : 'Click to play sample'}
-                  </p>
+                  
+                  <div className="flex-1">
+                    {/* Removed indicatorClassName and applied indicator color via className (default Shadcn behavior) */}
+                    <Progress value={progress} className="h-2 bg-gray-200 [&>div]:bg-[#F538BC]" />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {isPlaying ? `Playing... (${Math.round(progress * PREVIEW_DURATION / 100)}s / ${PREVIEW_DURATION}s)` : 'Ready to play'}
+                    </p>
+                  </div>
                 </div>
-                <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
+                <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} onTimeUpdate={handleTimeUpdate} preload="none" className="hidden" />
               </div>
             )}
+            
+            {/* Wishlist Placeholder */}
+            <div className="mt-4 flex justify-end">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-gray-400 hover:text-[#F538BC] transition-colors"
+                    onClick={(e) => { e.stopPropagation(); toast({ title: "Wishlist", description: "Feature coming soon!" }); }}
+                  >
+                    <Heart className="h-6 w-6 fill-current" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Save to Wishlist</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           {/* Right Column: Details & CTA */}
@@ -193,31 +244,67 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               )}
             </DialogHeader>
 
-            {/* Metadata Badges */}
-            <div className="flex flex-wrap gap-2 mb-4 border-b pb-4 flex-shrink-0">
-              {/* Category */}
-              {product.category && (
-                <Badge className="bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full font-semibold">
-                  {product.category.replace('-', ' ')}
-                </Badge>
-              )}
-              {/* Vocal Ranges */}
-              {product.vocal_ranges && product.vocal_ranges.map(range => (
-                <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-sm px-3 py-1 rounded-full font-medium">
-                  {range}
-                </Badge>
-              ))}
-              {/* Key Signature */}
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-4 border-b pb-4 flex-shrink-0">
+              {/* Show/Source */}
+              <div className="flex items-center">
+                <Theater className="h-4 w-4 mr-2 text-[#1C0357]" />
+                <div>
+                  <p className="text-xs text-gray-500">Show/Source</p>
+                  <p className="font-medium text-sm">{product.artist_name || 'N/A'}</p>
+                </div>
+              </div>
+              
+              {/* Key */}
               {product.show_key_signature && product.key_signature && (
-                <Badge variant="outline" className="text-sm px-3 py-1 rounded-full border-gray-400 text-gray-700">
-                  <Key className="h-4 w-4 mr-1" /> Key: {product.key_signature}
-                </Badge>
+                <div className="flex items-center">
+                  <Key className="h-4 w-4 mr-2 text-[#1C0357]" />
+                  <div>
+                    <p className="text-xs text-gray-500">Musical Key</p>
+                    <p className="font-medium text-sm">{product.key_signature}</p>
+                  </div>
+                </div>
               )}
-              {/* Track Type */}
-              {trackIcon && (
-                <Badge className={cn("text-sm px-3 py-1 rounded-full font-medium", trackIcon.color, "bg-opacity-10")} style={{ borderColor: trackIcon.color }}>
-                  <trackIcon.Icon className="h-4 w-4 mr-1" /> {trackIcon.tooltip}
-                </Badge>
+              
+              {/* Track Quality */}
+              <div className="flex items-center">
+                <Sparkles className="h-4 w-4 mr-2 text-[#1C0357]" />
+                <div>
+                  <p className="text-xs text-gray-500">Track Quality</p>
+                  <p className="font-medium text-sm">{getTrackQualityDescription(product.track_type)}</p>
+                </div>
+              </div>
+              
+              {/* File Type (Simulated) */}
+              <div className="flex items-center">
+                <FileText className="h-4 w-4 mr-2 text-[#1C0357]" />
+                <div>
+                  <p className="text-xs text-gray-500">File Type</p>
+                  <p className="font-medium text-sm">High-Quality MP3</p>
+                </div>
+              </div>
+              
+              {/* Vocal Ranges */}
+              {product.vocal_ranges && product.vocal_ranges.length > 0 && (
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500 mb-1">Vocal Ranges</p>
+                  <div className="flex flex-wrap gap-1">
+                    {product.vocal_ranges.map(range => (
+                      <Badge 
+                        key={range} 
+                        className={cn(
+                          "text-xs px-2 py-0.5 rounded-full font-medium",
+                          range === 'Soprano' && 'bg-pink-100 text-pink-800 border border-pink-300',
+                          range === 'Alto' && 'bg-purple-100 text-purple-800 border border-purple-300',
+                          range === 'Tenor' && 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+                          range === 'Bass' && 'bg-blue-100 text-blue-800 border border-blue-300',
+                        )}
+                      >
+                        {range}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -232,9 +319,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                   <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
                     <Button 
                       variant="link" 
-                      className="p-0 text-[#1C0357] hover:text-[#F538BC]" // Changed text color for better contrast
+                      className="p-0 text-[#1C0357] hover:text-[#F538BC] font-semibold"
                     >
-                      <LinkIcon className="h-4 w-4 mr-2 text-[#F538BC]" /> View Sheet Music Link
+                      <LinkIcon className="h-4 w-4 mr-2 text-[#F538BC]" /> View Sheet Music PDF
                     </Button>
                   </a>
                 </div>
@@ -246,7 +333,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <DollarSign className="h-8 w-8 text-[#1C0357] mr-2" />
-                  <span className="text-4xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+                  <span className="text-xl font-medium text-gray-600 mr-1">{product.currency}</span>
+                  <span className="text-4xl font-extrabold text-[#1C0357]">{product.price.toFixed(2)}</span>
                 </div>
               </div>
               <Button 
