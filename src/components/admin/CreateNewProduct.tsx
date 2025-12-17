@@ -147,6 +147,7 @@ const CreateNewProduct: React.FC = () => {
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
+      // If file is cleared, clear the URL in the form state
       setProductForm(prev => ({ ...prev, sheet_music_url: '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
@@ -221,8 +222,7 @@ const CreateNewProduct: React.FC = () => {
       });
       setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [],
-        sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
+        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
         track_type: '',
       });
       setImageFile(null);
@@ -462,6 +462,14 @@ const CreateNewProduct: React.FC = () => {
               {productForm.sheet_music_url && sheetMusicFile && (
                 <div className="mt-2">
                   <Label className="text-xs text-gray-500">Preview:</Label>
+                  <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                    {truncateUrl(productForm.sheet_music_url, 30)}
+                  </a>
+                </div>
+              )}
+              {productForm.sheet_music_url && !sheetMusicFile && (
+                <div className="mt-2">
+                  <Label className="text-xs text-gray-500">Existing URL:</Label>
                   <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
                     {truncateUrl(productForm.sheet_music_url, 30)}
                   </a>

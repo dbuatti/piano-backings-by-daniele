@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -73,7 +73,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<BackingRequest | null>(null);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]); // Changed to array for multi-select
   const [productForm, setProductForm] = useState<ProductForm>({
     title: '',
     description: '',
@@ -188,72 +188,109 @@ const RepurposeTrackToShop: React.FC = () => {
     req.email.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  // Pre-fill form when a request is selected
+  // Derived state for selected requests objects
+  const selectedRequests = useMemo(() => {
+    return requests?.filter(req => selectedRequestIds.includes(req.id)) || [];
+  }, [selectedRequestIds, requests]);
+
+  // Pre-fill form when selected requests change
   useEffect(() => {
-    if (selectedRequest) {
-      let autoTitle = selectedRequest.song_title;
-      let autoArtist = selectedRequest.musical_or_artist;
-
-      const hyphenIndex = selectedRequest.song_title.indexOf(' - ');
-      if (hyphenIndex !== -1) {
-        autoTitle = selectedRequest.song_title.substring(0, hyphenIndex).trim();
-        autoArtist = selectedRequest.song_title.substring(hyphenIndex + 3).trim();
-      } else {
-        autoTitle = selectedRequest.song_title;
-        autoArtist = selectedRequest.musical_or_artist;
-      }
-
-      // Define normalizedBackingTypes here
-      const normalizedBackingTypes = getSafeBackingTypes(selectedRequest.backing_type);
+    if (selectedRequests.length > 0) {
+      const firstRequest = selectedRequests[0];
+      const isBundle = selectedRequests.length > 1;
       
-      // Use the new generator function for the description
-      const generatedDescription = generateProductDescriptionFromRequest({ ...selectedRequest, track_purpose: selectedRequest.track_purpose || '' });
-      
-      const newTrackUrls = selectedRequest.track_urls?.map(track => {
-        const originalCaption = track.caption;
-        let captionToUse = String(originalCaption || ''); // Ensure caption is a string
-
-        const isGenericCaption = 
-          captionToUse === '' || 
-          captionToUse.toLowerCase() === 'true' ||
-          (track.url && captionToUse === truncateUrl(track.url, 100)); // Check against truncated URL
-
-        if (isGenericCaption && track.url) {
-          captionToUse = generateDescriptiveCaption(selectedRequest, originalCaption, track.url);
-        }
-        
-        return { url: track.url, caption: captionToUse, selected: true, file: null };
-      }) || [];
-
-      setProductForm({
-        title: autoTitle,
-        description: generatedDescription, // Use the generated description
-        price: '25.00',
-        currency: 'AUD',
-        image_url: '',
-        track_urls: newTrackUrls,
-        is_active: true,
-        artist_name: autoArtist,
-        category: normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : 'general',
-        vocal_ranges: [],
-        sheet_music_url: selectedRequest.sheet_music_url || '',
-        key_signature: selectedRequest.song_key || '',
-        show_sheet_music_url: true,
-        show_key_signature: true,
-        track_type: selectedRequest.track_type || '',
+      // 1. Aggregate Track URLs
+      const aggregatedTrackUrls: TrackInfo[] = [];
+      selectedRequests.forEach(req => {
+        req.track_urls?.forEach(track => {
+          if (track.url) {
+            const captionToUse = generateDescriptiveCaption(req, track.caption, track.url);
+            aggregatedTrackUrls.push({ 
+              url: track.url, 
+              caption: captionToUse, 
+              selected: true, 
+              file: null 
+            });
+          }
+        });
       });
+
+      // 2. Determine Title and Artist
+      let autoTitle = firstRequest.song_title;
+      let autoArtist = firstRequest.musical_or_artist;
+      let autoCategory = getSafeBackingTypes(firstRequest.backing_type).length > 0 ? getSafeBackingTypes(firstRequest.backing_type)[0] : 'general';
+      let autoTrackType = firstRequest.track_type || '';
+      let autoKeySignature = firstRequest.song_key || '';
+      let autoSheetMusicUrl = firstRequest.sheet_music_url || '';
+
+      if (isBundle) {
+        const artistNames = [...new Set(selectedRequests.map(r => r.musical_or_artist))];
+        const songTitles = selectedRequests.map(r => r.song_title);
+        
+        autoTitle = `Bundle: ${songTitles.join(', ').substring(0, 100)}...`;
+        autoArtist = artistNames.join(', ');
+        autoCategory = 'full-song'; // Default bundle category
+        autoTrackType = 'polished'; // Default bundle track type
+        autoKeySignature = 'Various';
+        autoSheetMusicUrl = ''; // Clear sheet music for bundles unless manually set
+      } else {
+        // Single request logic (kept for clarity)
+        const hyphenIndex = firstRequest.song_title.indexOf(' - ');
+        if (hyphenIndex !== -1) {
+          autoTitle = firstRequest.song_title.substring(0, hyphenIndex).trim();
+          autoArtist = firstRequest.song_title.substring(hyphenIndex + 3).trim();
+        } else {
+          autoTitle = firstRequest.song_title;
+          autoArtist = firstRequest.musical_or_artist;
+        }
+      }
+      
+      // 3. Generate Description (using the first request as a template if not a bundle)
+      const descriptionSource = isBundle ? firstRequest : firstRequest;
+      const generatedDescription = generateProductDescriptionFromRequest({ ...descriptionSource, track_purpose: descriptionSource.track_purpose || '' });
+      
+      setProductForm(prev => ({
+        ...prev,
+        title: autoTitle,
+        description: generatedDescription,
+        price: isBundle ? '50.00' : '25.00', // Suggest a higher price for bundles
+        track_urls: aggregatedTrackUrls,
+        artist_name: autoArtist,
+        category: autoCategory,
+        sheet_music_url: autoSheetMusicUrl,
+        key_signature: autoKeySignature,
+        track_type: autoTrackType,
+      }));
       setImageFile(null);
       setSheetMusicFile(null);
       setFormErrors({});
+    } else {
+      // Clear form if no requests are selected
+      setProductForm(prev => ({
+        ...prev,
+        title: '', description: '', price: '', image_url: '', track_urls: [],
+        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', track_type: '',
+      }));
     }
-    // NOTE: When selectedRequest becomes null, the form retains the last populated data.
-  }, [selectedRequest]);
+  }, [selectedRequests]);
+
+  const handleToggleRequestSelection = (requestId: string) => {
+    setSelectedRequestIds(prev => 
+      prev.includes(requestId) 
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
+  };
 
   const handleClearSourceRequest = () => {
-    setSelectedRequest(null);
+    setSelectedRequestIds([]);
+    setProductForm({
+      title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
+      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true, track_type: '',
+    });
     toast({
       title: "Source Cleared",
-      description: "The form data remains, allowing you to edit and create a new product.",
+      description: "The form has been reset.",
     });
   };
 
@@ -334,7 +371,8 @@ const RepurposeTrackToShop: React.FC = () => {
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequest?.sheet_music_url || '' }));
+      // If clearing the file input, revert to the original URL if a request was selected, otherwise clear
+      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequests.length > 0 ? selectedRequests[0].sheet_music_url || '' : '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
   };
@@ -406,12 +444,10 @@ const RepurposeTrackToShop: React.FC = () => {
         title: "Product Added",
         description: `${productForm.title} has been added to the shop!`,
       });
-      setSelectedRequest(null);
-      setProductForm({
+      setSelectedRequestIds([]); // Clear selection
+      setProductForm({ // Reset form
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [],
-        sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true,
-        track_type: '',
+        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_sheet_music_url: true, show_key_signature: true, track_type: '',
       });
       setImageFile(null);
       setSheetMusicFile(null);
@@ -468,7 +504,7 @@ const RepurposeTrackToShop: React.FC = () => {
         });
         return;
       }
-    } else if (productForm.sheet_music_url === '' && selectedRequest?.sheet_music_url) {
+    } else if (productForm.sheet_music_url === '' && sheetMusicFile === null) {
       sheetMusicUrlToSave = null;
     }
 
@@ -528,29 +564,39 @@ const RepurposeTrackToShop: React.FC = () => {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-gray-600 mb-4">
-          Select a completed backing track request to create a new product for your shop.
+          Select one or more completed backing track requests to create a new product or bundle for your shop.
         </p>
 
         <div className="mb-6 border-b pb-6">
           <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
             <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-5 h-5 flex items-center justify-center mr-2 text-xs">1</span>
-            Select Completed Request
+            Select Completed Request(s)
           </h3>
           
-          {selectedRequest ? (
+          {selectedRequests.length > 0 ? (
             <div className="p-4 border rounded-md bg-blue-50 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-bold text-[#1C0357]">{selectedRequest.song_title} by {selectedRequest.musical_or_artist}</p>
-                  <p className="text-sm text-gray-600">Client: {selectedRequest.name || selectedRequest.email}</p>
-                  <p className="text-xs text-gray-500">Submitted: {format(new Date(selectedRequest.created_at), 'MMM dd, yyyy')}</p>
+                  <p className="font-bold text-[#1C0357]">
+                    {selectedRequests.length > 1 
+                      ? `Bundle of ${selectedRequests.length} Tracks` 
+                      : `${selectedRequests[0].song_title} by ${selectedRequests[0].musical_or_artist}`}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedRequests.length > 1 
+                      ? `Songs: ${selectedRequests.map(r => r.song_title).join(', ').substring(0, 100)}...`
+                      : `Client: ${selectedRequests[0].name || selectedRequests[0].email}`}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Tracks aggregated: {productForm.track_urls.length}
+                  </p>
                 </div>
                 <Button 
                   variant="destructive" 
                   size="sm" 
                   onClick={handleClearSourceRequest}
                 >
-                  <XCircle className="h-4 w-4 mr-1" /> Clear Source
+                  <XCircle className="h-4 w-4 mr-1" /> Clear Selection
                 </Button>
               </div>
               <p className="text-sm text-blue-800">
@@ -593,14 +639,17 @@ const RepurposeTrackToShop: React.FC = () => {
                       product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
                       product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
                     );
+                    
+                    const isSelected = selectedRequestIds.includes(req.id);
 
                     return (
                       <div
                         key={req.id}
                         className={cn(
-                          "flex items-center justify-between p-3 border rounded-md transition-colors",
-                          'bg-gray-50 hover:bg-gray-100'
+                          "flex items-center justify-between p-3 border rounded-md transition-colors cursor-pointer",
+                          isSelected ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
                         )}
+                        onClick={() => handleToggleRequestSelection(req.id)}
                       >
                         <div>
                           <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
@@ -612,9 +661,11 @@ const RepurposeTrackToShop: React.FC = () => {
                               <CheckCircle className="h-3 w-3 mr-1" /> In Shop
                             </Badge>
                           )}
-                          <Button size="sm" variant="outline" className="h-6" onClick={() => setSelectedRequest(req)}>
-                            <PlusCircle className="h-3 w-3 mr-1" /> Import
-                          </Button>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleRequestSelection(req.id)}
+                            className="h-4 w-4"
+                          />
                         </div>
                       </div>
                     );
@@ -627,7 +678,7 @@ const RepurposeTrackToShop: React.FC = () => {
       </CardContent>
 
       {/* Conditional rendering of the product form or placeholder message, each wrapped in its own CardContent */}
-      {selectedRequest || productForm.title ? (
+      {selectedRequests.length > 0 || productForm.title ? (
         <CardContent>
           <div>
             <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
@@ -767,6 +818,14 @@ const RepurposeTrackToShop: React.FC = () => {
                       </a>
                     </div>
                   )}
+                  {productForm.sheet_music_url && !sheetMusicFile && (
+                    <div className="mt-2">
+                      <Label className="text-xs text-gray-500">Existing URL:</Label>
+                      <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
+                        {truncateUrl(productForm.sheet_music_url, 30)}
+                      </a>
+                    </div>
+                  )}
                   {formErrors.sheet_music_url && <p className="text-red-500 text-xs mt-1">{formErrors.sheet_music_url}</p>}
                   <div className="flex items-center space-x-2 mt-2">
                     <Checkbox
@@ -788,7 +847,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     name="key_signature"
                     value={productForm.key_signature}
                     onChange={handleFormChange}
-                    placeholder="e.g., C Major, A Minor"
+                    placeholder="e.g., C Major, A Minor, Various"
                     className={cn("mt-1", formErrors.key_signature && "border-red-500")}
                   />
                   {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
@@ -806,7 +865,7 @@ const RepurposeTrackToShop: React.FC = () => {
               
               <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Product Tracks</Label>
+                  <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.length} total)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addTrackUrl}>
                     <PlusCircle className="h-4 w-4 mr-2" /> Add Track
                   </Button>
@@ -937,7 +996,7 @@ const RepurposeTrackToShop: React.FC = () => {
         </CardContent>
       ) : (
         <CardContent>
-          <p className="text-center text-gray-500 py-4">Select a completed request above to define a new product.</p>
+          <p className="text-center text-gray-500 py-4">Select one or more completed requests above to define a new product or bundle.</p>
         </CardContent>
       )}
     </Card>

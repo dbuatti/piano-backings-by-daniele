@@ -459,7 +459,14 @@ const ProductManager: React.FC = () => {
         return;
       }
     } else if (productForm.sheet_music_url === '' && currentProduct.sheet_music_url) {
+      // If the user cleared the input field and no new file was uploaded, set to null
       sheetMusicUrlToSave = null;
+    } else if (productForm.sheet_music_url === currentProduct.sheet_music_url) {
+      // If the URL is the same as the original and no new file, keep the original URL
+      sheetMusicUrlToSave = currentProduct.sheet_music_url;
+    } else {
+      // If the user manually changed the URL (and no file was uploaded), use the new URL
+      sheetMusicUrlToSave = productForm.sheet_music_url;
     }
 
     // 3. Prepare a mutable copy of the track_urls array for file uploads
@@ -987,7 +994,7 @@ const ProductManager: React.FC = () => {
                 'Save Changes'
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
