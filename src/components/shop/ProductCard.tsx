@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon } from 'lucide-react';
@@ -225,29 +225,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         {firstTrackUrl && (
           <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
         )}
-
-        {/* NEW: Buy Now Button inside CardContent */}
-        <div className="mt-4" onClick={(e) => e.stopPropagation()}>
-          <Button 
-            onClick={() => onBuyNow(product)} 
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white w-full justify-center shadow-lg text-lg h-10"
-            disabled={isBuying}
-          >
-            {isBuying ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              product.master_download_link ? (
-                <LinkIcon className="mr-2 h-5 w-5" />
-              ) : (
-                <ShoppingCart className="mr-2 h-5 w-5" />
-              )
-            )}
-            {isBuying ? 'Processing...' : `Buy Now (${product.currency} ${product.price.toFixed(2)})`}
-          </Button>
-        </div>
       </CardContent>
       
-      {/* CardFooter removed */}
+      {/* CardFooter - Only for Buy Now Action (Primary Action) */}
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full transition-colors duration-300 group-hover:bg-[#D1AAF2]/50">
+        <Button 
+          onClick={() => onBuyNow(product)} 
+          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center shadow-lg text-lg h-12"
+          disabled={isBuying}
+        >
+          {isBuying ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            product.master_download_link ? (
+              <LinkIcon className="mr-2 h-5 w-5" />
+            ) : (
+              <ShoppingCart className="mr-2 h-5 w-5" />
+            )
+          )}
+          {isBuying ? 'Processing...' : `Buy Now (${product.currency} ${product.price.toFixed(2)})`}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };
