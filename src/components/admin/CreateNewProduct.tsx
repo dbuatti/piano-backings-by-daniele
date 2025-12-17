@@ -204,7 +204,7 @@ const CreateNewProduct: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, file, ...rest }) => rest); // Destructures 'selected' and 'file'
+        .map(({ selected, file, ...rest }) => rest); // This map correctly removes 'selected' and 'file'
 
       const { data, error } = await supabase
         .from('products')
@@ -288,7 +288,7 @@ const CreateNewProduct: React.FC = () => {
     // Process track URLs: upload files and replace with URLs
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
-      if (track.selected) {
+      if (track.selected) { // Only process selected tracks
         console.log('Processing track:', track.caption || 'Unnamed');
         let trackUrlToSave = track.url;
         if (track.file) {
@@ -660,7 +660,7 @@ const CreateNewProduct: React.FC = () => {
               </Button>
             </div>
           </CardContent>
-        </Card>
+    </Card>
   );
 };
 
