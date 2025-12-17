@@ -269,7 +269,7 @@ const Shop = () => {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
         {/* NEW: Hero Section */}
-        <div className="text-center py-16 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100">
+        <div className="text-center py-12 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100"> {/* Reduced py-16 to py-12 */}
           <h1 className="text-5xl md:text-7xl font-extrabold text-[#1C0357] mb-4 tracking-tighter">
             The Backing Track Library
           </h1>
@@ -277,13 +277,13 @@ const Shop = () => {
             Instantly download high-quality piano accompaniments for auditions, practice, and performance.
           </p>
           <Link to="/form-page">
-            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg">
+            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg"> {/* Ensure button uses accent color */}
               <Music className="mr-2 h-5 w-5" /> Need a Custom Track?
             </Button>
           </Link>
         </div>
 
-        {/* Filter and Sort Bar (Now Sticky) */}
+        {/* Filter and Sort Bar (Sticky) */}
         <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-lg shadow-xl border border-gray-100/50">
           
           {/* Search Input */}
