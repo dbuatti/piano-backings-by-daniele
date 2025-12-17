@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Filter, XCircle, CheckCircle, ShoppingCart, Music, DollarSign, Key, FileText, ArrowUpDown, Mic, Headphones, Sparkles } from 'lucide-react';
+import { Loader2, Search, Filter, XCircle, ShoppingCart, Music, ArrowUpDown, Theater } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -256,7 +256,7 @@ const Shop = () => {
   }, [filteredProducts]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2]/50 to-[#F1E14F]/10">
       {selectedProductForDetail && (
         <Seo
           title={`${selectedProductForDetail.title} (${selectedProductForDetail.artist_name}) Piano Backing Track | ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}`}
@@ -269,7 +269,7 @@ const Shop = () => {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
         {/* NEW: Hero Section */}
-        <div className="text-center py-16 mb-10 bg-white/50 rounded-xl shadow-xl backdrop-blur-sm border border-white/80">
+        <div className="text-center py-16 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100">
           <h1 className="text-5xl md:text-7xl font-extrabold text-[#1C0357] mb-4 tracking-tighter">
             The Backing Track Library
           </h1>
@@ -277,14 +277,14 @@ const Shop = () => {
             Instantly download high-quality piano accompaniments for auditions, practice, and performance.
           </p>
           <Link to="/form-page">
-            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-md">
+            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg">
               <Music className="mr-2 h-5 w-5" /> Need a Custom Track?
             </Button>
           </Link>
         </div>
 
-        {/* Filter and Sort Bar */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-lg shadow-md border border-gray-100">
+        {/* Filter and Sort Bar (Now Sticky) */}
+        <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-lg shadow-xl border border-gray-100/50">
           
           {/* Search Input */}
           <div className="relative w-full md:w-1/3">

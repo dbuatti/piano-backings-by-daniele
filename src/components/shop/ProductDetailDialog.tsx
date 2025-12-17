@@ -11,7 +11,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { DollarSign, Music, ShoppingCart, X, Link as LinkIcon, PlayCircle, PauseCircle, Theater, Tag, Key, FileText, Loader2, Mic, Headphones, Sparkles, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { TrackInfo, downloadTrack } from '@/utils/helpers'; // Import downloadTrack
+import { TrackInfo, downloadTrack } from '@/utils/helpers';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -32,7 +32,7 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
-  master_download_link?: string | null; // NEW FIELD
+  master_download_link?: string | null;
 }
 
 interface ProductDetailDialogProps {
@@ -134,6 +134,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
       case 'quick':
         return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
       case 'one-take':
+      case 'one-take-recording': // Ensure consistency
         return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
       case 'polished':
         return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
@@ -249,8 +250,10 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       size="icon" 
                       onClick={handlePlayPause} 
                       className={cn(
-                        "h-10 w-10 rounded-full transition-colors",
-                        isPlaying ? "bg-red-500 hover:bg-red-600 text-white" : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
+                        "h-10 w-10 rounded-full transition-colors shadow-md",
+                        isPlaying 
+                          ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
+                          : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
                       )}
                       disabled={isBuying}
                     >
@@ -314,14 +317,14 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
         </div>
         
         {/* Fixed Footer/Action Bar */}
-        <div className="flex items-center justify-between p-6 border-t bg-[#D1AAF2]/50 flex-shrink-0">
+        <div className="flex items-center justify-between p-6 border-t bg-[#D1AAF2]/50 flex-shrink-0 shadow-inner">
           <div className="flex items-center">
             <DollarSign className="h-6 w-6 text-[#1C0357] mr-2" />
             <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
           <Button 
             onClick={() => onBuyNow(product)}
-            className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-6 py-3"
+            className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-6 py-3 shadow-lg"
             disabled={isBuying}
           >
             {isBuying ? (

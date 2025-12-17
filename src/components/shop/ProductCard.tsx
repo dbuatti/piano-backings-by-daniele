@@ -4,12 +4,12 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Music, DollarSign, Eye, ShoppingCart, Loader2, Theater, Tag, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, FileText, Link as LinkIcon } from 'lucide-react'; // Replaced Mask with Theater
+import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Badge } from '@/components/ui/badge';
 import { TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { isWithinInterval, subDays } from 'date-fns'; // Import date-fns utilities
+import { isWithinInterval, subDays } from 'date-fns';
 
 interface Product {
   id: string;
@@ -29,7 +29,7 @@ interface Product {
   show_sheet_music_url?: boolean;
   show_key_signature?: boolean;
   track_type?: string;
-  master_download_link?: string | null; // NEW FIELD
+  master_download_link?: string | null;
 }
 
 interface ProductCardProps {
@@ -89,6 +89,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       case 'quick':
         return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
       case 'one-take':
+      case 'one-take-recording': // Ensure consistency
         return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
       case 'polished':
         return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
@@ -107,7 +108,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   });
 
   return (
-    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
+    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
       <CardHeader className="p-0 relative overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
@@ -153,7 +154,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         )}
 
       </CardHeader>
-      <CardContent className="flex-1 p-4 bg-white text-left">
+      <CardContent className="flex-1 p-4 bg-white text-left flex flex-col">
         <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
         {product.artist_name && (
           <p className="text-sm text-gray-700 mb-3 leading-tight flex items-center">
@@ -183,13 +184,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           )}
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3 mb-4">{product.description}</p>
+        <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1">{product.description}</p>
         
         {/* Price and Play Button */}
-        <div className="flex items-center justify-between mt-auto">
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
           <div className="flex items-center">
             <DollarSign className="h-6 w-6 text-[#1C0357] mr-1" />
-            <span className="text-2xl font-bold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+            <span className="text-2xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
           </div>
           {firstTrackUrl && (
             <Tooltip>
@@ -199,8 +200,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                   size="icon" 
                   onClick={handlePlayPause} 
                   className={cn(
-                    "h-10 w-10 rounded-full transition-colors",
-                    isPlaying ? "bg-red-500 hover:bg-red-600 text-white" : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
+                    "h-10 w-10 rounded-full transition-colors shadow-md",
+                    isPlaying 
+                      ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
+                      : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
                   )}
                 >
                   {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
@@ -217,18 +220,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
         )}
       </CardContent>
-      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full">
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full transition-colors duration-300 group-hover:bg-[#D1AAF2]/50">
         <Button 
           variant="outline"
           onClick={() => onViewDetails(product)}
-          className="text-[#1C0357] border-[#1C0357]/30 hover:bg-[#1C0357]/10 w-full justify-center"
+          className="text-[#1C0357] border-[#1C0357]/30 hover:bg-[#1C0357]/10 w-full justify-center shadow-sm hover:shadow-md"
         >
           <Eye className="h-4 w-4 mr-2" />
           View Full Details
         </Button>
         <Button 
           onClick={() => onBuyNow(product)} 
-          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center"
+          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center shadow-lg"
           disabled={isBuying}
         >
           {isBuying ? (
