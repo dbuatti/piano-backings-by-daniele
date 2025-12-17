@@ -230,8 +230,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               {product.show_sheet_music_url && product.sheet_music_url && (
                 <div className="mt-4">
                   <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="link" className="p-0 text-[#F538BC] hover:text-[#F538BC]/80">
-                      <LinkIcon className="h-4 w-4 mr-2" /> View Sheet Music Link
+                    <Button 
+                      variant="link" 
+                      className="p-0 text-[#1C0357] hover:text-[#F538BC]" // Changed text color for better contrast
+                    >
+                      <LinkIcon className="h-4 w-4 mr-2 text-[#F538BC]" /> View Sheet Music Link
                     </Button>
                   </a>
                 </div>
