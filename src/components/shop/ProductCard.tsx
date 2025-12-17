@@ -169,7 +169,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         )}
         
         {/* Info Badges */}
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-1 mb-3 p-2 rounded-md bg-gray-50 border border-gray-100">
           {product.category && (
             <Badge 
               variant="default" 
@@ -190,7 +190,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           )}
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3 mb-4 flex-1">{product.description}</p>
+        <p className="text-sm text-gray-700 line-clamp-3 mb-4 flex-1">{product.description}</p>
         
         {/* Price and Play Button */}
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">

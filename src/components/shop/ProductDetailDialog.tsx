@@ -203,19 +203,19 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               )}
               {/* Vocal Ranges */}
               {product.vocal_ranges && product.vocal_ranges.map(range => (
-                <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-sm px-3 py-1 rounded-full font-medium">
+                <Badge key={range} variant="secondary" className="bg-[#D1AAF2] text-[#1C0357] border-2 border-[#D1AAF2] text-sm px-3 py-1 rounded-full font-medium">
                   {range}
                 </Badge>
               ))}
               {/* Key Signature */}
               {product.show_key_signature && product.key_signature && (
-                <Badge variant="outline" className="text-sm px-3 py-1 rounded-full border-gray-400 text-gray-700">
+                <Badge variant="outline" className="text-sm px-3 py-1 rounded-full border-gray-400 text-gray-700 bg-gray-100">
                   <Key className="h-4 w-4 mr-1" /> Key: {product.key_signature}
                 </Badge>
               )}
               {/* Track Type */}
               {trackIcon && (
-                <Badge className={cn("text-sm px-3 py-1 rounded-full font-medium", trackIcon.color, "bg-opacity-10")} style={{ borderColor: trackIcon.color }}>
+                <Badge className={cn("text-sm px-3 py-1 rounded-full font-medium bg-white border", trackIcon.color)} style={{ borderColor: trackIcon.color }}>
                   <trackIcon.Icon className="h-4 w-4 mr-1" /> {trackIcon.tooltip}
                 </Badge>
               )}
