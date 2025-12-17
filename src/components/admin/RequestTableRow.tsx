@@ -205,13 +205,13 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       className={cn(
         `hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
         isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : "",
-        isDirectUploading && "bg-green-50/50 animate-pulse" // Visual feedback for uploading
+        isDirectUploading && "bg-green-50/50 animate-pulse"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <TableCell>
+      <TableCell className="py-3">
         <input
           type="checkbox"
           checked={selectedRequests.includes(request.id)}
@@ -219,7 +219,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           className="h-4 w-4"
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="py-3">
         <div className="text-sm font-medium text-[#1C0357]">
           {format(new Date(request.created_at), 'MMM dd')}
         </div>
@@ -227,30 +227,30 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           {format(new Date(request.created_at), 'HH:mm')}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-3">
         <div className="font-medium text-[#1C0357]">{request.name || 'N/A'}</div>
-        <div className="text-sm text-gray-500 flex items-center">
+        <div className="text-xs text-gray-500 flex items-center">
           <Mail className="w-3 h-3 mr-1" />
           {request.email}
         </div>
       </TableCell>
-      <TableCell>
-        <div className="font-medium text-[#1C0357]">{request.song_title}</div>
-        <div className="text-sm text-gray-500">{request.musical_or_artist}</div>
+      <TableCell className="py-3">
+        <div className="font-semibold text-[#1C0357]">{request.song_title}</div>
+        <div className="text-sm text-gray-600">{request.musical_or_artist}</div>
       </TableCell>
-      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
+      <TableCell className="hidden lg:table-cell py-3">
         <div className="flex flex-wrap gap-1">
           {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
-            <Badge key={index} variant={getBadgeVariant(type)} className="capitalize">
+            <Badge key={index} variant={getBadgeVariant(type)} className="capitalize text-xs">
               {type.replace('-', ' ')}
             </Badge>
-          )) : <Badge variant="outline">Not specified</Badge>}
+          )) : <Badge variant="outline" className="text-xs">Not specified</Badge>}
         </div>
       </TableCell>
-      <TableCell className="text-sm text-[#1C0357] hidden sm:table-cell"> {/* Hidden on mobile */}
+      <TableCell className="text-sm text-[#1C0357] hidden sm:table-cell py-3">
         {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
       </TableCell>
-      <TableCell>
+      <TableCell className="py-3">
         <Select 
           value={request.status || 'pending'} 
           onValueChange={(value) => updateStatus(request.id, value)}
@@ -266,7 +266,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           </SelectContent>
         </Select>
       </TableCell>
-      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
+      <TableCell className="hidden lg:table-cell py-3">
         <Select 
           value={request.is_paid ? 'paid' : 'unpaid'} 
           onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
@@ -280,7 +280,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           </SelectContent>
         </Select>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-3">
         <div className="flex items-center font-medium relative">
           <span className="text-sm text-gray-500 mr-0.5">$</span>
           <Input
@@ -312,7 +312,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           )}
         </div>
       </TableCell>
-      <TableCell className="hidden lg:table-cell"> {/* Hidden on mobile */}
+      <TableCell className="hidden lg:table-cell py-3">
         <div className="flex flex-col gap-1">
           {getPlatformIcons(request.uploaded_platforms)}
           <Button 
@@ -325,7 +325,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
           </Button>
         </div>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="text-right py-3">
         <div className="flex justify-end space-x-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

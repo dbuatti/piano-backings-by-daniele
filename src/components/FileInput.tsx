@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LucideIcon, UploadCloud } from 'lucide-react'; // Import UploadCloud icon
+import { LucideIcon, UploadCloud, FileText, FileAudio, XCircle } from 'lucide-react'; // Import FileText, FileAudio, XCircle
 
 interface FileInputProps {
   id: string;
@@ -12,8 +12,8 @@ interface FileInputProps {
   required?: boolean;
   className?: string;
   note?: string;
-  error?: string; // Added error prop
-  disabled?: boolean; // Added disabled prop
+  error?: string;
+  disabled?: boolean;
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -25,62 +25,81 @@ const FileInput: React.FC<FileInputProps> = ({
   required = false,
   className,
   note,
-  error, // Destructure error prop
-  disabled = false, // Destructure disabled prop with default
+  error,
+  disabled = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string>('No file chosen');
-  const [isDragging, setIsDragging] = useState(false); // New state for drag-and-drop
+  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement> | FileList) => {
+    if (disabled) return;
+    const selectedFile = (event instanceof FileList) ? event[0] : event.target.files?.[0] || null;
+    
+    setFile(selectedFile);
+    onChange(selectedFile);
+  };
 
   const handleButtonClick = () => {
-    if (disabled) return; // Prevent click if disabled
+    if (disabled) return;
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (disabled) return; // Prevent change if disabled
-    const file = event.target.files?.[0] || null;
-    setFileName(file ? file.name : 'No file chosen');
-    onChange(file);
+  const handleClearFile = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (disabled) return;
+    setFile(null);
+    onChange(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Clear the input value
+    }
   };
 
   // Drag and drop handlers
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return; // Prevent drag if disabled
+    if (disabled) return;
     event.preventDefault();
     setIsDragging(true);
   };
 
   const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return; // Prevent drag if disabled
+    if (disabled) return;
     event.preventDefault();
     setIsDragging(false);
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return; // Prevent drop if disabled
+    if (disabled) return;
     event.preventDefault();
     setIsDragging(false);
     const files = event.dataTransfer.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      setFileName(file.name);
-      onChange(file);
+      handleFileChange(files);
     }
   };
 
+  const getFileIcon = (file: File | null) => {
+    if (!file) return UploadCloud;
+    if (file.type.startsWith('audio/')) return FileAudio;
+    if (file.type.includes('pdf')) return FileText;
+    return Icon;
+  };
+
+  const CurrentFileIcon = getFileIcon(file);
+
   return (
     <div className={cn("space-y-1", className)}>
-      <label htmlFor={id} className="flex items-center text-sm mb-1">
+      <label htmlFor={id} className="flex items-center text-sm mb-1 font-medium text-[#1C0357]">
         <Icon className="mr-1" size={14} />
-        {label} {required && <span className="text-red-500 ml-1">*</span>}
+        {label} {required && <span className="text-red-500 font-bold ml-1">*</span>}
       </label>
       <div
         className={cn(
-          "flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm bg-white transition-colors duration-200",
+          "relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm transition-colors duration-200",
           isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400",
-          error && "border-red-500", // Apply error styling
-          disabled && "bg-gray-100 cursor-not-allowed opacity-70 border-gray-200 hover:border-gray-200" // Disabled styling
+          file ? "border-green-500 bg-green-50" : "bg-white", // Success state when file is present
+          error && "border-red-500 bg-red-50", // Error state
+          disabled && "bg-gray-100 cursor-not-allowed opacity-70 border-gray-200 hover:border-gray-200"
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -94,9 +113,23 @@ const FileInput: React.FC<FileInputProps> = ({
           onChange={handleFileChange}
           ref={fileInputRef}
           className="hidden"
-          disabled={disabled} // Apply disabled to the actual input
+          disabled={disabled}
         />
-        <UploadCloud className={cn("h-8 w-8 mb-2", isDragging ? "text-[#F538BC]" : "text-gray-400")} />
+        
+        {file && !disabled && (
+          <Button 
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleClearFile}
+            className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:bg-red-100"
+          >
+            <XCircle className="h-4 w-4" />
+          </Button>
+        )}
+
+        <CurrentFileIcon className={cn("h-8 w-8 mb-2", file ? "text-green-600" : isDragging ? "text-[#F538BC]" : "text-gray-400")} />
+        
         <p className="text-gray-700 mb-2 text-center">
           <span className="font-semibold">Drag & drop your file here</span> or
         </p>
@@ -105,14 +138,16 @@ const FileInput: React.FC<FileInputProps> = ({
           onClick={handleButtonClick}
           variant="outline"
           className="py-1 px-3 h-auto text-sm font-semibold bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80"
-          disabled={disabled} // Apply disabled to the button
+          disabled={disabled}
         >
           Browse files
         </Button>
-        <p className="text-gray-500 mt-2 truncate max-w-full">{fileName}</p>
+        <p className={cn("mt-2 truncate max-w-full", file ? "text-green-700 font-semibold" : "text-gray-500")}>
+          {file ? file.name : 'No file chosen'}
+        </p>
       </div>
       {note && <p className="text-xs text-gray-500 mt-1">{note}</p>}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>} {/* Display error message */}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 };

@@ -232,7 +232,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                   <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
                     <Button 
                       variant="link" 
-                      className="p-0 text-[#1C0357] hover:text-[#F538BC]" // Changed text color for better contrast
+                      className="p-0 text-[#1C0357] hover:text-[#F538BC]"
                     >
                       <LinkIcon className="h-4 w-4 mr-2 text-[#F538BC]" /> View Sheet Music Link
                     </Button>
@@ -255,15 +255,23 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 disabled={isBuying}
               >
                 {isBuying ? (
-                  <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
                   product.master_download_link ? (
-                    <LinkIcon className="mr-2 h-6 w-6" />
+                    <>
+                      <LinkIcon className="mr-2 h-6 w-6" />
+                      Buy Now ({product.currency} {product.price.toFixed(2)})
+                    </>
                   ) : (
-                    <ShoppingCart className="mr-2 h-6 w-6" />
+                    <>
+                      <ShoppingCart className="mr-2 h-6 w-6" />
+                      Buy Now ({product.currency} {product.price.toFixed(2)})
+                    </>
                   )
                 )}
-                {isBuying ? 'Processing...' : `Buy Now (${product.currency} ${product.price.toFixed(2)})`}
               </Button>
             </div>
           </div>

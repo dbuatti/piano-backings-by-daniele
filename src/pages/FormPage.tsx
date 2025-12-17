@@ -27,8 +27,8 @@ import {
   Plane,
   CheckCircle,
   Phone,
-  XCircle, // Import XCircle for closure banner
-  Loader2 // Import Loader2
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -39,7 +39,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import FileInput from "@/components/FileInput";
 import AccountPromptCard from '@/components/AccountPromptCard';
-import { useAppSettings } from '@/hooks/useAppSettings'; // Use the renamed hook
+import { useAppSettings } from '@/hooks/useAppSettings';
 import { format } from 'date-fns';
 import Seo from "@/components/Seo";
 
@@ -55,7 +55,6 @@ const FormPage = () => {
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
   const [loadingTrackCount, setLoadingTrackCount] = useState(true);
   
-  // Use the new hook and destructure all relevant states
   const { 
     isHolidayModeActive, 
     holidayReturnDate, 
@@ -296,9 +295,13 @@ const FormPage = () => {
       setErrors(newErrors);
       setIsSubmitting(false);
       
+      // Scroll to the first error
       const firstErrorField = Object.keys(newErrors)[0] as keyof typeof formRefs;
-      if (formRefs[firstErrorField] && formRefs[firstErrorField].current) {
-        formRefs[firstErrorField].current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const ref = formRefs[firstErrorField];
+      if (ref && ref.current) {
+        // Use the parent element's scrollIntoView if the ref is on a component wrapper
+        const elementToScroll = (ref.current as any).closest ? (ref.current as any).closest('.relative, .space-y-4, .space-y-3') || ref.current : ref.current;
+        elementToScroll.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
       toast({
@@ -710,7 +713,7 @@ const FormPage = () => {
                   
                   <div className="border-l-2 border-[#F538BC] pl-3 py-2 my-3">
                     <p className="font-bold text-[#1C0357] text-sm">
-                      ✅ <span className="font-bold">Important: Your sheet music must be clear, correctly cut, and in the right key.</span>
+                      <span className="text-red-500 mr-1">*</span> <span className="font-bold">Important: Your sheet music must be clear, correctly cut, and in the right key.</span>
                     </p>
                   </div>
                   
@@ -770,7 +773,7 @@ const FormPage = () => {
                       </div>
                       <div>
                         <Label htmlFor="email" className="flex items-center text-sm mb-1">
-                          Email <span className="text-red-500 ml-1">*</span>
+                          Email <span className="text-red-500 font-bold ml-1">*</span>
                         </Label>
                         <div className="relative" ref={formRefs.email}>
                           <Input 
@@ -791,7 +794,7 @@ const FormPage = () => {
                       {/* New: Confirm Email Field */}
                       <div>
                         <Label htmlFor="confirmEmail" className="flex items-center text-sm mb-1">
-                          Confirm Email <span className="text-red-500 ml-1">*</span>
+                          Confirm Email <span className="text-red-500 font-bold ml-1">*</span>
                         </Label>
                         <div className="relative" ref={formRefs.confirmEmail}>
                           <Input 
@@ -834,7 +837,7 @@ const FormPage = () => {
                     <div className="space-y-4 mt-4">
                       <div>
                         <Label htmlFor="songTitle" className="flex items-center text-sm mb-1">
-                          Song Title <span className="text-red-500 ml-1">*</span>
+                          Song Title <span className="text-red-500 font-bold ml-1">*</span>
                         </Label>
                         <div className="relative" ref={formRefs.songTitle}>
                           <Input 
@@ -853,7 +856,7 @@ const FormPage = () => {
                       </div>
                       <div>
                         <Label htmlFor="musicalOrArtist" className="flex items-center text-sm mb-1">
-                          Musical or Artist <span className="text-red-500 ml-1">*</span>
+                          Musical or Artist <span className="text-red-500 font-bold ml-1">*</span>
                         </Label>
                         <div className="relative" ref={formRefs.musicalOrArtist}>
                           <Input 
@@ -874,7 +877,7 @@ const FormPage = () => {
                     
                     <div className="mt-4">
                       <Label htmlFor="category" className="flex items-center text-sm mb-1">
-                        Category <span className="text-red-500 ml-1">*</span>
+                        Category <span className="text-red-500 font-bold ml-1">*</span>
                       </Label>
                       <div className="relative" ref={formRefs.category}>
                         <Select onValueChange={(value) => handleSelectChange('category', value)} value={formData.category} disabled={isSubmitting || isHolidayModeActive}>
@@ -899,7 +902,7 @@ const FormPage = () => {
                   <div className="border-b border-gray-200 pb-4">
                     <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                       <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
-                      Track Type <span className="text-red-500 ml-1">*</span>
+                      Track Type <span className="text-red-500 font-bold ml-1">*</span>
                     </h2>
                     
                     <RadioGroup 
@@ -967,7 +970,7 @@ const FormPage = () => {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="songKey" className="flex items-center text-sm mb-1">
-                          What key is the <span className="font-bold ml-1">sheet music you are uploading</span> in? <span className="text-red-500 ml-1">*</span>
+                          What key is the <span className="font-bold ml-1">sheet music you are uploading</span> in? <span className="text-red-500 font-bold ml-1">*</span>
                         </Label>
                         <div className="relative" ref={formRefs.songKey}>
                           <Select onValueChange={(value) => handleSelectChange('songKey', value)} value={formData.songKey} disabled={isSubmitting || isHolidayModeActive}>
@@ -1131,7 +1134,7 @@ const FormPage = () => {
                   <div className="border-b border-gray-200 pb-4">
                     <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                       <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
-                      Backing Type <span className="text-red-500 ml-1">*</span>
+                      Backing Type <span className="text-red-500 font-bold ml-1">*</span>
                     </h2>
                     
                     <div className="space-y-4" ref={formRefs.backingType}>
@@ -1357,7 +1360,7 @@ const FormPage = () => {
                   <div className="pb-4">
                     <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                       <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">7</span>
-                      Consent
+                      Consent <span className="text-red-500 font-bold ml-1">*</span>
                     </h2>
                     <div className={cn(
                       "flex items-start space-x-2 p-4 border rounded-md bg-gray-50",
@@ -1375,7 +1378,6 @@ const FormPage = () => {
                       />
                       <Label htmlFor="consent-checkbox" className="text-sm leading-relaxed cursor-pointer">
                         I understand that to keep costs low and tracks accessible, Piano Backings by Daniele may sell this track to other artists and/or upload it to public platforms like YouTube, <span className="font-bold">unless I purchase the 'Exclusive Ownership' option in Section 6.</span>
-                        <span className="text-red-500 ml-1">*</span>
                       </Label>
                     </div>
                     {errors.consent && <p className="text-red-500 text-xs mt-1">{errors.consent}</p>}
@@ -1403,7 +1405,14 @@ const FormPage = () => {
                       disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)}
                       className="bg-[#1C0357] hover:bg-[#1C0357]/90 px-8"
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Request'
+                      )}
                     </Button>
                   </div>
                 </form>

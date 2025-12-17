@@ -235,15 +235,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           disabled={isBuying}
         >
           {isBuying ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing...
+            </>
           ) : (
             product.master_download_link ? (
-              <LinkIcon className="mr-2 h-5 w-5" />
+              <>
+                <LinkIcon className="mr-2 h-5 w-5" />
+                Buy Now ({product.currency} {product.price.toFixed(2)})
+              </>
             ) : (
-              <ShoppingCart className="mr-2 h-5 w-5" />
+              <>
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Buy Now ({product.currency} {product.price.toFixed(2)})
+              </>
             )
           )}
-          {isBuying ? 'Processing...' : `Buy Now (${product.currency} ${product.price.toFixed(2)})`}
         </Button>
       </CardFooter>
     </Card>
