@@ -288,7 +288,7 @@ const CreateNewProduct: React.FC = () => {
     // Process track URLs: upload files and replace with URLs
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
-      if (track.selected) { // Only process selected tracks
+      if (track.selected) {
         console.log('Processing track:', track.caption || 'Unnamed');
         let trackUrlToSave = track.url;
         if (track.file) {
@@ -659,15 +659,9 @@ const CreateNewProduct: React.FC = () => {
                 )}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      ) : (
-        <CardContent>
-          <p className="text-center text-gray-500 py-4">Select one or more completed requests above to define a new product or bundle.</p>
-        </CardContent>
-      )}
-    </Card>
+          </CardContent>
+        </Card>
   );
 };
 
-export default RepurposeTrackToShop;
+export default CreateNewProduct;
