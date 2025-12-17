@@ -121,12 +121,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             />
           ) : (
             <div 
-              className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
-              style={{ backgroundColor: '#F538BC', fontFamily: '"Playfair Display", serif' }}
+              className="flex items-center justify-center w-full h-full bg-gray-100 text-gray-500 transition-transform duration-300 group-hover:scale-105"
             >
-              <h3 className="text-xl md:text-2xl font-bold leading-snug line-clamp-3">
-                {product.title} {product.artist_name && `- ${product.artist_name}`}
-              </h3>
+              <p className="text-sm">No Image Available</p>
             </div>
           )}
         </AspectRatio>
