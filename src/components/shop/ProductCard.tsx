@@ -110,31 +110,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   return (
     <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
       
-      {/* Header Area (Not clickable for details, only for image/icons) */}
-      <CardHeader className="p-0 relative overflow-hidden flex-shrink-0">
-        <AspectRatio ratio={16 / 9}>
-          {product.image_url ? (
-            <img 
-              src={product.image_url} 
-              alt={product.title} 
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-            />
-          ) : (
-            <div 
-              className="flex items-center justify-center w-full h-full bg-gray-100 text-gray-500 transition-transform duration-300 group-hover:scale-105"
-            >
-              <p className="text-sm">No Image Available</p>
-            </div>
-          )}
-        </AspectRatio>
-        
+      {/* Content Area (Clickable for Details) */}
+      <CardContent 
+        className="flex-1 p-4 bg-white text-left flex flex-col cursor-pointer relative" // Added relative
+        onClick={() => onViewDetails(product)}
+      >
+        {/* Top Left: NEW Badge */}
+        {isNew && (
+          <Badge className="absolute top-4 left-4 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow z-10">NEW</Badge>
+        )}
+
         {/* Top Right: Track Type Icon */}
         {trackIcon && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-4 right-4 z-10">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={cn(
-                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white", // Changed background and text color
+                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white",
                 )}>
                   <trackIcon.Icon className="h-5 w-5" />
                 </div>
@@ -145,20 +137,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </Tooltip>
           </div>
         )}
-        
-        {/* Top Left: NEW Badge */}
-        {isNew && (
-          <Badge className="absolute top-2 left-2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow">NEW</Badge>
-        )}
 
-      </CardHeader>
-      
-      {/* Content Area (Clickable for Details) */}
-      <CardContent 
-        className="flex-1 p-4 bg-white text-left flex flex-col cursor-pointer"
-        onClick={() => onViewDetails(product)}
-      >
-        <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
+        <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1 mt-10">{product.title}</CardTitle>
         {product.artist_name && (
           <p className="text-sm text-gray-700 mb-3 leading-tight flex items-center">
             <Theater className="h-4 w-4 mr-2 text-gray-500" /> {product.artist_name}
