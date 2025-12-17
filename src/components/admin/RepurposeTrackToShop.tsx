@@ -663,7 +663,7 @@ const RepurposeTrackToShop: React.FC = () => {
                           )}
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={() => handleToggleRequestSelection(req.id)}
+                            // REMOVED onCheckedChange to prevent double-toggle bug
                             className="h-4 w-4"
                           />
                         </div>
