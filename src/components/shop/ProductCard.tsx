@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon } from 'lucide-react';
+import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
@@ -119,10 +119,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         {isNew && (
           <Badge className="absolute top-4 left-4 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow z-10">NEW</Badge>
         )}
+        
+        {/* Top Right: Wishlist Icon (Placeholder) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute top-4 right-4 z-10 p-0 h-8 w-8 text-gray-400 hover:text-[#F538BC] transition-colors"
+              onClick={(e) => { e.stopPropagation(); toast({ title: "Wishlist", description: "Feature coming soon!" }); }}
+            >
+              <Heart className="h-5 w-5 fill-current" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Save to Wishlist</p>
+          </TooltipContent>
+        </Tooltip>
 
-        {/* Top Right: Track Type Icon */}
+        {/* Track Type Icon (Moved slightly down to avoid conflict with Wishlist) */}
         {trackIcon && (
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-14 right-4 z-10">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className={cn(
@@ -155,8 +172,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               {product.category.replace('-', ' ')}
             </Badge>
           )}
+          {/* Vocal Ranges - Use high contrast colors for better accessibility */}
           {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
-            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-xs px-2 py-0.5 rounded-full font-medium">
+            <Badge 
+              key={range} 
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full font-medium",
+                range === 'Soprano' && 'bg-pink-100 text-pink-800 border border-pink-300',
+                range === 'Alto' && 'bg-purple-100 text-purple-800 border border-purple-300',
+                range === 'Tenor' && 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+                range === 'Bass' && 'bg-blue-100 text-blue-800 border border-blue-300',
+              )}
+            >
               {range}
             </Badge>
           ))}
@@ -173,7 +200,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
           <div className="flex items-center">
             <DollarSign className="h-6 w-6 text-[#1C0357] mr-1" />
-            <span className="text-3xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+            <span className="text-xl font-medium text-gray-600 mr-1">{product.currency}</span>
+            <span className="text-3xl font-extrabold text-[#1C0357]">{product.price.toFixed(2)}</span>
           </div>
           {firstTrackUrl && (
             <Tooltip>
@@ -186,7 +214,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                     "h-10 w-10 rounded-full transition-colors shadow-md",
                     isPlaying 
                       ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
-                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white" // Changed to accent color
+                      : "bg-[#F538BC] hover:bg-[#F538BC]/90 text-white"
                   )}
                 >
                   {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
@@ -194,7 +222,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
+                <p>{isPlaying ? 'Pause Sample' : 'Preview Track (10s)'}</p>
               </TooltipContent>
             </Tooltip>
           )}
