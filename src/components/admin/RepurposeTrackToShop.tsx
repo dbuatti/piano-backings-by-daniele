@@ -96,28 +96,36 @@ const getFilenameFromUrl = (url: string): string => {
 
 // Function to generate a descriptive caption (kept for Option B)
 const generateDescriptiveCaption = (request: BackingRequest, originalCaption: string | boolean | null | undefined, trackUrl: string): string => {
-  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const primaryCategory = normalizedBackingTypes.length > 0 ? normalizedBackingTypes[0] : request.category || 'general';
-
+  // Start with Song Title - Artist Name
   const parts = [];
   if (request.song_title) parts.push(request.song_title);
   if (request.musical_or_artist) parts.push(request.musical_or_artist);
 
   let descriptiveDetails = [];
-  if (primaryCategory && primaryCategory !== 'general') descriptiveDetails.push(primaryCategory.replace('-', ' '));
+  
+  // 1. Include the original caption (e.g., "Full Mix", "Audition Cut")
+  // This is crucial for distinguishing multiple tracks from the same request.
+  const originalCaptionString = typeof originalCaption === 'string' ? originalCaption.trim() : '';
+  if (originalCaptionString) descriptiveDetails.push(originalCaptionString);
+    
+  // 2. Include Key and Track Type
   if (request.song_key) descriptiveDetails.push(request.song_key);
   if (request.track_type) descriptiveDetails.push(request.track_type.replace('-', ' '));
+
+  // Remove duplicates if the original caption already contains the key/type info
+  const uniqueDetails = [...new Set(descriptiveDetails)];
 
   let newCaption = '';
   if (parts.length > 0) {
     newCaption = parts.join(' - ');
-    if (descriptiveDetails.length > 0) {
-      newCaption += ` (${descriptiveDetails.join(', ')})`;
+    if (uniqueDetails.length > 0) {
+      newCaption += ` (${uniqueDetails.join(', ')})`;
     }
   } else {
     newCaption = 'Untitled Track';
   }
 
+  // 3. Append file extension if missing
   const urlParts = trackUrl.split('/');
   const filenameWithExt = urlParts[urlParts.length - 1].split('?')[0];
   const urlExtensionMatch = filenameWithExt.match(/\.([0-9a-z]+)$/i);
@@ -301,7 +309,7 @@ const RepurposeTrackToShop: React.FC = () => {
     if (isFormPreFilled && selectedRequestIds.length > 0) {
       preFillForm();
     }
-  }, [useFilenameCaption]); // Only run when the toggle changes
+  }, [useFilenameCaption, isFormPreFilled]); // Only run when the toggle changes or form is filled
 
   // --- End Function to pre-fill the form based on current selection ---
 
@@ -321,6 +329,8 @@ const RepurposeTrackToShop: React.FC = () => {
       artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
       track_type: '', master_download_link: '',
     });
+    setImageFile(null);
+    setSheetMusicFile(null);
     toast({
       title: "Source Cleared",
       description: "The form has been reset.",
