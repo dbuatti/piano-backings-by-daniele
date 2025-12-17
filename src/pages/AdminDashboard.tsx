@@ -27,7 +27,9 @@ import {
   Users, // Icon for Users & Data
   Settings, // Icon for System & Configuration
   Wrench, // Icon for Development & Testing
-  ShoppingCart // Icon for Shop Management
+  ShoppingCart, // Icon for Shop Management
+  PlusCircle, // Added for Create New Product toggle
+  RefreshCw // Added for Repurpose Tracks toggle
 } from 'lucide-react';
 
 // Custom Hooks (still used by DashboardTabContent)
@@ -49,6 +51,9 @@ const AdminDashboard = () => {
 
   // Default to 'dashboard' for the new structure
   const activeTab = searchParams.get('tab') || 'dashboard';
+  
+  // New state for managing the view within the Shop Management tab
+  const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
 
   // Custom Hooks for state and logic (props for DashboardTabContent)
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
@@ -361,9 +366,23 @@ const AdminDashboard = () => {
 
             {/* New Shop Management Tab Content */}
             <TabsContent value="shop-management" className="mt-6 space-y-8">
-              <CreateNewProduct /> {/* New component for creating products */}
-              <RepurposeTrackToShop /> {/* Existing component for repurposing */}
-              <ProductManager /> {/* Existing component for managing products */}
+              <Tabs value={shopViewMode} onValueChange={(value) => setShopViewMode(value as 'create' | 'repurpose')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="create" className="flex items-center">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Product
+                  </TabsTrigger>
+                  <TabsTrigger value="repurpose" className="flex items-center">
+                    <RefreshCw className="mr-2 h-4 w-4" /> Repurpose Requests
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="create" className="mt-4">
+                  <CreateNewProduct />
+                </TabsContent>
+                <TabsContent value="repurpose" className="mt-4">
+                  <RepurposeTrackToShop />
+                </TabsContent>
+              </Tabs>
+              <ProductManager />
             </TabsContent>
 
             {/* Users & Data Tab Content */}
