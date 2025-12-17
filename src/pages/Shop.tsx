@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
+import ProductCardSkeleton from '@/components/ProductCardSkeleton'; // Import Skeleton
 
 // Define the Product interface, ensuring it uses the imported TrackInfo
 interface Product {
@@ -56,18 +57,74 @@ interface Product {
 const Shop = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
-  const [sortOption, setSortOption] = useState('category_asc');
   const [isBuying, setIsBuying] = useState(false);
 
+  // Derived state from URL
+  const currentSearchTerm = searchParams.get('q') || '';
+  const currentCategory = searchParams.get('category') || 'all';
+  const currentVocalRange = searchParams.get('range') || 'all';
+  const currentTrackType = searchParams.get('track_type') || 'all';
+  const currentSort = searchParams.get('sort') || 'category_asc';
+  const currentPriceMin = parseInt(searchParams.get('min_price') || '0');
+  const currentPriceMax = parseInt(searchParams.get('max_price') || '100');
+  const currentPriceRange: [number, number] = [currentPriceMin, currentPriceMax];
+
+  // Helper to update search params
+  const updateSearchParam = useCallback((key: string, value: string | number | null) => {
+    setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        const stringValue = String(value);
+        
+        // Define conditions for deletion (default/empty state)
+        const isDefault = (key === 'q' && stringValue === '') ||
+                          (key === 'category' && stringValue === 'all') ||
+                          (key === 'range' && stringValue === 'all') ||
+                          (key === 'track_type' && stringValue === 'all') ||
+                          (key === 'sort' && stringValue === 'category_asc') ||
+                          (key === 'min_price' && stringValue === '0') ||
+                          (key === 'max_price' && stringValue === '100');
+
+        if (value === null || isDefault) {
+            newParams.delete(key);
+        } else {
+            newParams.set(key, stringValue);
+        }
+        return newParams;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Update handlers to use updateSearchParam
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      updateSearchParam('q', e.target.value);
+  };
+
+  const handleCategoryChange = (value: string) => {
+      updateSearchParam('category', value);
+  };
+
+  const handleVocalRangeChange = (value: string) => {
+      updateSearchParam('range', value);
+  };
+
+  const handleTrackTypeChange = (value: string) => {
+      updateSearchParam('track_type', value);
+  };
+
+  const handleSortChange = (value: string) => {
+      updateSearchParam('sort', value);
+  };
+
+  const handlePriceRangeChange = (value: number[]) => {
+      updateSearchParam('min_price', value[0]);
+      updateSearchParam('max_price', value[1]);
+  };
+
+  // useQuery now depends on derived state
   const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption],
+    queryKey: ['shopProducts', currentSearchTerm, currentCategory, currentVocalRange, currentTrackType, currentPriceRange, currentSort],
     queryFn: async () => {
       let query = supabase
         .from('products')
@@ -75,25 +132,30 @@ const Shop = () => {
         .eq('is_active', true);
 
       // Apply search term
-      if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
+      if (currentSearchTerm) {
+        query = query.or(`title.ilike.%${currentSearchTerm}%,description.ilike.%${currentSearchTerm}%,artist_name.ilike.%${currentSearchTerm}%`);
       }
 
       // Apply category filter
-      if (categoryFilter !== 'all') {
-        query = query.eq('category', categoryFilter);
+      if (currentCategory !== 'all') {
+        query = query.eq('category', currentCategory);
       }
 
       // Apply vocal range filter
-      if (vocalRangeFilter !== 'all') {
-        query = query.contains('vocal_ranges', [vocalRangeFilter]);
+      if (currentVocalRange !== 'all') {
+        query = query.contains('vocal_ranges', [currentVocalRange]);
+      }
+      
+      // Apply track type filter
+      if (currentTrackType !== 'all') {
+        query = query.eq('track_type', currentTrackType);
       }
 
       // Apply price range filter
-      query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
+      query = query.gte('price', currentPriceRange[0]).lte('price', currentPriceRange[1]);
 
       // Apply sorting
-      switch (sortOption) {
+      switch (currentSort) {
         case 'price_asc':
           query = query.order('price', { ascending: true });
           break;
@@ -112,12 +174,12 @@ const Shop = () => {
         case 'artist_name_desc':
           query = query.order('artist_name', { ascending: false });
           break;
-        case 'category_asc':
-          query = query.order('category', { ascending: true }).order('title', { ascending: true });
-          break;
         case 'created_at_desc':
-        default:
           query = query.order('created_at', { ascending: false });
+          break;
+        case 'category_asc':
+        default:
+          query = query.order('category', { ascending: true }).order('title', { ascending: true });
           break;
       }
       
@@ -129,17 +191,7 @@ const Shop = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const filteredProducts = products?.filter(product => {
-    const matchesSearchTerm = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              product.artist_name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesVocalRange = vocalRangeFilter === 'all' || product.vocal_ranges?.includes(vocalRangeFilter);
-    const matchesPriceRange = product.price >= priceRange[0] && product.price <= priceRange[1];
-
-    return matchesSearchTerm && matchesCategory && matchesVocalRange && matchesPriceRange;
-  }) || [];
+  const filteredProducts = products || [];
 
   // 1. Handle opening the dialog and setting the URL
   const handleViewDetails = useCallback((product: Product) => {
@@ -222,14 +274,20 @@ const Shop = () => {
   }, [toast]);
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setCategoryFilter('all');
-    setVocalRangeFilter('all');
-    setPriceRange([0, 100]);
-    setSortOption('category_asc');
+    setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('q');
+        newParams.delete('category');
+        newParams.delete('range');
+        newParams.delete('track_type');
+        newParams.delete('min_price');
+        newParams.delete('max_price');
+        newParams.delete('sort');
+        return newParams;
+    }, { replace: true });
   };
 
-  const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || vocalRangeFilter !== 'all' || priceRange[0] !== 0 || priceRange[1] !== 100 || sortOption !== 'category_asc';
+  const hasActiveFilters = currentSearchTerm !== '' || currentCategory !== 'all' || currentVocalRange !== 'all' || currentTrackType !== 'all' || currentPriceMin !== 0 || currentPriceMax !== 100 || currentSort !== 'category_asc';
 
   // Group products by category for display
   const groupedProducts = useMemo(() => {
@@ -269,7 +327,7 @@ const Shop = () => {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         
         {/* NEW: Hero Section */}
-        <div className="text-center py-12 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100"> {/* Reduced py-16 to py-12 */}
+        <div className="text-center py-12 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100">
           <h1 className="text-5xl md:text-7xl font-extrabold text-[#1C0357] mb-4 tracking-tighter">
             The Backing Track Library
           </h1>
@@ -277,7 +335,7 @@ const Shop = () => {
             Instantly download high-quality piano accompaniments for auditions, practice, and performance.
           </p>
           <Link to="/form-page">
-            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg"> {/* Ensure button uses accent color */}
+            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg">
               <Music className="mr-2 h-5 w-5" /> Need a Custom Track?
             </Button>
           </Link>
@@ -293,15 +351,15 @@ const Shop = () => {
               id="search-input"
               type="text"
               placeholder="Search title, artist, or description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={currentSearchTerm}
+              onChange={handleSearchChange}
               className="pl-10 pr-4 py-2 border rounded-md w-full h-10"
             />
           </div>
           
           {/* Sort Option */}
           <div className="w-full md:w-1/4">
-            <Select value={sortOption} onValueChange={setSortOption}>
+            <Select value={currentSort} onValueChange={handleSortChange}>
               <SelectTrigger className="h-10 border border-gray-300">
                 <ArrowUpDown className="h-4 w-4 mr-2 text-gray-500" />
                 <SelectValue placeholder="Sort by" />
@@ -336,7 +394,7 @@ const Shop = () => {
                 {/* VOCAL RANGE FILTER */}
                 <div>
                   <Label htmlFor="vocal-range-filter-sheet" className="mb-2 block">Filter by Vocal Range</Label>
-                  <Select value={vocalRangeFilter} onValueChange={setVocalRangeFilter}>
+                  <Select value={currentVocalRange} onValueChange={handleVocalRangeChange}>
                     <SelectTrigger id="vocal-range-filter-sheet" className="border border-gray-300">
                       <SelectValue placeholder="All Ranges" />
                     </SelectTrigger>
@@ -353,7 +411,7 @@ const Shop = () => {
                 {/* Category Filter */}
                 <div>
                   <Label htmlFor="category-filter-sheet" className="mb-2 block">Filter by Category</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <Select value={currentCategory} onValueChange={handleCategoryChange}>
                     <SelectTrigger id="category-filter-sheet" className="border border-gray-300">
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
@@ -367,16 +425,10 @@ const Shop = () => {
                   </Select>
                 </div>
 
-                {/* Track Type Filter (New) */}
+                {/* Track Type Filter */}
                 <div>
                   <Label htmlFor="track-type-filter-sheet" className="mb-2 block">Filter by Track Quality</Label>
-                  <Select value={searchParams.get('track_type') || 'all'} onValueChange={(value) => {
-                    if (value === 'all') {
-                      setSearchParams(prev => { prev.delete('track_type'); return prev; }, { replace: true });
-                    } else {
-                      setSearchParams(prev => { prev.set('track_type', value); return prev; }, { replace: true });
-                    }
-                  }}>
+                  <Select value={currentTrackType} onValueChange={handleTrackTypeChange}>
                     <SelectTrigger id="track-type-filter-sheet" className="border border-gray-300">
                       <SelectValue placeholder="All Qualities" />
                     </SelectTrigger>
@@ -391,14 +443,14 @@ const Shop = () => {
 
                 {/* PRICE RANGE FILTER */}
                 <div>
-                  <Label htmlFor="price-range" className="mb-2 block">Price Range: ${priceRange[0].toFixed(2)} - ${priceRange[1].toFixed(2)}</Label>
+                  <Label htmlFor="price-range" className="mb-2 block">Price Range: ${currentPriceRange[0].toFixed(2)} - ${currentPriceRange[1].toFixed(2)}</Label>
                   <Slider
                     id="price-range"
                     min={0}
                     max={100}
                     step={5}
-                    value={priceRange}
-                    onValueChange={(value: number[]) => setPriceRange([value[0], value[1]])}
+                    value={currentPriceRange}
+                    onValueChange={handlePriceRangeChange}
                     className="w-full"
                   />
                 </div>
@@ -415,9 +467,10 @@ const Shop = () => {
 
         {/* Product Display */}
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-12 w-12 animate-spin text-[#1C0357] mb-4" />
-            <p className="text-lg text-gray-600">Loading products...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, index) => (
+              <ProductCardSkeleton key={index} />
+            ))}
           </div>
         ) : filteredProducts.length === 0 && !isLoading ? (
           <div className="text-center py-12">
