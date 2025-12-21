@@ -185,7 +185,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             </div>
 
             {/* Right Column: Details + Sticky CTA */}
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0">
               {/* Scrollable Details */}
               <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8 pb-32"> {/* Extra pb for sticky overlap safety */}
                 <div className="mb-8">
@@ -255,7 +255,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               </div>
 
               {/* Sticky Bottom CTA - Safe from cutoff */}
-              <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6 shadow-2xl">
+              <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6 shadow-2xl flex-shrink-0">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
                     <p className="text-4xl lg:text-5xl font-black text-[#8B5CF6]">
