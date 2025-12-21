@@ -60,179 +60,168 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-full h-full max-h-[96vh] p-0 overflow-hidden rounded-lg bg-white">
-        <div className="flex flex-col lg:flex-row h-full">
-          {/* Left Side: Image + Audio Player */}
-          <div className="w-full lg:w-1/2 bg-gradient-to-br from-[#D1AAF2]/20 via-white to-[#F1E14F]/5 flex flex-col">
-            <div className="p-6 lg:p-8 flex flex-col h-full">
-              {/* Image */}
-              <div className="flex-1 mb-6">
-                <AspectRatio ratio={16 / 9} className="rounded-xl overflow-hidden shadow-2xl">
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full bg-[#1C0357] text-white p-8">
-                      <h2 className="text-3xl lg:text-4xl font-bold text-center font-serif leading-tight">
-                        {product.title}
-                      </h2>
-                    </div>
-                  )}
-                </AspectRatio>
+      <DialogContent className="max-w-5xl w-full h-[96vh] max-h-screen p-0 overflow-hidden rounded-none lg:rounded-2xl bg-white flex flex-col">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Hero Image */}
+          <div className="relative">
+            <AspectRatio ratio={16 / 9} className="w-full">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] to-[#1C0357]/80 text-white">
+                  <h1 className="text-4xl lg:text-6xl font-extrabold text-center px-8 leading-tight font-serif">
+                    {product.title}
+                  </h1>
+                </div>
+              )}
+            </AspectRatio>
+          </div>
+
+          {/* Details Section */}
+          <div className="p-6 lg:p-10 pb-32 lg:pb-10"> {/* Extra bottom padding for mobile audio bar */}
+            <div className="max-w-3xl mx-auto space-y-8">
+              {/* Title & Artist */}
+              <div className="text-center lg:text-left">
+                <h1 className="text-4xl lg:text-5xl font-extrabold text-[#1C0357] leading-tight">
+                  {product.title}
+                </h1>
+                {product.artist_name && (
+                  <p className="text-2xl lg:text-3xl text-gray-700 mt-4 flex items-center justify-center lg:justify-start gap-4">
+                    <Theater className="h-8 w-8 text-[#F538BC]" />
+                    {product.artist_name}
+                  </p>
+                )}
               </div>
 
-              {/* Audio Player */}
-              {firstTrackUrl && (
-                <div className="bg-white rounded-xl shadow-xl p-6 border border-gray-200">
-                  <h4 className="text-xl font-bold text-[#1C0357] mb-4 flex items-center gap-3">
-                    <Music className="h-6 w-6 text-[#F538BC]" />
-                    Audio Sample (10 seconds)
-                  </h4>
-                  <div className="flex items-center gap-5">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="lg"
-                          onClick={togglePlay}
-                          className={cn(
-                            "rounded-full w-16 h-16 shadow-xl transition-all",
-                            isPlaying
-                              ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                              : "bg-[#F538BC] hover:bg-[#F538BC]/90"
-                          )}
-                        >
-                          {isPlaying ? (
-                            <PauseCircle className="h-9 w-9" />
-                          ) : (
-                            <PlayCircle className="h-9 w-9" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{isPlaying ? "Pause" : "Play 10-second sample"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <span className="text-lg text-gray-700 font-medium">
-                      {isPlaying ? "Playing sample..." : "Tap to play preview"}
-                    </span>
-                  </div>
-                  <audio ref={audioRef} src={firstTrackUrl} onEnded={handleEnded} preload="none" />
+              {/* Badges */}
+              <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                {product.category && (
+                  <Badge className="text-base px-6 py-3 bg-[#1C0357] text-white font-bold rounded-full">
+                    {product.category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </Badge>
+                )}
+                {product.vocal_ranges?.map((range) => (
+                  <Badge
+                    key={range}
+                    className="text-base px-5 py-3 bg-[#D1AAF2]/30 text-[#1C0357] border-2 border-[#D1AAF2] rounded-full font-medium"
+                  >
+                    {range}
+                  </Badge>
+                ))}
+                {product.show_key_signature && product.key_signature && (
+                  <Badge variant="outline" className="text-base px-5 py-3 rounded-full border-gray-400">
+                    <Key className="h-5 w-5 mr-2" />
+                    {product.key_signature}
+                  </Badge>
+                )}
+                {trackBadge && (
+                  <Badge className={cn("text-base px-5 py-3 rounded-full border-2 font-medium", trackBadge.class)}>
+                    {trackBadge.text}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="text-center lg:text-left">
+                <h3 className="text-3xl font-bold text-[#1C0357] mb-6">Description</h3>
+                <p className="text-xl text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {product.description}
+                </p>
+              </div>
+
+              {/* Sheet Music */}
+              {product.show_sheet_music_url && product.sheet_music_url && (
+                <div className="text-center lg:text-left">
+                  <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="border-2 border-[#F538BC] text-[#F538BC] hover:bg-[#F538BC] hover:text-white text-xl px-10 py-6 rounded-full font-semibold"
+                    >
+                      <LinkIcon className="mr-3 h-6 w-6" />
+                      View Sheet Music
+                    </Button>
+                  </a>
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Right Side: Details (Scrollable on Mobile) */}
-          <div className="w-full lg:w-1/2 flex flex-col h-full">
-            <div className="flex-1 overflow-y-auto p-6 lg:p-10 scrollbar-thin scrollbar-thumb-[#D1AAF2] scrollbar-track-transparent">
-              <div className="max-w-lg mx-auto lg:mx-0 space-y-8">
-                {/* Title & Artist */}
-                <div>
-                  <h1 className="text-3xl lg:text-4xl font-extrabold text-[#1C0357] leading-tight">
-                    {product.title}
-                  </h1>
-                  {product.artist_name && (
-                    <p className="text-xl lg:text-2xl text-gray-700 mt-3 flex items-center gap-3">
-                      <Theater className="h-7 w-7 text-[#F538BC]" />
-                      {product.artist_name}
-                    </p>
-                  )}
-                </div>
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-3">
-                  {product.category && (
-                    <Badge className="text-sm px-4 py-2 bg-[#1C0357] text-white font-semibold rounded-full">
-                      {product.category.replace('-', ' ')}
-                    </Badge>
-                  )}
-                  {product.vocal_ranges?.map((range) => (
-                    <Badge
-                      key={range}
-                      className="text-sm px-4 py-2 bg-[#D1AAF2]/30 text-[#1C0357] border border-[#D1AAF2] rounded-full"
+        {/* Sticky Bottom Bar: Audio + Price + Buy */}
+        <div className="sticky bottom-0 bg-white border-t-4 border-[#D1AAF2]/50 shadow-2xl p-6">
+          <div className="max-w-3xl mx-auto">
+            {/* Audio Player (only if available) */}
+            {firstTrackUrl && (
+              <div className="flex items-center justify-center gap-6 mb-6 pb-6 border-b border-gray-200">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="lg"
+                      onClick={togglePlay}
+                      className={cn(
+                        "rounded-full w-20 h-20 shadow-2xl",
+                        isPlaying ? "bg-red-500 hover:bg-red-600 animate-pulse" : "bg-[#F538BC] hover:bg-[#F538BC]/90"
+                      )}
                     >
-                      {range}
-                    </Badge>
-                  ))}
-                  {product.show_key_signature && product.key_signature && (
-                    <Badge variant="outline" className="text-sm px-4 py-2 rounded-full">
-                      <Key className="h-4 w-4 mr-2" />
-                      {product.key_signature}
-                    </Badge>
-                  )}
-                  {trackBadge && (
-                    <Badge className={cn("text-sm px-4 py-2 rounded-full border", trackBadge.class)}>
-                      {trackBadge.text}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <h3 className="text-2xl font-bold text-[#1C0357] mb-4">Description</h3>
-                  <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {product.description}
+                      {isPlaying ? <PauseCircle className="h-12 w-12" /> : <PlayCircle className="h-12 w-12" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isPlaying ? "Pause sample" : "Play 10-second sample"}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-[#1C0357] flex items-center gap-3">
+                    <Music className="h-7 w-7 text-[#F538BC]" />
+                    Audio Sample (10 seconds)
+                  </p>
+                  <p className="text-lg text-gray-600 mt-1">
+                    {isPlaying ? "Playing..." : "Tap the button to preview"}
                   </p>
                 </div>
-
-                {/* Sheet Music Link */}
-                {product.show_sheet_music_url && product.sheet_music_url && (
-                  <a
-                    href={product.sheet_music_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block"
-                  >
-                    <Button
-                      variant="outline"
-                      className="border-[#F538BC] text-[#F538BC] hover:bg-[#F538BC] hover:text-white text-lg px-6 py-3"
-                    >
-                      <LinkIcon className="mr-3 h-5 w-5" />
-                      View Sheet Music
-                    </Button>
-                  </a>
-                )}
+                <audio ref={audioRef} src={firstTrackUrl} onEnded={handleEnded} preload="none" />
               </div>
-            </div>
+            )}
 
-            {/* Sticky Bottom CTA */}
-            <div className="p-6 lg:p-10 border-t-2 border-[#D1AAF2]/30 bg-white">
-              <div className="max-w-lg mx-auto lg:mx-0">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="h-10 w-10 text-[#1C0357]" />
-                    <span className="text-5xl font-extrabold text-[#1C0357]">
-                      {product.currency} {product.price.toFixed(2)}
-                    </span>
-                  </div>
+            {/* Price + Buy */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="text-center sm:text-left">
+                <div className="flex items-center gap-4 justify-center sm:justify-start">
+                  <DollarSign className="h-12 w-12 text-[#1C0357]" />
+                  <span className="text-6xl font-extrabold text-[#1C0357]">
+                    {product.currency} {product.price.toFixed(2)}
+                  </span>
                 </div>
-
-                <Button
-                  onClick={() => onBuyNow(product)}
-                  disabled={isBuying}
-                  className="w-full h-16 text-xl font-bold bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-2xl"
-                >
-                  {isBuying ? (
-                    <>
-                      <Loader2 className="mr-3 h-7 w-7 animate-spin" />
-                      Processing...
-                    </>
-                  ) : product.master_download_link ? (
-                    <>
-                      <LinkIcon className="mr-3 h-7 w-7" />
-                      Instant Download
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="mr-3 h-7 w-7" />
-                      Buy Now – {product.currency} {product.price.toFixed(2)}
-                    </>
-                  )}
-                </Button>
               </div>
+
+              <Button
+                onClick={() => onBuyNow(product)}
+                disabled={isBuying}
+                className="w-full sm:w-auto h-20 px-12 text-2xl font-bold bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-2xl rounded-full"
+              >
+                {isBuying ? (
+                  <>
+                    <Loader2 className="mr-4 h-8 w-8 animate-spin" />
+                    Processing...
+                  </>
+                ) : product.master_download_link ? (
+                  <>
+                    <LinkIcon className="mr-4 h-8 w-8" />
+                    Instant Download
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="mr-4 h-8 w-8" />
+                    Buy Now
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
