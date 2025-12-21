@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from '@/integrations/supabase/client';
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
@@ -15,11 +14,9 @@ import {
   Headphones,
   DollarSign,
   FileText,
-  Info,
+  Info, // For tooltip
   ShoppingCart,
-  PlayCircle,
-  Calendar,
-  Users,
+  PlayCircle, // For audio player
 } from 'lucide-react';
 import {
   Tooltip,
@@ -36,17 +33,15 @@ interface TrackInfo {
 interface Product {
   id: string;
   title: string;
-  artist_name?: string; // Added for better title (assuming it exists or can be added)
   description: string;
   price: number;
   currency: string;
   track_type: 'quick' | 'one-take' | 'polished';
-  key_signature?: string; // Renamed to match common term
-  vocal_ranges: string[]; // Renamed to array
+  key: string;
+  vocal_range: string[]; // Array of strings like ['Soprano', 'Alto']
   sheet_music_url: string | null;
-  track_urls: TrackInfo[];
+  track_urls: TrackInfo[]; // Assuming this contains the sample
   created_at: string;
-  image_url?: string; // Placeholder for future cover art
 }
 
 const TrackDetails = () => {
@@ -90,165 +85,134 @@ const TrackDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center">
-        <div className="text-center">
-          <PlayCircle className="h-12 w-12 animate-pulse text-[#EC4899] mx-auto mb-4" />
-          <p className="text-xl text-gray-700">Loading track details...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-[#1C0357]">Loading track details...</p>
       </div>
     );
   }
 
-  if (error || !product) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-2xl text-red-600 mb-4">{error || "Track not found."}</p>
-          <Link to="/shop">
-            <Button variant="outline" size="lg">Back to Shop</Button>
-          </Link>
-        </div>
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-red-500">{error}</p>
       </div>
     );
   }
 
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex items-center justify-center">
+        <p className="text-[#1C0357]">Track not found.</p>
+      </div>
+    );
+  }
+
+  // Helper for track type tooltip
   const getTrackTypeDescription = (type: string) => {
     switch (type) {
-      case 'quick': return 'Fast voice memo-style recording for quick reference and learning.';
-      case 'one-take': return 'Single-take live recording – authentic feel with possible minor imperfections.';
-      case 'polished': return 'Professionally refined track with precise notes, rhythm, and dynamics.';
+      case 'quick': return 'Fast voice memo for quick learning.';
+      case 'one-take': return 'Single-pass recording, may contain minor imperfections.';
+      case 'polished': return 'Refined, accurate track with correct notes and rhythm.';
       default: return '';
     }
   };
 
-  const audioSample = product.track_urls?.[0] || null;
+  // Assuming the first track_url is the sample for preview
+  const audioSample = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0] : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Card className="overflow-hidden shadow-2xl border-0">
-          {/* Hero Header */}
-          <div className="bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-10 text-white">
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4">
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+        <Card className="shadow-lg">
+          <CardHeader className="bg-[#1C0357] text-white py-4 px-6 rounded-t-lg">
+            <CardTitle className="text-3xl font-bold flex items-center">
+              <Music className="mr-3 h-7 w-7" />
               {product.title}
-              {product.artist_name && <span className="block text-2xl md:text-4xl font-medium mt-2 opacity-90">by {product.artist_name}</span>}
-            </h1>
-            <div className="flex flex-wrap gap-4 text-sm md:text-base">
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex flex-wrap items-center text-gray-600 mb-4 gap-x-4 gap-y-2">
               <span className="flex items-center">
-                <Key className="h-5 w-5 mr-2" />
-                Key: {product.key_signature || 'N/A'}
+                <Key className="h-4 w-4 mr-1 text-[#F538BC]" />
+                Key: {product.key}
               </span>
               <span className="flex items-center">
-                <Users className="h-5 w-5 mr-2" />
-                Vocal Ranges:{' '}
-                {product.vocal_ranges.map((range) => (
-                  <Badge key={range} variant="secondary" className="ml-2 bg-white/20 text-white border-white/30">
-                    {range}
-                  </Badge>
-                ))}
+                <Headphones className="h-4 w-4 mr-1 text-[#F538BC]" />
+                Type: {product.track_type.charAt(0).toUpperCase() + product.track_type.slice(1)}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 ml-1 text-gray-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{getTrackTypeDescription(product.track_type)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </span>
+              {/* Vocal Range moved here */}
+              {product.vocal_range && product.vocal_range.length > 0 && (
+                <span className="flex items-center">
+                  <Music className="h-4 w-4 mr-1 text-[#F538BC]" />
+                  Vocal Range:
+                  {product.vocal_range.map((range, index) => (
+                    <Badge key={index} variant="secondary" className="ml-1 bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80">
+                      {range}
+                    </Badge>
+                  ))}
+                </span>
+              )}
             </div>
-          </div>
 
-          <CardContent className="p-8 md:p-12">
-            {/* Audio Preview - Prominent */}
+            {/* Audio Preview Section - Moved up */}
             {audioSample && (
-              <div className="mb-12 p-8 bg-gradient-to-r from-[#8B5CF6]/5 to-[#EC4899]/5 rounded-2xl border border-purple-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                  <PlayCircle className="mr-3 h-8 w-8 text-[#EC4899]" />
-                  Listen to a Preview
-                </h2>
-                <audio controls controlsList="nodownload" className="w-full h-12">
+              <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 flex items-center text-[#1C0357]">
+                  <PlayCircle className="mr-2 h-5 w-5 text-[#F538BC]" />
+                  10-Second Audio Sample
+                </h3>
+                <audio controls className="w-full">
                   <source src={audioSample.url} type="audio/mpeg" />
                   Your browser does not support the audio element.
                 </audio>
-                {audioSample.caption && <p className="text-sm text-gray-600 mt-3 italic">{audioSample.caption}</p>}
-                <p className="text-sm text-gray-500 mt-4">Full high-quality track available instantly after purchase.</p>
+                {audioSample.caption && <p className="text-sm text-gray-600 mt-2">{audioSample.caption}</p>}
               </div>
             )}
 
-            {/* Track Quality Badge */}
-            <div className="mb-8 flex items-center">
-              <Headphones className="h-6 w-6 mr-3 text-[#8B5CF6]" />
-              <span className="text-lg font-semibold capitalize">{product.track_type.replace('-', ' ')} Quality</span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-5 w-5 ml-2 text-gray-500 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="text-sm">{getTrackTypeDescription(product.track_type)}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <p className="text-gray-700 mb-6 leading-relaxed">
+              {product.description}
+            </p>
+
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-4xl font-extrabold text-[#1C0357] flex items-center">
+                <DollarSign className="h-8 w-8 mr-2 text-[#F538BC]" />
+                {product.currency} {product.price.toFixed(2)}
+              </span>
+              <Button className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 rounded-lg">
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Buy Now
+              </Button>
             </div>
 
-            <Separator className="my-10" />
-
-            {/* Description */}
-            <div className="mb-12">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">About This Track</h3>
-              <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">
-                {product.description}
-              </p>
-            </div>
-
-            {/* Price & CTA */}
-            <div className="bg-gray-50 rounded-2xl p-8 mb-10">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div>
-                  <p className="text-5xl font-black text-[#8B5CF6] flex items-center">
-                    {product.currency} {product.price.toFixed(2)}
-                  </p>
-                  <p className="text-gray-600 mt-2">Instant download • High-quality MP3 • No DRM</p>
-                </div>
-                <Button
-                  size="lg"
-                  className="bg-[#EC4899] hover:bg-[#EC4899]/90 text-white font-bold text-xl px-12 py-8 rounded-full shadow-xl transition-all hover:scale-105"
-                  onClick={() => {
-                    // Integrate your buy handler here (same as shop)
-                    toast({ title: "Redirecting to checkout..." });
-                  }}
-                >
-                  <ShoppingCart className="mr-3 h-7 w-7" />
-                  Buy Now & Download Instantly
-                </Button>
-              </div>
-            </div>
-
-            {/* Sheet Music */}
             {product.sheet_music_url && (
-              <div className="mb-10">
-                <Button asChild variant="outline" size="lg" className="w-full py-8 text-lg border-2 border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/5 rounded-xl">
-                  <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
-                    <FileText className="mr-3 h-7 w-7" />
-                    Preview Sheet Music (PDF)
-                  </a>
-                </Button>
+              <div className="mb-6">
+                <Link to={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="w-full py-3 text-lg border-[#1C0357] text-[#1C0357] hover:bg-[#D1AAF2]/20">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Preview Sheet Music (Preview Cut)
+                  </Button>
+                </Link>
               </div>
             )}
 
-            <Separator className="my-10" />
-
-            {/* Footer Info */}
-            <div className="text-sm text-gray-500 flex items-center justify-center">
-              <Calendar className="h-4 w-4 mr-2" />
-              Added on {format(new Date(product.created_at), 'MMMM d, yyyy')}
+            <div className="text-sm text-gray-500 mt-8">
+              Created on: {format(new Date(product.created_at), 'MMM dd, yyyy')}
             </div>
           </CardContent>
         </Card>
-
-        <div className="mt-12 text-center">
-          <Link to="/shop">
-            <Button variant="link" size="lg" className="text-[#8B5CF6] hover:text-[#EC4899]">
-              ← Back to All Tracks
-            </Button>
-          </Link>
-        </div>
+        <MadeWithDyad />
       </div>
-
-      <MadeWithDyad />
     </div>
   );
 };

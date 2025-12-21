@@ -1,21 +1,14 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import React, { useRef, useState } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { 
-  ShoppingCart, 
-  Loader2, 
-  PlayCircle, 
-  PauseCircle,
-  Music,
-  Key
-} from 'lucide-react';
+import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 
 interface Product {
@@ -48,174 +41,220 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
-  const firstTrackUrl = product.track_urls?.[0]?.url || null;
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      audioRef.current?.pause();
-    };
-  }, []);
-
-  const handlePlayPause = (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    if (!audioRef.current || !firstTrackUrl) return;
+  const handlePlayPause = () => {
+    if (!audioRef.current || !product.track_urls || product.track_urls.length === 0) return;
 
     if (isPlaying) {
+      // Pause immediately
       audioRef.current.pause();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsPlaying(false);
     } else {
+      // Start playing from the beginning
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => setIsPlaying(false));
+      audioRef.current.play();
       setIsPlaying(true);
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      // Set timeout to stop after 10 seconds
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
       timeoutRef.current = setTimeout(() => {
-        audioRef.current?.pause();
-        audioRef.current!.currentTime = 0;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0; // Reset for next play
+        }
         setIsPlaying(false);
-      }, 10000);
+        timeoutRef.current = null;
+      }, 10000) as unknown as number; // Explicitly cast to number
     }
   };
 
-  const getTrackTypeConfig = (type?: string) => {
+  const handleAudioEnded = () => {
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+  
+  const getTrackTypeIcon = (type: string | undefined) => {
     switch (type) {
+      case 'quick':
+        return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
+      case 'one-take':
+      case 'one-take-recording': // Ensure consistency
+        return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
       case 'polished':
-        return { color: 'text-pink-600', bg: 'bg-pink-100' };
+        return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
       default:
         return null;
     }
   };
 
+  const trackIcon = getTrackTypeIcon(product.track_type);
+  const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
+
+  // Logic for "NEW" badge
   const isNew = isWithinInterval(new Date(product.created_at), {
     start: subDays(new Date(), 7),
     end: new Date(),
   });
 
   return (
-    <TooltipProvider>
-      <Card 
-        className={cn(
-          "group relative flex flex-col overflow-visible shadow-2xl hover:shadow-3xl transition-all duration-500 h-full rounded-3xl border-0",
-          "bg-white",
-          "hover:-translate-y-6"
-        )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Gradient Header */}
-        <CardHeader className="p-0 relative overflow-hidden rounded-t-3xl">
-          <AspectRatio ratio={1 / 1}>
-            <div className="absolute inset-0 bg-gradient-to-br from-[#EC4899] via-[#F59E0B] to-[#F97316] opacity-90" />
-            <div className="relative flex flex-col items-center justify-center h-full p-8 text-white">
-              <h3 className="text-3xl font-black text-center leading-tight drop-shadow-2xl">
-                {product.title}
+    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
+      
+      {/* Header Area (Not clickable for details, only for image/icons) */}
+      <CardHeader className="p-0 relative overflow-hidden flex-shrink-0">
+        <AspectRatio ratio={16 / 9}>
+          {product.image_url ? (
+            <img 
+              src={product.image_url} 
+              alt={product.title} 
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+            />
+          ) : (
+            <div 
+              className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
+              style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }}
+            >
+              <h3 className="text-xl md:text-2xl font-bold leading-snug line-clamp-3">
+                {product.title} {product.artist_name && `- ${product.artist_name}`}
               </h3>
-              <p className="mt-3 text-xl font-medium opacity-90">
-                by {product.artist_name || 'Reprise'}
-              </p>
-            </div>
-          </AspectRatio>
-
-          {/* Play Overlay on Hover */}
-          {firstTrackUrl && isHovered && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-              <div className="bg-white/95 backdrop-blur-md rounded-full p-6 shadow-3xl animate-pulse">
-                <PlayCircle className="h-20 w-20 text-[#EC4899]" />
-              </div>
             </div>
           )}
-        </CardHeader>
-
-        {/* Body - Clickable */}
-        <CardContent 
-          className="flex-1 p-8 cursor-pointer space-y-6"
-          onClick={() => onViewDetails(product)}
-        >
-          {/* Title + Artist */}
-          <div className="text-center">
-            <h3 className="text-2xl font-black text-gray-900">
-              {product.title}
-            </h3>
-            <p className="mt-2 text-lg text-gray-600 flex items-center justify-center">
-              <Music className="h-5 w-5 mr-2 text-[#EC4899]" />
-              {product.artist_name || 'Reprise'}
-            </p>
+        </AspectRatio>
+        
+        {/* Top Right: Track Type Icon */}
+        {trackIcon && (
+          <div className="absolute top-2 right-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn(
+                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white",
+                )}>
+                  <trackIcon.Icon className="h-5 w-5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{trackIcon.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
+        )}
+        
+        {/* Top Left: NEW Badge */}
+        {isNew && (
+          <Badge className="absolute top-2 left-2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow">NEW</Badge>
+        )}
 
-          {/* Badges */}
-          <div className="flex flex-wrap gap-3 justify-center">
-            {product.category && (
-              <Badge className="bg-purple-100 text-purple-700 px-4 py-1 text-sm">
-                audition cut
-              </Badge>
-            )}
-            {product.vocal_ranges?.slice(0, 2).map((range) => (
-              <Badge key={range} className="bg-pink-100 text-pink-700 px-4 py-1 text-sm border border-pink-300">
-                {range}
-              </Badge>
-            ))}
-            {product.key_signature && (
-              <Badge variant="outline" className="px-4 py-1 text-sm">
-                <Key className="h-4 w-4 mr-2" />
-                {product.key_signature}
-              </Badge>
-            )}
-          </div>
-
-          {/* Description */}
-          <p className="text-center text-gray-700 leading-relaxed text-base">
-            {product.description}
+      </CardHeader>
+      
+      {/* Content Area (Clickable for Details) */}
+      <CardContent 
+        className="flex-1 p-4 bg-white text-left flex flex-col cursor-pointer"
+        onClick={() => onViewDetails(product)}
+      >
+        <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
+        {product.artist_name && (
+          <p className="text-base font-medium text-gray-700 mb-3 leading-tight flex items-center">
+            <Music className="h-4 w-4 mr-2 text-[#F538BC]" /> {product.artist_name}
           </p>
-        </CardContent>
-
-        {/* CTA Footer - Matches Mockup Exactly */}
-        <div className="px-8 pb-8 pt-4">
-          <div className="bg-gradient-to-r from-[#F59E0B] to-[#EC4899] rounded-full p-1 shadow-2xl">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onBuyNow(product);
-              }}
-              disabled={isBuying}
-              className="w-full h-16 bg-white text-[#8B5CF6] hover:bg-gray-50 rounded-full font-black text-2xl shadow-xl flex items-center justify-center gap-4"
+        )}
+        
+        {/* Info Badges */}
+        <div className="flex flex-wrap gap-1 mb-3 p-2 rounded-md bg-gray-50 border border-gray-100">
+          {product.category && (
+            <Badge 
+              variant="default" 
+              className="bg-[#1C0357] text-white capitalize text-xs px-2 py-0.5 rounded-full font-semibold"
             >
-              <span>
-                {product.currency}{product.price.toFixed(2)}
-              </span>
-              <span className="text-lg text-gray-600">instant download</span>
-              <div className="bg-gradient-to-r from-[#F59E0B] to-[#EC4899] rounded-full p-3">
-                {isBuying ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-white" />
-                ) : (
-                  <ShoppingCart className="h-8 w-8 text-white" />
-                )}
-              </div>
-              <span>Buy Now & Download</span>
-            </Button>
-          </div>
+              {product.category.replace('-', ' ')}
+            </Badge>
+          )}
+          {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
+            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-xs px-2 py-0.5 rounded-full font-medium">
+              {range}
+            </Badge>
+          ))}
+          {product.show_key_signature && product.key_signature && (
+            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-gray-400 text-gray-700">
+              <Key className="h-3 w-3 mr-1" /> {product.key_signature}
+            </Badge>
+          )}
         </div>
 
-        {/* Hidden Audio */}
+        <p className="text-sm text-gray-700 line-clamp-3 mb-4 flex-1">{product.description}</p>
+        
+        {/* Price and Play Button */}
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+          <div className="flex items-center">
+            <DollarSign className="h-6 w-6 text-[#F538BC] mr-1" />
+            <span className="text-3xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+          </div>
+          {firstTrackUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={(e) => { e.stopPropagation(); handlePlayPause(); }} // Stop propagation
+                  className={cn(
+                    "h-10 w-10 rounded-full transition-colors shadow-md",
+                    isPlaying 
+                      ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
+                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white"
+                  )}
+                >
+                  {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
+                  <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play Sample'}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         {firstTrackUrl && (
-          <audio
-            ref={audioRef}
-            src={firstTrackUrl}
-            preload="none"
-            onEnded={() => {
-              setIsPlaying(false);
-              if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            }}
-          />
+          <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
         )}
-      </Card>
-    </TooltipProvider>
+      </CardContent>
+      
+      {/* CardFooter - Only for Buy Now Action (Primary Action) */}
+      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full transition-colors duration-300 group-hover:bg-[#D1AAF2]/50">
+        <Button 
+          onClick={() => onBuyNow(product)} 
+          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center shadow-lg text-lg h-12"
+          disabled={isBuying}
+        >
+          {isBuying ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            product.master_download_link ? (
+              <>
+                <LinkIcon className="mr-2 h-5 w-5" />
+                Buy Now ({product.currency} {product.price.toFixed(2)})
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Buy Now ({product.currency} {product.price.toFixed(2)})
+              </>
+            )
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

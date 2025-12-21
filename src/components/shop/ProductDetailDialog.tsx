@@ -1,28 +1,14 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { 
-  DollarSign, 
-  ShoppingCart, 
-  Loader2, 
-  PlayCircle, 
-  PauseCircle, 
-  Sparkles, 
-  Mic, 
-  Headphones,
-  Music,
-  Key,
-  FileText,
-  ExternalLink
-} from 'lucide-react';
+import { DollarSign, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Product {
   id: string;
@@ -53,14 +39,15 @@ interface ProductDetailDialogProps {
   isBuying: boolean;
 }
 
-const getTrackTypeConfig = (type?: string) => {
+const getTrackTypeIcon = (type: string | undefined) => {
   switch (type) {
     case 'quick':
-      return { Icon: Mic, color: 'text-blue-600', bg: 'bg-blue-100', tooltip: 'Quick Reference – Fast voice memo for learning' };
+      return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
     case 'one-take':
-      return { Icon: Headphones, color: 'text-amber-600', bg: 'bg-amber-100', tooltip: 'One-Take – Authentic live recording' };
+    case 'one-take-recording':
+      return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
     case 'polished':
-      return { Icon: Sparkles, color: 'text-pink-600', bg: 'bg-pink-100', tooltip: 'Polished – Professionally refined track' };
+      return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
     default:
       return null;
   }
@@ -75,18 +62,22 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
-  const firstTrackUrl = product.track_urls?.[0]?.url || null;
-  const trackConfig = getTrackTypeConfig(product.track_type);
+  const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
+  const trackIcon = getTrackTypeIcon(product.track_type);
 
+  // Reset audio state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsPlaying(false);
     }
   }, [isOpen]);
@@ -96,214 +87,195 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
     if (isPlaying) {
       audioRef.current.pause();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsPlaying(false);
     } else {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => setIsPlaying(false));
+      audioRef.current.play();
       setIsPlaying(true);
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
       timeoutRef.current = setTimeout(() => {
-        audioRef.current?.pause();
-        audioRef.current!.currentTime = 0;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
         setIsPlaying(false);
-      }, 10000);
+        timeoutRef.current = null;
+      }, 10000) as unknown as number;
     }
+  };
+
+  const handleAudioEnded = () => {
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsPlaying(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="max-w-6xl w-full h-[95dvh] p-0 overflow-hidden rounded-2xl border-0 shadow-3xl flex flex-col"
-      >
-        <TooltipProvider>
-          <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
-            
-            {/* Left Column: Image + Preview */}
-            {/* Added h-full to ensure it respects the parent's height */}
-            <div className="flex flex-col h-full overflow-y-auto bg-gradient-to-b from-[#8B5CF6]/5 via-transparent to-transparent">
-              <div className="p-6 lg:p-8 pb-4">
-                <AspectRatio ratio={1 / 1} className="overflow-hidden rounded-2xl shadow-2xl">
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="object-cover w-full h-full transition-transform duration-700 hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-10">
-                      <h2 className="text-3xl lg:text-5xl font-black text-white text-center leading-tight drop-shadow-2xl">
-                        {product.title}
-                      </h2>
-                      {product.artist_name && (
-                        <p className="mt-4 text-xl lg:text-2xl font-medium text-white/90">
-                          by {product.artist_name}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </AspectRatio>
-              </div>
-
-              {firstTrackUrl && (
-                <div className="px-6 lg:px-8 pb-8 pt-4">
-                  <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 lg:p-8 shadow-2xl border border-white/50">
-                    <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-5 flex items-center">
-                      <PlayCircle className="h-7 w-7 mr-3 text-[#EC4899]" />
-                      Listen to Preview
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden p-0">
+        <div className="flex flex-col lg:flex-row h-full">
+          
+          {/* Left Column: Image & Audio Player */}
+          <div className="lg:w-1/2 p-6 bg-gray-50 border-r border-gray-100 flex flex-col flex-shrink-0">
+            <div className="relative mb-4">
+              <AspectRatio ratio={16 / 9}>
+                {/* Image or Placeholder */}
+                {product.image_url ? (
+                  <img 
+                    src={product.image_url} 
+                    alt={product.title} 
+                    className="w-full h-full object-cover rounded-lg shadow-md" 
+                  />
+                ) : (
+                  <div 
+                    className="flex items-center justify-center w-full h-full text-white p-4 text-center rounded-lg shadow-md"
+                    style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }} // Dark primary color for contrast
+                  >
+                    <h3 className="text-3xl font-bold leading-snug">
+                      {product.title}
                     </h3>
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      <Button
-                        size="lg"
+                  </div>
+                )}
+              </AspectRatio>
+            </div>
+
+            {/* Audio Player Section */}
+            {firstTrackUrl && (
+              <div className="mt-4 p-4 bg-white rounded-lg shadow-inner border border-gray-200">
+                <h4 className="text-lg font-semibold text-[#1C0357] mb-2 flex items-center">
+                  <Music className="h-5 w-5 mr-2 text-[#F538BC]" /> Listen to Sample (10s)
+                </h4>
+                <div className="flex items-center space-x-4">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
                         onClick={handlePlayPause}
                         className={cn(
-                          "rounded-full shadow-2xl transition-all flex-shrink-0",
-                          "h-16 w-16 sm:h-20 sm:w-20",
-                          isPlaying
-                            ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                            : "bg-gradient-to-r from-[#EC4899] to-[#F59E0B] hover:scale-110"
+                          "h-12 w-12 rounded-full transition-colors shadow-lg",
+                          isPlaying 
+                            ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
+                            : "bg-[#D1AAF2] hover:bg-[#D1AAF2]/80 text-[#1C0357]"
                         )}
                       >
-                        {isPlaying ? (
-                          <PauseCircle className="h-10 w-10 sm:h-12 sm:w-12" />
-                        ) : (
-                          <PlayCircle className="h-10 w-10 sm:h-12 sm:w-12" />
-                        )}
+                        {isPlaying ? <PauseCircle className="h-6 w-6" /> : <PlayCircle className="h-6 w-6" />}
                       </Button>
-                      <div className="text-center sm:text-left">
-                        <p className="text-base lg:text-lg font-medium text-gray-800">
-                          {isPlaying ? "Playing 10-second sample..." : "Play 10-second preview"}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Full high-quality track instantly after purchase
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <p className="text-sm text-gray-600">
+                    {isPlaying ? 'Playing...' : 'Click to play sample'}
+                  </p>
+                </div>
+                <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Details & CTA */}
+          <div className="lg:w-1/2 p-6 flex flex-col overflow-y-auto">
+            <DialogHeader className="mb-4 flex-shrink-0">
+              <DialogTitle className="text-3xl font-extrabold text-[#1C0357] leading-tight">{product.title}</DialogTitle>
+              {product.artist_name && (
+                <DialogDescription className="text-xl text-gray-700 flex items-center mt-1">
+                  <Theater className="h-5 w-5 mr-2 text-[#F538BC]" /> {product.artist_name}
+                </DialogDescription>
+              )}
+            </DialogHeader>
+
+            {/* Metadata Badges */}
+            <div className="flex flex-wrap gap-2 mb-4 border-b pb-4 flex-shrink-0">
+              {/* Category */}
+              {product.category && (
+                <Badge className="bg-[#1C0357] text-white capitalize text-sm px-3 py-1 rounded-full font-semibold">
+                  {product.category.replace('-', ' ')}
+                </Badge>
+              )}
+              {/* Vocal Ranges */}
+              {product.vocal_ranges && product.vocal_ranges.map(range => (
+                <Badge key={range} variant="secondary" className="bg-[#D1AAF2] text-[#1C0357] border-2 border-[#D1AAF2] text-sm px-3 py-1 rounded-full font-medium">
+                  {range}
+                </Badge>
+              ))}
+              {/* Key Signature */}
+              {product.show_key_signature && product.key_signature && (
+                <Badge variant="outline" className="text-sm px-3 py-1 rounded-full border-gray-400 text-gray-700 bg-gray-100">
+                  <Key className="h-4 w-4 mr-1" /> Key: {product.key_signature}
+                </Badge>
+              )}
+              {/* Track Type */}
+              {trackIcon && (
+                <Badge className={cn("text-sm px-3 py-1 rounded-full font-medium bg-white border", trackIcon.color)} style={{ borderColor: trackIcon.color }}>
+                  <trackIcon.Icon className="h-4 w-4 mr-1" /> {trackIcon.tooltip}
+                </Badge>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="flex-1 overflow-y-auto pr-2 mb-4">
+              <h4 className="text-xl font-semibold text-[#1C0357] mb-2">Description</h4>
+              <p className="text-gray-700 whitespace-pre-wrap">{product.description}</p>
+              
+              {/* Sheet Music Link */}
+              {product.show_sheet_music_url && product.sheet_music_url && (
+                <div className="mt-4">
+                  <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                    <Button 
+                      variant="link" 
+                      className="p-0 text-[#1C0357] hover:text-[#F538BC]"
+                    >
+                      <LinkIcon className="h-4 w-4 mr-2 text-[#F538BC]" /> View Sheet Music Link
+                    </Button>
+                  </a>
                 </div>
               )}
             </div>
 
-            {/* Right Column: Details + Sticky CTA */}
-            <div className="flex flex-col h-full min-h-0">
-              {/* Scrollable Details */}
-              {/* Removed pb-32 and added flex-shrink-0 to the sticky footer to ensure it doesn't shrink */}
-              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8"> 
-                <div className="mb-8">
-                  <h1 className="text-3xl lg:text-5xl font-black text-gray-900 leading-tight">
-                    {product.title}
-                  </h1>
-                  {product.artist_name && (
-                    <p className="text-xl lg:text-2xl text-gray-700 mt-3 flex items-center">
-                      <Music className="h-6 w-6 mr-3 text-[#EC4899]" />
-                      {product.artist_name}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-3 mb-8">
-                  {product.category && (
-                    <Badge className="text-sm px-4 py-2 bg-purple-100 text-purple-800 font-medium">
-                      {product.category.replace('-', ' ').toUpperCase()}
-                    </Badge>
-                  )}
-                  {product.vocal_ranges?.map((range) => (
-                    <Badge key={range} variant="outline" className="text-sm px-4 py-2 border-pink-300 text-pink-700">
-                      {range}
-                    </Badge>
-                  ))}
-                  {product.show_key_signature && product.key_signature && (
-                    <Badge variant="outline" className="text-sm px-4 py-2">
-                      <Key className="h-4 w-4 mr-2" />
-                      {product.key_signature}
-                    </Badge>
-                  )}
-                  {trackConfig && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge className={cn("text-sm px-4 py-2 font-medium", trackConfig.bg, trackConfig.color)}>
-                          <trackConfig.Icon className="h-5 w-5 mr-2" />
-                          {trackConfig.tooltip.split(' – ')[0]}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">{trackConfig.tooltip}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-
-                <Separator className="my-8" />
-
-                <div>
-                  <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">About This Track</h3>
-                  <p className="text-base lg:text-lg text-gray-700 leading-relaxed whitespace-pre-line">
-                    {product.description}
-                  </p>
-
-                  {product.show_sheet_music_url && product.sheet_music_url && (
-                    <div className="mt-8">
-                      <Button asChild variant="outline" size="lg" className="w-full px-8 py-6 text-lg rounded-xl border-2">
-                        <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="mr-3 h-6 w-6" />
-                          View Sheet Music (PDF)
-                          <ExternalLink className="ml-2 h-4 w-4" />
-                        </a>
-                      </Button>
-                    </div>
-                  )}
+            {/* Sticky Footer CTA */}
+            <div className="flex-shrink-0 pt-4 border-t">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-[#1C0357] mr-2" />
+                  <span className="text-4xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
                 </div>
               </div>
-
-              {/* Sticky Bottom CTA - Fixed height, flex-shrink-0 */}
-              <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6 shadow-2xl flex-shrink-0">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div>
-                    <p className="text-4xl lg:text-5xl font-black text-[#8B5CF6]">
-                      {product.currency}{product.price.toFixed(2)}
-                    </p>
-                    <p className="text-gray-600 mt-2 text-base lg:text-lg">
-                      Instant download • High-quality MP3 • Lifetime access
-                    </p>
-                  </div>
-
-                  <Button
-                    size="lg"
-                    onClick={() => onBuyNow(product)}
-                    disabled={isBuying}
-                    className="w-full sm:w-auto px-10 py-7 text-lg lg:text-xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] hover:shadow-3xl hover:scale-105 transition-all"
-                  >
-                    {isBuying ? (
-                      <>
-                        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="mr-3 h-6 w-6" />
-                        Buy Now & Download Instantly
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+              <Button 
+                onClick={() => onBuyNow(product)} 
+                className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center shadow-xl text-xl h-14"
+                disabled={isBuying}
+              >
+                {isBuying ? (
+                  <>
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  product.master_download_link ? (
+                    <>
+                      <LinkIcon className="mr-2 h-6 w-6" />
+                      Buy Now ({product.currency} {product.price.toFixed(2)})
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="mr-2 h-6 w-6" />
+                      Buy Now ({product.currency} {product.price.toFixed(2)})
+                    </>
+                  )
+                )}
+              </Button>
             </div>
           </div>
-
-          {/* Hidden Audio */}
-          {firstTrackUrl && (
-            <audio
-              ref={audioRef}
-              src={firstTrackUrl}
-              preload="none"
-              onEnded={() => {
-                setIsPlaying(false);
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-              }}
-            />
-          )}
-        </TooltipProvider>
+        </div>
       </DialogContent>
     </Dialog>
   );
