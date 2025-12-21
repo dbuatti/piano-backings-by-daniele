@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -58,12 +58,31 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const { isPlaying, togglePlay, audioRef, handleEnded } = useAudioPreview(firstTrackUrl);
   const trackBadge = getTrackTypeBadge(product.track_type);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showBottomFade, setShowBottomFade] = useState(true);
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // small tolerance
+      setShowBottomFade(!isAtBottom);
+    };
+
+    scrollEl.addEventListener('scroll', handleScroll);
+    handleScroll(); // initial check
+
+    return () => scrollEl.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-full h-[96vh] max-h-screen p-0 overflow-hidden rounded-none lg:rounded-2xl bg-white flex flex-col">
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Hero Image */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto relative">
+          {/* Hero Image with Title Overlay */}
           <div className="relative">
             <AspectRatio ratio={16 / 9} className="w-full">
               {product.image_url ? (
@@ -73,33 +92,37 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] to-[#1C0357]/80 text-white">
-                  <h1 className="text-4xl lg:text-6xl font-extrabold text-center px-8 leading-tight font-serif">
+                <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] to-[#1C0357]/90">
+                  <h1 className="text-5xl lg:text-7xl font-extrabold text-white text-center px-8 leading-tight font-serif">
                     {product.title}
                   </h1>
                 </div>
               )}
             </AspectRatio>
-          </div>
 
-          {/* Details Section */}
-          <div className="p-6 lg:p-10 pb-32 lg:pb-10"> {/* Extra bottom padding for mobile audio bar */}
-            <div className="max-w-3xl mx-auto space-y-8">
-              {/* Title & Artist */}
-              <div className="text-center lg:text-left">
-                <h1 className="text-4xl lg:text-5xl font-extrabold text-[#1C0357] leading-tight">
+            {/* Title overlay if image exists */}
+            {product.image_url && (
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end">
+                <h1 className="text-5xl lg:text-7xl font-extrabold text-white px-8 pb-12 leading-tight font-serif">
                   {product.title}
                 </h1>
-                {product.artist_name && (
-                  <p className="text-2xl lg:text-3xl text-gray-700 mt-4 flex items-center justify-center lg:justify-start gap-4">
-                    <Theater className="h-8 w-8 text-[#F538BC]" />
-                    {product.artist_name}
-                  </p>
-                )}
               </div>
+            )}
+          </div>
+
+          {/* Details */}
+          <div className="p-6 lg:p-10 pb-32">
+            <div className="max-w-3xl mx-auto space-y-10">
+              {/* Artist */}
+              {product.artist_name && (
+                <p className="text-2xl lg:text-3xl text-gray-700 text-center lg:text-left flex items-center justify-center lg:justify-start gap-4">
+                  <Theater className="h-8 w-8 text-[#F538BC]" />
+                  {product.artist_name}
+                </p>
+              )}
 
               {/* Badges */}
-              <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                 {product.category && (
                   <Badge className="text-base px-6 py-3 bg-[#1C0357] text-white font-bold rounded-full">
                     {product.category.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -151,75 +174,66 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               )}
             </div>
           </div>
+
+          {/* Bottom Fade Overlay (Scroll Hint) */}
+          {showBottomFade && (
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none" />
+          )}
         </div>
 
-        {/* Sticky Bottom Bar: Audio + Price + Buy */}
-        <div className="sticky bottom-0 bg-white border-t-4 border-[#D1AAF2]/50 shadow-2xl p-6">
+        {/* Sticky Bottom Bar */}
+        <div className="bg-white border-t-4 border-[#D1AAF2]/50 shadow-2xl p-6">
           <div className="max-w-3xl mx-auto">
-            {/* Audio Player (only if available) */}
             {firstTrackUrl && (
-              <div className="flex items-center justify-center gap-6 mb-6 pb-6 border-b border-gray-200">
+              <div className="flex items-center justify-center gap-8 mb-6 pb-6 border-b border-gray-200">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="lg"
                       onClick={togglePlay}
                       className={cn(
-                        "rounded-full w-20 h-20 shadow-2xl",
+                        "rounded-full w-24 h-24 shadow-2xl",
                         isPlaying ? "bg-red-500 hover:bg-red-600 animate-pulse" : "bg-[#F538BC] hover:bg-[#F538BC]/90"
                       )}
                     >
-                      {isPlaying ? <PauseCircle className="h-12 w-12" /> : <PlayCircle className="h-12 w-12" />}
+                      {isPlaying ? <PauseCircle className="h-14 w-14" /> : <PlayCircle className="h-14 w-14" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isPlaying ? "Pause sample" : "Play 10-second sample"}</p>
-                  </TooltipContent>
+                  <TooltipContent><p>{isPlaying ? "Pause" : "Play 10-second sample"}</p></TooltipContent>
                 </Tooltip>
+
                 <div className="text-center">
-                  <p className="text-xl font-bold text-[#1C0357] flex items-center gap-3">
-                    <Music className="h-7 w-7 text-[#F538BC]" />
+                  <p className="text-2xl font-bold text-[#1C0357] flex items-center gap-3 justify-center">
+                    <Music className="h-8 w-8 text-[#F538BC]" />
                     Audio Sample (10 seconds)
                   </p>
-                  <p className="text-lg text-gray-600 mt-1">
-                    {isPlaying ? "Playing..." : "Tap the button to preview"}
+                  <p className="text-lg text-gray-600 mt-2">
+                    {isPlaying ? "Playing..." : "Tap to preview"}
                   </p>
                 </div>
                 <audio ref={audioRef} src={firstTrackUrl} onEnded={handleEnded} preload="none" />
               </div>
             )}
 
-            {/* Price + Buy */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="text-center sm:text-left">
-                <div className="flex items-center gap-4 justify-center sm:justify-start">
-                  <DollarSign className="h-12 w-12 text-[#1C0357]" />
-                  <span className="text-6xl font-extrabold text-[#1C0357]">
-                    {product.currency} {product.price.toFixed(2)}
-                  </span>
-                </div>
+              <div className="flex items-center gap-4">
+                <DollarSign className="h-14 w-14 text-[#1C0357]" />
+                <span className="text-6xl font-extrabold text-[#1C0357]">
+                  {product.currency} {product.price.toFixed(2)}
+                </span>
               </div>
 
               <Button
                 onClick={() => onBuyNow(product)}
                 disabled={isBuying}
-                className="w-full sm:w-auto h-20 px-12 text-2xl font-bold bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-2xl rounded-full"
+                className="w-full sm:w-auto h-20 px-16 text-2xl font-bold bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-2xl rounded-full"
               >
                 {isBuying ? (
-                  <>
-                    <Loader2 className="mr-4 h-8 w-8 animate-spin" />
-                    Processing...
-                  </>
+                  <> <Loader2 className="mr-4 h-8 w-8 animate-spin" /> Processing... </>
                 ) : product.master_download_link ? (
-                  <>
-                    <LinkIcon className="mr-4 h-8 w-8" />
-                    Instant Download
-                  </>
+                  <> <LinkIcon className="mr-4 h-8 w-8" /> Instant Download </>
                 ) : (
-                  <>
-                    <ShoppingCart className="mr-4 h-8 w-8" />
-                    Buy Now
-                  </>
+                  <> <ShoppingCart className="mr-4 h-8 w-8" /> Buy Now </>
                 )}
               </Button>
             </div>
