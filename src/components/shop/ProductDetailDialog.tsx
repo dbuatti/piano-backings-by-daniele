@@ -121,7 +121,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
             
             {/* Left Column: Image + Preview */}
-            <div className="flex flex-col overflow-y-auto bg-gradient-to-b from-[#8B5CF6]/5 via-transparent to-transparent">
+            {/* Added h-full to ensure it respects the parent's height */}
+            <div className="flex flex-col h-full overflow-y-auto bg-gradient-to-b from-[#8B5CF6]/5 via-transparent to-transparent">
               <div className="p-6 lg:p-8 pb-4">
                 <AspectRatio ratio={1 / 1} className="overflow-hidden rounded-2xl shadow-2xl">
                   {product.image_url ? (
@@ -187,7 +188,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             {/* Right Column: Details + Sticky CTA */}
             <div className="flex flex-col h-full min-h-0">
               {/* Scrollable Details */}
-              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8 pb-32"> {/* Extra pb for sticky overlap safety */}
+              {/* Removed pb-32 and added flex-shrink-0 to the sticky footer to ensure it doesn't shrink */}
+              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8"> 
                 <div className="mb-8">
                   <h1 className="text-3xl lg:text-5xl font-black text-gray-900 leading-tight">
                     {product.title}
@@ -254,7 +256,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </div>
               </div>
 
-              {/* Sticky Bottom CTA - Safe from cutoff */}
+              {/* Sticky Bottom CTA - Fixed height, flex-shrink-0 */}
               <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6 shadow-2xl flex-shrink-0">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
