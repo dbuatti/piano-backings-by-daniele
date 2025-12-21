@@ -1,18 +1,14 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { 
-  DollarSign, 
   ShoppingCart, 
   Loader2, 
   PlayCircle, 
-  PauseCircle, 
-  Sparkles, 
-  Mic, 
-  Headphones,
+  PauseCircle,
   Music,
   Key
 } from 'lucide-react';
@@ -90,18 +86,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
 
   const getTrackTypeConfig = (type?: string) => {
     switch (type) {
-      case 'quick':
-        return { Icon: Mic, color: 'text-blue-600', bg: 'bg-blue-100', tooltip: 'Quick Reference – Fast voice memo for learning' };
-      case 'one-take':
-        return { Icon: Headphones, color: 'text-amber-600', bg: 'bg-amber-100', tooltip: 'One-Take – Authentic live recording' };
       case 'polished':
-        return { Icon: Sparkles, color: 'text-pink-600', bg: 'bg-pink-100', tooltip: 'Polished – Professionally refined backing track' };
+        return { color: 'text-pink-600', bg: 'bg-pink-100' };
       default:
         return null;
     }
   };
-
-  const trackConfig = getTrackTypeConfig(product.track_type);
 
   const isNew = isWithinInterval(new Date(product.created_at), {
     start: subDays(new Date(), 7),
@@ -112,162 +102,107 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
     <TooltipProvider>
       <Card 
         className={cn(
-          "group relative flex flex-col overflow-visible shadow-xl hover:shadow-2xl transition-all duration-500 h-full",
-          "bg-white border border-gray-200 rounded-2xl",
-          "hover:-translate-y-4 hover:ring-4 hover:ring-[#EC4899]/30"
+          "group relative flex flex-col overflow-visible shadow-2xl hover:shadow-3xl transition-all duration-500 h-full rounded-3xl border-0",
+          "bg-white",
+          "hover:-translate-y-6"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Hover Play Overlay */}
-        {firstTrackUrl && isHovered && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="bg-white/95 backdrop-blur-md rounded-full p-6 shadow-2xl">
-              <PlayCircle className="h-20 w-20 text-[#EC4899] drop-shadow-2xl" />
-            </div>
-          </div>
-        )}
-
-        {/* Header Image */}
-        <CardHeader className="p-0 relative overflow-hidden rounded-t-2xl">
+        {/* Gradient Header */}
+        <CardHeader className="p-0 relative overflow-hidden rounded-t-3xl">
           <AspectRatio ratio={1 / 1}>
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.title}
-                className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-10">
-                <h3 className="text-3xl font-black text-white text-center leading-tight drop-shadow-2xl">
-                  {product.title}
-                </h3>
-                {product.artist_name && (
-                  <span className="mt-3 text-xl font-medium text-white/90">by {product.artist_name}</span>
-                )}
-              </div>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#EC4899] via-[#F59E0B] to-[#F97316] opacity-90" />
+            <div className="relative flex flex-col items-center justify-center h-full p-8 text-white">
+              <h3 className="text-3xl font-black text-center leading-tight drop-shadow-2xl">
+                {product.title}
+              </h3>
+              <p className="mt-3 text-xl font-medium opacity-90">
+                by {product.artist_name || 'Reprise'}
+              </p>
+            </div>
           </AspectRatio>
 
-          {/* Top Badges */}
-          <div className="absolute top-4 left-4 right-4 flex justify-between z-20 pointer-events-none">
-            {isNew && (
-              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-xl px-4 py-1 animate-pulse">
-                NEW
-              </Badge>
-            )}
-            {trackConfig && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className={cn("p-3 rounded-full shadow-2xl", trackConfig.bg)}>
-                    <trackConfig.Icon className={cn("h-7 w-7", trackConfig.color)} />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p className="font-medium max-w-xs">{trackConfig.tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          {/* Play Overlay on Hover */}
+          {firstTrackUrl && isHovered && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <div className="bg-white/95 backdrop-blur-md rounded-full p-6 shadow-3xl animate-pulse">
+                <PlayCircle className="h-20 w-20 text-[#EC4899]" />
+              </div>
+            </div>
+          )}
         </CardHeader>
 
-        {/* Content */}
+        {/* Body - Clickable */}
         <CardContent 
-          className="flex-1 p-6 cursor-pointer space-y-5"
+          className="flex-1 p-8 cursor-pointer space-y-6"
           onClick={() => onViewDetails(product)}
         >
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900 leading-tight">
+          {/* Title + Artist */}
+          <div className="text-center">
+            <h3 className="text-2xl font-black text-gray-900">
               {product.title}
             </h3>
-            {product.artist_name && (
-              <p className="text-base text-gray-600 mt-2 flex items-center">
-                <Music className="h-5 w-5 mr-2 text-[#EC4899]" />
-                {product.artist_name}
-              </p>
-            )}
+            <p className="mt-2 text-lg text-gray-600 flex items-center justify-center">
+              <Music className="h-5 w-5 mr-2 text-[#EC4899]" />
+              {product.artist_name || 'Reprise'}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          {/* Badges */}
+          <div className="flex flex-wrap gap-3 justify-center">
             {product.category && (
-              <Badge className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1">
-                {product.category.replace('-', ' ')}
+              <Badge className="bg-purple-100 text-purple-700 px-4 py-1 text-sm">
+                audition cut
               </Badge>
             )}
-            {product.vocal_ranges?.slice(0, 4).map((range) => (
-              <Badge key={range} variant="outline" className="text-sm border-pink-300 text-pink-700 px-3 py-1">
+            {product.vocal_ranges?.slice(0, 2).map((range) => (
+              <Badge key={range} className="bg-pink-100 text-pink-700 px-4 py-1 text-sm border border-pink-300">
                 {range}
               </Badge>
             ))}
-            {product.show_key_signature && product.key_signature && (
-              <Badge variant="outline" className="text-sm px-3 py-1">
+            {product.key_signature && (
+              <Badge variant="outline" className="px-4 py-1 text-sm">
                 <Key className="h-4 w-4 mr-2" />
                 {product.key_signature}
               </Badge>
             )}
           </div>
 
-          <p className="text-base text-gray-600 leading-relaxed line-clamp-4">
+          {/* Description */}
+          <p className="text-center text-gray-700 leading-relaxed text-base">
             {product.description}
           </p>
         </CardContent>
 
-        {/* Footer */}
-        <CardFooter className="p-6 pt-0 space-y-5">
-          <div className="flex items-center justify-between w-full">
-            <div>
-              <span className="text-4xl font-black text-[#8B5CF6]">
+        {/* CTA Footer - Matches Mockup Exactly */}
+        <div className="px-8 pb-8 pt-4">
+          <div className="bg-gradient-to-r from-[#F59E0B] to-[#EC4899] rounded-full p-1 shadow-2xl">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuyNow(product);
+              }}
+              disabled={isBuying}
+              className="w-full h-16 bg-white text-[#8B5CF6] hover:bg-gray-50 rounded-full font-black text-2xl shadow-xl flex items-center justify-center gap-4"
+            >
+              <span>
                 {product.currency}{product.price.toFixed(2)}
               </span>
-              <span className="block text-sm text-gray-500 mt-1">instant download</span>
-            </div>
-
-            {firstTrackUrl && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="lg"
-                    onClick={handlePlayPause}
-                    className={cn(
-                      "rounded-full shadow-2xl transition-all duration-300",
-                      isPlaying
-                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                        : "bg-gradient-to-r from-[#EC4899] to-[#F59E0B] hover:scale-110"
-                    )}
-                  >
-                    {isPlaying ? <PauseCircle className="h-8 w-8" /> : <PlayCircle className="h-8 w-8" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isPlaying ? "Pause preview" : "Play 10-second sample"}</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
+              <span className="text-lg text-gray-600">instant download</span>
+              <div className="bg-gradient-to-r from-[#F59E0B] to-[#EC4899] rounded-full p-3">
+                {isBuying ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-white" />
+                ) : (
+                  <ShoppingCart className="h-8 w-8 text-white" />
+                )}
+              </div>
+              <span>Buy Now & Download</span>
+            </Button>
           </div>
+        </div>
 
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuyNow(product);
-            }}
-            disabled={isBuying}
-            className="w-full h-16 text-xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] hover:shadow-3xl hover:scale-105 transition-all"
-          >
-            {isBuying ? (
-              <>
-                <Loader2 className="mr-3 h-7 w-7 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="mr-3 h-7 w-7" />
-                Buy Now & Download
-              </>
-            )}
-          </Button>
-        </CardFooter>
-
+        {/* Hidden Audio */}
         {firstTrackUrl && (
           <audio
             ref={audioRef}
