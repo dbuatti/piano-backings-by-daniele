@@ -137,7 +137,7 @@ const TrackDetails = () => {
             <div className="flex flex-wrap gap-4 text-sm md:text-base">
               <span className="flex items-center">
                 <Key className="h-5 w-5 mr-2" />
-                Key: {product.key_signature || product.key || 'N/A'}
+                Key: {product.key_signature || 'N/A'}
               </span>
               <span className="flex items-center">
                 <Users className="h-5 w-5 mr-2" />
