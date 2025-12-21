@@ -28,10 +28,9 @@ import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { TrackInfo } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
-import { cn } from '@/lib/utils';
 
 interface Product {
   id: string;
@@ -94,10 +93,7 @@ const Shop = () => {
     }, { replace: true });
   }, [setSearchParams]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateSearchParam('q', e.target.value);
-  };
-
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => updateSearchParam('q', e.target.value);
   const handleCategoryChange = (value: string) => updateSearchParam('category', value);
   const handleVocalRangeChange = (value: string) => updateSearchParam('range', value);
   const handleTrackTypeChange = (value: string) => updateSearchParam('track_type', value);
@@ -235,9 +231,9 @@ const Shop = () => {
 
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-32">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-12 mb-12 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-12 mb-16 shadow-2xl">
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative text-center text-white">
             <h1 className="text-5xl md:text-7xl font-black tracking-tight drop-shadow-lg">
@@ -258,10 +254,9 @@ const Shop = () => {
         </div>
 
         {/* Controls Bar */}
-        <div className="sticky top-16 z-30 mb-10 -mt-4">
+        <div className="sticky top-16 z-30 mb-12">
           <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-6">
             <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-              {/* Search */}
               <div className="relative w-full lg:w-96">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 h-5 w-5" />
                 <Input
@@ -272,7 +267,6 @@ const Shop = () => {
                 />
               </div>
 
-              {/* Sort */}
               <Select value={currentSort} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-full lg:w-64 py-6 rounded-xl border-gray-300">
                   <ArrowUpDown className="h-5 w-5 mr-2" />
@@ -288,15 +282,12 @@ const Shop = () => {
                 </SelectContent>
               </Select>
 
-              {/* Filters */}
               <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="lg" className="rounded-xl border-2 px-8 py-6 font-medium">
                     <Filter className="h-5 w-5 mr-2" />
                     Filters
-                    {hasActiveFilters && (
-                      <Badge className="ml-3 bg-[#EC4899] text-white">Active</Badge>
-                    )}
+                    {hasActiveFilters && <Badge className="ml-3 bg-[#EC4899] text-white">Active</Badge>}
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
@@ -308,9 +299,7 @@ const Shop = () => {
                     <div>
                       <Label className="text-base font-semibold">Vocal Range</Label>
                       <Select value={currentVocalRange} onValueChange={handleVocalRangeChange}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="All ranges" />
-                        </SelectTrigger>
+                        <SelectTrigger className="mt-2"><SelectValue placeholder="All ranges" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Ranges</SelectItem>
                           <SelectItem value="Soprano">Soprano</SelectItem>
@@ -320,13 +309,10 @@ const Shop = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label className="text-base font-semibold">Category</Label>
                       <Select value={currentCategory} onValueChange={handleCategoryChange}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="All categories" />
-                        </SelectTrigger>
+                        <SelectTrigger className="mt-2"><SelectValue placeholder="All categories" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Categories</SelectItem>
                           <SelectItem value="full-song">Full Song</SelectItem>
@@ -336,13 +322,10 @@ const Shop = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label className="text-base font-semibold">Track Quality</Label>
                       <Select value={currentTrackType} onValueChange={handleTrackTypeChange}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="All qualities" />
-                        </SelectTrigger>
+                        <SelectTrigger className="mt-2"><SelectValue placeholder="All qualities" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Qualities</SelectItem>
                           <SelectItem value="quick">Quick Reference</SelectItem>
@@ -351,21 +334,12 @@ const Shop = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label className="text-base font-semibold">
                         Price Range: ${currentPriceRange[0]} – ${currentPriceRange[1]}
                       </Label>
-                      <Slider
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={currentPriceRange}
-                        onValueChange={handlePriceRangeChange}
-                        className="mt-4"
-                      />
+                      <Slider min={0} max={100} step={5} value={currentPriceRange} onValueChange={handlePriceRangeChange} className="mt-4" />
                     </div>
-
                     {hasActiveFilters && (
                       <Button variant="destructive" onClick={clearFilters} className="w-full">
                         <XCircle className="mr-2 h-5 w-5" />
@@ -379,18 +353,18 @@ const Shop = () => {
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Products Grid - FIXED NO CUTOFF */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
             {Array.from({ length: 12 }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🎭</div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">No tracks found</h3>
-            <p className="text-gray-600 mb-6">Try adjusting your filters or search term.</p>
+          <div className="text-center py-32">
+            <div className="text-8xl mb-6">🎭</div>
+            <h3 className="text-3xl font-bold text-gray-800 mb-4">No tracks found</h3>
+            <p className="text-xl text-gray-600 mb-8">Try adjusting your filters or search term.</p>
             {hasActiveFilters && (
               <Button onClick={clearFilters} variant="outline" size="lg">
                 Clear All Filters
@@ -398,30 +372,26 @@ const Shop = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-16">
+          <div className="space-y-24">
             {groupedProducts.map(({ category, products }) => (
-              <section key={category} className="animate-fadeIn">
-                <h2 className="text-4xl font-bold text-gray-900 mb-8 flex items-center">
+              <section key={category}>
+                <h2 className="text-5xl font-black text-gray-900 mb-12 flex items-center">
                   <span className="bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
                     {category}
                   </span>
-                  <span className="ml-4 text-lg font-normal text-gray-500">
+                  <span className="ml-6 text-2xl font-normal text-gray-500">
                     ({products.length} {products.length === 1 ? 'track' : 'tracks'})
                   </span>
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 auto-rows-fr">
                   {products.map(product => (
-                    <div
+                    <ProductCard
                       key={product.id}
-                      className="group transform transition-all duration-300 hover:-translate-y-2"
-                    >
-                      <ProductCard
-                        product={product}
-                        onViewDetails={handleViewDetails}
-                        onBuyNow={handleBuyNow}
-                        isBuying={isBuying}
-                      />
-                    </div>
+                      product={product}
+                      onViewDetails={handleViewDetails}
+                      onBuyNow={handleBuyNow}
+                      isBuying={isBuying}
+                    />
                   ))}
                 </div>
               </section>
