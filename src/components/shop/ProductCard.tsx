@@ -14,8 +14,7 @@ import {
   Mic, 
   Headphones,
   Music,
-  Key,
-  BadgeCheck
+  Key
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +58,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
 
   const firstTrackUrl = product.track_urls?.[0]?.url || null;
 
-  // Auto-pause when unmount or tab loses focus
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -78,10 +76,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
       setIsPlaying(false);
     } else {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {
-        // Handle autoplay policy gracefully
-        setIsPlaying(false);
-      });
+      audioRef.current.play().catch(() => setIsPlaying(false));
       setIsPlaying(true);
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -117,24 +112,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
     <TooltipProvider>
       <Card 
         className={cn(
-          "group relative flex flex-col overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 h-full",
-          "bg-white border-0 rounded-2xl",
-          "hover:-translate-y-3 hover:ring-4 hover:ring-[#EC4899]/20"
+          "group relative flex flex-col overflow-visible shadow-xl hover:shadow-2xl transition-all duration-500 h-full",
+          "bg-white border border-gray-200 rounded-2xl",
+          "hover:-translate-y-4 hover:ring-4 hover:ring-[#EC4899]/30"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Floating Play Button Overlay on Hover */}
+        {/* Hover Play Overlay */}
         {firstTrackUrl && isHovered && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <div className="bg-white/90 backdrop-blur-md rounded-full p-4 shadow-2xl animate-bounce-short">
-              <PlayCircle className="h-16 w-16 text-[#EC4899] drop-shadow-lg" />
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="bg-white/95 backdrop-blur-md rounded-full p-6 shadow-2xl">
+              <PlayCircle className="h-20 w-20 text-[#EC4899] drop-shadow-2xl" />
             </div>
           </div>
         )}
 
-        {/* Image / Title Header */}
-        <CardHeader className="p-0 relative overflow-hidden">
+        {/* Header Image */}
+        <CardHeader className="p-0 relative overflow-hidden rounded-t-2xl">
           <AspectRatio ratio={1 / 1}>
             {product.image_url ? (
               <img
@@ -143,88 +138,88 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                 className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
               />
             ) : (
-              <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] p-8">
-                <h3 className="text-2xl md:text-3xl font-black text-white text-center leading-tight drop-shadow-lg">
+              <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-10">
+                <h3 className="text-3xl font-black text-white text-center leading-tight drop-shadow-2xl">
                   {product.title}
-                  {product.artist_name && <span className="block text-xl mt-1 opacity-90">by {product.artist_name}</span>}
                 </h3>
+                {product.artist_name && (
+                  <span className="mt-3 text-xl font-medium text-white/90">by {product.artist_name}</span>
+                )}
               </div>
             )}
           </AspectRatio>
 
           {/* Top Badges */}
-          <div className="absolute top-3 left-3 right-3 flex justify-between z-20">
+          <div className="absolute top-4 left-4 right-4 flex justify-between z-20 pointer-events-none">
             {isNew && (
-              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-lg animate-pulse">
+              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-xl px-4 py-1 animate-pulse">
                 NEW
               </Badge>
             )}
             {trackConfig && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={cn("p-3 rounded-full shadow-xl", trackConfig.bg)}>
-                    <trackConfig.Icon className={cn("h-6 w-6", trackConfig.color)} />
+                  <div className={cn("p-3 rounded-full shadow-2xl", trackConfig.bg)}>
+                    <trackConfig.Icon className={cn("h-7 w-7", trackConfig.color)} />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p className="font-medium">{trackConfig.tooltip}</p>
+                  <p className="font-medium max-w-xs">{trackConfig.tooltip}</p>
                 </TooltipContent>
               </Tooltip>
             )}
           </div>
         </CardHeader>
 
-        {/* Clickable Content Area */}
+        {/* Content */}
         <CardContent 
-          className="flex-1 p-6 cursor-pointer space-y-4"
+          className="flex-1 p-6 cursor-pointer space-y-5"
           onClick={() => onViewDetails(product)}
         >
           <div>
-            <h3 className="text-xl font-bold text-gray-900 line-clamp-2 leading-tight">
+            <h3 className="text-2xl font-bold text-gray-900 leading-tight">
               {product.title}
             </h3>
             {product.artist_name && (
-              <p className="text-sm text-gray-600 mt-1 flex items-center">
-                <Music className="h-4 w-4 mr-1 text-[#EC4899]" />
+              <p className="text-base text-gray-600 mt-2 flex items-center">
+                <Music className="h-5 w-5 mr-2 text-[#EC4899]" />
                 {product.artist_name}
               </p>
             )}
           </div>
 
-          {/* Metadata Tags */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {product.category && (
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs font-medium">
+              <Badge className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1">
                 {product.category.replace('-', ' ')}
               </Badge>
             )}
-            {product.vocal_ranges?.slice(0, 3).map((range) => (
-              <Badge key={range} variant="outline" className="text-xs border-pink-300 text-pink-700">
+            {product.vocal_ranges?.slice(0, 4).map((range) => (
+              <Badge key={range} variant="outline" className="text-sm border-pink-300 text-pink-700 px-3 py-1">
                 {range}
               </Badge>
             ))}
             {product.show_key_signature && product.key_signature && (
-              <Badge variant="outline" className="text-xs">
-                <Key className="h-3 w-3 mr-1" />
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                <Key className="h-4 w-4 mr-2" />
                 {product.key_signature}
               </Badge>
             )}
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+          <p className="text-base text-gray-600 leading-relaxed line-clamp-4">
             {product.description}
           </p>
         </CardContent>
 
-        {/* Footer with Price & Actions */}
-        <CardFooter className="p-6 pt-0 space-y-4">
-          {/* Price + Sample Play */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline">
+        {/* Footer */}
+        <CardFooter className="p-6 pt-0 space-y-5">
+          <div className="flex items-center justify-between w-full">
+            <div>
               <span className="text-4xl font-black text-[#8B5CF6]">
                 {product.currency}{product.price.toFixed(2)}
               </span>
-              <span className="ml-2 text-sm text-gray-500">instant download</span>
+              <span className="block text-sm text-gray-500 mt-1">instant download</span>
             </div>
 
             {firstTrackUrl && (
@@ -235,17 +230,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                     size="lg"
                     onClick={handlePlayPause}
                     className={cn(
-                      "rounded-full shadow-xl transition-all duration-300",
+                      "rounded-full shadow-2xl transition-all duration-300",
                       isPlaying
                         ? "bg-red-500 hover:bg-red-600 animate-pulse"
                         : "bg-gradient-to-r from-[#EC4899] to-[#F59E0B] hover:scale-110"
                     )}
                   >
-                    {isPlaying ? (
-                      <PauseCircle className="h-7 w-7" />
-                    ) : (
-                      <PlayCircle className="h-7 w-7" />
-                    )}
+                    {isPlaying ? <PauseCircle className="h-8 w-8" /> : <PlayCircle className="h-8 w-8" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -255,30 +246,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             )}
           </div>
 
-          {/* Buy Button */}
           <Button
             onClick={(e) => {
               e.stopPropagation();
               onBuyNow(product);
             }}
             disabled={isBuying}
-            className="w-full h-14 text-lg font-bold rounded-xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] transition-all hover:shadow-3xl hover:scale-105"
+            className="w-full h-16 text-xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] hover:shadow-3xl hover:scale-105 transition-all"
           >
             {isBuying ? (
               <>
-                <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-3 h-7 w-7 animate-spin" />
                 Processing...
               </>
             ) : (
               <>
-                <ShoppingCart className="mr-3 h-6 w-6" />
+                <ShoppingCart className="mr-3 h-7 w-7" />
                 Buy Now & Download
               </>
             )}
           </Button>
         </CardFooter>
 
-        {/* Hidden Audio Element */}
         {firstTrackUrl && (
           <audio
             ref={audioRef}
