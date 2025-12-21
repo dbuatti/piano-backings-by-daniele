@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, PlayCircle, PauseCircle, Link as LinkIcon, ShoppingCart, Loader2, Music } from 'lucide-react';
+import { DollarSign, Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -18,113 +18,140 @@ interface ProductCardProps {
   isBuying: boolean;
 }
 
-const getTrackTypeIcon = (type?: string) => {
-  switch (type) {
-    case 'quick': return { Icon: () => <span className="text-blue-500">🎤</span>, tooltip: 'Quick Reference' };
-    case 'one-take': case 'one-take-recording': return { Icon: () => <span className="text-yellow-500">🎧</span>, tooltip: 'One-Take Recording' };
-    case 'polished': return { Icon: () => <span className="text-[#F538BC]">✨</span>, tooltip: 'Polished Backing' };
-    default: return null;
-  }
-};
-
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   const firstTrackUrl = product.track_urls?.[0]?.url || null;
   const { isPlaying, togglePlay, audioRef, handleEnded, hasAudio } = useAudioPreview(firstTrackUrl);
-  const trackIcon = getTrackTypeIcon(product.track_type);
-  const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 7), end: new Date() });
+  const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
+
+  const getQualityBadge = (type?: string) => {
+    switch (type) {
+      case 'quick': 
+        return { 
+          label: 'Quick Ref', 
+          icon: Mic2, 
+          class: 'bg-blue-100 text-blue-700 border-blue-200',
+          desc: 'Fast reference voice memo'
+        };
+      case 'one-take': 
+        return { 
+          label: 'One-Take', 
+          icon: Headphones, 
+          class: 'bg-amber-100 text-amber-700 border-amber-200',
+          desc: 'Single-pass authentic recording'
+        };
+      case 'polished': 
+        return { 
+          label: 'Polished', 
+          icon: Sparkles, 
+          class: 'bg-pink-100 text-[#F538BC] border-pink-200',
+          desc: 'Studio-grade multi-layer mix'
+        };
+      default: 
+        return { label: 'Standard', icon: Music, class: 'bg-gray-100 text-gray-700', desc: '' };
+    }
+  };
+
+  const quality = getQualityBadge(product.track_type);
 
   return (
-    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 h-full border-2 border-transparent hover:border-[#F538BC]/50 bg-white">
+    <Card className="group flex flex-col overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 h-full bg-white rounded-xl">
       <CardHeader className="p-0 relative overflow-hidden">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
-            <img src={product.image_url} alt={product.title} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700" />
+            <img 
+              src={product.image_url} 
+              alt={product.title} 
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
+            />
           ) : (
             <div className="flex items-center justify-center h-full bg-[#1C0357] text-white p-6 text-center">
-              <h3 className="text-2xl font-bold leading-tight font-serif">{product.title}</h3>
+              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/music.png')]" />
+              <h3 className="text-xl font-bold leading-tight relative z-10">{product.title}</h3>
             </div>
           )}
         </AspectRatio>
 
-        {trackIcon && (
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {isNew && (
+            <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-bold">
+              NEW
+            </Badge>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur rounded-full shadow-lg">
-                <trackIcon.Icon />
-              </div>
+              <Badge variant="outline" className={cn("backdrop-blur-md border px-2 py-0.5 text-[10px] font-bold uppercase", quality.class)}>
+                <quality.icon size={10} className="mr-1" />
+                {quality.label}
+              </Badge>
             </TooltipTrigger>
-            <TooltipContent>{trackIcon.tooltip}</TooltipContent>
+            <TooltipContent>{quality.desc}</TooltipContent>
           </Tooltip>
-        )}
+        </div>
 
-        {isNew && (
-          <Badge className="absolute top-3 left-3 bg-yellow-400 text-black font-bold animate-pulse">
-            NEW
-          </Badge>
+        {hasAudio && (
+          <Button
+            size="icon"
+            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+            className={cn(
+              "absolute bottom-3 right-3 rounded-full shadow-lg transition-all transform scale-90 group-hover:scale-100",
+              isPlaying ? "bg-red-500 hover:bg-red-600" : "bg-white/90 hover:bg-white text-[#1C0357]"
+            )}
+          >
+            {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+          </Button>
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 p-5 cursor-pointer" onClick={() => onViewDetails(product)}>
-        <h3 className="text-xl font-extrabold text-[#1C0357] mb-1 line-clamp-2">{product.title}</h3>
-        {product.artist_name && (
-          <p className="text-gray-700 flex items-center gap-2 mb-3">
-            <Music className="h-4 w-4 text-[#F538BC]" />
-            {product.artist_name}
+      <CardContent className="flex-1 p-5 space-y-3 cursor-pointer" onClick={() => onViewDetails(product)}>
+        <div className="space-y-1">
+          <h3 className="text-lg font-bold text-[#1C0357] leading-tight line-clamp-1">{product.title}</h3>
+          <p className="text-xs font-medium text-gray-500 flex items-center gap-1">
+            <Music size={12} className="text-[#F538BC]" />
+            {product.artist_name || 'Various Artists'}
           </p>
-        )}
+        </div>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {product.category && (
-            <Badge className="bg-[#1C0357] text-white text-xs">{product.category.replace('-', ' ')}</Badge>
-          )}
-          {product.vocal_ranges?.map((range: string) => (
-            <Badge key={range} variant="outline" className="border-[#D1AAF2] text-[#1C0357] text-xs">
+        <div className="flex flex-wrap gap-1.5">
+          {product.vocal_ranges?.slice(0, 2).map((range: string) => (
+            <Badge key={range} variant="secondary" className="bg-[#D1AAF2]/20 text-[#1C0357] text-[9px] px-1.5 py-0 border-none">
               {range}
             </Badge>
           ))}
+          {product.key_signature && (
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-200">
+              <Key size={8} className="mr-1" /> {product.key_signature}
+            </Badge>
+          )}
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3 flex-1">{product.description}</p>
+        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed h-8">
+          {product.description}
+        </p>
 
-        <div className="flex items-center justify-between mt-6">
-          <div className="flex items-baseline">
-            <DollarSign className="h-7 w-7 text-[#F538BC]" />
-            <span className="text-3xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+        <div className="pt-2 flex items-center justify-between">
+          <div className="flex items-center text-[#1C0357]">
+            <span className="text-xs font-bold mr-0.5">$</span>
+            <span className="text-2xl font-black">{product.price.toFixed(2)}</span>
           </div>
-
-          {hasAudio && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                  className={cn("rounded-full shadow-md", isPlaying && "bg-red-500 hover:bg-red-600 text-white animate-pulse")}
-                  aria-label={isPlaying ? "Pause sample" : "Play 10-second sample"}
-                >
-                  {isPlaying ? <PauseCircle className="h-6 w-6" /> : <PlayCircle className="h-6 w-6 text-[#F538BC]" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{isPlaying ? "Pause" : "Play 10s sample"}</TooltipContent>
-            </Tooltip>
-          )}
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.currency}</span>
         </div>
       </CardContent>
 
       {hasAudio && <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />}
 
-      <CardFooter className="p-5 pt-0">
+      <CardFooter className="px-5 pb-5 pt-0">
         <Button
           onClick={() => onBuyNow(product)}
           disabled={isBuying}
-          className="w-full h-12 text-lg font-semibold bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-xl"
+          className="w-full h-10 text-sm font-bold bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-lg group/btn"
         >
           {isBuying ? (
-            <> <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing... </>
-          ) : product.master_download_link ? (
-            <> <LinkIcon className="mr-2 h-5 w-5" /> Instant Download </>
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <> <ShoppingCart className="mr-2 h-5 w-5" /> Buy Now ({product.currency} {product.price.toFixed(2)}) </>
+            <span className="flex items-center gap-2">
+              <ShoppingCart size={16} className="group-hover/btn:scale-110 transition-transform" />
+              Instant Purchase
+            </span>
           )}
         </Button>
       </CardFooter>
