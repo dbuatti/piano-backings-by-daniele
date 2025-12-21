@@ -1,14 +1,26 @@
 "use client";
 
-import React, { useRef, useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useRef, useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Eye, ShoppingCart, Loader2, Theater, Key, Mic, Headphones, Sparkles, PlayCircle, PauseCircle, Link as LinkIcon, Music } from 'lucide-react';
+import { 
+  DollarSign, 
+  ShoppingCart, 
+  Loader2, 
+  PlayCircle, 
+  PauseCircle, 
+  Sparkles, 
+  Mic, 
+  Headphones,
+  Music,
+  Key,
+  BadgeCheck
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { TrackInfo } from '@/utils/helpers';
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 
 interface Product {
@@ -41,220 +53,245 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handlePlayPause = () => {
-    if (!audioRef.current || !product.track_urls || product.track_urls.length === 0) return;
+  const firstTrackUrl = product.track_urls?.[0]?.url || null;
+
+  // Auto-pause when unmount or tab loses focus
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!audioRef.current || !firstTrackUrl) return;
 
     if (isPlaying) {
-      // Pause immediately
       audioRef.current.pause();
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setIsPlaying(false);
     } else {
-      // Start playing from the beginning
       audioRef.current.currentTime = 0;
-      audioRef.current.play();
+      audioRef.current.play().catch(() => {
+        // Handle autoplay policy gracefully
+        setIsPlaying(false);
+      });
       setIsPlaying(true);
 
-      // Set timeout to stop after 10 seconds
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0; // Reset for next play
-        }
+        audioRef.current?.pause();
+        audioRef.current!.currentTime = 0;
         setIsPlaying(false);
-        timeoutRef.current = null;
-      }, 10000) as unknown as number; // Explicitly cast to number
+      }, 10000);
     }
   };
 
-  const handleAudioEnded = () => {
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsPlaying(false);
-  };
-  
-  const getTrackTypeIcon = (type: string | undefined) => {
+  const getTrackTypeConfig = (type?: string) => {
     switch (type) {
       case 'quick':
-        return { Icon: Mic, color: 'text-blue-500', tooltip: 'Quick Reference' };
+        return { Icon: Mic, color: 'text-blue-600', bg: 'bg-blue-100', tooltip: 'Quick Reference – Fast voice memo for learning' };
       case 'one-take':
-      case 'one-take-recording': // Ensure consistency
-        return { Icon: Headphones, color: 'text-yellow-500', tooltip: 'One-Take Recording' };
+        return { Icon: Headphones, color: 'text-amber-600', bg: 'bg-amber-100', tooltip: 'One-Take – Authentic live recording' };
       case 'polished':
-        return { Icon: Sparkles, color: 'text-[#F538BC]', tooltip: 'Polished Backing' };
+        return { Icon: Sparkles, color: 'text-pink-600', bg: 'bg-pink-100', tooltip: 'Polished – Professionally refined backing track' };
       default:
         return null;
     }
   };
 
-  const trackIcon = getTrackTypeIcon(product.track_type);
-  const firstTrackUrl = product.track_urls && product.track_urls.length > 0 ? product.track_urls[0].url : null;
+  const trackConfig = getTrackTypeConfig(product.track_type);
 
-  // Logic for "NEW" badge
   const isNew = isWithinInterval(new Date(product.created_at), {
     start: subDays(new Date(), 7),
     end: new Date(),
   });
 
   return (
-    <Card className="group flex flex-col overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 h-full border-2 border-transparent hover:border-[#F538BC] bg-white min-h-[400px]">
-      
-      {/* Header Area (Not clickable for details, only for image/icons) */}
-      <CardHeader className="p-0 relative overflow-hidden flex-shrink-0">
-        <AspectRatio ratio={16 / 9}>
-          {product.image_url ? (
-            <img 
-              src={product.image_url} 
-              alt={product.title} 
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-            />
-          ) : (
-            <div 
-              className="flex items-center justify-center w-full h-full text-white p-4 text-center transition-transform duration-300 group-hover:scale-105"
-              style={{ backgroundColor: '#1C0357', fontFamily: '"Playfair Display", serif' }}
-            >
-              <h3 className="text-xl md:text-2xl font-bold leading-snug line-clamp-3">
-                {product.title} {product.artist_name && `- ${product.artist_name}`}
-              </h3>
-            </div>
-          )}
-        </AspectRatio>
-        
-        {/* Top Right: Track Type Icon */}
-        {trackIcon && (
-          <div className="absolute top-2 right-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn(
-                  "p-2 rounded-full bg-[#1C0357]/80 shadow-lg text-white",
-                )}>
-                  <trackIcon.Icon className="h-5 w-5" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{trackIcon.tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
+    <TooltipProvider>
+      <Card 
+        className={cn(
+          "group relative flex flex-col overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 h-full",
+          "bg-white border-0 rounded-2xl",
+          "hover:-translate-y-3 hover:ring-4 hover:ring-[#EC4899]/20"
         )}
-        
-        {/* Top Left: NEW Badge */}
-        {isNew && (
-          <Badge className="absolute top-2 left-2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full shadow-md animate-pulse-slow">NEW</Badge>
-        )}
-
-      </CardHeader>
-      
-      {/* Content Area (Clickable for Details) */}
-      <CardContent 
-        className="flex-1 p-4 bg-white text-left flex flex-col cursor-pointer"
-        onClick={() => onViewDetails(product)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <CardTitle className="text-xl font-bold text-[#1C0357] leading-tight mb-1">{product.title}</CardTitle>
-        {product.artist_name && (
-          <p className="text-base font-medium text-gray-700 mb-3 leading-tight flex items-center">
-            <Music className="h-4 w-4 mr-2 text-[#F538BC]" /> {product.artist_name}
-          </p>
-        )}
-        
-        {/* Info Badges */}
-        <div className="flex flex-wrap gap-1 mb-3 p-2 rounded-md bg-gray-50 border border-gray-100">
-          {product.category && (
-            <Badge 
-              variant="default" 
-              className="bg-[#1C0357] text-white capitalize text-xs px-2 py-0.5 rounded-full font-semibold"
-            >
-              {product.category.replace('-', ' ')}
-            </Badge>
-          )}
-          {product.vocal_ranges && product.vocal_ranges.length > 0 && product.vocal_ranges.map(range => (
-            <Badge key={range} variant="secondary" className="bg-white text-[#1C0357] border-2 border-[#D1AAF2] text-xs px-2 py-0.5 rounded-full font-medium">
-              {range}
-            </Badge>
-          ))}
-          {product.show_key_signature && product.key_signature && (
-            <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full border-gray-400 text-gray-700">
-              <Key className="h-3 w-3 mr-1" /> {product.key_signature}
-            </Badge>
-          )}
-        </div>
-
-        <p className="text-sm text-gray-700 line-clamp-3 mb-4 flex-1">{product.description}</p>
-        
-        {/* Price and Play Button */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-          <div className="flex items-center">
-            <DollarSign className="h-6 w-6 text-[#F538BC] mr-1" />
-            <span className="text-3xl font-extrabold text-[#1C0357]">{product.currency} {product.price.toFixed(2)}</span>
+        {/* Floating Play Button Overlay on Hover */}
+        {firstTrackUrl && isHovered && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/90 backdrop-blur-md rounded-full p-4 shadow-2xl animate-bounce-short">
+              <PlayCircle className="h-16 w-16 text-[#EC4899] drop-shadow-lg" />
+            </div>
           </div>
-          {firstTrackUrl && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={(e) => { e.stopPropagation(); handlePlayPause(); }} // Stop propagation
-                  className={cn(
-                    "h-10 w-10 rounded-full transition-colors shadow-md",
-                    isPlaying 
-                      ? "bg-red-500 hover:bg-red-600 text-white animate-pulse-fast" 
-                      : "bg-[#F538BC] hover:bg-[#F538BC]/80 text-white"
-                  )}
-                >
-                  {isPlaying ? <PauseCircle className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
-                  <span className="sr-only">{isPlaying ? 'Pause Sample' : 'Play Sample'}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isPlaying ? 'Pause Sample' : 'Play 10-sec Sample'}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-        {firstTrackUrl && (
-          <audio ref={audioRef} src={firstTrackUrl} onEnded={handleAudioEnded} preload="none" className="hidden" />
         )}
-      </CardContent>
-      
-      {/* CardFooter - Only for Buy Now Action (Primary Action) */}
-      <CardFooter className="p-4 border-t bg-[#D1AAF2]/30 flex flex-col gap-2 w-full transition-colors duration-300 group-hover:bg-[#D1AAF2]/50">
-        <Button 
-          onClick={() => onBuyNow(product)} 
-          className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white w-full justify-center shadow-lg text-lg h-12"
-          disabled={isBuying}
+
+        {/* Image / Title Header */}
+        <CardHeader className="p-0 relative overflow-hidden">
+          <AspectRatio ratio={1 / 1}>
+            {product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.title}
+                className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] p-8">
+                <h3 className="text-2xl md:text-3xl font-black text-white text-center leading-tight drop-shadow-lg">
+                  {product.title}
+                  {product.artist_name && <span className="block text-xl mt-1 opacity-90">by {product.artist_name}</span>}
+                </h3>
+              </div>
+            )}
+          </AspectRatio>
+
+          {/* Top Badges */}
+          <div className="absolute top-3 left-3 right-3 flex justify-between z-20">
+            {isNew && (
+              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-lg animate-pulse">
+                NEW
+              </Badge>
+            )}
+            {trackConfig && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={cn("p-3 rounded-full shadow-xl", trackConfig.bg)}>
+                    <trackConfig.Icon className={cn("h-6 w-6", trackConfig.color)} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p className="font-medium">{trackConfig.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </CardHeader>
+
+        {/* Clickable Content Area */}
+        <CardContent 
+          className="flex-1 p-6 cursor-pointer space-y-4"
+          onClick={() => onViewDetails(product)}
         >
-          {isBuying ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            product.master_download_link ? (
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 line-clamp-2 leading-tight">
+              {product.title}
+            </h3>
+            {product.artist_name && (
+              <p className="text-sm text-gray-600 mt-1 flex items-center">
+                <Music className="h-4 w-4 mr-1 text-[#EC4899]" />
+                {product.artist_name}
+              </p>
+            )}
+          </div>
+
+          {/* Metadata Tags */}
+          <div className="flex flex-wrap gap-2">
+            {product.category && (
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs font-medium">
+                {product.category.replace('-', ' ')}
+              </Badge>
+            )}
+            {product.vocal_ranges?.slice(0, 3).map((range) => (
+              <Badge key={range} variant="outline" className="text-xs border-pink-300 text-pink-700">
+                {range}
+              </Badge>
+            ))}
+            {product.show_key_signature && product.key_signature && (
+              <Badge variant="outline" className="text-xs">
+                <Key className="h-3 w-3 mr-1" />
+                {product.key_signature}
+              </Badge>
+            )}
+          </div>
+
+          <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+            {product.description}
+          </p>
+        </CardContent>
+
+        {/* Footer with Price & Actions */}
+        <CardFooter className="p-6 pt-0 space-y-4">
+          {/* Price + Sample Play */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline">
+              <span className="text-4xl font-black text-[#8B5CF6]">
+                {product.currency}{product.price.toFixed(2)}
+              </span>
+              <span className="ml-2 text-sm text-gray-500">instant download</span>
+            </div>
+
+            {firstTrackUrl && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="lg"
+                    onClick={handlePlayPause}
+                    className={cn(
+                      "rounded-full shadow-xl transition-all duration-300",
+                      isPlaying
+                        ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                        : "bg-gradient-to-r from-[#EC4899] to-[#F59E0B] hover:scale-110"
+                    )}
+                  >
+                    {isPlaying ? (
+                      <PauseCircle className="h-7 w-7" />
+                    ) : (
+                      <PlayCircle className="h-7 w-7" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isPlaying ? "Pause preview" : "Play 10-second sample"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* Buy Button */}
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuyNow(product);
+            }}
+            disabled={isBuying}
+            className="w-full h-14 text-lg font-bold rounded-xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] transition-all hover:shadow-3xl hover:scale-105"
+          >
+            {isBuying ? (
               <>
-                <LinkIcon className="mr-2 h-5 w-5" />
-                Buy Now ({product.currency} {product.price.toFixed(2)})
+                <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                Processing...
               </>
             ) : (
               <>
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Buy Now ({product.currency} {product.price.toFixed(2)})
+                <ShoppingCart className="mr-3 h-6 w-6" />
+                Buy Now & Download
               </>
-            )
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
+            )}
+          </Button>
+        </CardFooter>
+
+        {/* Hidden Audio Element */}
+        {firstTrackUrl && (
+          <audio
+            ref={audioRef}
+            src={firstTrackUrl}
+            preload="none"
+            onEnded={() => {
+              setIsPlaying(false);
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            }}
+          />
+        )}
+      </Card>
+    </TooltipProvider>
   );
 };
 
