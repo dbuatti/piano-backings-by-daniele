@@ -115,15 +115,13 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-6xl w-full h-[95dvh] max-h-[95dvh] p-0 overflow-hidden rounded-2xl border-0 shadow-3xl flex flex-col"
+        className="max-w-6xl w-full h-[95dvh] p-0 overflow-hidden rounded-2xl border-0 shadow-3xl flex flex-col"
       >
         <TooltipProvider>
-          {/* Mobile: Vertical Stack | Desktop: Side-by-side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
             
-            {/* Left: Image + Audio Preview */}
-            <div className="flex flex-col bg-gradient-to-b from-[#8B5CF6]/5 to-transparent overflow-y-auto">
-              {/* Hero Image */}
+            {/* Left Column: Image + Preview */}
+            <div className="flex flex-col overflow-y-auto bg-gradient-to-b from-[#8B5CF6]/5 via-transparent to-transparent">
               <div className="p-6 lg:p-8 pb-4">
                 <AspectRatio ratio={1 / 1} className="overflow-hidden rounded-2xl shadow-2xl">
                   {product.image_url ? (
@@ -147,9 +145,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </AspectRatio>
               </div>
 
-              {/* Audio Preview - Always visible, scrolls if needed */}
               {firstTrackUrl && (
-                <div className="px-6 lg:px-8 pb-8">
+                <div className="px-6 lg:px-8 pb-8 pt-4">
                   <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 lg:p-8 shadow-2xl border border-white/50">
                     <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-5 flex items-center">
                       <PlayCircle className="h-7 w-7 mr-3 text-[#EC4899]" />
@@ -160,7 +157,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                         size="lg"
                         onClick={handlePlayPause}
                         className={cn(
-                          "rounded-full shadow-2xl transition-all duration-300 flex-shrink-0",
+                          "rounded-full shadow-2xl transition-all flex-shrink-0",
                           "h-16 w-16 sm:h-20 sm:w-20",
                           isPlaying
                             ? "bg-red-500 hover:bg-red-600 animate-pulse"
@@ -178,7 +175,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                           {isPlaying ? "Playing 10-second sample..." : "Play 10-second preview"}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Full high-quality track available instantly after purchase
+                          Full high-quality track instantly after purchase
                         </p>
                       </div>
                     </div>
@@ -187,11 +184,10 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               )}
             </div>
 
-            {/* Right: Details + Sticky CTA */}
-            <div className="flex flex-col h-full overflow-hidden">
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8">
-                {/* Title & Artist */}
+            {/* Right Column: Details + Sticky CTA */}
+            <div className="flex flex-col h-full">
+              {/* Scrollable Details */}
+              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8 pb-32"> {/* Extra pb for sticky overlap safety */}
                 <div className="mb-8">
                   <h1 className="text-3xl lg:text-5xl font-black text-gray-900 leading-tight">
                     {product.title}
@@ -204,7 +200,6 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                   )}
                 </div>
 
-                {/* Metadata Tags */}
                 <div className="flex flex-wrap gap-3 mb-8">
                   {product.category && (
                     <Badge className="text-sm px-4 py-2 bg-purple-100 text-purple-800 font-medium">
@@ -239,8 +234,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
                 <Separator className="my-8" />
 
-                {/* Description */}
-                <div className="mb-10">
+                <div>
                   <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">About This Track</h3>
                   <p className="text-base lg:text-lg text-gray-700 leading-relaxed whitespace-pre-line">
                     {product.description}
@@ -260,11 +254,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </div>
               </div>
 
-              {/* Sticky CTA - Always visible at bottom */}
-              <div className="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6">
+              {/* Sticky Bottom CTA - Safe from cutoff */}
+              <div className="sticky bottom-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6 shadow-2xl">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
-                    <p className="text-4xl lg:text-5xl font-black text-[#8B5CF6] flex items-center">
+                    <p className="text-4xl lg:text-5xl font-black text-[#8B5CF6]">
                       {product.currency}{product.price.toFixed(2)}
                     </p>
                     <p className="text-gray-600 mt-2 text-base lg:text-lg">
@@ -295,7 +289,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             </div>
           </div>
 
-          {/* Hidden Audio Element */}
+          {/* Hidden Audio */}
           {firstTrackUrl && (
             <audio
               ref={audioRef}
