@@ -8,6 +8,7 @@ import { DollarSign, ShoppingCart, Link as LinkIcon, Loader2, Music, Theater, Ke
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
+import { cn } from "@/lib/utils";
 
 interface ProductDetailDialogProps {
   isOpen: boolean;
