@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Filter, XCircle, ShoppingCart, Music, ArrowUpDown, Theater } from 'lucide-react';
+import { Loader2, Search, Filter, XCircle, Music, ArrowUpDown } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -30,9 +30,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
-import ProductCardSkeleton from '@/components/ProductCardSkeleton'; // Import Skeleton
+import ProductCardSkeleton from '@/components/ProductCardSkeleton';
+import { cn } from '@/lib/utils';
 
-// Define the Product interface, ensuring it uses the imported TrackInfo
 interface Product {
   id: string;
   created_at: string;
@@ -62,129 +62,76 @@ const Shop = () => {
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [isBuying, setIsBuying] = useState(false);
 
-  // Derived state from URL
   const currentSearchTerm = searchParams.get('q') || '';
   const currentCategory = searchParams.get('category') || 'all';
   const currentVocalRange = searchParams.get('range') || 'all';
   const currentTrackType = searchParams.get('track_type') || 'all';
   const currentSort = searchParams.get('sort') || 'category_asc';
-  const currentPriceMin = parseInt(searchParams.get('min_price') || '0');
-  const currentPriceMax = parseInt(searchParams.get('max_price') || '100');
+  const currentPriceMin = parseInt(searchParams.get('min_price') || '0', 10);
+  const currentPriceMax = parseInt(searchParams.get('max_price') || '100', 10);
   const currentPriceRange: [number, number] = [currentPriceMin, currentPriceMax];
 
-  // Helper to update search params
   const updateSearchParam = useCallback((key: string, value: string | number | null) => {
     setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        const stringValue = String(value);
-        
-        // Define conditions for deletion (default/empty state)
-        const isDefault = (key === 'q' && stringValue === '') ||
-                          (key === 'category' && stringValue === 'all') ||
-                          (key === 'range' && stringValue === 'all') ||
-                          (key === 'track_type' && stringValue === 'all') ||
-                          (key === 'sort' && stringValue === 'category_asc') ||
-                          (key === 'min_price' && stringValue === '0') ||
-                          (key === 'max_price' && stringValue === '100');
+      const newParams = new URLSearchParams(prev);
+      const stringValue = String(value);
 
-        if (value === null || isDefault) {
-            newParams.delete(key);
-        } else {
-            newParams.set(key, stringValue);
-        }
-        return newParams;
+      const isDefault =
+        (key === 'q' && stringValue === '') ||
+        (key === 'category' && stringValue === 'all') ||
+        (key === 'range' && stringValue === 'all') ||
+        (key === 'track_type' && stringValue === 'all') ||
+        (key === 'sort' && stringValue === 'category_asc') ||
+        (key === 'min_price' && stringValue === '0') ||
+        (key === 'max_price' && stringValue === '100');
+
+      if (value === null || isDefault) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, stringValue);
+      }
+      return newParams;
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Update handlers to use updateSearchParam
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      updateSearchParam('q', e.target.value);
+    updateSearchParam('q', e.target.value);
   };
 
-  const handleCategoryChange = (value: string) => {
-      updateSearchParam('category', value);
-  };
-
-  const handleVocalRangeChange = (value: string) => {
-      updateSearchParam('range', value);
-  };
-
-  const handleTrackTypeChange = (value: string) => {
-      updateSearchParam('track_type', value);
-  };
-
-  const handleSortChange = (value: string) => {
-      updateSearchParam('sort', value);
-  };
-
+  const handleCategoryChange = (value: string) => updateSearchParam('category', value);
+  const handleVocalRangeChange = (value: string) => updateSearchParam('range', value);
+  const handleTrackTypeChange = (value: string) => updateSearchParam('track_type', value);
+  const handleSortChange = (value: string) => updateSearchParam('sort', value);
   const handlePriceRangeChange = (value: number[]) => {
-      updateSearchParam('min_price', value[0]);
-      updateSearchParam('max_price', value[1]);
+    updateSearchParam('min_price', value[0]);
+    updateSearchParam('max_price', value[1]);
   };
 
-  // useQuery now depends on derived state
-  const { data: products, isLoading, isError, error } = useQuery<Product[], Error>({
+  const { data: products, isLoading } = useQuery<Product[], Error>({
     queryKey: ['shopProducts', currentSearchTerm, currentCategory, currentVocalRange, currentTrackType, currentPriceRange, currentSort],
     queryFn: async () => {
-      let query = supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true);
+      let query = supabase.from('products').select('*').eq('is_active', true);
 
-      // Apply search term
       if (currentSearchTerm) {
         query = query.or(`title.ilike.%${currentSearchTerm}%,description.ilike.%${currentSearchTerm}%,artist_name.ilike.%${currentSearchTerm}%`);
       }
-
-      // Apply category filter
-      if (currentCategory !== 'all') {
-        query = query.eq('category', currentCategory);
-      }
-
-      // Apply vocal range filter
-      if (currentVocalRange !== 'all') {
-        query = query.contains('vocal_ranges', [currentVocalRange]);
-      }
-      
-      // Apply track type filter
-      if (currentTrackType !== 'all') {
-        query = query.eq('track_type', currentTrackType);
-      }
-
-      // Apply price range filter
+      if (currentCategory !== 'all') query = query.eq('category', currentCategory);
+      if (currentVocalRange !== 'all') query = query.contains('vocal_ranges', [currentVocalRange]);
+      if (currentTrackType !== 'all') query = query.eq('track_type', currentTrackType);
       query = query.gte('price', currentPriceRange[0]).lte('price', currentPriceRange[1]);
 
-      // Apply sorting
       switch (currentSort) {
-        case 'price_asc':
-          query = query.order('price', { ascending: true });
-          break;
-        case 'price_desc':
-          query = query.order('price', { ascending: false });
-          break;
-        case 'title_asc':
-          query = query.order('title', { ascending: true });
-          break;
-        case 'title_desc':
-          query = query.order('title', { ascending: false });
-          break;
-        case 'artist_name_asc':
-          query = query.order('artist_name', { ascending: true });
-          break;
-        case 'artist_name_desc':
-          query = query.order('artist_name', { ascending: false });
-          break;
-        case 'created_at_desc':
-          query = query.order('created_at', { ascending: false });
-          break;
-        case 'category_asc':
-        default:
-          query = query.order('category', { ascending: true }).order('title', { ascending: true });
-          break;
+        case 'price_asc': query = query.order('price', { ascending: true }); break;
+        case 'price_desc': query = query.order('price', { ascending: false }); break;
+        case 'title_asc': query = query.order('title', { ascending: true }); break;
+        case 'title_desc': query = query.order('title', { ascending: false }); break;
+        case 'artist_name_asc': query = query.order('artist_name', { ascending: true }); break;
+        case 'artist_name_desc': query = query.order('artist_name', { ascending: false }); break;
+        case 'created_at_desc': query = query.order('created_at', { ascending: false }); break;
+        default: query = query.order('category', { ascending: true }).order('title', { ascending: true });
       }
-      
+
       const { data, error } = await query;
-      
       if (error) throw error;
       return data || [];
     },
@@ -193,27 +140,18 @@ const Shop = () => {
 
   const filteredProducts = products || [];
 
-  // 1. Handle opening the dialog and setting the URL
   const handleViewDetails = useCallback((product: Product) => {
     setSelectedProductForDetail(product);
     setIsDetailDialogOpen(true);
-    setSearchParams(prev => {
-      prev.set('product', product.id);
-      return prev;
-    }, { replace: true });
+    setSearchParams(prev => { prev.set('product', product.id); return prev; }, { replace: true });
   }, [setSearchParams]);
 
-  // 2. Handle closing the dialog and clearing the URL
   const handleCloseDetails = useCallback(() => {
     setIsDetailDialogOpen(false);
     setSelectedProductForDetail(null);
-    setSearchParams(prev => {
-      prev.delete('product');
-      return prev;
-    }, { replace: true });
+    setSearchParams(prev => { prev.delete('product'); return prev; }, { replace: true });
   }, [setSearchParams]);
 
-  // 3. Check URL on load to open dialog
   useEffect(() => {
     const productId = searchParams.get('product');
     if (productId && products && !selectedProductForDetail) {
@@ -222,14 +160,10 @@ const Shop = () => {
         setSelectedProductForDetail(product);
         setIsDetailDialogOpen(true);
       } else if (!isLoading) {
-        setSearchParams(prev => {
-          prev.delete('product');
-          return prev;
-        }, { replace: true });
+        setSearchParams(prev => { prev.delete('product'); return prev; }, { replace: true });
       }
     }
   }, [searchParams, products, isLoading, selectedProductForDetail, setSearchParams]);
-
 
   const handleBuyNow = useCallback(async (product: Product) => {
     setIsBuying(true);
@@ -243,29 +177,20 @@ const Shop = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+            ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
           },
           body: JSON.stringify({ product_id: product.id }),
         }
       );
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `Function failed with status ${response.status}`);
-      }
-
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        throw new Error('Stripe checkout URL not received.');
-      }
-
+      if (!response.ok) throw new Error(result.error || 'Checkout failed');
+      if (result.url) window.location.href = result.url;
+      else throw new Error('No checkout URL received');
     } catch (err: any) {
-      console.error('Error during buy now:', err);
       toast({
-        title: "Purchase Error",
-        description: `Failed to initiate purchase: ${err.message}`,
+        title: "Purchase Failed",
+        description: err.message || "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -275,231 +200,231 @@ const Shop = () => {
 
   const clearFilters = () => {
     setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        newParams.delete('q');
-        newParams.delete('category');
-        newParams.delete('range');
-        newParams.delete('track_type');
-        newParams.delete('min_price');
-        newParams.delete('max_price');
-        newParams.delete('sort');
-        return newParams;
+      const newParams = new URLSearchParams(prev);
+      ['q', 'category', 'range', 'track_type', 'min_price', 'max_price', 'sort'].forEach(k => newParams.delete(k));
+      return newParams;
     }, { replace: true });
   };
 
-  const hasActiveFilters = currentSearchTerm !== '' || currentCategory !== 'all' || currentVocalRange !== 'all' || currentTrackType !== 'all' || currentPriceMin !== 0 || currentPriceMax !== 100 || currentSort !== 'category_asc';
+  const hasActiveFilters = currentSearchTerm || currentCategory !== 'all' || currentVocalRange !== 'all' ||
+    currentTrackType !== 'all' || currentPriceMin !== 0 || currentPriceMax !== 100 || currentSort !== 'category_asc';
 
-  // Group products by category for display
   const groupedProducts = useMemo(() => {
-    const groups: { [key: string]: Product[] } = {};
+    const groups: Record<string, Product[]> = {};
     filteredProducts.forEach(product => {
-      const categoryName = product.category?.replace(/-/g, ' ') || 'Uncategorized';
-      if (!groups[categoryName]) {
-        groups[categoryName] = [];
-      }
+      const categoryName = (product.category || 'uncategorized').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      groups[categoryName] ??= [];
       groups[categoryName].push(product);
     });
 
-    // Sort categories alphabetically
-    const sortedCategoryNames = Object.keys(groups).sort((a, b) => {
-      if (a === 'Uncategorized') return 1;
-      if (b === 'Uncategorized') return -1;
-      return a.localeCompare(b);
-    });
-
-    return sortedCategoryNames.map(categoryName => ({
-      category: categoryName,
-      products: groups[categoryName],
-    }));
+    return Object.keys(groups)
+      .sort((a, b) => a === 'Uncategorized' ? 1 : b === 'Uncategorized' ? -1 : a.localeCompare(b))
+      .map(category => ({ category, products: groups[category] }));
   }, [filteredProducts]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2]/50 to-[#F1E14F]/10">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-yellow-50">
       {selectedProductForDetail && (
         <Seo
-          title={`${selectedProductForDetail.title} (${selectedProductForDetail.artist_name}) Piano Backing Track | ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}`}
-          description={`High-quality piano backing track for "${selectedProductForDetail.title}" from ${selectedProductForDetail.artist_name}. ${selectedProductForDetail.description.substring(0, 150)}... Price: ${selectedProductForDetail.currency} ${selectedProductForDetail.price.toFixed(2)}. Vocal Ranges: ${selectedProductForDetail.vocal_ranges.join(', ')}.`}
-          keywords={`${selectedProductForDetail.title}, ${selectedProductForDetail.artist_name}, piano backing track, ${selectedProductForDetail.category}, ${selectedProductForDetail.vocal_ranges.join(', ')}`}
+          title={`${selectedProductForDetail.title} – ${selectedProductForDetail.artist_name} | Piano Backing Track`}
+          description={`${selectedProductForDetail.description.substring(0, 150)}... Professional piano accompaniment in ${selectedProductForDetail.vocal_ranges.join(', ')}. Instant download for $${selectedProductForDetail.price.toFixed(2)}.`}
+          keywords={`${selectedProductForDetail.title}, ${selectedProductForDetail.artist_name}, piano backing track, musical theatre, audition cut, ${selectedProductForDetail.vocal_ranges.join(', ')}`}
           canonicalUrl={`${window.location.origin}/shop?product=${selectedProductForDetail.id}`}
         />
       )}
+
       <Header />
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        
-        {/* NEW: Hero Section */}
-        <div className="text-center py-12 mb-10 bg-white rounded-2xl shadow-2xl border border-gray-100">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-[#1C0357] mb-4 tracking-tighter">
-            The Backing Track Library
-          </h1>
-          <p className="text-xl md:text-2xl text-[#1C0357]/90 max-w-3xl mx-auto">
-            Instantly download high-quality piano accompaniments for auditions, practice, and performance.
-          </p>
-          <Link to="/form-page">
-            <Button className="mt-6 bg-[#F538BC] hover:bg-[#F538BC]/90 text-white text-lg px-8 py-3 shadow-lg">
-              <Music className="mr-2 h-5 w-5" /> Need a Custom Track?
-            </Button>
-          </Link>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-20">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-12 mb-12 shadow-2xl">
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="relative text-center text-white">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight drop-shadow-lg">
+              The Backing Track Library
+            </h1>
+            <p className="mt-6 text-xl md:text-2xl font-medium max-w-4xl mx-auto drop-shadow">
+              Professional piano accompaniments for musical theatre auditions, rehearsals, and performances — instant download.
+            </p>
+            <div className="mt-10">
+              <Link to="/form-page">
+                <Button size="lg" className="bg-white text-[#8B5CF6] hover:bg-white/90 font-bold text-lg px-10 py-7 shadow-2xl rounded-full transition-all hover:scale-105">
+                  <Music className="mr-3 h-6 w-6" />
+                  Request a Custom Track
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
 
-        {/* Filter and Sort Bar (Sticky) */}
-        <div className="sticky top-0 z-20 flex flex-col md:flex-row gap-4 mb-8 items-center justify-between bg-white p-4 rounded-lg shadow-xl border border-gray-100/50">
-          
-          {/* Search Input */}
-          <div className="relative w-full md:w-1/3">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              id="search-input"
-              type="text"
-              placeholder="Search title, artist, or description..."
-              value={currentSearchTerm}
-              onChange={handleSearchChange}
-              className="pl-10 pr-4 py-2 border rounded-md w-full h-10"
-            />
-          </div>
-          
-          {/* Sort Option */}
-          <div className="w-full md:w-1/4">
-            <Select value={currentSort} onValueChange={handleSortChange}>
-              <SelectTrigger className="h-10 border border-gray-300">
-                <ArrowUpDown className="h-4 w-4 mr-2 text-gray-500" />
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="category_asc">Category: A-Z</SelectItem>
-                <SelectItem value="created_at_desc">Newest First</SelectItem>
-                <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                <SelectItem value="artist_name_asc">Artist: A-Z</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* More Filters Sheet Trigger */}
-          <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full md:w-auto h-10 border border-gray-300">
-                <Filter className="h-5 w-5" /> Advanced Filters
-                {hasActiveFilters && <Badge className="ml-1 px-2 py-0.5 rounded-full bg-[#F538BC] text-white">Active</Badge>}
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Advanced Filters & Sorting</SheetTitle>
-                <SheetDescription>
-                  Refine your search results and change sorting options.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-6 space-y-6">
-                {/* VOCAL RANGE FILTER */}
-                <div>
-                  <Label htmlFor="vocal-range-filter-sheet" className="mb-2 block">Filter by Vocal Range</Label>
-                  <Select value={currentVocalRange} onValueChange={handleVocalRangeChange}>
-                    <SelectTrigger id="vocal-range-filter-sheet" className="border border-gray-300">
-                      <SelectValue placeholder="All Ranges" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Ranges</SelectItem>
-                      <SelectItem value="Soprano">Soprano</SelectItem>
-                      <SelectItem value="Alto">Alto</SelectItem>
-                      <SelectItem value="Tenor">Tenor</SelectItem>
-                      <SelectItem value="Bass">Bass</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Category Filter */}
-                <div>
-                  <Label htmlFor="category-filter-sheet" className="mb-2 block">Filter by Category</Label>
-                  <Select value={currentCategory} onValueChange={handleCategoryChange}>
-                    <SelectTrigger id="category-filter-sheet" className="border border-gray-300">
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="full-song">Full Song</SelectItem>
-                      <SelectItem value="audition-cut">Audition Cut</SelectItem>
-                      <SelectItem value="note-bash">Note Bash</SelectItem>
-                      <SelectItem value="general">General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Track Type Filter */}
-                <div>
-                  <Label htmlFor="track-type-filter-sheet" className="mb-2 block">Filter by Track Quality</Label>
-                  <Select value={currentTrackType} onValueChange={handleTrackTypeChange}>
-                    <SelectTrigger id="track-type-filter-sheet" className="border border-gray-300">
-                      <SelectValue placeholder="All Qualities" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Qualities</SelectItem>
-                      <SelectItem value="quick">Quick Reference</SelectItem>
-                      <SelectItem value="one-take">One-Take Recording</SelectItem>
-                      <SelectItem value="polished">Polished Backing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* PRICE RANGE FILTER */}
-                <div>
-                  <Label htmlFor="price-range" className="mb-2 block">Price Range: ${currentPriceRange[0].toFixed(2)} - ${currentPriceRange[1].toFixed(2)}</Label>
-                  <Slider
-                    id="price-range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={currentPriceRange}
-                    onValueChange={handlePriceRangeChange}
-                    className="w-full"
-                  />
-                </div>
-
-                {hasActiveFilters && (
-                  <Button variant="outline" onClick={clearFilters} className="w-full flex items-center gap-2">
-                    <XCircle className="h-4 w-4" /> Clear All Filters
-                  </Button>
-                )}
+        {/* Controls Bar */}
+        <div className="sticky top-16 z-30 mb-10 -mt-4">
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-6">
+            <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+              {/* Search */}
+              <div className="relative w-full lg:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 h-5 w-5" />
+                <Input
+                  placeholder="Search songs, artists, shows..."
+                  value={currentSearchTerm}
+                  onChange={handleSearchChange}
+                  className="pl-12 pr-6 py-6 text-lg rounded-xl border-gray-300 focus:border-[#EC4899] focus:ring-[#EC4899]"
+                />
               </div>
-            </SheetContent>
-          </Sheet>
+
+              {/* Sort */}
+              <Select value={currentSort} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-full lg:w-64 py-6 rounded-xl border-gray-300">
+                  <ArrowUpDown className="h-5 w-5 mr-2" />
+                  <SelectValue placeholder="Sort by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="category_asc">Category A–Z</SelectItem>
+                  <SelectItem value="created_at_desc">Newest First</SelectItem>
+                  <SelectItem value="price_asc">Price: Low → High</SelectItem>
+                  <SelectItem value="price_desc">Price: High → Low</SelectItem>
+                  <SelectItem value="title_asc">Title A–Z</SelectItem>
+                  <SelectItem value="artist_name_asc">Artist A–Z</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Filters */}
+              <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="lg" className="rounded-xl border-2 px-8 py-6 font-medium">
+                    <Filter className="h-5 w-5 mr-2" />
+                    Filters
+                    {hasActiveFilters && (
+                      <Badge className="ml-3 bg-[#EC4899] text-white">Active</Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle className="text-2xl font-bold">Refine Results</SheetTitle>
+                    <SheetDescription>Narrow down your perfect backing track</SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-8 space-y-8">
+                    <div>
+                      <Label className="text-base font-semibold">Vocal Range</Label>
+                      <Select value={currentVocalRange} onValueChange={handleVocalRangeChange}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="All ranges" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Ranges</SelectItem>
+                          <SelectItem value="Soprano">Soprano</SelectItem>
+                          <SelectItem value="Alto">Alto</SelectItem>
+                          <SelectItem value="Tenor">Tenor</SelectItem>
+                          <SelectItem value="Bass">Bass</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-base font-semibold">Category</Label>
+                      <Select value={currentCategory} onValueChange={handleCategoryChange}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="All categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="full-song">Full Song</SelectItem>
+                          <SelectItem value="audition-cut">Audition Cut</SelectItem>
+                          <SelectItem value="note-bash">Note Bash</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-base font-semibold">Track Quality</Label>
+                      <Select value={currentTrackType} onValueChange={handleTrackTypeChange}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="All qualities" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Qualities</SelectItem>
+                          <SelectItem value="quick">Quick Reference</SelectItem>
+                          <SelectItem value="one-take">One-Take Recording</SelectItem>
+                          <SelectItem value="polished">Polished Backing</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-base font-semibold">
+                        Price Range: ${currentPriceRange[0]} – ${currentPriceRange[1]}
+                      </Label>
+                      <Slider
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={currentPriceRange}
+                        onValueChange={handlePriceRangeChange}
+                        className="mt-4"
+                      />
+                    </div>
+
+                    {hasActiveFilters && (
+                      <Button variant="destructive" onClick={clearFilters} className="w-full">
+                        <XCircle className="mr-2 h-5 w-5" />
+                        Clear All Filters
+                      </Button>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
         </div>
 
-        {/* Product Display */}
+        {/* Products Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, index) => (
-              <ProductCardSkeleton key={index} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
             ))}
           </div>
-        ) : filteredProducts.length === 0 && !isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-xl text-gray-600">No products found matching your criteria.</p>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">🎭</div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">No tracks found</h3>
+            <p className="text-gray-600 mb-6">Try adjusting your filters or search term.</p>
             {hasActiveFilters && (
-              <Button variant="link" onClick={clearFilters} className="mt-4">
-                Clear all filters
+              <Button onClick={clearFilters} variant="outline" size="lg">
+                Clear All Filters
               </Button>
             )}
           </div>
         ) : (
-          <div className="space-y-10">
-            {groupedProducts.map(group => (
-              <div key={group.category}>
-                <h2 className="text-3xl font-bold text-[#1C0357] mb-6 capitalize border-b-2 border-[#F538BC]/50 pb-2">
-                  {group.category}
+          <div className="space-y-16">
+            {groupedProducts.map(({ category, products }) => (
+              <section key={category} className="animate-fadeIn">
+                <h2 className="text-4xl font-bold text-gray-900 mb-8 flex items-center">
+                  <span className="bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
+                    {category}
+                  </span>
+                  <span className="ml-4 text-lg font-normal text-gray-500">
+                    ({products.length} {products.length === 1 ? 'track' : 'tracks'})
+                  </span>
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {group.products.map(product => (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product} 
-                      onViewDetails={handleViewDetails}
-                      onBuyNow={handleBuyNow}
-                      isBuying={isBuying}
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  {products.map(product => (
+                    <div
+                      key={product.id}
+                      className="group transform transition-all duration-300 hover:-translate-y-2"
+                    >
+                      <ProductCard
+                        product={product}
+                        onViewDetails={handleViewDetails}
+                        onBuyNow={handleBuyNow}
+                        isBuying={isBuying}
+                      />
+                    </div>
                   ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
@@ -508,19 +433,13 @@ const Shop = () => {
       {selectedProductForDetail && (
         <ProductDetailDialog
           isOpen={isDetailDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              handleCloseDetails();
-            } else {
-              setIsDetailDialogOpen(true);
-            }
-          }}
+          onOpenChange={(open) => !open && handleCloseDetails()}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}
         />
       )}
-      
+
       <MadeWithDyad />
     </div>
   );
