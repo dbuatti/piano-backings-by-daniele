@@ -114,14 +114,17 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[95vh] p-0 overflow-hidden rounded-2xl border-0 shadow-3xl">
+      <DialogContent 
+        className="max-w-6xl w-full h-[95dvh] max-h-[95dvh] p-0 overflow-hidden rounded-2xl border-0 shadow-3xl flex flex-col"
+      >
         <TooltipProvider>
-          <div className="grid grid-cols-1 lg:grid-cols-2 h-full bg-gradient-to-br from-purple-50/50 to-pink-50/50">
+          {/* Mobile: Vertical Stack | Desktop: Side-by-side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 overflow-hidden">
             
-            {/* Left: Visual + Audio Preview */}
-            <div className="relative flex flex-col bg-gradient-to-b from-[#8B5CF6]/10 to-transparent">
+            {/* Left: Image + Audio Preview */}
+            <div className="flex flex-col bg-gradient-to-b from-[#8B5CF6]/5 to-transparent overflow-y-auto">
               {/* Hero Image */}
-              <div className="p-8 pb-0">
+              <div className="p-6 lg:p-8 pb-4">
                 <AspectRatio ratio={1 / 1} className="overflow-hidden rounded-2xl shadow-2xl">
                   {product.image_url ? (
                     <img
@@ -130,12 +133,12 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       className="object-cover w-full h-full transition-transform duration-700 hover:scale-105"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-12">
-                      <h2 className="text-4xl md:text-5xl font-black text-white text-center leading-tight drop-shadow-2xl">
+                    <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] p-10">
+                      <h2 className="text-3xl lg:text-5xl font-black text-white text-center leading-tight drop-shadow-2xl">
                         {product.title}
                       </h2>
                       {product.artist_name && (
-                        <p className="mt-4 text-2xl font-medium text-white/90">
+                        <p className="mt-4 text-xl lg:text-2xl font-medium text-white/90">
                           by {product.artist_name}
                         </p>
                       )}
@@ -144,37 +147,38 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </AspectRatio>
               </div>
 
-              {/* Audio Preview */}
+              {/* Audio Preview - Always visible, scrolls if needed */}
               {firstTrackUrl && (
-                <div className="p-8 pt-4">
-                  <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/50">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                      <PlayCircle className="h-8 w-8 mr-3 text-[#EC4899]" />
+                <div className="px-6 lg:px-8 pb-8">
+                  <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 lg:p-8 shadow-2xl border border-white/50">
+                    <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-5 flex items-center">
+                      <PlayCircle className="h-7 w-7 mr-3 text-[#EC4899]" />
                       Listen to Preview
                     </h3>
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
                       <Button
                         size="lg"
                         onClick={handlePlayPause}
                         className={cn(
-                          "rounded-full shadow-2xl transition-all duration-300 h-20 w-20",
+                          "rounded-full shadow-2xl transition-all duration-300 flex-shrink-0",
+                          "h-16 w-16 sm:h-20 sm:w-20",
                           isPlaying
                             ? "bg-red-500 hover:bg-red-600 animate-pulse"
                             : "bg-gradient-to-r from-[#EC4899] to-[#F59E0B] hover:scale-110"
                         )}
                       >
                         {isPlaying ? (
-                          <PauseCircle className="h-12 w-12" />
+                          <PauseCircle className="h-10 w-10 sm:h-12 sm:w-12" />
                         ) : (
-                          <PlayCircle className="h-12 w-12" />
+                          <PlayCircle className="h-10 w-10 sm:h-12 sm:w-12" />
                         )}
                       </Button>
-                      <div>
-                        <p className="text-lg font-medium text-gray-800">
+                      <div className="text-center sm:text-left">
+                        <p className="text-base lg:text-lg font-medium text-gray-800">
                           {isPlaying ? "Playing 10-second sample..." : "Play 10-second preview"}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Full high-quality track after purchase
+                          Full high-quality track available instantly after purchase
                         </p>
                       </div>
                     </div>
@@ -183,84 +187,87 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               )}
             </div>
 
-            {/* Right: Details + CTA */}
-            <div className="flex flex-col overflow-y-auto p-8 lg:p-12">
-              {/* Header */}
-              <div className="mb-8">
-                <h1 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight">
-                  {product.title}
-                </h1>
-                {product.artist_name && (
-                  <p className="text-2xl text-gray-700 mt-3 flex items-center">
-                    <Music className="h-7 w-7 mr-3 text-[#EC4899]" />
-                    {product.artist_name}
+            {/* Right: Details + Sticky CTA */}
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-8">
+                {/* Title & Artist */}
+                <div className="mb-8">
+                  <h1 className="text-3xl lg:text-5xl font-black text-gray-900 leading-tight">
+                    {product.title}
+                  </h1>
+                  {product.artist_name && (
+                    <p className="text-xl lg:text-2xl text-gray-700 mt-3 flex items-center">
+                      <Music className="h-6 w-6 mr-3 text-[#EC4899]" />
+                      {product.artist_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Metadata Tags */}
+                <div className="flex flex-wrap gap-3 mb-8">
+                  {product.category && (
+                    <Badge className="text-sm px-4 py-2 bg-purple-100 text-purple-800 font-medium">
+                      {product.category.replace('-', ' ').toUpperCase()}
+                    </Badge>
+                  )}
+                  {product.vocal_ranges?.map((range) => (
+                    <Badge key={range} variant="outline" className="text-sm px-4 py-2 border-pink-300 text-pink-700">
+                      {range}
+                    </Badge>
+                  ))}
+                  {product.show_key_signature && product.key_signature && (
+                    <Badge variant="outline" className="text-sm px-4 py-2">
+                      <Key className="h-4 w-4 mr-2" />
+                      {product.key_signature}
+                    </Badge>
+                  )}
+                  {trackConfig && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className={cn("text-sm px-4 py-2 font-medium", trackConfig.bg, trackConfig.color)}>
+                          <trackConfig.Icon className="h-5 w-5 mr-2" />
+                          {trackConfig.tooltip.split(' – ')[0]}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">{trackConfig.tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+
+                <Separator className="my-8" />
+
+                {/* Description */}
+                <div className="mb-10">
+                  <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4">About This Track</h3>
+                  <p className="text-base lg:text-lg text-gray-700 leading-relaxed whitespace-pre-line">
+                    {product.description}
                   </p>
-                )}
+
+                  {product.show_sheet_music_url && product.sheet_music_url && (
+                    <div className="mt-8">
+                      <Button asChild variant="outline" size="lg" className="w-full px-8 py-6 text-lg rounded-xl border-2">
+                        <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                          <FileText className="mr-3 h-6 w-6" />
+                          View Sheet Music (PDF)
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Metadata Tags */}
-              <div className="flex flex-wrap gap-3 mb-8">
-                {product.category && (
-                  <Badge className="text-sm px-4 py-2 bg-purple-100 text-purple-800 font-medium">
-                    {product.category.replace('-', ' ').toUpperCase()}
-                  </Badge>
-                )}
-                {product.vocal_ranges?.map((range) => (
-                  <Badge key={range} variant="outline" className="text-sm px-4 py-2 border-pink-300 text-pink-700">
-                    {range}
-                  </Badge>
-                ))}
-                {product.show_key_signature && product.key_signature && (
-                  <Badge variant="outline" className="text-sm px-4 py-2">
-                    <Key className="h-4 w-4 mr-2" />
-                    {product.key_signature}
-                  </Badge>
-                )}
-                {trackConfig && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge className={cn("text-sm px-4 py-2 font-medium", trackConfig.bg, trackConfig.color)}>
-                        <trackConfig.Icon className="h-5 w-5 mr-2" />
-                        {trackConfig.tooltip.split(' – ')[0]}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-xs">{trackConfig.tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-
-              <Separator className="my-8" />
-
-              {/* Description */}
-              <div className="flex-1 mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">About This Track</h3>
-                <p className="text-lg text-gray-700 leading-relaxed whitespace-pre-line">
-                  {product.description}
-                </p>
-
-                {product.show_sheet_music_url && product.sheet_music_url && (
-                  <div className="mt-8">
-                    <Button asChild variant="outline" size="lg" className="w-full md:w-auto px-8 py-6 text-lg rounded-xl border-2">
-                      <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer">
-                        <FileText className="mr-3 h-6 w-6" />
-                        View Sheet Music (PDF)
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Fixed CTA Section */}
-              <div className="border-t pt-8 bg-white/60 backdrop-blur rounded-2xl -m-8 p-8 mt-auto">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-6">
+              {/* Sticky CTA - Always visible at bottom */}
+              <div className="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 lg:px-12 py-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
-                    <p className="text-5xl font-black text-[#8B5CF6] flex items-center">
+                    <p className="text-4xl lg:text-5xl font-black text-[#8B5CF6] flex items-center">
                       {product.currency}{product.price.toFixed(2)}
                     </p>
-                    <p className="text-gray-600 mt-2 text-lg">
+                    <p className="text-gray-600 mt-2 text-base lg:text-lg">
                       Instant download • High-quality MP3 • Lifetime access
                     </p>
                   </div>
@@ -269,16 +276,16 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                     size="lg"
                     onClick={() => onBuyNow(product)}
                     disabled={isBuying}
-                    className="w-full sm:w-auto px-12 py-8 text-xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] hover:shadow-3xl hover:scale-105 transition-all"
+                    className="w-full sm:w-auto px-10 py-7 text-lg lg:text-xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C4DFF] hover:to-[#EC4899] hover:shadow-3xl hover:scale-105 transition-all"
                   >
                     {isBuying ? (
                       <>
-                        <Loader2 className="mr-3 h-7 w-7 animate-spin" />
+                        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <ShoppingCart className="mr-3 h-7 w-7" />
+                        <ShoppingCart className="mr-3 h-6 w-6" />
                         Buy Now & Download Instantly
                       </>
                     )}
@@ -288,7 +295,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             </div>
           </div>
 
-          {/* Hidden Audio */}
+          {/* Hidden Audio Element */}
           {firstTrackUrl && (
             <audio
               ref={audioRef}
