@@ -42,11 +42,40 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import FileInput from "@/components/FileInput";
-import AccountPromptCard from '@/components/AccountPromptCard';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { format } from 'date-fns';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
+
+// Move helper components outside to prevent recreation on every render (which causes focus loss)
+const SectionHeader = ({ num, title, subtitle, required }: { num: number, title: string, subtitle?: string, required?: boolean }) => (
+  <div className="mb-6">
+    <div className="flex items-center gap-3">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C0357] text-sm font-bold text-white shadow-sm">
+        {num}
+      </span>
+      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">
+        {title} {required && <span className="text-red-500 ml-1">*</span>}
+      </h2>
+    </div>
+    {subtitle && <p className="mt-1 ml-11 text-sm text-gray-500 font-medium">{subtitle}</p>}
+  </div>
+);
+
+const SectionWrapper = React.forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ children }, ref) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 10 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.4 }}
+    ref={ref}
+    className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow mb-8"
+  >
+    {children}
+  </motion.div>
+));
+
+SectionWrapper.displayName = "SectionWrapper";
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -94,18 +123,16 @@ const FormPage = () => {
   const [consentChecked, setConsentChecked] = useState(false);
 
   // Refs for scrolling to errors
-  const formRefs = {
-    email: useRef<HTMLDivElement>(null),
-    confirmEmail: useRef<HTMLDivElement>(null),
-    songTitle: useRef<HTMLDivElement>(null),
-    musicalOrArtist: useRef<HTMLDivElement>(null),
-    category: useRef<HTMLDivElement>(null),
-    trackType: useRef<HTMLDivElement>(null),
-    songKey: useRef<HTMLDivElement>(null),
-    backingType: useRef<HTMLDivElement>(null),
-    sheetMusic: useRef<HTMLDivElement>(null),
-    consent: useRef<HTMLDivElement>(null),
-  };
+  const emailRef = useRef<HTMLDivElement>(null);
+  const confirmEmailRef = useRef<HTMLDivElement>(null);
+  const songTitleRef = useRef<HTMLDivElement>(null);
+  const musicalOrArtistRef = useRef<HTMLDivElement>(null);
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const trackTypeRef = useRef<HTMLDivElement>(null);
+  const songKeyRef = useRef<HTMLDivElement>(null);
+  const backingTypeRef = useRef<HTMLDivElement>(null);
+  const sheetMusicRef = useRef<HTMLDivElement>(null);
+  const consentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -259,8 +286,12 @@ const FormPage = () => {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
-      const firstErrorField = Object.keys(newErrors)[0] as keyof typeof formRefs;
-      formRefs[firstErrorField]?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Basic focus logic for errors
+      if (newErrors.email) emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else if (newErrors.songTitle) songTitleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else if (newErrors.trackType) trackTypeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
       toast({ title: "Validation Error", description: "Please check the required fields.", variant: "destructive" });
       return;
     }
@@ -317,33 +348,6 @@ const FormPage = () => {
       setIsSubmitting(false);
     }
   };
-
-  const sectionHeader = (num: number, title: string, subtitle?: string, required?: boolean) => (
-    <div className="mb-6">
-      <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1C0357] text-sm font-bold text-white shadow-sm">
-          {num}
-        </span>
-        <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">
-          {title} {required && <span className="text-red-500 ml-1">*</span>}
-        </h2>
-      </div>
-      {subtitle && <p className="mt-1 ml-11 text-sm text-gray-500 font-medium">{subtitle}</p>}
-    </div>
-  );
-
-  const SectionWrapper = ({ children, refKey }: { children: React.ReactNode, refKey?: keyof typeof formRefs }) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
-      ref={refKey ? formRefs[refKey] : undefined}
-      className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow mb-8"
-    >
-      {children}
-    </motion.div>
-  );
 
   if (isLoadingAppSettings) {
     return (
@@ -490,8 +494,8 @@ const FormPage = () => {
 
               <form onSubmit={handleSubmit} className="relative">
                 {/* Section 1: Contact */}
-                <SectionWrapper refKey="email">
-                  {sectionHeader(1, "Contact Details", "Where should we send your quote and track?")}
+                <SectionWrapper ref={emailRef}>
+                  <SectionHeader num={1} title="Contact Details" subtitle="Where should we send your quote and track?" />
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-gray-500">Full Name</Label>
@@ -529,7 +533,7 @@ const FormPage = () => {
                       </div>
                       {errors.email && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.email}</p>}
                     </div>
-                    <div className="space-y-2" ref={formRefs.confirmEmail}>
+                    <div className="space-y-2" ref={confirmEmailRef}>
                       <Label htmlFor="confirmEmail" className="text-xs font-bold uppercase tracking-wider text-gray-500">Confirm Email</Label>
                       <div className="relative group">
                         <Input 
@@ -545,8 +549,8 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 2: Song Info */}
-                <SectionWrapper refKey="songTitle">
-                  {sectionHeader(2, "Song Information", "Tell us about the piece.")}
+                <SectionWrapper ref={songTitleRef}>
+                  <SectionHeader num={2} title="Song Information" subtitle="Tell us about the piece." />
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="songTitle" className="text-xs font-bold uppercase tracking-wider text-gray-500">Song Title</Label>
@@ -555,7 +559,7 @@ const FormPage = () => {
                         className={cn("h-12 rounded-xl border-gray-200", errors.songTitle && "border-red-300")}
                       />
                     </div>
-                    <div className="space-y-2" ref={formRefs.musicalOrArtist}>
+                    <div className="space-y-2" ref={musicalOrArtistRef}>
                       <Label htmlFor="musicalOrArtist" className="text-xs font-bold uppercase tracking-wider text-gray-500">Musical or Artist</Label>
                       <Input 
                         id="musicalOrArtist" name="musicalOrArtist" value={formData.musicalOrArtist} onChange={handleInputChange}
@@ -563,7 +567,7 @@ const FormPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="mt-6 space-y-2" ref={formRefs.category}>
+                  <div className="mt-6 space-y-2" ref={categoryRef}>
                     <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
                     <Select onValueChange={(v) => handleSelectChange('category', v)} value={formData.category}>
                       <SelectTrigger className={cn("h-12 rounded-xl border-gray-200", errors.category && "border-red-300")}>
@@ -579,8 +583,8 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 3: Track Quality */}
-                <SectionWrapper refKey="trackType">
-                  {sectionHeader(3, "Track Quality", "Choose the level of production you need.", true)}
+                <SectionWrapper ref={trackTypeRef}>
+                  <SectionHeader num={3} title="Track Quality" subtitle="Choose the level of production you need." required />
                   <RadioGroup 
                     value={formData.trackType} 
                     onValueChange={(v) => handleSelectChange('trackType', v)}
@@ -616,8 +620,8 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 4: Musical Details */}
-                <SectionWrapper refKey="songKey">
-                  {sectionHeader(4, "Musical Details", "Keys and Transpositions.")}
+                <SectionWrapper ref={songKeyRef}>
+                  <SectionHeader num={4} title="Musical Details" subtitle="Keys and Transpositions." />
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Sheet Music Key</Label>
@@ -664,8 +668,8 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 5: Materials */}
-                <SectionWrapper refKey="sheetMusic">
-                  {sectionHeader(5, "Materials", "Upload your sheet music and references.")}
+                <SectionWrapper ref={sheetMusicRef}>
+                  <SectionHeader num={5} title="Materials" subtitle="Upload your sheet music and references." />
                   <div className="space-y-6">
                     <FileInput
                       id="sheetMusic"
@@ -711,8 +715,8 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 6: Backing Type */}
-                <SectionWrapper refKey="backingType">
-                  {sectionHeader(6, "Services & Timeline", "Finalize your requirements.")}
+                <SectionWrapper ref={backingTypeRef}>
+                  <SectionHeader num={6} title="Services & Timeline" subtitle="Finalize your requirements." />
                   <div className="space-y-8">
                     <div>
                       <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-4">Backing Type Needed</Label>
@@ -783,7 +787,7 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 7: Final Step */}
-                <SectionWrapper refKey="consent">
+                <SectionWrapper ref={consentRef}>
                   <div className={cn(
                     "p-5 rounded-2xl border-2 transition-all flex gap-4",
                     consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white",
