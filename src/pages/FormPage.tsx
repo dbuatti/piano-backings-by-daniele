@@ -46,6 +46,7 @@ import AccountPromptCard from '@/components/AccountPromptCard';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { format } from 'date-fns';
 import Seo from "@/components/Seo";
+import AuthOverlay from "@/components/AuthOverlay";
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -53,7 +54,7 @@ const FormPage = () => {
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
-  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
+  const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
@@ -119,10 +120,11 @@ const FormPage = () => {
         }));
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         setIsAdmin(adminEmails.includes(session.user.email));
-        setShowAccountPrompt(false);
+        setShowAuthOverlay(false);
       } else {
         setIsAdmin(false);
-        setShowAccountPrompt(true);
+        // Delay the overlay slightly for better UX
+        setTimeout(() => setShowAuthOverlay(true), 1000);
       }
     };
     checkUser();
@@ -308,7 +310,7 @@ const FormPage = () => {
       if (!response.ok) throw new Error('Failed to submit request');
       
       setIsSubmittedSuccessfully(true);
-      if (!session) setShowAccountPrompt(true);
+      if (!session) setShowAuthOverlay(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -386,6 +388,11 @@ const FormPage = () => {
         description="Submit your custom piano backing track request for auditions, practice, or performances."
       />
       <Header />
+      
+      <AuthOverlay 
+        isOpen={showAuthOverlay} 
+        onClose={() => setShowAuthOverlay(false)} 
+      />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         <header className="text-center mb-12">
@@ -799,7 +806,7 @@ const FormPage = () => {
                     
                     <Button 
                       type="submit" 
-                      disabled={isSubmitting || isHolidayModeActive || !consentChecked || (!user && showAccountPrompt)}
+                      disabled={isSubmitting || isHolidayModeActive || !consentChecked}
                       className="group h-16 rounded-full bg-[#1C0357] hover:bg-[#1C0357]/90 text-white px-12 text-lg font-black shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all"
                     >
                       {isSubmitting ? (
@@ -826,16 +833,6 @@ const FormPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {!user && showAccountPrompt && (
-          <div className="mt-12">
-            <AccountPromptCard 
-              onDismiss={() => setShowAccountPrompt(false)} 
-              isHolidayModeActive={isHolidayModeActive}
-              isLoadingHolidayMode={isLoadingAppSettings}
-            />
-          </div>
-        )}
 
         <footer className="mt-20">
           <MadeWithDyad />
