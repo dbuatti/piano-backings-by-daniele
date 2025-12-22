@@ -39,7 +39,8 @@ import {
   Loader2,
   ChevronRight,
   Info,
-  HelpCircle
+  HelpCircle,
+  Link as LinkIconLucide
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -54,7 +55,6 @@ import { format } from 'date-fns';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 
-// Move helper components outside to prevent recreation on every render (which causes focus loss)
 const SectionHeader = ({ num, title, subtitle, required }: { num: number, title: string, subtitle?: string, required?: boolean }) => (
   <div className="mb-6">
     <div className="flex items-center gap-3">
@@ -136,7 +136,6 @@ const FormPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [consentChecked, setConsentChecked] = useState(false);
 
-  // Calculate completion percentage
   const progress = useMemo(() => {
     const requiredFields = [
       formData.email,
@@ -155,7 +154,6 @@ const FormPage = () => {
     return (completedCount / requiredFields.length) * 100;
   }, [formData, consentChecked]);
 
-  // Refs for scrolling to errors
   const emailRef = useRef<HTMLDivElement>(null);
   const confirmEmailRef = useRef<HTMLDivElement>(null);
   const songTitleRef = useRef<HTMLDivElement>(null);
@@ -183,7 +181,6 @@ const FormPage = () => {
         setShowAuthOverlay(false);
       } else {
         setIsAdmin(false);
-        // Delay the overlay slightly for better UX
         setTimeout(() => setShowAuthOverlay(true), 1000);
       }
     };
@@ -320,7 +317,6 @@ const FormPage = () => {
       setErrors(newErrors);
       setIsSubmitting(false);
       
-      // Basic focus logic for errors
       if (newErrors.email) emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       else if (newErrors.songTitle) songTitleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       else if (newErrors.trackType) trackTypeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -615,7 +611,7 @@ const FormPage = () => {
                   <div className="mt-6 space-y-2" ref={categoryRef}>
                     <div className="flex items-center gap-2">
                       <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
-                      <TooltipProvider>
+                      <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-gray-400 hover:text-[#1C0357] transition-colors">
@@ -746,35 +742,53 @@ const FormPage = () => {
                       required
                       error={errors.sheetMusic}
                     />
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">YouTube Reference (Tempo)</Label>
-                      <div className="relative group">
-                        <Input 
-                          id="youtubeLink" name="youtubeLink" value={formData.youtubeLink} onChange={handleInputChange}
-                          className="pl-10 h-12 rounded-xl border-gray-200"
-                          placeholder="https://youtube.com/..."
-                        />
-                        <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">YouTube Reference (Tempo)</Label>
+                        <div className="relative group">
+                          <Input 
+                            id="youtubeLink" name="youtubeLink" value={formData.youtubeLink} onChange={handleInputChange}
+                            className="pl-10 h-12 rounded-xl border-gray-200"
+                            placeholder="https://youtube.com/..."
+                          />
+                          <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Additional Reference Links (Optional)</Label>
+                        <div className="relative group">
+                          <Input 
+                            id="additionalLinks" name="additionalLinks" value={formData.additionalLinks} onChange={handleInputChange}
+                            className="pl-10 h-12 rounded-xl border-gray-200"
+                            placeholder="Spotify, Dropbox, etc..."
+                          />
+                          <LinkIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
+                        </div>
                       </div>
                     </div>
                     <div className="p-4 bg-gray-50 rounded-2xl space-y-4">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-2">Voice Memo (Optional)</Label>
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="relative group">
-                          <Input 
-                            id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
-                            className="pl-10 h-12 rounded-xl border-gray-200 bg-white"
-                            placeholder="Voice memo link..."
-                          />
-                          <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Voice Memo (Optional)</Label>
+                      <div className="grid md:grid-cols-2 gap-4 items-end">
+                        <div className="space-y-2">
+                          <div className="relative group">
+                            <Input 
+                              id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
+                              className="pl-10 h-12 rounded-xl border-gray-200 bg-white"
+                              placeholder="Voice memo link..."
+                            />
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                          </div>
                         </div>
-                        <FileInput
-                          id="voiceMemoFile"
-                          label="Upload File"
-                          icon={MicIcon}
-                          accept="audio/*"
-                          onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                        />
+                        <div>
+                          <FileInput
+                            id="voiceMemoFile"
+                            label="Upload File"
+                            icon={MicIcon}
+                            accept="audio/*"
+                            onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                            className="h-12"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -820,24 +834,28 @@ const FormPage = () => {
                       </div>
                       <div className="space-y-4">
                         <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Add-ons</Label>
-                        {[
-                          { id: 'rush-order', label: 'Rush Order', price: '+$10', desc: '24hr turnaround' },
-                          { id: 'complex-songs', label: 'Complex Piece', price: '+$7', desc: 'Sondheim, JRB, etc.' }
-                        ].map(service => (
-                          <div key={service.id} className={cn(
-                            "flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer",
-                            formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
-                          )} onClick={() => handleCheckboxChange(service.id)}>
-                            <div className="flex items-center gap-3">
-                              <Checkbox checked={formData.additionalServices.includes(service.id)} />
-                              <div className="flex flex-col">
-                                <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
-                                <span className="text-[10px] text-gray-500">{service.desc}</span>
+                        <div className="grid grid-cols-1 gap-3">
+                          {[
+                            { id: 'rush-order', label: 'Rush Order', price: '+$10', desc: '24hr turnaround' },
+                            { id: 'complex-songs', label: 'Complex Piece', price: '+$7', desc: 'Sondheim, JRB, etc.' },
+                            { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40', desc: 'Prevent online sharing' },
+                            { id: 'additional-edits', label: 'Additional Edits', price: '+$5', desc: 'After completion' }
+                          ].map(service => (
+                            <div key={service.id} className={cn(
+                              "flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer",
+                              formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
+                            )} onClick={() => handleCheckboxChange(service.id)}>
+                              <div className="flex items-center gap-3">
+                                <Checkbox checked={formData.additionalServices.includes(service.id)} />
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
+                                  <span className="text-[10px] text-gray-500">{service.desc}</span>
+                                </div>
                               </div>
+                              <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
                             </div>
-                            <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
 
