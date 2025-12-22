@@ -11,6 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
   LinkIcon, 
   MicIcon, 
   FileTextIcon, 
@@ -32,7 +38,8 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
-  Info
+  Info,
+  HelpCircle
 } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -76,6 +83,13 @@ const SectionWrapper = React.forwardRef<HTMLDivElement, { children: React.ReactN
 ));
 
 SectionWrapper.displayName = "SectionWrapper";
+
+const categoryDescriptions: Record<string, string> = {
+  "Practice Tracks": "For practice in your own time. Not intended for self-tapes; track quality is not the primary focus.",
+  "Audition Tracks": "Tracks intended for use in professional self-tapes and recordings.",
+  "Melody Bash Tracks": "Melody note tracks designed to help you learn new repertoire quickly, typically for auditions.",
+  "Performance Tracks": "High-quality tracks suitable for live use in concerts or public performances."
+};
 
 const FormPage = () => {
   const { toast } = useToast();
@@ -599,13 +613,34 @@ const FormPage = () => {
                     </div>
                   </div>
                   <div className="mt-6 space-y-2" ref={categoryRef}>
-                    <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-gray-400 hover:text-[#1C0357] transition-colors">
+                              <HelpCircle size={14} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs p-4 rounded-xl bg-[#1C0357] text-white border-none shadow-xl">
+                            <div className="space-y-3">
+                              {Object.entries(categoryDescriptions).map(([title, desc]) => (
+                                <div key={title}>
+                                  <p className="font-bold text-xs uppercase tracking-wider text-[#F538BC]">{title}</p>
+                                  <p className="text-[11px] leading-relaxed opacity-90">{desc}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <Select onValueChange={(v) => handleSelectChange('category', v)} value={formData.category}>
                       <SelectTrigger className={cn("h-12 rounded-xl border-gray-200", errors.category && "border-red-300")}>
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["Practice Tracks", "Audition Tracks", "Melody Bash Tracks", "Performance Tracks", "General"].map(c => (
+                        {Object.keys(categoryDescriptions).map(c => (
                           <SelectItem key={c} value={c}>{c}</SelectItem>
                         ))}
                       </SelectContent>
