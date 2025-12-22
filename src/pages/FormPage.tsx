@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,6 +121,25 @@ const FormPage = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [consentChecked, setConsentChecked] = useState(false);
+
+  // Calculate completion percentage
+  const progress = useMemo(() => {
+    const requiredFields = [
+      formData.email,
+      formData.confirmEmail === formData.email && formData.confirmEmail !== '',
+      formData.songTitle,
+      formData.musicalOrArtist,
+      formData.category,
+      formData.trackType,
+      formData.songKey,
+      formData.backingType.length > 0,
+      formData.sheetMusic,
+      consentChecked
+    ];
+    
+    const completedCount = requiredFields.filter(Boolean).length;
+    return (completedCount / requiredFields.length) * 100;
+  }, [formData, consentChecked]);
 
   // Refs for scrolling to errors
   const emailRef = useRef<HTMLDivElement>(null);
@@ -391,7 +410,19 @@ const FormPage = () => {
         title="Custom Piano Backing Request"
         description="Submit your custom piano backing track request for auditions, practice, or performances."
       />
-      <Header />
+      <div className="sticky top-0 z-[60] w-full">
+        <Header />
+        {!isSubmittedSuccessfully && (
+          <div className="w-full h-1 bg-gray-100 overflow-hidden">
+            <motion.div 
+              className="h-full bg-[#1C0357]"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ type: "spring", stiffness: 50, damping: 20 }}
+            />
+          </div>
+        )}
+      </div>
       
       <AuthOverlay 
         isOpen={showAuthOverlay} 
