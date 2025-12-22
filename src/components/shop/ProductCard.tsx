@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { DollarSign, Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -54,8 +54,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   const quality = getQualityBadge(product.track_type);
 
   return (
-    <Card className="group flex flex-col overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 h-full bg-white rounded-xl">
-      <CardHeader className="p-0 relative overflow-hidden">
+    <Card className="group flex flex-col overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 h-full bg-white rounded-xl">
+      <CardHeader className="p-0 relative overflow-hidden bg-gray-50">
         <AspectRatio ratio={16 / 9}>
           {product.image_url ? (
             <img 
@@ -64,22 +64,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
             />
           ) : (
-            <div className="flex items-center justify-center h-full bg-[#1C0357] text-white p-6 text-center">
+            <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] to-[#D1AAF2]/30 text-white p-6 overflow-hidden">
               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/music.png')]" />
-              <h3 className="text-xl font-bold leading-tight relative z-10">{product.title}</h3>
+              <Music size={48} className="text-white/20 relative z-10" />
             </div>
           )}
         </AspectRatio>
 
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {/* Badges - Structured layout to avoid overlapping content */}
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1.5 z-20">
           {isNew && (
-            <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-bold">
+            <Badge className="bg-[#F538BC] text-white border-none text-[9px] font-bold h-5">
               NEW
             </Badge>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className={cn("backdrop-blur-md border px-2 py-0.5 text-[10px] font-bold uppercase", quality.class)}>
+              <Badge variant="outline" className={cn("backdrop-blur-md border px-1.5 py-0 text-[9px] font-bold uppercase h-5", quality.class)}>
                 <quality.icon size={10} className="mr-1" />
                 {quality.label}
               </Badge>
@@ -93,63 +94,65 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             size="icon"
             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
             className={cn(
-              "absolute bottom-3 right-3 rounded-full shadow-lg transition-all transform scale-90 group-hover:scale-100",
-              isPlaying ? "bg-red-500 hover:bg-red-600" : "bg-white/90 hover:bg-white text-[#1C0357]"
+              "absolute bottom-2 right-2 rounded-full shadow-lg transition-all transform scale-90 group-hover:scale-100 z-20 h-9 w-9",
+              isPlaying ? "bg-red-500 hover:bg-red-600 text-white" : "bg-white/90 hover:bg-white text-[#1C0357]"
             )}
           >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+            {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </Button>
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 p-5 space-y-3 cursor-pointer" onClick={() => onViewDetails(product)}>
+      <CardContent className="flex-1 p-4 space-y-3 cursor-pointer" onClick={() => onViewDetails(product)}>
         <div className="space-y-1">
-          <h3 className="text-lg font-bold text-[#1C0357] leading-tight line-clamp-1">{product.title}</h3>
+          <h3 className="text-base font-bold text-[#1C0357] leading-tight line-clamp-1 group-hover:text-[#F538BC] transition-colors">
+            {product.title}
+          </h3>
           <p className="text-xs font-medium text-gray-500 flex items-center gap-1">
-            <Music size={12} className="text-[#F538BC]" />
-            {product.artist_name || 'Various Artists'}
+            <Music size={12} className="text-[#F538BC] shrink-0" />
+            <span className="truncate">{product.artist_name || 'Various Artists'}</span>
           </p>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {product.vocal_ranges?.slice(0, 2).map((range: string) => (
-            <Badge key={range} variant="secondary" className="bg-[#D1AAF2]/20 text-[#1C0357] text-[9px] px-1.5 py-0 border-none">
-              {range}
-            </Badge>
-          ))}
           {product.key_signature && (
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-200">
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-200 bg-gray-50 text-gray-600">
               <Key size={8} className="mr-1" /> {product.key_signature}
             </Badge>
           )}
+          {product.vocal_ranges?.slice(0, 2).map((range: string) => (
+            <Badge key={range} variant="secondary" className="bg-[#D1AAF2]/10 text-[#1C0357] text-[9px] px-1.5 py-0 border-none">
+              {range}
+            </Badge>
+          ))}
         </div>
 
-        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed h-8">
+        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed h-8 overflow-hidden">
           {product.description}
         </p>
 
-        <div className="pt-2 flex items-center justify-between">
-          <div className="flex items-center text-[#1C0357]">
+        <div className="pt-1 flex items-center justify-between">
+          <div className="flex items-baseline text-[#1C0357]">
             <span className="text-xs font-bold mr-0.5">$</span>
-            <span className="text-2xl font-black">{product.price.toFixed(2)}</span>
+            <span className="text-xl font-black">{product.price.toFixed(2)}</span>
+            <span className="ml-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">{product.currency}</span>
           </div>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.currency}</span>
         </div>
       </CardContent>
 
       {hasAudio && <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />}
 
-      <CardFooter className="px-5 pb-5 pt-0">
+      <CardFooter className="px-4 pb-4 pt-0">
         <Button
           onClick={() => onBuyNow(product)}
           disabled={isBuying}
-          className="w-full h-10 text-sm font-bold bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-lg group/btn"
+          className="w-full h-9 text-xs font-bold bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-lg group/btn shadow-md"
         >
           {isBuying ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <span className="flex items-center gap-2">
-              <ShoppingCart size={16} className="group-hover/btn:scale-110 transition-transform" />
+              <ShoppingCart size={14} className="group-hover/btn:scale-110 transition-transform" />
               Instant Purchase
             </span>
           )}
