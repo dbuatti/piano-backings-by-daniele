@@ -56,7 +56,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
   return (
     <Card className="group flex flex-col overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 h-full bg-white rounded-2xl">
       <CardHeader className="p-0 relative overflow-hidden bg-[#1C0357]">
-        <AspectRatio ratio={16 / 9}>
+        <AspectRatio ratio={2.2 / 1}>
           {product.image_url ? (
             <>
               <img 
@@ -69,9 +69,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           ) : (
             <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] via-[#2D0B8C] to-[#D1AAF2]/40 text-white p-6">
               <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-              <div className="relative z-10 transform group-hover:scale-110 transition-transform duration-500">
-                <Theater size={56} className="text-white/30" />
-              </div>
             </div>
           )}
         </AspectRatio>
