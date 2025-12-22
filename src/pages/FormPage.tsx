@@ -768,8 +768,9 @@ const FormPage = () => {
                     </div>
                     <div className="p-4 bg-gray-50 rounded-2xl space-y-4">
                       <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Voice Memo (Optional)</Label>
-                      <div className="grid md:grid-cols-2 gap-4 items-end">
+                      <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">Option 1: Provide a Link</Label>
                           <div className="relative group">
                             <Input 
                               id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
@@ -779,14 +780,14 @@ const FormPage = () => {
                             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           </div>
                         </div>
-                        <div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">Option 2: Upload Audio</Label>
                           <FileInput
                             id="voiceMemoFile"
                             label="Upload File"
                             icon={MicIcon}
                             accept="audio/*"
                             onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                            className="h-12"
                           />
                         </div>
                       </div>
