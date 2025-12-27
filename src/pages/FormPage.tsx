@@ -613,7 +613,7 @@ const FormPage = () => {
                   <div className="mt-6 space-y-2" ref={categoryRef}>
                     <div className="flex items-center gap-2">
                       <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
-                      <TooltipProvider delayDuration={0}>
+                      <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button type="button" variant="ghost" size="icon" className="text-gray-400 hover:text-[#1C0357] transition-colors">
