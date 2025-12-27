@@ -1,19 +1,23 @@
-import React, { useRef, useState } from 'react';
+"use client";
+
+import React, { useRef } from 'react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LucideIcon, UploadCloud, FileText, FileAudio, XCircle } from 'lucide-react'; // Import FileText, FileAudio, XCircle
+import { UploadCloud, XCircle, FileText } from 'lucide-react';
 
 interface FileInputProps {
   id: string;
   label: string;
-  icon: LucideIcon;
-  accept?: string;
+  icon: React.ElementType; // Use React.ElementType for Lucide icons
+  accept: string;
   onChange: (file: File | null) => void;
   required?: boolean;
-  className?: string;
-  note?: string;
   error?: string;
-  disabled?: boolean;
+  file: File | null; // Added file prop
+  note?: string; // Added note prop
+  disabled?: boolean; // Added disabled prop
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -22,132 +26,90 @@ const FileInput: React.FC<FileInputProps> = ({
   icon: Icon,
   accept,
   onChange,
-  required = false,
-  className,
-  note,
+  required,
   error,
-  disabled = false,
+  file, // Destructure file prop
+  note, // Destructure note prop
+  disabled = false, // Destructure disabled prop with default
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement> | FileList) => {
-    if (disabled) return;
-    const selectedFile = (event instanceof FileList) ? event[0] : event.target.files?.[0] || null;
-    
-    setFile(selectedFile);
-    onChange(selectedFile);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      onChange(e.target.files[0]);
+    } else {
+      onChange(null);
+    }
   };
 
-  const handleButtonClick = () => {
-    if (disabled) return;
-    fileInputRef.current?.click();
-  };
-
-  const handleClearFile = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (disabled) return;
-    setFile(null);
-    onChange(null);
+  const handleClearFile = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // Clear the input value
+      fileInputRef.current.value = '';
     }
+    onChange(null);
   };
-
-  // Drag and drop handlers
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    event.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    event.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    event.preventDefault();
-    setIsDragging(false);
-    const files = event.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleFileChange(files);
-    }
-  };
-
-  const getFileIcon = (file: File | null) => {
-    if (!file) return UploadCloud;
-    if (file.type.startsWith('audio/')) return FileAudio;
-    if (file.type.includes('pdf')) return FileText;
-    return Icon;
-  };
-
-  const CurrentFileIcon = getFileIcon(file);
 
   return (
-    <div className={cn("space-y-1", className)}>
-      <label htmlFor={id} className="flex items-center text-sm mb-1 font-medium text-[#1C0357]">
-        <Icon className="mr-1" size={14} />
-        {label} {required && <span className="text-red-500 font-bold ml-1">*</span>}
-      </label>
-      <div
-        className={cn(
-          "relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm transition-colors duration-200",
-          isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400",
-          file ? "border-green-500 bg-green-50" : "bg-white", // Success state when file is present
-          error && "border-red-500 bg-red-50", // Error state
-          disabled && "bg-gray-100 cursor-not-allowed opacity-70 border-gray-200 hover:border-gray-200"
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input
-          id={id}
-          name={id}
-          type="file"
-          accept={accept}
-          onChange={handleFileChange}
-          ref={fileInputRef}
-          className="hidden"
-          disabled={disabled}
-        />
-        
-        {file && !disabled && (
-          <Button 
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-xs font-bold uppercase tracking-wider text-gray-500">
+        {label} {required && <span className="text-red-500">*</span>}
+      </Label>
+      {note && <p className="text-xs text-gray-500 mt-1">{note}</p>} {/* Render the note here */}
+      <div className={cn(
+        "relative flex items-center justify-between h-12 rounded-xl border-2 transition-all",
+        error ? "border-red-300 bg-red-50" : "border-gray-200 focus-within:border-[#D1AAF2]",
+        file ? "pr-12" : "", // Add padding-right when a file is selected
+        disabled && "opacity-70 cursor-not-allowed bg-gray-50"
+      )}>
+        <div className="flex items-center flex-grow">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <Icon size={18} />
+          </div>
+          <Input
+            id={id}
+            type="file"
+            accept={accept}
+            onChange={handleFileChange}
+            className="hidden"
+            ref={fileInputRef}
+            disabled={file !== null || disabled} // Disable input if a file is already selected or component is disabled
+          />
+          <label
+            htmlFor={id}
+            className={cn(
+              "flex-grow pl-10 pr-3 py-2 cursor-pointer text-sm font-medium truncate",
+              file ? "text-[#1C0357]" : "text-gray-500",
+              disabled && "cursor-not-allowed"
+            )}
+          >
+            {file ? file.name : `Upload ${label.toLowerCase().replace(' (pdf)', '').replace(' (optional)', '')}...`}
+          </label>
+        </div>
+        {file && !disabled ? (
+          <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={handleClearFile}
-            className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:bg-red-100"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-red-500 hover:bg-red-50"
           >
-            <XCircle className="h-4 w-4" />
+            <XCircle size={18} />
           </Button>
+        ) : (
+          !file && !disabled && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-500 hover:bg-gray-100"
+            >
+              <UploadCloud size={18} />
+            </Button>
+          )
         )}
-
-        <CurrentFileIcon className={cn("h-8 w-8 mb-2", file ? "text-green-600" : isDragging ? "text-[#F538BC]" : "text-gray-400")} />
-        
-        <p className="text-gray-700 mb-2 text-center">
-          <span className="font-semibold">Drag & drop your file here</span> or
-        </p>
-        <Button
-          type="button"
-          onClick={handleButtonClick}
-          variant="outline"
-          className="py-1 px-3 h-auto text-sm font-semibold bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80"
-          disabled={disabled}
-        >
-          Browse files
-        </Button>
-        <p className={cn("mt-2 truncate max-w-full", file ? "text-green-700 font-semibold" : "text-gray-500")}>
-          {file ? file.name : 'No file chosen'}
-        </p>
       </div>
-      {note && <p className="text-xs text-gray-500 mt-1">{note}</p>}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {error && <p className="text-red-500 text-[10px] font-bold uppercase">{error}</p>}
     </div>
   );
 };
