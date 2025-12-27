@@ -23,6 +23,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider, // Import TooltipProvider
 } from "@/components/ui/tooltip";
 import { format } from 'date-fns';
 import { 
@@ -301,14 +302,16 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
             <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
           )}
           {!editingCost && isCostManuallySet && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="ml-1 text-xs text-gray-500 cursor-help">(M)</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>This cost was manually set.</p>
-              </TooltipContent>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="ml-1 text-xs text-gray-500 cursor-help">(M)</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>This cost was manually set.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </TableCell>
