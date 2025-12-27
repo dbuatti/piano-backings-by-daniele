@@ -4,7 +4,7 @@ import React from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthOverlayProps {
@@ -32,10 +32,10 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md p-6 rounded-2xl bg-white shadow-xl border-none">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-[#1C0357]">Welcome Back!</h2>
-          <p className="text-gray-500 text-sm">Sign in or create an account to manage your requests.</p>
-        </div>
+        <DialogHeader className="text-center mb-6">
+          <DialogTitle className="text-2xl font-bold text-[#1C0357]">Welcome Back!</DialogTitle>
+          <DialogDescription className="text-gray-500 text-sm">Sign in or create an account to manage your requests.</DialogDescription>
+        </DialogHeader>
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}

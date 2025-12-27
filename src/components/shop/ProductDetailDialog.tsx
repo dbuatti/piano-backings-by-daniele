@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from 'react';
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
   ShoppingCart, 
@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import VisuallyHidden from '@/components/VisuallyHidden'; // Import VisuallyHidden
 
 interface Product {
   id: string;
@@ -78,7 +79,13 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[95vw] h-[92vh] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col sm:rounded-2xl">
-        
+        {/* Visually hidden DialogTitle for accessibility */}
+        <DialogHeader>
+          <DialogTitle>
+            <VisuallyHidden>Product Details for {product.title}</VisuallyHidden>
+          </DialogTitle>
+        </DialogHeader>
+
         {/* Compact Header - Reduced height to maximize scroll area */}
         <div className="relative flex-shrink-0 h-48 md:h-64 overflow-hidden bg-[#1C0357]">
           {product.image_url ? (
