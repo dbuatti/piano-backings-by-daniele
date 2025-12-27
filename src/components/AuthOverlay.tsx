@@ -39,7 +39,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose }) => {
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
-          providers={[]} // Only email/password by default
+          providers={['google']} // Changed from [] to ['google']
           redirectTo={`${window.location.origin}/user-dashboard`} // Redirect to the user dashboard after login
           magicLink={true}
           localization={{
