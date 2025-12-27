@@ -314,7 +314,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       </TableCell>
       <TableCell className="hidden lg:table-cell py-3">
         <div className="flex flex-col gap-1">
-          {getPlatformIcons(request.uploaded_platforms)}
+          {request.uploaded_platforms && getPlatformIcons(request.uploaded_platforms)}
           <Button 
             size="sm" 
             variant="outline" 
