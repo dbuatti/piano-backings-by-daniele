@@ -22,6 +22,7 @@ import { TrackInfo } from '@/utils/helpers';
 import { FileAudio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 
 interface BackingRequest {
   id: string;
@@ -50,6 +51,8 @@ interface Product {
   id: string;
   title: string;
   artist_name?: string;
+  track_urls?: TrackInfo[] | null;
+  master_download_link?: string | null;
 }
 
 interface ProductForm {
@@ -148,6 +151,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isFormPreFilled, setIsFormPreFilled] = useState(false);
   const [useFilenameCaption, setUseFilenameCaption] = useState(true); // NEW: Caption toggle state
+  const [assignmentFilter, setAssignmentFilter] = useState('all'); // New state for assignment filter
   
   const [productForm, setProductForm] = useState<ProductForm>({
     title: '',
@@ -200,7 +204,7 @@ const RepurposeTrackToShop: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, artist_name');
+        .select('id, title, artist_name, track_urls, master_download_link'); // Fetch track_urls and master_download_link
       
       if (error) throw error;
       return data || [];
@@ -208,13 +212,60 @@ const RepurposeTrackToShop: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter requests based on search term
-  const filteredRequests = requests?.filter(req => 
-    req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.musical_or_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.email.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Memoized function to determine if a request is in shop/bundle
+  const getRequestAssignmentStatus = useMemo(() => {
+    if (!requests || !shopProducts) return () => ({ isInShop: false, isInBundle: false, bundleNames: [] });
+
+    return (request: BackingRequest) => {
+      let isInShop = false;
+      let isInBundle = false;
+      const bundleNames: string[] = [];
+
+      const requestTrackUrls = request.track_urls?.map(t => t.url).filter(Boolean) || [];
+
+      for (const product of shopProducts) {
+        const productTrackUrls = product.track_urls?.map(t => t.url).filter(Boolean) || [];
+        
+        // Check if this request's tracks are part of this product
+        const hasMatchingTracks = requestTrackUrls.some(reqUrl => productTrackUrls.includes(reqUrl));
+
+        if (hasMatchingTracks) {
+          if (productTrackUrls.length === 1 && requestTrackUrls.length === 1 && productTrackUrls[0] === requestTrackUrls[0]) {
+            // This request's single track is sold as a single product
+            isInShop = true;
+          } else if (productTrackUrls.length > 1) {
+            // This request's track is part of a bundle
+            isInBundle = true;
+            bundleNames.push(product.title);
+          }
+        }
+      }
+      return { isInShop, isInBundle, bundleNames: [...new Set(bundleNames)] }; // Ensure unique bundle names
+    };
+  }, [requests, shopProducts]);
+
+  // Filter requests based on search term and assignment status
+  const filteredRequests = useMemo(() => {
+    let result = requests?.filter(req => 
+      req.song_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.musical_or_artist.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.email.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [];
+
+    if (assignmentFilter !== 'all') {
+      result = result.filter(req => {
+        const { isInShop, isInBundle } = getRequestAssignmentStatus(req);
+        if (assignmentFilter === 'unassigned') {
+          return !isInShop && !isInBundle;
+        }
+        // Add other filters if needed, e.g., 'in-shop', 'in-bundle'
+        return true; // Should not happen with current filter options
+      });
+    }
+
+    return result;
+  }, [requests, searchTerm, assignmentFilter, getRequestAssignmentStatus]);
 
   // Derived state for selected requests objects
   const selectedRequests = useMemo(() => {
@@ -309,7 +360,7 @@ const RepurposeTrackToShop: React.FC = () => {
     if (isFormPreFilled && selectedRequestIds.length > 0) {
       preFillForm();
     }
-  }, [useFilenameCaption, isFormPreFilled]); // Only run when the toggle changes or form is filled
+  }, [useFilenameCaption, isFormPreFilled, selectedRequestIds, preFillForm]); // Added preFillForm to dependencies
 
   // --- End Function to pre-fill the form based on current selection ---
 
@@ -613,15 +664,26 @@ const RepurposeTrackToShop: React.FC = () => {
           </h3>
           
           {/* Selection List */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search completed requests by song, artist, or client..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              disabled={isLoadingRequests}
-            />
+          <div className="relative mb-4 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search completed requests by song, artist, or client..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full"
+                disabled={isLoadingRequests}
+              />
+            </div>
+            <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter Assignment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Assignments</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoadingRequests || isLoadingShopProducts ? (
@@ -630,54 +692,65 @@ const RepurposeTrackToShop: React.FC = () => {
               <p className="ml-2 text-gray-600">Loading requests...</p>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search.</p>
+            <p className="text-gray-500 text-sm text-center py-4">No completed requests found matching your search or filters.</p>
           ) : (
             <div className="max-h-80 overflow-y-auto border rounded-md p-2 space-y-2">
-              {filteredRequests.map(req => {
-                let derivedTitle = req.song_title;
-                let derivedArtist = req.musical_or_artist;
+              <TooltipProvider>
+                {filteredRequests.map(req => {
+                  let derivedTitle = req.song_title;
+                  let derivedArtist = req.musical_or_artist;
 
-                const hyphenIndex = req.song_title.indexOf(' - ');
-                if (hyphenIndex !== -1) {
-                  derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
-                  derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
-                }
+                  const hyphenIndex = req.song_title.indexOf(' - ');
+                  if (hyphenIndex !== -1) {
+                    derivedTitle = req.song_title.substring(0, hyphenIndex).trim();
+                    derivedArtist = req.song_title.substring(hyphenIndex + 3).trim();
+                  }
 
-                const isAlreadyInShop = shopProducts?.some(product =>
-                  product.title.toLowerCase().trim() === derivedTitle.toLowerCase().trim() &&
-                  product.artist_name?.toLowerCase().trim() === derivedArtist.toLowerCase().trim()
-                );
-                
-                const isSelected = selectedRequestIds.includes(req.id);
+                  const { isInShop, isInBundle, bundleNames } = getRequestAssignmentStatus(req);
+                  
+                  const isSelected = selectedRequestIds.includes(req.id);
 
-                return (
-                  <div
-                    key={req.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 border rounded-md transition-colors cursor-pointer",
-                      isSelected ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
-                    )}
-                    onClick={() => handleToggleRequestSelection(req.id)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
-                      <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isAlreadyInShop && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          <CheckCircle className="h-3 w-3 mr-1" /> In Shop
-                        </Badge>
+                  return (
+                    <div
+                      key={req.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 border rounded-md transition-colors cursor-pointer",
+                        isSelected ? 'bg-[#D1AAF2]/20 border-[#1C0357]' : 'bg-gray-50 hover:bg-gray-100'
                       )}
-                      <Checkbox
-                        checked={isSelected}
-                        // The click handler on the div handles the state change
-                        className="h-4 w-4"
-                      />
+                      onClick={() => handleToggleRequestSelection(req.id)}
+                    >
+                      <div>
+                        <p className="font-medium text-sm">{req.song_title} by {req.musical_or_artist}</p>
+                        <p className="text-xs text-gray-500">Client: {req.name || req.email} | Submitted: {format(new Date(req.created_at), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isInShop && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700">
+                            <CheckCircle className="h-3 w-3 mr-1" /> In Shop
+                          </Badge>
+                        )}
+                        {isInBundle && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                                <Link className="h-3 w-3 mr-1" /> In Bundle
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Part of bundle(s): {bundleNames.join(', ')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        <Checkbox
+                          checked={isSelected}
+                          // The click handler on the div handles the state change
+                          className="h-4 w-4"
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </TooltipProvider>
             </div>
           )}
           
