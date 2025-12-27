@@ -1,24 +1,10 @@
 "use client";
 
 import React from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { 
-  CheckCircle2, 
-  Mail, 
-  UserPlus, 
-  History, 
-  FormInput, 
-  ShieldCheck,
-  Chrome
-} from "lucide-react";
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 
 interface AuthOverlayProps {
@@ -26,96 +12,75 @@ interface AuthOverlayProps {
   onClose: () => void;
 }
 
-const AuthOverlay = ({ isOpen, onClose }: AuthOverlayProps) => {
+const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
-  const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/form'
+  React.useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        // User is signed in, close the overlay and navigate to dashboard
+        onClose();
+        navigate('/user-dashboard');
       }
     });
-  };
 
-  const handleEmailSignIn = () => {
-    navigate('/auth');
-  };
-
-  const benefits = [
-    {
-      title: "View Status",
-      description: "Always know if your request went through and its progress.",
-      icon: ShieldCheck
-    },
-    {
-      title: "Manage Orders",
-      description: "View and download all past and current orders in your 'My Tracks'.",
-      icon: History
-    },
-    {
-      title: "Pre-fill Forms",
-      description: "Save your name and email for future quick requests.",
-      icon: FormInput
-    }
-  ];
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [onClose, navigate]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none rounded-3xl bg-[#FDFCF7]">
-        <div className="bg-[#1C0357] p-8 text-center text-white relative">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
-            <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-          </div>
-          
-          <Button 
-            onClick={handleGoogleSignIn}
-            className="w-full bg-white hover:bg-gray-100 text-gray-900 h-12 rounded-full font-bold shadow-lg flex items-center justify-center gap-3 mb-4 transition-transform active:scale-95"
-          >
-            <Chrome className="w-5 h-5 text-[#4285F4]" />
-            Sign In with Google
-          </Button>
-          
-          <h2 className="text-xl font-bold tracking-tight">Track Your Order Securely</h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-6 rounded-2xl bg-white shadow-xl border-none">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-[#1C0357]">Welcome Back!</h2>
+          <p className="text-gray-500 text-sm">Sign in or create an account to manage your requests.</p>
         </div>
-
-        <div className="p-8">
-          <p className="text-gray-600 text-sm font-medium mb-6 leading-relaxed">
-            Don't lose track of your request! By signing in or creating an account, you can:
-          </p>
-
-          <div className="space-y-6 mb-8">
-            {benefits.map((benefit, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#D1AAF2]/20 flex items-center justify-center text-[#1C0357]">
-                  <benefit.icon size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#1C0357]">{benefit.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{benefit.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <Button 
-              onClick={handleEmailSignIn}
-              variant="outline"
-              className="w-full border-2 border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357] hover:text-white h-12 rounded-full font-bold transition-all"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              Sign In with Email
-            </Button>
-            
-            <button 
-              onClick={onClose}
-              className="text-xs text-gray-400 font-bold hover:text-gray-600 transition-colors py-2"
-            >
-              Continue Anonymously
-            </button>
-          </div>
-        </div>
+        <Auth
+          supabaseClient={supabase}
+          appearance={{ theme: ThemeSupa }}
+          providers={[]} // Only email/password by default
+          redirectTo={`${window.location.origin}/user-dashboard`} // Redirect to the user dashboard after login
+          magicLink={true}
+          localization={{
+            variables: {
+              sign_in: {
+                email_label: 'Email Address',
+                password_label: 'Password',
+                email_input_placeholder: 'Your email address',
+                password_input_placeholder: 'Your password',
+                button_label: 'Sign In',
+                social_provider_text: 'Sign in with {{provider}}',
+                link_text: 'Already have an account? Sign In',
+              },
+              sign_up: {
+                email_label: 'Email Address',
+                password_label: 'Create a Password',
+                email_input_placeholder: 'Your email address',
+                password_input_placeholder: 'Your password',
+                button_label: 'Sign Up',
+                social_provider_text: 'Sign up with {{provider}}',
+                link_text: 'Don\'t have an account? Sign Up',
+              },
+              forgotten_password: {
+                email_label: 'Email Address',
+                email_input_placeholder: 'Your email address',
+                button_label: 'Send Reset Instructions',
+                link_text: 'Forgot your password?',
+              },
+              update_password: {
+                password_label: 'New Password',
+                password_input_placeholder: 'Your new password',
+                button_label: 'Update Password',
+              },
+              magic_link: {
+                email_input_placeholder: 'Your email address',
+                button_label: 'Send Magic Link',
+                link_text: 'Send a magic link email',
+              },
+            },
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
