@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch"; // Import Switch
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,13 +37,26 @@ import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCi
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
-import { PlusCircle } from 'lucide-react'; // Ensure PlusCircle is imported
+import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
+import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator'; // Import the generator
 
-interface TrackInfo {
-  url: string | null; // Changed to allow null
-  caption: string; // Changed to always be string
-  selected?: boolean; // Added for UI state management
-  file?: File | null; // Added optional file property for UI state
+interface ProductForm {
+  title: string;
+  description: string;
+  price: string;
+  currency: string;
+  image_url: string;
+  track_urls: TrackInfo[];
+  is_active: boolean;
+  artist_name: string;
+  category: string;
+  vocal_ranges: string[];
+  sheet_music_url: string;
+  key_signature: string;
+  show_sheet_music_url: boolean;
+  show_key_signature: boolean;
+  track_type: string;
+  master_download_link: string; // NEW FIELD
 }
 
 interface Product {
@@ -596,98 +609,107 @@ const ProductManager: React.FC = () => {
             <p className="ml-3 text-lg text-gray-600">Loading products...</p>
           </div>
         ) : products && products.length > 0 ? (
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader className="bg-[#D1AAF2]/20">
-                <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.title}</TableCell>
-                    <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
-                        {product.currency} {product.price.toFixed(2)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell>
-                    <TableCell> 
-                      {product.vocal_ranges && product.vocal_ranges.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {product.vocal_ranges.map((range, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {range}
-                            </Badge>
-                          ))}
+          <TooltipProvider>
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader className="bg-[#D1AAF2]/20">
+                  <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">{product.title}</TableCell>
+                      <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                          {product.currency} {product.price.toFixed(2)}
                         </div>
-                      ) : (
-                        <span className="text-gray-500 text-xs">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell> {/* New Table Cell for Key Signature */}
-                      {product.key_signature && product.show_key_signature ? (
-                        <Badge variant="outline" className="text-xs">
-                          {product.key_signature}
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-500 text-xs">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell> {/* New Table Cell for Sheet Music URL */}
-                      {product.sheet_music_url && product.show_sheet_music_url ? (
-                        <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm">
-                          <FileText className="h-3 w-3 mr-1" /> PDF
-                        </a>
-                      ) : (
-                        <span className="text-gray-500 text-xs">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="capitalize text-sm text-gray-700"> {/* New Table Cell for Track Type */}
-                      {product.track_type?.replace('-', ' ') || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {product.master_download_link ? ( // Check for master link
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <a href={product.master_download_link} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center text-sm max-w-[200px] truncate font-semibold">
-                              <Link className="h-3 w-3 mr-1 flex-shrink-0" />
-                              Master Link
-                            </a>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{product.master_download_link}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : product.track_urls && product.track_urls.length > 0 ? (
-                        <div className="flex flex-col space-y-1">
-                          {product.track_urls.map((track, index) => (
-                            <a key={index} href={track.url || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
-                              <Link className="h-3 w-3 mr-1 flex-shrink-0" />
-                              {track.caption || truncateUrl(track.url)}
-                            </a>
-                          ))}
+                      </TableCell>
+                      <TableCell className="capitalize text-sm text-gray-700">{product.category?.replace('-', ' ') || 'N/A'}</TableCell>
+                      <TableCell> 
+                        {product.vocal_ranges && product.vocal_ranges.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {product.vocal_ranges.map((range, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {range}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-xs">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell> {/* New Table Cell for Key Signature */}
+                        {product.key_signature && product.show_key_signature ? (
+                          <Badge variant="outline" className="text-xs">
+                            {product.key_signature}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500 text-xs">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell> {/* New Table Cell for Sheet Music URL */}
+                        {product.sheet_music_url && product.show_sheet_music_url ? (
+                          <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm">
+                            <FileText className="h-3 w-3 mr-1" /> PDF
+                          </a>
+                        ) : (
+                          <span className="text-gray-500 text-xs">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="capitalize text-sm text-gray-700"> {/* New Table Cell for Track Type */}
+                        {product.track_type?.replace('-', ' ') || 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {product.master_download_link ? ( // Check for master link
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a href={product.master_download_link} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center text-sm max-w-[200px] truncate font-semibold">
+                                <Link className="h-3 w-3 mr-1 flex-shrink-0" />
+                                Master Link
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{product.master_download_link}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : product.track_urls && product.track_urls.length > 0 ? (
+                          <div className="flex flex-col space-y-1">
+                            {product.track_urls.map((track, index) => (
+                              <Tooltip key={index}>
+                                <TooltipTrigger asChild>
+                                  <a href={track.url || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm max-w-[200px] truncate">
+                                    <Link className="h-3 w-3 mr-1 flex-shrink-0" />
+                                    {track.caption || truncateUrl(track.url)}
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{track.url}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-sm">N/A</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => openEditDialog(product)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(product)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      ) : (
-                        <span className="text-gray-500 text-sm">N/A</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => openEditDialog(product)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(product)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TooltipProvider>
         ) : (
           <div className="text-center py-12">
             <Store className="mx-auto h-16 w-16 text-gray-300" />
