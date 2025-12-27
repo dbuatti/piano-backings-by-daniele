@@ -563,10 +563,10 @@ const FormPage = () => {
                   </div>
                   <div className="grid md:grid-cols-2 gap-6 mt-6">
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-gray-500">Email Address</Label>
+                      <Label htmlFor="form-email" className="text-xs font-bold uppercase tracking-wider text-gray-500">Email Address</Label>
                       <div className="relative group">
                         <Input 
-                          id="email" name="email" type="email" value={formData.email} onChange={handleInputChange}
+                          id="form-email" name="email" type="email" value={formData.email} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.email && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
                         />
@@ -575,10 +575,10 @@ const FormPage = () => {
                       {errors.email && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.email}</p>}
                     </div>
                     <div className="space-y-2" ref={confirmEmailRef}>
-                      <Label htmlFor="confirmEmail" className="text-xs font-bold uppercase tracking-wider text-gray-500">Confirm Email</Label>
+                      <Label htmlFor="form-confirmEmail" className="text-xs font-bold uppercase tracking-wider text-gray-500">Confirm Email</Label>
                       <div className="relative group">
                         <Input 
-                          id="confirmEmail" name="confirmEmail" type="email" value={formData.confirmEmail} onChange={handleInputChange}
+                          id="form-confirmEmail" name="confirmEmail" type="email" value={formData.confirmEmail} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.confirmEmail && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
                         />
