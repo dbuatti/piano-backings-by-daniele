@@ -45,7 +45,7 @@ import {
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client'; // Removed SUPABASE_PUBLISHABLE_KEY from import
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
@@ -359,7 +359,7 @@ const FormPage = () => {
       
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-      else headers['Authorization'] = `Bearer ${SUPABASE_PUBLISHABLE_KEY}`;
+      else headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`; // Corrected access to anon key
       
       const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
         method: 'POST',
