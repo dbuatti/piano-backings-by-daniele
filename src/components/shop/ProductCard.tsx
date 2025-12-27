@@ -148,7 +148,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             <span className="text-2xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
             <span className="ml-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">{product.currency}</span>
           </div>
-        </div
+        </div>
       </CardContent>
 
       {hasAudio && <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />}
