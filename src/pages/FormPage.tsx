@@ -54,6 +54,7 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { format } from 'date-fns';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
+import VisuallyHidden from '@/components/VisuallyHidden'; // Import VisuallyHidden
 
 const SectionHeader = ({ num, title, subtitle, required }: { num: number, title: string, subtitle?: string, required?: boolean }) => (
   <div className="mb-6">
@@ -615,11 +616,12 @@ const FormPage = () => {
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button type="button" className="text-gray-400 hover:text-[#1C0357] transition-colors">
+                            <Button type="button" variant="ghost" size="icon" className="text-gray-400 hover:text-[#1C0357] transition-colors">
                               <HelpCircle size={14} />
-                            </button>
+                              <VisuallyHidden>Category Information</VisuallyHidden>
+                            </Button>
                           </TooltipTrigger>
-                          <TooltipContent className="max-w-xs p-4 rounded-xl bg-[#1C0357] text-white border-none shadow-xl">
+                          <TooltipContent className="max-w-[90vw] p-4 rounded-xl bg-[#1C0357] text-white border-none shadow-xl z-[9999]">
                             <div className="space-y-3">
                               {Object.entries(categoryDescriptions).map(([title, desc]) => (
                                 <div key={title}>
