@@ -836,7 +836,6 @@ const ProductManager: React.FC = () => {
                     onChange={handleEditSheetMusicFileChange}
                     note="Upload a PDF for the sheet music. This will override any existing URL."
                     error={formErrors.sheet_music_url}
-                    file={editSheetMusicFile}
                   />
                   {productForm.sheet_music_url && !editSheetMusicFile && (
                     <div className="mt-2">
@@ -992,7 +991,6 @@ const ProductManager: React.FC = () => {
                   onChange={handleImageFileChange}
                   note="Upload a cover image for your product. If left empty, a text-based image will be generated."
                   error={formErrors.image_url}
-                  file={imageFile}
                 />
                 {productForm.image_url && (
                   <div className="mt-2">

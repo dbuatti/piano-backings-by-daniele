@@ -460,7 +460,6 @@ const CreateNewProduct: React.FC = () => {
                 onChange={handleSheetMusicFileChange}
                 note="Upload a PDF for the sheet music. This will be available for preview."
                 error={formErrors.sheet_music_url}
-                file={sheetMusicFile}
               />
               {productForm.sheet_music_url && sheetMusicFile && (
                 <div className="mt-2">
@@ -622,7 +621,6 @@ const CreateNewProduct: React.FC = () => {
                   onChange={handleImageFileChange}
                   note="Upload a cover image for your product. If left empty, a text-based image will be generated."
                   error={formErrors.image_url}
-                  file={imageFile}
                 />
                 {productForm.image_url && (
                   <div className="mt-2">
@@ -661,8 +659,7 @@ const CreateNewProduct: React.FC = () => {
                 )}
               </Button>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
     </Card>
   );
 };

@@ -741,7 +741,6 @@ const FormPage = () => {
                       onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
                       required
                       error={errors.sheetMusic}
-                      file={formData.sheetMusic}
                     />
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -789,7 +788,6 @@ const FormPage = () => {
                             icon={MicIcon}
                             accept="audio/*"
                             onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                            file={formData.voiceMemoFile}
                           />
                         </div>
                       </div>

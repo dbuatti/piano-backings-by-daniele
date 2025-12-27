@@ -494,7 +494,6 @@ const EditRequest: React.FC = () => {
                       onChange={(file) => handleFileInputChange(file, 'sheetMusicFile')}
                       note="Upload a new PDF to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
-                      file={sheetMusicFile}
                     />
                     {request.sheet_music_url && !sheetMusicFile && (
                       <div className="mt-2">
@@ -524,7 +523,6 @@ const EditRequest: React.FC = () => {
                       onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
                       note="Upload a new audio file to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
-                      file={voiceMemoFile}
                     />
                     {request.voice_memo && !voiceMemoFile && (
                       <div className="mt-2">
@@ -601,7 +599,7 @@ const EditRequest: React.FC = () => {
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="delivery_date" className="text-sm mb-1">Delivery Deadline</Label>
+                    <Label htmlFor="delivery_date" className="text-sm mb-1">Delivery Date</Label>
                     <Input id="delivery_date" name="delivery_date" type="date" value={request.delivery_date || ''} onChange={handleInputChange} />
                   </div>
                   <div>
