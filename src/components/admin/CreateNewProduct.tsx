@@ -661,7 +661,8 @@ const CreateNewProduct: React.FC = () => {
                 )}
               </Button>
             </div>
-          </CardContent>
+          </div>
+        </CardContent>
     </Card>
   );
 };
