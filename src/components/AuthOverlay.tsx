@@ -55,7 +55,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
           // Initial choice screen
           <div className="flex flex-col items-center">
             {/* Top purple section */}
-            <div className="w-full bg-[#1C0357] text-white p-8 pb-16 relative overflow-hidden rounded-t-2xl">
+            <div className="w-full bg-[#1C0357] text-white p-8 pb-16 relative overflow-hidden">
               {/* Pattern dots */}
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff33 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
               <div className="relative z-10 flex flex-col items-center space-y-6">
@@ -71,7 +71,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
             </div>
 
             {/* Bottom white section with benefits and email sign-in */}
-            <div className="w-full p-8 pt-12 bg-white rounded-b-2xl -mt-8 relative z-20">
+            <div className="w-full p-8 pt-12 bg-white -mt-8 relative z-20">
               <p className="text-gray-700 text-center mb-8">
                 Don't lose track of your request! By signing in or creating an account, you can:
               </p>
