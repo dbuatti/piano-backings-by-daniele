@@ -7,7 +7,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key, Theater } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
 import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
 
@@ -73,22 +73,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           )}
         </AspectRatio>
 
-        {/* Badges Overlay */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-20">
           {isNew && (
             <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-black h-6 px-2 shadow-lg">
               NEW
             </Badge>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className={cn("border px-2 py-0.5 text-[10px] font-bold uppercase h-6 shadow-sm", quality.class)}>
-                <quality.icon size={12} className="mr-1.5" />
-                {quality.label}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>{quality.desc}</TooltipContent>
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className={cn("border px-2 py-0.5 text-[10px] font-bold uppercase h-6 shadow-sm", quality.class)}>
+                  <quality.icon size={12} className="mr-1.5" />
+                  {quality.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>{quality.desc}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {hasAudio && (
@@ -147,7 +148,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             <span className="text-2xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
             <span className="ml-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">{product.currency}</span>
           </div>
-        </div>
+        </div
       </CardContent>
 
       {hasAudio && <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />}

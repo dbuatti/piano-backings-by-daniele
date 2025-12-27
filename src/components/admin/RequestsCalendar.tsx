@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
 import CalendarComponent from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format, isSameDay } from 'date-fns';
-import { Calendar, Eye, Music, Upload, User, Check, Clock, X } from 'lucide-react'; // Imported Check, Clock, X
+import { Calendar, Eye, Music, Upload, User, Check, Clock, X } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers';
 
 interface RequestsCalendarProps {
@@ -73,7 +73,7 @@ const RequestsCalendar: React.FC<RequestsCalendarProps> = ({
             className={`w-2 h-2 rounded-full ${
               request.status === 'completed' ? 'bg-green-500' :
               request.status === 'in-progress' ? 'bg-yellow-500' :
-              request.status === 'cancelled' ? 'bg-red-500' : 'bg-[#1C0357]' // Changed to primary color
+              request.status === 'cancelled' ? 'bg-red-500' : 'bg-[#1C0357]'
             }`}
           />
         ))}
@@ -178,28 +178,32 @@ const RequestsCalendar: React.FC<RequestsCalendarProps> = ({
                               {getStatusBadge(request.status || 'pending')}
                             </div>
                             <div className="mt-3 flex justify-end space-x-1">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
-                                    <Upload className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Upload Track</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Link to={`/track/${request.id}`}>
-                                    <Button variant="outline" size="sm">
-                                      <Eye className="w-4 h-4" />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button size="sm" variant="outline" onClick={() => uploadTrack(request.id)}>
+                                      <Upload className="w-4 h-4" />
                                     </Button>
-                                  </Link>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Client Page</p>
-                                </TooltipContent>
-                              </Tooltip>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Upload Track</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Link to={`/track/${request.id}`}>
+                                      <Button variant="outline" size="sm">
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </Link>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Client Page</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
                           </div>
                         );

@@ -27,21 +27,15 @@ import {
   Banknote,
   Play,
   FileAudio,
-  DollarSign, // Added DollarSign icon
-  UserPlus, // Added UserPlus icon
-  Chrome, // Added Chrome icon for Google sign-in
-  Loader2 // Imported Loader2 icon
+  DollarSign,
+  UserPlus,
+  Chrome,
+  Loader2
 } from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing'; // Removed getTrackTypeBaseDisplayRange
-import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers'; // Import downloadTrack and TrackInfo
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
-import Seo from "@/components/Seo"; // Import Seo component
-
-// TrackInfo interface is now imported from helpers.ts
-// interface TrackInfo {
-//   url: string;
-//   caption: string | boolean | null | undefined;
-// }
+import { calculateRequestCost } from '@/utils/pricing';
+import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+import Seo from "@/components/Seo";
 
 interface BackingRequest {
   id: string;
@@ -71,11 +65,11 @@ interface BackingRequest {
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null;
-  final_price?: number | null; // New field
-  estimated_cost_low?: number | null; // New field
-  estimated_cost_high?: number | null; // New field
-  user_id?: string | null; // Added for access control
-  guest_access_token?: string | null; // Added for access control
+  final_price?: number | null;
+  estimated_cost_low?: number | null;
+  estimated_cost_high?: number | null;
+  user_id?: string | null;
+  guest_access_token?: string | null;
 }
 
 const ClientTrackView = () => {
@@ -85,8 +79,8 @@ const ClientTrackView = () => {
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [userSession, setUserSession] = useState<any>(null); // To store the current user session
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false); // State for the login prompt
+  const [userSession, setUserSession] = useState<any>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
 
   useEffect(() => {
@@ -101,10 +95,9 @@ const ClientTrackView = () => {
       }
 
       const urlParams = new URLSearchParams(window.location.search);
-      const guestAccessToken = urlParams.get('token'); // Get the guest access token
+      const guestAccessToken = urlParams.get('token');
       
-      // Fetch user session first
-      const { data: { session } = {} } = await supabase.auth.getSession(); // Destructure with default empty object
+      const { data: { session } = {} } = await supabase.auth.getSession();
       setUserSession(session);
 
       try {
@@ -112,7 +105,6 @@ const ClientTrackView = () => {
         let fetchError: any = null;
 
         if (guestAccessToken) {
-          // Attempt to fetch using the secure token for anonymous users
           const response = await fetch(
             `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-guest-request-by-token`,
             {
@@ -130,7 +122,6 @@ const ClientTrackView = () => {
             requestData = result.request;
           }
         } else {
-          // For logged-in users or admins, fetch directly from Supabase with RLS
           const { data, error } = await supabase
             .from('backing_requests')
             .select('*')
@@ -151,7 +142,6 @@ const ClientTrackView = () => {
           return;
         }
 
-        // Now, determine access based on user_id, email, and admin status
         const loggedInUserId = session?.user?.id;
         const loggedInUserEmail = session?.user?.email;
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
@@ -160,17 +150,14 @@ const ClientTrackView = () => {
         let hasAccess = false;
 
         if (isAdmin) {
-          hasAccess = true; // Admins can view any track
+          hasAccess = true;
         } else if (requestData.user_id) {
-          // If the request is linked to a user_id, only the owner can access
           if (loggedInUserId === requestData.user_id) {
             hasAccess = true;
           } else {
             console.warn('Logged-in user is not the owner of this request.');
           }
         } else {
-          // If the request is NOT linked to a user_id (guest submission)
-          // Access is granted if guestAccessToken matches the stored token
           if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
             hasAccess = true;
           } else {
@@ -180,7 +167,6 @@ const ClientTrackView = () => {
 
         if (hasAccess) {
           setRequest(requestData);
-          // Show login prompt if no user session and access was granted via guest token
           if (!session && (guestAccessToken || requestData.guest_access_token)) {
             setShowLoginPrompt(true);
           } else {
@@ -230,14 +216,13 @@ const ClientTrackView = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/user-dashboard`, // Redirect to user dashboard after successful sign-in
+          redirectTo: `${window.location.origin}/user-dashboard`,
         },
       });
 
       if (error) {
         throw error;
       }
-      // No need for toast.success here, as the redirect will happen.
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
       toast({
@@ -289,16 +274,13 @@ const ClientTrackView = () => {
   const costBreakdown = calculateRequestCost(request);
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
-  // Calculate estimated range based on costBreakdown.totalCost
   const calculatedTotalCost = costBreakdown.totalCost;
   const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedTotalCost * 1.5) / 5) * 5).toFixed(2);
 
-  // Determine the estimated range to display
   const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
   const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
 
-  // Determine the suggested cost to display
   const displayedSuggestedCost = request.final_price !== null ? request.final_price.toFixed(2) : calculatedTotalCost.toFixed(2);
 
   return (
@@ -411,7 +393,6 @@ const ClientTrackView = () => {
               </div>
             </div>
             
-            {/* Track Download Section */}
             <Card className="border-2 border-dashed border-[#1C0357]/30 bg-[#D1AAF2]/10 mb-8">
               <CardContent className="p-6">
                 <div className="text-center">
@@ -430,7 +411,7 @@ const ClientTrackView = () => {
                   </h3>
                   
                   {request.status === 'completed' ? (
-                    <div className="mt-6 space-y-4"> {/* Added space-y-4 for column stacking */}
+                    <div className="mt-6 space-y-4">
                       {request.track_urls && request.track_urls.length > 0 ? (
                         request.track_urls.map((track: TrackInfo, index: number) => (
                           <div key={track.url} className="flex flex-col items-center">
@@ -480,7 +461,6 @@ const ClientTrackView = () => {
               </CardContent>
             </Card>
             
-            {/* Payment Section */}
             <Card className="bg-gradient-to-br from-[#1C0357] to-[#D1AAF2] text-white mb-8">
               <CardContent className="p-6">
                 <h3 className="text-xl font-bold mb-4 flex items-center">
@@ -490,11 +470,11 @@ const ClientTrackView = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <div className="text-2xl font-bold mb-2 text-white"> {/* Changed color to white */}
+                    <div className="text-2xl font-bold mb-2 text-white">
                       Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
                     </div>
                     {request.final_price !== null && (
-                      <div className="text-3xl font-bold mb-2 text-white"> {/* Changed color to white */}
+                      <div className="text-3xl font-bold mb-2 text-white">
                         Suggested Cost: ${displayedSuggestedCost}
                       </div>
                     )}
@@ -526,7 +506,6 @@ const ClientTrackView = () => {
                   </div>
                 </div>
 
-                {/* Cost Breakdown Section */}
                 <div className="mt-6 pt-4 border-t border-white/20">
                   <h4 className="font-semibold text-lg mb-3 flex items-center">
                     <DollarSign className="mr-2 h-4 w-4" />
@@ -562,7 +541,6 @@ const ClientTrackView = () => {
               </CardContent>
             </Card>
             
-            {/* Additional Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -633,21 +611,23 @@ const ClientTrackView = () => {
                         <p className="text-sm text-gray-500 flex items-center">
                           <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
                         </p>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <a 
-                              href={request.additional_links} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="font-medium text-blue-600 hover:underline text-sm block break-all truncate"
-                            >
-                              {request.additional_links}
-                            </a>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-md">
-                            <p>{request.additional_links}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a 
+                                href={request.additional_links} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="font-medium text-blue-600 hover:underline text-sm block break-all truncate"
+                              >
+                                {request.additional_links}
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md">
+                              <p>{request.additional_links}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     ) : null}
                   </div>
@@ -657,7 +637,6 @@ const ClientTrackView = () => {
           </CardContent>
         </Card>
         
-        {/* Login/Signup Prompt for Unauthenticated Users */}
         {showLoginPrompt && !userSession && (
           <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357] relative">
             <CardContent className="p-6 text-center">
@@ -694,7 +673,7 @@ const ClientTrackView = () => {
                 <Button 
                   variant="ghost" 
                   className="bg-transparent border border-white text-white hover:bg-white/10 text-base px-6 py-3"
-                  onClick={() => setShowLoginPrompt(false)} // Dismiss the prompt
+                  onClick={() => setShowLoginPrompt(false)}
                 >
                   Continue as Guest
                 </Button>
