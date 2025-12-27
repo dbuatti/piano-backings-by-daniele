@@ -10,24 +10,25 @@ import { useNavigate } from 'react-router-dom';
 interface AuthOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  redirectPath?: string; // New prop for dynamic redirection
 }
 
-const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose }) => {
+const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath }) => {
   const navigate = useNavigate();
 
   React.useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        // User is signed in, close the overlay and navigate to dashboard
+        // User is signed in, close the overlay and navigate to the specified path or default dashboard
         onClose();
-        navigate('/user-dashboard');
+        navigate(redirectPath || '/user-dashboard'); // Use redirectPath if provided
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [onClose, navigate]);
+  }, [onClose, navigate, redirectPath]); // Add redirectPath to dependencies
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -39,8 +40,8 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose }) => {
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
-          providers={['google']} // Changed from [] to ['google']
-          redirectTo={`${window.location.origin}/user-dashboard`} // Redirect to the user dashboard after login
+          providers={['google']}
+          redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`} // Also update redirectTo for external providers
           magicLink={true}
           localization={{
             variables: {

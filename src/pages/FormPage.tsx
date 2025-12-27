@@ -437,6 +437,7 @@ const FormPage = () => {
       <AuthOverlay 
         isOpen={showAuthOverlay} 
         onClose={() => setShowAuthOverlay(false)} 
+        redirectPath={location.pathname} // Pass current path for redirection
       />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
@@ -843,7 +844,7 @@ const FormPage = () => {
                             { id: 'additional-edits', label: 'Additional Edits', price: '+$5', desc: 'After completion' }
                           ].map(service => (
                             <div key={service.id} className={cn(
-                              "flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer",
+                              "flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer",
                               formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
                             )} onClick={() => handleCheckboxChange(service.id)}>
                               <div className="flex items-center gap-3">
