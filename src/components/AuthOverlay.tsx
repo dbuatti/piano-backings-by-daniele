@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, History, ClipboardList, Mail, ArrowLeft } from 'lucide-react';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden'; // Import VisuallyHidden
 
 interface AuthOverlayProps {
   isOpen: boolean;
@@ -51,6 +52,19 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg p-0 rounded-2xl bg-white shadow-xl border-none overflow-hidden">
+        {/* Always include DialogTitle and DialogDescription for accessibility */}
+        {!showEmailAuth ? (
+          <VisuallyHidden.Root>
+            <DialogTitle>Authentication Options</DialogTitle>
+            <DialogDescription>Choose how you want to sign in or continue.</DialogDescription>
+          </VisuallyHidden.Root>
+        ) : (
+          <DialogHeader className="text-center mb-6">
+            <DialogTitle className="text-2xl font-bold text-[#1C0357]">Sign In with Email</DialogTitle>
+            <DialogDescription className="text-gray-500 text-sm">Enter your email to sign in or create an account.</DialogDescription>
+          </DialogHeader>
+        )}
+
         {!showEmailAuth ? (
           // Initial choice screen
           <div className="flex flex-col items-center">
@@ -129,10 +143,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
               <ArrowLeft size={16} />
               <span>Back</span>
             </button>
-            <DialogHeader className="text-center mb-6">
-              <DialogTitle className="text-2xl font-bold text-[#1C0357]">Sign In with Email</DialogTitle>
-              <DialogDescription className="text-gray-500 text-sm">Enter your email to sign in or create an account.</DialogDescription>
-            </DialogHeader>
             <Auth
               supabaseClient={supabase}
               appearance={{ theme: ThemeSupa }}
