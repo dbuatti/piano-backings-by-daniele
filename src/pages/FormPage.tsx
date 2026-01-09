@@ -814,7 +814,7 @@ const FormPage = () => {
                             "flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer",
                             formData.backingType.includes(type.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
                           )} onClick={() => handleBackingTypeChange(type.id, !formData.backingType.includes(type.id))}>
-                            <Checkbox checked={formData.backingType.includes(type.id)} className="mt-1" />
+                            <Checkbox checked={!!formData.backingType.includes(type.id)} className="mt-1" />
                             <div className="flex flex-col">
                               <span className="font-bold text-sm text-[#1C0357]">{type.label}</span>
                               <span className="text-[10px] text-gray-500 font-medium">{type.desc}</span>
@@ -849,14 +849,11 @@ const FormPage = () => {
                               "flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer",
                               formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
                             )} onClick={() => handleCheckboxChange(service.id)}>
-                              <div className="flex items-center gap-3">
-                                <Checkbox checked={formData.additionalServices.includes(service.id)} />
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
-                                  <span className="text-[10px] text-gray-500">{service.desc}</span>
-                                </div>
+                              <Checkbox checked={formData.additionalServices.includes(service.id)} />
+                              <div className="flex flex-col">
+                                <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
+                                <span className="text-[10px] text-gray-500">{service.desc}</span>
                               </div>
-                              <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
                             </div>
                           ))}
                         </div>

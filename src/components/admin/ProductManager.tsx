@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput'; // Import FileInput
