@@ -45,7 +45,7 @@ import {
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client'; // Removed SUPABASE_PUBLISHABLE_KEY from import
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { format } from 'date-fns';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
-import VisuallyHidden from '@/components/VisuallyHidden'; // Import VisuallyHidden
+import VisuallyHidden from '@/components/VisuallyHidden';
 
 const SectionHeader = ({ num, title, subtitle, required }: { num: number, title: string, subtitle?: string, required?: boolean }) => (
   <div className="mb-6">
@@ -249,11 +249,12 @@ const FormPage = () => {
     setErrors(prev => ({ ...prev, [fieldName]: '' }));
   };
 
-  const handleCheckboxChange = (service: string) => {
+  // Renamed for clarity and adjusted to receive 'checked' state
+  const handleAdditionalServiceChange = (service: string, checked: boolean | 'indeterminate') => {
     setFormData(prev => {
-      const newServices = prev.additionalServices.includes(service)
-        ? prev.additionalServices.filter(s => s !== service)
-        : [...prev.additionalServices, service];
+      const newServices = checked
+        ? [...prev.additionalServices, service]
+        : prev.additionalServices.filter(s => s !== service);
       return { ...prev, additionalServices: newServices };
     });
   };
@@ -360,7 +361,7 @@ const FormPage = () => {
       
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-      else headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`; // Corrected access to anon key
+      else headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
       
       const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
         method: 'POST',
@@ -438,7 +439,7 @@ const FormPage = () => {
       <AuthOverlay 
         isOpen={showAuthOverlay} 
         onClose={() => setShowAuthOverlay(false)} 
-        redirectPath={location.pathname} // Pass current path for redirection
+        redirectPath={location.pathname}
       />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
@@ -812,9 +813,13 @@ const FormPage = () => {
                         ].map(type => (
                           <div key={type.id} className={cn(
                             "flex items-start gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer",
-                            formData.backingType.includes(type.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
-                          )} onClick={() => handleBackingTypeChange(type.id, !formData.backingType.includes(type.id))}>
-                            <Checkbox checked={!!formData.backingType.includes(type.id)} className="mt-1" />
+                            formData.backingType.includes(type.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 hover:border-[#D1AAF2] bg-white"
+                          )} >
+                            <Checkbox 
+                              checked={!!formData.backingType.includes(type.id)} 
+                              onCheckedChange={(checked) => handleBackingTypeChange(type.id, checked)}
+                              className="mt-1" 
+                            />
                             <div className="flex flex-col">
                               <span className="font-bold text-sm text-[#1C0357]">{type.label}</span>
                               <span className="text-[10px] text-gray-500 font-medium">{type.desc}</span>
@@ -848,8 +853,11 @@ const FormPage = () => {
                             <div key={service.id} className={cn(
                               "flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer",
                               formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
-                            )} onClick={() => handleCheckboxChange(service.id)}>
-                              <Checkbox checked={formData.additionalServices.includes(service.id)} />
+                            )} >
+                              <Checkbox 
+                                checked={formData.additionalServices.includes(service.id)} 
+                                onCheckedChange={(checked) => handleAdditionalServiceChange(service.id, checked)}
+                              />
                               <div className="flex flex-col">
                                 <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
                                 <span className="text-[10px] text-gray-500">{service.desc}</span>
