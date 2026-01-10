@@ -247,7 +247,7 @@ const RequestDetails = () => {
       await handleUpdateFinalPrice(parsedPrice);
     } else {
       // If the value is the same, just ensure the input displays the formatted value
-      setEditableFinalPrice(currentFinalPrice !== null ? currentFinalPrice.toFixed(2) : '');
+      setEditableFinalPrice(currentFinalPrice !== null ? currentFinalPrice.toFixed(2) : calculateRequestCost(request!).totalCost.toFixed(2));
     }
   };
 
@@ -471,380 +471,380 @@ const RequestDetails = () => {
   const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high : (calculatedTotalCost * 1.5);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-6 flex items-center justify-between">
-          <Button 
-            onClick={() => navigate('/admin')} 
-            variant="outline"
-            className="mb-4"
-          >
-            ← Back to Dashboard
-          </Button>
-          <h1 className="text-3xl font-bold text-[#1C0357]">Request Details</h1>
-          <span className="text-lg text-[#1C0357]/90">#{request.id.substring(0, 8)}</span>
-        </div>
+    <TooltipProvider>
+      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+        <Header />
+        
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+          <div className="mb-6 flex items-center justify-between">
+            <Button 
+              onClick={() => navigate('/admin')} 
+              variant="outline"
+              className="mb-4"
+            >
+              ← Back to Dashboard
+            </Button>
+            <h1 className="text-3xl font-bold text-[#1C0357]">Request Details</h1>
+            <span className="text-lg text-[#1C0357]/90">#{request.id.substring(0, 8)}</span>
+          </div>
 
-        {/* Action Bar */}
-        <Card className="shadow-lg mb-6 border-2 border-[#F538BC]">
-          <CardContent className="p-4 flex flex-wrap gap-3 justify-between items-center">
-            <div className="flex flex-wrap gap-3">
-              <Link to={`/admin/request/${id}/edit`}>
-                <Button 
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
-                >
-                  <Edit className="mr-2 h-4 w-4" /> Edit Request
-                </Button>
-              </Link>
-              <Link to={`/track/${id}`}>
-                <Button variant="outline" className="flex items-center">
-                  <Eye className="w-4 h-4 mr-2" /> Client View
-                </Button>
-              </Link>
-              <Button 
-                onClick={() => navigate(`/email-generator/${id}`)}
-                variant="outline" 
-                className="flex items-center"
-              >
-                <Mail className="w-4 h-4 mr-2" /> Email Client
-              </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-3">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={triggerDropboxAutomation}
-                    disabled={isTriggeringDropbox || !!request.dropbox_folder_id}
-                    variant="secondary"
-                    className="bg-blue-500 hover:bg-blue-600 text-white"
+          {/* Action Bar */}
+          <Card className="shadow-lg mb-6 border-2 border-[#F538BC]">
+            <CardContent className="p-4 flex flex-wrap gap-3 justify-between items-center">
+              <div className="flex flex-wrap gap-3">
+                <Link to={`/admin/request/${id}/edit`}>
+                  <Button 
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90 flex items-center"
                   >
-                    {isTriggeringDropbox ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                    <Edit className="mr-2 h-4 w-4" /> Edit Request
+                  </Button>
+                </Link>
+                <Link to={`/track/${id}`}>
+                  <Button variant="outline" className="flex items-center">
+                    <Eye className="w-4 h-4 mr-2" /> Client View
+                  </Button>
+                </Link>
+                <Button 
+                  onClick={() => navigate(`/email-generator/${id}`)}
+                  variant="outline" 
+                  className="flex items-center"
+                >
+                  <Mail className="w-4 h-4 mr-2" /> Email Client
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={triggerDropboxAutomation}
+                      disabled={isTriggeringDropbox || !!request.dropbox_folder_id}
+                      variant="secondary"
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      {isTriggeringDropbox ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {request.dropbox_folder_id ? 'Dropbox Folder Exists' : 'Trigger Dropbox Automation'}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => navigate('/email-generator', { state: { request } })}
+                      variant="secondary"
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span className="sr-only">Share Track Link</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Share Track Link
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Status and Payment Update */}
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <CreditCard className="mr-2 h-5 w-5" />
+                Quick Status Update
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <div>
+                  <Label htmlFor="status-update" className="text-sm mb-1">Request Status</Label>
+                  <Select 
+                    value={request.status || 'pending'} 
+                    onValueChange={(value) => handleUpdateField('status', value as BackingRequest['status'])}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger id="status-update">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="payment-status-update" className="text-sm mb-1">Payment Status</Label>
+                  <Select 
+                    value={request.is_paid ? 'paid' : 'unpaid'} 
+                    onValueChange={(value) => handleUpdateField('is_paid', value === 'paid')}
+                    disabled={isUpdatingStatus}
+                  >
+                    <SelectTrigger id="payment-status-update">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unpaid">Unpaid</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="relative">
+                  <Label htmlFor="final-price-input-quick" className="text-sm mb-1 flex items-center">
+                    <DollarSign className="mr-1 h-4 w-4" /> Final Agreed Price (AUD)
+                  </Label>
+                  <Input
+                    id="final-price-input-quick"
+                    type="number"
+                    step="0.01"
+                    value={editableFinalPrice}
+                    onChange={handleFinalPriceInputChange}
+                    onBlur={handleFinalPriceBlur}
+                    onKeyDown={handleFinalPriceKeyDown}
+                    placeholder={calculatedTotalCost.toFixed(2)} // Show calculated as placeholder
+                    className={cn(
+                      "w-full h-10 p-2 text-lg font-bold border-none focus:ring-0 focus:outline-none",
+                      isUpdatingFinalPrice ? "opacity-70" : ""
+                    )}
+                    disabled={isUpdatingFinalPrice}
+                  />
+                  {isUpdatingFinalPrice && (
+                    <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                  )}
+                  {request.final_price !== null && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">(Manual)</span>}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pricing Management Card */}
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <DollarSign className="mr-2 h-5 w-5" />
+                Estimated Pricing Range
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Manually set the estimated cost range for this request.
+                These values will override the automatic calculation in client views and emails until a "Final Agreed Price" is set.
+              </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="estimated-low-input" className="text-sm mb-1">Estimated Cost Lower Bound (AUD)</Label>
+                    <Input
+                      id="estimated-low-input"
+                      type="number"
+                      step="0.01"
+                      value={estimatedLowInput}
+                      onChange={(e) => setEstimatedLowInput(e.target.value)}
+                      placeholder={displayedEstimatedLow.toFixed(2)}
+                      disabled={isUpdatingPricing}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="estimated-high-input" className="text-sm mb-1">Estimated Cost Upper Bound (AUD)</Label>
+                    <Input
+                      id="estimated-high-input"
+                      type="number"
+                      step="0.01"
+                      value={estimatedHighInput}
+                      onChange={(e) => setEstimatedHighInput(e.target.value)}
+                      placeholder={displayedEstimatedHigh.toFixed(2)}
+                      disabled={isUpdatingPricing}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleUpdatePricing} 
+                    disabled={isUpdatingPricing}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  >
+                    {isUpdatingPricing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving Range...
+                      </>
                     ) : (
-                      <RefreshCw className="h-4 w-4" />
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Estimated Range
+                      </>
                     )}
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {request.dropbox_folder_id ? 'Dropbox Folder Exists' : 'Trigger Dropbox Automation'}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={() => navigate('/email-generator', { state: { request } })}
-                    variant="secondary"
-                    className="bg-green-500 hover:bg-green-600 text-white"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    <span className="sr-only">Share Track Link</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Share Track Link
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Status and Payment Update */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <CreditCard className="mr-2 h-5 w-5" />
-              Quick Status Update
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-              <div>
-                <Label htmlFor="status-update" className="text-sm mb-1">Request Status</Label>
-                <Select 
-                  value={request.status || 'pending'} 
-                  onValueChange={(value) => handleUpdateField('status', value as BackingRequest['status'])}
-                  disabled={isUpdatingStatus}
-                >
-                  <SelectTrigger id="status-update">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                </div>
               </div>
-              
-              <div>
-                <Label htmlFor="payment-status-update" className="text-sm mb-1">Payment Status</Label>
-                <Select 
-                  value={request.is_paid ? 'paid' : 'unpaid'} 
-                  onValueChange={(value) => handleUpdateField('is_paid', value === 'paid')}
-                  disabled={isUpdatingStatus}
-                >
-                  <SelectTrigger id="payment-status-update">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unpaid">Unpaid</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="relative">
-                <Label htmlFor="final-price-input-quick" className="text-sm mb-1 flex items-center">
-                  <DollarSign className="mr-1 h-4 w-4" /> Final Agreed Price (AUD)
-                </Label>
-                <Input
-                  id="final-price-input-quick"
-                  type="number"
-                  step="0.01"
-                  value={editableFinalPrice}
-                  onChange={handleFinalPriceInputChange}
-                  onBlur={handleFinalPriceBlur}
-                  onKeyDown={handleFinalPriceKeyDown}
-                  placeholder={calculatedTotalCost.toFixed(2)} // Show calculated as placeholder
-                  className={cn(
-                    "w-full h-10 p-2 text-lg font-bold border-none focus:ring-0 focus:outline-none",
-                    isUpdatingFinalPrice ? "opacity-70" : ""
-                  )}
-                  disabled={isUpdatingFinalPrice}
-                />
-                {isUpdatingFinalPrice && (
-                  <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
-                )}
-                {request.final_price !== null && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">(Manual)</span>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pricing Management Card */}
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <DollarSign className="mr-2 h-5 w-5" />
-              Estimated Pricing Range
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-sm text-gray-600 mb-4">
-              Manually set the estimated cost range for this request.
-              These values will override the automatic calculation in client views and emails until a "Final Agreed Price" is set.
-            </p>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
+                <span>Request Information</span>
+                {getStatusBadge(request.status || 'pending')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="estimated-low-input" className="text-sm mb-1">Estimated Cost Lower Bound (AUD)</Label>
-                  <Input
-                    id="estimated-low-input"
-                    type="number"
-                    step="0.01"
-                    value={estimatedLowInput}
-                    onChange={(e) => setEstimatedLowInput(e.target.value)}
-                    placeholder={displayedEstimatedLow.toFixed(2)}
-                    disabled={isUpdatingPricing}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
-                </div>
-                <div>
-                  <Label htmlFor="estimated-high-input" className="text-sm mb-1">Estimated Cost Upper Bound (AUD)</Label>
-                  <Input
-                    id="estimated-high-input"
-                    type="number"
-                    step="0.01"
-                    value={estimatedHighInput}
-                    onChange={(e) => setEstimatedHighInput(e.target.value)}
-                    placeholder={displayedEstimatedHigh.toFixed(2)}
-                    disabled={isUpdatingPricing}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleUpdatePricing} 
-                  disabled={isUpdatingPricing}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  {isUpdatingPricing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving Range...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Estimated Range
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between">
-              <span>Request Information</span>
-              {getStatusBadge(request.status || 'pending')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <User className="mr-2 h-5 w-5" />
-                  Basic Information
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Folder className="mr-1 h-4 w-4" /> Request ID
-                    </p>
-                    <p className="font-medium">{request.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Calendar className="mr-1 h-4 w-4" /> Submitted
-                    </p>
-                    <p className="font-medium">{format(new Date(request.created_at), 'MMMM dd, yyyy HH:mm')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <User className="mr-1 h-4 w-4" /> Name
-                    </p>
-                    <p className="font-medium">{request.name || 'Not provided'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Mail className="mr-1 h-4 w-4" /> Email
-                    </p>
-                    <p className="font-medium">{request.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Folder className="mr-1 h-4 w-4" /> Category
-                    </p>
-                    <p className="font-medium">{request.category || 'Not specified'}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Music className="mr-2 h-5 w-5" />
-                  Track Details
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Music className="mr-1 h-4 w-4" /> Song Title
-                    </p>
-                    <p className="font-medium">{request.song_title}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Target className="mr-1 h-4 w-4" /> Musical/Artist
-                    </p>
-                    <p className="font-medium">{request.musical_or_artist}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Headphones className="mr-1 h-4 w-4" /> Backing Type
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
-                        <Badge key={index} className="capitalize">
-                          {type.replace('-', ' ')}
-                        </Badge>
-                      )) : <Badge className="capitalize">Not specified</Badge>}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Target className="mr-1 h-4 w-4" /> Track Purpose
-                    </p>
-                    <p className="font-medium capitalize">
-                      {request.track_purpose?.replace('-', ' ') || 'Not specified'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Calendar className="mr-1 h-4 w-4" /> Delivery Date
-                    </p>
-                    <p className="font-medium">
-                      {request.delivery_date 
-                        ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') 
-                        : 'Not specified'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Key className="mr-2 h-5 w-5" />
-              Musical Information & References
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Key className="mr-2 h-5 w-5" />
-                  Key Information
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Song Key</p>
-                    <p className="font-medium">{request.song_key || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Different Key Required</p>
-                    <p className="font-medium">{request.different_key || 'No'}</p>
-                  </div>
-                  {request.different_key === 'Yes' && (
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <User className="mr-2 h-5 w-5" />
+                    Basic Information
+                  </h3>
+                  <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-gray-500">Requested Key</p>
-                      <p className="font-medium">{request.key_for_track || 'Not specified'}</p>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Folder className="mr-1 h-4 w-4" /> Request ID
+                      </p>
+                      <p className="font-medium">{request.id}</p>
                     </div>
-                  )}
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Calendar className="mr-1 h-4 w-4" /> Submitted
+                      </p>
+                      <p className="font-medium">{format(new Date(request.created_at), 'MMMM dd, yyyy HH:mm')}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <User className="mr-1 h-4 w-4" /> Name
+                      </p>
+                      <p className="font-medium">{request.name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Mail className="mr-1 h-4 w-4" /> Email
+                      </p>
+                      <p className="font-medium">{request.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Folder className="mr-1 h-4 w-4" /> Category
+                      </p>
+                      <p className="font-medium">{request.category || 'Not specified'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <Music className="mr-2 h-5 w-5" />
+                    Track Details
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Music className="mr-1 h-4 w-4" /> Song Title
+                      </p>
+                      <p className="font-medium">{request.song_title}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Target className="mr-1 h-4 w-4" /> Musical/Artist
+                      </p>
+                      <p className="font-medium">{request.musical_or_artist}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Headphones className="mr-1 h-4 w-4" /> Backing Type
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {normalizedBackingTypes.length > 0 ? normalizedBackingTypes.map((type: string, index: number) => (
+                          <Badge key={index} className="capitalize">
+                            {type.replace('-', ' ')}
+                          </Badge>
+                        )) : <Badge className="capitalize">Not specified</Badge>}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Target className="mr-1 h-4 w-4" /> Track Purpose
+                      </p>
+                      <p className="font-medium capitalize">
+                        {request.track_purpose?.replace('-', ' ') || 'Not specified'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Calendar className="mr-1 h-4 w-4" /> Delivery Date
+                      </p>
+                      <p className="font-medium">
+                        {request.delivery_date 
+                          ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') 
+                          : 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <LinkIcon className="mr-2 h-5 w-5" />
-                  References
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <LinkIcon className="mr-1 h-4 w-4" /> YouTube Link
-                    </p>
-                    {request.youtube_link ? (
-                      <div className="flex items-center gap-2">
-                        <a 
-                          href={request.youtube_link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
-                        >
-                          {request.youtube_link}
-                        </a>
-                        <TooltipProvider>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <Key className="mr-2 h-5 w-5" />
+                Musical Information & References
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <Key className="mr-2 h-5 w-5" />
+                    Key Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Song Key</p>
+                      <p className="font-medium">{request.song_key || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Different Key Required</p>
+                      <p className="font-medium">{request.different_key || 'No'}</p>
+                    </div>
+                    {request.different_key === 'Yes' && (
+                      <div>
+                        <p className="text-sm text-gray-500">Requested Key</p>
+                        <p className="font-medium">{request.key_for_track || 'Not specified'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <LinkIcon className="mr-2 h-5 w-5" />
+                    References
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <LinkIcon className="mr-1 h-4 w-4" /> YouTube Link
+                      </p>
+                      {request.youtube_link ? (
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={request.youtube_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
+                          >
+                            {request.youtube_link}
+                          </a>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
@@ -860,61 +860,59 @@ const RequestDetails = () => {
                               <p>Copy Link</p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="font-medium">Not provided</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <Music className="mr-1 h-4 w-4" /> Voice Memo
-                    </p>
-                    {request.voice_memo ? (
-                      <a 
-                        href={request.voice_memo} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
-                      >
-                        {request.voice_memo}
-                      </a>
-                    ) : (
-                      <p className="font-medium">Not provided</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <FileText className="mr-1 h-4 w-4" /> Sheet Music
-                    </p>
-                    {request.sheet_music_url ? (
-                      <a 
-                        href={request.sheet_music_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        View Sheet Music
-                      </a>
-                    ) : (
-                      <p className="font-medium">Not provided</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 flex items-center">
-                      <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
-                    </p>
-                    {request.additional_links ? (
-                      <div className="flex items-center gap-2">
+                        </div>
+                      ) : (
+                        <p className="font-medium">Not provided</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <Music className="mr-1 h-4 w-4" /> Voice Memo
+                      </p>
+                      {request.voice_memo ? (
                         <a 
-                          href={request.additional_links} 
+                          href={request.voice_memo} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
+                          className="font-medium text-blue-600 hover:underline text-sm truncate block"
                         >
-                          {request.additional_links}
+                          {request.voice_memo}
                         </a>
-                        <TooltipProvider>
+                      ) : (
+                        <p className="font-medium">Not provided</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <FileText className="mr-1 h-4 w-4" /> Sheet Music
+                      </p>
+                      {request.sheet_music_url ? (
+                        <a 
+                          href={request.sheet_music_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline"
+                        >
+                          View Sheet Music
+                        </a>
+                      ) : (
+                        <p className="font-medium">Not provided</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center">
+                        <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
+                      </p>
+                      {request.additional_links ? (
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={request.additional_links} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
+                          >
+                            {request.additional_links}
+                          </a>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
@@ -930,73 +928,71 @@ const RequestDetails = () => {
                               <p>Copy Link</p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="font-medium">Not provided</p>
-                    )}
+                        </div>
+                      ) : (
+                        <p className="font-medium">Not provided</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <Folder className="mr-2 h-5 w-5" />
-              Admin & Delivery Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Download className="mr-2 h-5 w-5" />
-                  Uploaded Tracks
-                </h3>
-                {request.track_urls && request.track_urls.length > 0 ? (
-                  <ul className="space-y-2">
-                    {request.track_urls.map((track: any, index: number) => (
-                      <li key={track.url} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
-                              {track.caption || `Track ${index + 1}`}
-                            </a>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-md">
-                            <p>{track.url}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => downloadTrack(track.url, track.caption || `${request.song_title}.mp3`)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-500">No tracks uploaded yet.</p>
-                )}
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <AlertCircle className="mr-2 h-5 w-5" />
-                  Dropbox & Sharing
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Dropbox Folder ID</p>
-                    {request.dropbox_folder_id ? (
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium break-all">{request.dropbox_folder_id}</p>
-                        <TooltipProvider>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <Folder className="mr-2 h-5 w-5" />
+                Admin & Delivery Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <Download className="mr-2 h-5 w-5" />
+                    Uploaded Tracks
+                  </h3>
+                  {request.track_urls && request.track_urls.length > 0 ? (
+                    <ul className="space-y-2">
+                      {request.track_urls.map((track: any, index: number) => (
+                        <li key={track.url} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a href={track.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline truncate flex-1 mr-2">
+                                {track.caption || `Track ${index + 1}`}
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md">
+                              <p>{track.url}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => downloadTrack(track.url, track.caption || `${request.song_title}.mp3`)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500">No tracks uploaded yet.</p>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <AlertCircle className="mr-2 h-5 w-5" />
+                    Dropbox & Sharing
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Dropbox Folder ID</p>
+                      {request.dropbox_folder_id ? (
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium break-all">{request.dropbox_folder_id}</p>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
@@ -1012,25 +1008,23 @@ const RequestDetails = () => {
                               <p>Copy ID</p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="font-medium">Not created</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Shared Link</p>
-                    {request.shared_link ? (
-                      <div className="flex items-center gap-2">
-                        <a 
-                          href={request.shared_link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="font-medium text-blue-600 hover:underline text-sm break-all flex-1"
-                        >
-                          {request.shared_link}
-                        </a>
-                        <TooltipProvider>
+                        </div>
+                      ) : (
+                        <p className="font-medium">Not created</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Shared Link</p>
+                      {request.shared_link ? (
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={request.shared_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-medium text-blue-600 hover:underline text-sm break-all flex-1"
+                          >
+                            {request.shared_link}
+                          </a>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button 
@@ -1046,73 +1040,73 @@ const RequestDetails = () => {
                               <p>Copy Link</p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="font-medium">Not shared</p>
-                    )}
+                        </div>
+                      ) : (
+                        <p className="font-medium">Not shared</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-lg mb-6">
-          <CardHeader className="bg-[#D1AAF2]/20">
-            <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              Special Requests & Services
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <Headphones className="mr-2 h-5 w-5" />
-                  Additional Services
-                </h3>
-                {request.additional_services && request.additional_services.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {getSafeBackingTypes(request.additional_services).map((service: string, index: number) => (
-                      <Badge key={index} variant="secondary" className="capitalize">
-                        {service.replace('-', ' ')}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500">No additional services requested</p>
-                )}
+          <Card className="shadow-lg mb-6">
+            <CardHeader className="bg-[#D1AAF2]/20">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <FileText className="mr-2 h-5 w-5" />
+                Special Requests & Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <Headphones className="mr-2 h-5 w-5" />
+                    Additional Services
+                  </h3>
+                  {request.additional_services && request.additional_services.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {getSafeBackingTypes(request.additional_services).map((service: string, index: number) => (
+                        <Badge key={index} variant="secondary" className="capitalize">
+                          {service.replace('-', ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No additional services requested</p>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
+                    <FileText className="mr-2 h-5 w-5" />
+                    Special Requests
+                  </h3>
+                  <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
+                    {request.special_requests || 'No special requests provided'}
+                  </p>
+                </div>
               </div>
-              
-              <div>
-                <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Special Requests
-                </h3>
-                <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
-                  {request.special_requests || 'No special requests provided'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <div className="flex justify-end gap-4">
-          <Button 
-            onClick={() => navigate('/admin')} 
-            variant="outline"
-          >
-            Back to Dashboard
-          </Button>
-          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-            Edit Request
-          </Button>
+            </CardContent>
+          </Card>
+          
+          <div className="flex justify-end gap-4">
+            <Button 
+              onClick={() => navigate('/admin')} 
+              variant="outline"
+            >
+              Back to Dashboard
+            </Button>
+            <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+              Edit Request
+            </Button>
+          </div>
+          
+          <MadeWithDyad />
         </div>
-        
-        <MadeWithDyad />
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
