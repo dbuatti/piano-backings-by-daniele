@@ -30,9 +30,7 @@ import {
   DollarSign,
   UserPlus,
   Chrome,
-  Loader2,
-  MessageSquare, // Added MessageSquare
-  Zap // Added Zap for services
+  Loader2
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
@@ -275,7 +273,6 @@ const ClientTrackView = () => {
 
   const costBreakdown = calculateRequestCost(request);
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
-  const normalizedAdditionalServices = getSafeBackingTypes(request.additional_services);
 
   const calculatedTotalCost = costBreakdown.totalCost;
   const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
@@ -424,7 +421,7 @@ const ClientTrackView = () => {
                               size="lg"
                             >
                               <Download className="mr-2 h-5 w-5" />
-                              Download {track.caption || `Track ${index + 1}`}
+                              Download Track {index + 1}
                             </Button>
                             <p className="text-sm text-gray-600 mt-2">
                               {track.caption}
@@ -548,42 +545,6 @@ const ClientTrackView = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg text-[#1C0357] flex items-center">
-                    <Zap className="mr-2 h-5 w-5" />
-                    Additional Services
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {normalizedAdditionalServices.length > 0 ? normalizedAdditionalServices.map((service: string, index: number) => (
-                      <Badge key={index} variant="secondary" className="capitalize bg-[#D1AAF2] text-[#1C0357]">
-                        {service.replace('-', ' ')}
-                      </Badge>
-                    )) : (
-                      <p className="text-gray-500 text-sm">No additional services requested</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg text-[#1C0357] flex items-center">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    Special Requests
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 whitespace-pre-wrap text-sm">
-                    {request.special_requests || 'No special requests provided'}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg text-[#1C0357] flex items-center">
                     <Key className="mr-2 h-5 w-5" />
                     Musical Information
                   </CardTitle>
@@ -673,7 +634,8 @@ const ClientTrackView = () => {
                 </CardContent>
               </Card>
             </div>
-          </Card>
+          </CardContent>
+        </Card>
         
         {showLoginPrompt && !userSession && (
           <Card className="shadow-lg mb-6 bg-[#1C0357] text-white border-[#1C0357] relative">
@@ -727,15 +689,9 @@ const ClientTrackView = () => {
           >
             Back to Dashboard
           </Button>
-          {/* Only show edit button if user is admin */}
-          {isAdmin && (
-            <Button 
-              onClick={() => navigate(`/admin/request/${id}/edit`)}
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-            >
-              Edit Request
-            </Button>
-          )}
+          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+            Edit Request
+          </Button>
         </div>
         
         <MadeWithDyad />

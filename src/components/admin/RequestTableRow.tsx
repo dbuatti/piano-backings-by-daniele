@@ -207,20 +207,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     });
   };
 
-  const getClientViewLink = () => {
-    const siteUrl = window.location.origin;
-    if (request.user_id) {
-      return `${siteUrl}/track/${request.id}`;
-    } else if (request.guest_access_token) {
-      return `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-    } else {
-      // Fallback for unlinked requests without a token (shouldn't happen if submitted via form)
-      return `${siteUrl}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-    }
-  };
-
-  const trackUrls = request.track_urls || [];
-
   return (
     <TableRow 
       key={request.id} 
@@ -355,36 +341,14 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       </TableCell>
       <TableCell className="hidden lg:table-cell py-3">
         <div className="flex flex-col gap-1">
-          {trackUrls.length > 0 ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="default" className="bg-blue-500 hover:bg-blue-600 cursor-pointer">
-                    <FileAudio className="w-3 h-3 mr-1" /> {trackUrls.length} Track{trackUrls.length > 1 ? 's' : ''}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p className="font-bold mb-1">Uploaded Tracks:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    {trackUrls.map((track: any, index: number) => (
-                      <li key={index} className="truncate text-xs">
-                        {track.caption || `Track ${index + 1}`}
-                      </li>
-                    ))}
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <Badge variant="outline" className="text-xs">No Tracks</Badge>
-          )}
+          {request.uploaded_platforms && getPlatformIcons(request.uploaded_platforms)}
           <Button 
             size="sm" 
             variant="outline" 
             onClick={() => openUploadPlatformsDialog(request.id)}
             className="mt-1 text-xs h-6"
           >
-            Edit Platforms
+            Edit
           </Button>
         </div>
       </TableCell>
@@ -404,29 +368,10 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
                   <Eye className="w-4 h-4 mr-2" /> View Details
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex items-center justify-between w-full" onClick={(e) => e.stopPropagation()}>
-                  <Link to={`/track/${request.id}`}>
-                    <User className="w-4 h-4 mr-2" /> Client View
-                  </Link>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
-                          onClick={() => handleCopyToClipboard(getClientViewLink(), "Client view link copied to clipboard")}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Copy Client Link</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+              <DropdownMenuItem asChild>
+                <Link to={`/track/${request.id}`}>
+                  <User className="w-4 h-4 mr-2" /> Client View
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => uploadTrack(request.id)}>
                 <Upload className="w-4 h-4 mr-2" /> Upload Track
