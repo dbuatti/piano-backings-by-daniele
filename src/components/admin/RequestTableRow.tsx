@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Import Input component
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,7 +23,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  TooltipProvider, // Import TooltipProvider
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import { format } from 'date-fns';
 import { 
@@ -49,7 +49,8 @@ import {
   User, 
   X, 
   Youtube,
-  Loader2 // Import Loader2 for loading state
+  Loader2,
+  Copy // Added Copy icon
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
@@ -62,7 +63,7 @@ interface RequestTableRowProps {
   handleSelectRequest: (id: string) => void;
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  updateCost: (id: string, newCost: number | null) => void; // New prop
+  updateCost: (id: string, newCost: number | null) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -77,7 +78,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   handleSelectRequest,
   updateStatus,
   updatePaymentStatus,
-  updateCost, // Destructure new prop
+  updateCost,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -86,7 +87,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   onDirectFileUpload,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [isDirectUploading, setIsDirectUploading] = useState(false); // Local state for direct upload
+  const [isDirectUploading, setIsDirectUploading] = useState(false);
   const [editingCost, setEditingCost] = useState(false);
   const [currentCost, setCurrentCost] = useState<string>(
     request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
@@ -154,10 +155,9 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     const files = event.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      if (file.type.startsWith('audio/')) { // Only accept audio files
+      if (file.type.startsWith('audio/')) {
         setIsDirectUploading(true);
         try {
-          // Call the async upload function
           await onDirectFileUpload(request.id, file);
         } catch (e) {
           // Error handling is done in the hook, just ensure loading state is cleared
@@ -183,7 +183,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     const parsedCost = parseFloat(currentCost);
     const newCost = isNaN(parsedCost) ? null : parsedCost;
 
-    // Only update if the value has actually changed
     const originalCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
     if (newCost !== originalCost) {
       setIsUpdatingCost(true);
@@ -194,11 +193,19 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
 
   const handleCostKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      e.currentTarget.blur(); // Trigger blur to save
+      e.currentTarget.blur();
     }
   };
 
   const isCostManuallySet = request.cost !== null;
+
+  const handleCopyToClipboard = (text: string, message: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: message,
+    });
+  };
 
   return (
     <TableRow 
@@ -233,6 +240,23 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         <div className="text-xs text-gray-500 flex items-center">
           <Mail className="w-3 h-3 mr-1" />
           {request.email}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5 ml-1 text-gray-400 hover:text-[#1C0357]"
+                  onClick={() => handleCopyToClipboard(request.email, "Email address copied to clipboard")}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Copy Email</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </TableCell>
       <TableCell className="py-3">

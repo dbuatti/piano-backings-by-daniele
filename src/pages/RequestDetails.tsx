@@ -31,7 +31,8 @@ import {
   Eye,
   Share2,
   CreditCard,
-  Save
+  Save,
+  Copy // Added Copy icon
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
@@ -41,8 +42,8 @@ import { Separator } from '@/components/ui/separator';
 import { calculateRequestCost } from '@/utils/pricing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from '@/lib/utils'; // Import cn for conditional classNames
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils';
 
 interface TrackInfo {
   url: string;
@@ -77,9 +78,11 @@ interface BackingRequest {
   dropbox_folder_id?: string | null;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null;
-  final_price?: number | null; // New field
-  estimated_cost_low?: number | null; // New field
-  estimated_cost_high?: number | null; // New field
+  final_price?: number | null;
+  estimated_cost_low?: number | null;
+  estimated_cost_high?: number | null;
+  user_id?: string | null;
+  guest_access_token?: string | null;
 }
 
 const keyOptions = [
@@ -402,6 +405,14 @@ const RequestDetails = () => {
     } finally {
       setIsTriggeringDropbox(false);
     }
+  };
+
+  const handleCopyToClipboard = (text: string, message: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: message,
+    });
   };
 
   if (!isAdmin) {
@@ -824,14 +835,33 @@ const RequestDetails = () => {
                       <LinkIcon className="mr-1 h-4 w-4" /> YouTube Link
                     </p>
                     {request.youtube_link ? (
-                      <a 
-                        href={request.youtube_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
-                      >
-                        {request.youtube_link}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={request.youtube_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
+                        >
+                          {request.youtube_link}
+                        </a>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
+                                onClick={() => handleCopyToClipboard(request.youtube_link!, "YouTube link copied to clipboard")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Link</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     ) : (
                       <p className="font-medium">Not provided</p>
                     )}
@@ -875,14 +905,33 @@ const RequestDetails = () => {
                       <LinkIcon className="mr-1 h-4 w-4" /> Additional Links
                     </p>
                     {request.additional_links ? (
-                      <a 
-                        href={request.additional_links} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm truncate block"
-                      >
-                        {request.additional_links}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={request.additional_links} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline text-sm truncate block flex-1"
+                        >
+                          {request.additional_links}
+                        </a>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
+                                onClick={() => handleCopyToClipboard(request.additional_links!, "Additional link copied to clipboard")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Link</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     ) : (
                       <p className="font-medium">Not provided</p>
                     )}
@@ -917,7 +966,7 @@ const RequestDetails = () => {
                               {track.caption || `Track ${index + 1}`}
                             </a>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className="max-w-md">
                             <p>{track.url}</p>
                           </TooltipContent>
                         </Tooltip>
@@ -944,21 +993,61 @@ const RequestDetails = () => {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-500">Dropbox Folder ID</p>
-                    <p className="font-medium break-all">
-                      {request.dropbox_folder_id || 'Not created'}
-                    </p>
+                    {request.dropbox_folder_id ? (
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium break-all">{request.dropbox_folder_id}</p>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
+                                onClick={() => handleCopyToClipboard(request.dropbox_folder_id!, "Dropbox Folder ID copied to clipboard")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy ID</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <p className="font-medium">Not created</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Shared Link</p>
                     {request.shared_link ? (
-                      <a 
-                        href={request.shared_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-blue-600 hover:underline text-sm break-all"
-                      >
-                        {request.shared_link}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a 
+                          href={request.shared_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline text-sm break-all flex-1"
+                        >
+                          {request.shared_link}
+                        </a>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
+                                onClick={() => handleCopyToClipboard(request.shared_link!, "Shared link copied to clipboard")}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Link</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     ) : (
                       <p className="font-medium">Not shared</p>
                     )}
@@ -1008,6 +1097,18 @@ const RequestDetails = () => {
             </div>
           </CardContent>
         </Card>
+        
+        <div className="flex justify-end gap-4">
+          <Button 
+            onClick={() => navigate('/admin')} 
+            variant="outline"
+          >
+            Back to Dashboard
+          </Button>
+          <Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+            Edit Request
+          </Button>
+        </div>
         
         <MadeWithDyad />
       </div>

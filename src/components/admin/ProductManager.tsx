@@ -11,8 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch"; // Import Switch
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,17 +28,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // Import DialogDescription
-  DialogFooter, // ADDED DialogFooter
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle, Copy } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
-import FileInput from '../FileInput'; // Import FileInput
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator'; // Import the generator
+import FileInput from '../FileInput';
+import { TrackInfo } from '@/utils/helpers';
+import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
 
 interface ProductForm {
   title: string;
@@ -56,7 +56,7 @@ interface ProductForm {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
-  master_download_link: string; // NEW FIELD
+  master_download_link: string;
 }
 
 interface Product {
@@ -73,12 +73,12 @@ interface Product {
   artist_name?: string;
   category?: string;
   vocal_ranges?: string[];
-  sheet_music_url?: string | null; // New field
-  key_signature?: string | null; // New field
-  show_sheet_music_url?: boolean; // New field
-  show_key_signature?: boolean; // New field
-  track_type?: string; // Add track_type here
-  master_download_link?: string | null; // NEW FIELD
+  sheet_music_url?: string | null;
+  key_signature?: string | null;
+  show_sheet_music_url?: boolean;
+  show_key_signature?: boolean;
+  track_type?: string;
+  master_download_link?: string | null;
 }
 
 interface ProductFormState {
@@ -93,12 +93,12 @@ interface ProductFormState {
   artist_name: string;
   category: string;
   vocal_ranges: string[];
-  sheet_music_url: string; // New field
-  key_signature: string; // New field
-  show_sheet_music_url: boolean; // New field
-  show_key_signature: boolean; // New field
-  track_type: string; // Add track_type here
-  master_download_link: string; // NEW FIELD
+  sheet_music_url: string;
+  key_signature: string;
+  show_sheet_music_url: boolean;
+  show_key_signature: boolean;
+  track_type: string;
+  master_download_link: string;
 }
 
 const ProductManager: React.FC = () => {
@@ -119,22 +119,22 @@ const ProductManager: React.FC = () => {
     artist_name: '',
     category: '',
     vocal_ranges: [],
-    sheet_music_url: '', // Initialize new field
-    key_signature: '', // Initialize new field
-    show_sheet_music_url: true, // Default to true
-    show_key_signature: true, // Default to true
-    track_type: '', // Initialize new field
-    master_download_link: '', // Initialize new field
+    sheet_music_url: '',
+    key_signature: '',
+    show_sheet_music_url: true,
+    show_key_signature: true,
+    track_type: '',
+    master_download_link: '',
   });
-  const [imageFile, setImageFile] = useState<File | null>(null); // State for image file upload in edit dialog
-  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null); // New state for sheet music file upload in edit dialog
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [editSheetMusicFile, setEditSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // State variables for filters and sorting
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [vocalRangeFilter, setVocalRangeFilter] = useState('all'); // Declared vocalRangeFilter
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]); // Declared priceRange
+  const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
@@ -148,32 +148,27 @@ const ProductManager: React.FC = () => {
 
   // Fetch all products
   const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption], // Include sortOption in query key
+    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption],
     queryFn: async () => {
       let query = supabase
         .from('products')
         .select('*')
         .eq('is_active', true);
 
-      // Apply search term
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
       }
 
-      // Apply category filter
       if (categoryFilter !== 'all') {
         query = query.eq('category', categoryFilter);
       }
 
-      // Apply vocal range filter
       if (vocalRangeFilter !== 'all') {
         query = query.contains('vocal_ranges', [vocalRangeFilter]);
       }
 
-      // Apply price range filter
       query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
 
-      // Apply sorting
       switch (sortOption) {
         case 'price_asc':
           query = query.order('price', { ascending: true });
@@ -193,7 +188,7 @@ const ProductManager: React.FC = () => {
         case 'artist_name_desc':
           query = query.order('artist_name', { ascending: false });
           break;
-        case 'category_asc': // New sort option
+        case 'category_asc':
           query = query.order('category', { ascending: true }).order('title', { ascending: true });
           break;
         case 'created_at_desc':
@@ -207,7 +202,7 @@ const ProductManager: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   // Mutation for updating a product
@@ -215,17 +210,16 @@ const ProductManager: React.FC = () => {
     mutationFn: async (updatedProduct: ProductFormState) => {
       const { id, track_urls, ...fieldsToUpdate } = updatedProduct;
       
-      // Filter out unselected tracks and remove the 'selected' and 'file' property for DB storage
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, file, ...rest }) => rest); // This map correctly removes 'selected' and 'file'
+        .map(({ selected, file, ...rest }) => rest);
 
       const { data, error } = await supabase
         .from('products')
         .update({
           ...fieldsToUpdate,
           price: parseFloat(fieldsToUpdate.price),
-          track_urls: tracksToSave, // Save filtered tracks
+          track_urls: tracksToSave,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -291,21 +285,20 @@ const ProductManager: React.FC = () => {
       price: product.price.toFixed(2),
       currency: product.currency,
       image_url: product.image_url || '',
-      // Map existing tracks to include 'selected: true' and 'file: null' for the UI
       track_urls: product.track_urls?.map(track => ({ ...track, selected: true, file: null })) || [],
       is_active: product.is_active,
       artist_name: product.artist_name || '',
       category: product.category || '',
       vocal_ranges: product.vocal_ranges || [],
-      sheet_music_url: product.sheet_music_url || '', // Set new field
-      key_signature: product.key_signature || '', // Set new field
-      show_sheet_music_url: product.show_sheet_music_url ?? true, // Set new field with default
-      show_key_signature: product.show_key_signature ?? true, // Set new field with default
-      track_type: product.track_type || '', // Set new field with default
-      master_download_link: product.master_download_link || '', // NEW FIELD
+      sheet_music_url: product.sheet_music_url || '',
+      key_signature: product.key_signature || '',
+      show_sheet_music_url: product.show_sheet_music_url ?? true,
+      show_key_signature: product.show_key_signature ?? true,
+      track_type: product.track_type || '',
+      master_download_link: product.master_download_link || '',
     });
-    setImageFile(null); // Clear image file state for new edit
-    setEditSheetMusicFile(null); // Clear sheet music file state for new edit
+    setImageFile(null);
+    setEditSheetMusicFile(null);
     setFormErrors({});
     setEditDialogOpen(true);
   };
@@ -348,12 +341,12 @@ const ProductManager: React.FC = () => {
       if (field === 'file') {
         currentTrack.file = value as File | null;
         if (value) {
-          currentTrack.url = null; // Clear URL if file is selected
+          currentTrack.url = null;
         }
       } else if (field === 'url') {
         currentTrack.url = value as string | null;
         if (value) {
-          currentTrack.file = null; // Clear file if URL is entered
+          currentTrack.file = null;
         }
       } else {
         (currentTrack as any)[field] = value; 
@@ -366,7 +359,7 @@ const ProductManager: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }] // Default to selected, include file, url is null
+      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }]
     }));
   };
 
@@ -380,9 +373,8 @@ const ProductManager: React.FC = () => {
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
     if (file) {
-      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) })); // For immediate preview
+      setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
     } else {
-      // If file is cleared, reset image_url to original if it exists, or empty
       setProductForm(prev => ({ ...prev, image_url: currentProduct?.image_url || '' }));
     }
     setFormErrors(prev => ({ ...prev, image_url: '' }));
@@ -391,9 +383,8 @@ const ProductManager: React.FC = () => {
   const handleEditSheetMusicFileChange = (file: File | null) => {
     setEditSheetMusicFile(file);
     if (file) {
-      setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) })); // For immediate preview
+      setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      // If file is cleared, reset sheet_music_url to original if it exists, or empty
       setProductForm(prev => ({ ...prev, sheet_music_url: currentProduct?.sheet_music_url || '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
@@ -424,14 +415,13 @@ const ProductManager: React.FC = () => {
     if (!productForm.currency.trim()) errors.currency = 'Currency is required.';
     if (!productForm.artist_name.trim()) errors.artist_name = 'Artist Name is required.';
     if (!productForm.category.trim()) errors.category = 'Category is required.';
-    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.'; // Add validation for track_type
+    if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
-    // Validate only selected tracks
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url && !track.file) { // Require either URL or file
+      if (!track.url && !track.file) {
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`;
       }
-      if (!track.caption.trim()) { // Caption must be a non-empty string
+      if (!track.caption.trim()) {
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`;
       }
     });
@@ -447,7 +437,6 @@ const ProductManager: React.FC = () => {
     }
     if (!currentProduct) return;
 
-    // 1. Handle Image Upload
     let imageUrlToSave = productForm.image_url;
     if (imageFile) {
       try {
@@ -464,7 +453,6 @@ const ProductManager: React.FC = () => {
       imageUrlToSave = null;
     }
 
-    // 2. Handle Sheet Music Upload
     let sheetMusicUrlToSave = productForm.sheet_music_url;
     if (editSheetMusicFile) {
       try {
@@ -478,17 +466,13 @@ const ProductManager: React.FC = () => {
         return;
       }
     } else if (productForm.sheet_music_url === '' && currentProduct.sheet_music_url) {
-      // If the user cleared the input field and no new file was uploaded, set to null
       sheetMusicUrlToSave = null;
     } else if (productForm.sheet_music_url === currentProduct.sheet_music_url) {
-      // If the URL is the same as the original and no new file, keep the original URL
       sheetMusicUrlToSave = currentProduct.sheet_music_url;
     } else {
-      // If the user manually changed the URL (and no file was uploaded), use the new URL
       sheetMusicUrlToSave = productForm.sheet_music_url;
     }
 
-    // 3. Prepare a mutable copy of the track_urls array for file uploads
     const tracksToMutate = productForm.track_urls.map(track => ({ ...track }));
     
     for (let i = 0; i < tracksToMutate.length; i++) {
@@ -499,11 +483,10 @@ const ProductManager: React.FC = () => {
         try {
           const trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
           
-          // Update the track object in the mutable copy
           tracksToMutate[i] = { 
             ...track, 
             url: trackUrlToSave, 
-            file: null // Clear the file object after successful upload
+            file: null
           };
         } catch (uploadError: any) {
           toast({
@@ -511,21 +494,18 @@ const ProductManager: React.FC = () => {
             description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
             variant: "destructive",
           });
-          return; // Stop product update if any track upload fails
+          return;
         }
       } else if (track.selected && track.url && track.url.trim() !== '') {
-        // Ensure URL is trimmed and saved if no file was uploaded
         tracksToMutate[i] = { ...track, url: track.url.trim() };
       }
-      // Tracks that are not selected or have no URL/File remain as they are (will be filtered out by mutationFn)
     }
     
-    // 4. Finalize the payload for mutation
     const finalPayload: ProductFormState = {
       ...productForm,
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
-      track_urls: tracksToMutate, // Pass the updated array containing 'selected' and 'file: null' (if uploaded)
+      track_urls: tracksToMutate,
     };
 
     updateProductMutation.mutate(finalPayload);
@@ -535,6 +515,14 @@ const ProductManager: React.FC = () => {
     if (currentProduct?.id) {
       deleteProductMutation.mutate(currentProduct.id);
     }
+  };
+
+  const handleCopyToClipboard = (text: string, message: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: message,
+    });
   };
 
   if (isError) {
@@ -558,7 +546,6 @@ const ProductManager: React.FC = () => {
           Edit or delete existing products in your shop.
         </p>
 
-        {/* Filter and Sort Controls for Product Manager */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
           <div className="relative w-full sm:w-1/3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -640,7 +627,7 @@ const ProductManager: React.FC = () => {
                           <span className="text-gray-500 text-xs">N/A</span>
                         )}
                       </TableCell>
-                      <TableCell> {/* New Table Cell for Key Signature */}
+                      <TableCell>
                         {product.key_signature && product.show_key_signature ? (
                           <Badge variant="outline" className="text-xs">
                             {product.key_signature}
@@ -649,7 +636,7 @@ const ProductManager: React.FC = () => {
                           <span className="text-gray-500 text-xs">N/A</span>
                         )}
                       </TableCell>
-                      <TableCell> {/* New Table Cell for Sheet Music URL */}
+                      <TableCell>
                         {product.sheet_music_url && product.show_sheet_music_url ? (
                           <a href={product.sheet_music_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center text-sm">
                             <FileText className="h-3 w-3 mr-1" /> PDF
@@ -658,17 +645,27 @@ const ProductManager: React.FC = () => {
                           <span className="text-gray-500 text-xs">N/A</span>
                         )}
                       </TableCell>
-                      <TableCell className="capitalize text-sm text-gray-700"> {/* New Table Cell for Track Type */}
+                      <TableCell className="capitalize text-sm text-gray-700">
                         {product.track_type?.replace('-', ' ') || 'N/A'}
                       </TableCell>
                       <TableCell>
-                        {product.master_download_link ? ( // Check for master link
+                        {product.master_download_link ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <a href={product.master_download_link} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center text-sm max-w-[200px] truncate font-semibold">
-                                <Link className="h-3 w-3 mr-1 flex-shrink-0" />
-                                Master Link
-                              </a>
+                              <div className="flex items-center gap-2">
+                                <a href={product.master_download_link} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center text-sm max-w-[150px] truncate font-semibold">
+                                  <Link className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  Master Link
+                                </a>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-[#1C0357]"
+                                  onClick={() => handleCopyToClipboard(product.master_download_link!, "Master download link copied to clipboard")}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>{product.master_download_link}</p>
@@ -814,7 +811,6 @@ const ProductManager: React.FC = () => {
                 {formErrors.category && <p className="text-red-500 text-xs mt-1">{formErrors.category}</p>}
               </div>
 
-              {/* New: Track Type Select in Edit Dialog */}
               <div>
                 <Label htmlFor="edit-track_type">Track Type</Label>
                 <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
@@ -830,7 +826,6 @@ const ProductManager: React.FC = () => {
                 {formErrors.track_type && <p className="text-red-500 text-xs mt-1">{formErrors.track_type}</p>}
               </div>
 
-              {/* New: Vocal Ranges Checkboxes in Edit Dialog */}
               <div className="space-y-2">
                 <Label className="text-base font-medium">Vocal Ranges</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -847,7 +842,6 @@ const ProductManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* New: Sheet Music Upload and Key Signature in Edit Dialog */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <FileInput
@@ -904,7 +898,6 @@ const ProductManager: React.FC = () => {
                 </div>
               </div>
               
-              {/* NEW: Master Download Link Override in Edit Dialog */}
               <div className="border-t pt-4">
                 <Label htmlFor="edit-master_download_link" className="flex items-center text-base font-medium">
                   <Link className="mr-2 h-5 w-5" />
@@ -921,7 +914,6 @@ const ProductManager: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
               </div>
 
-              {/* Multiple Track URLs Section */}
               <div className="col-span-2 space-y-3 border p-3 rounded-md bg-gray-50">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Product Tracks ({productForm.track_urls.filter(t => t.selected).length} selected)</Label>
@@ -956,16 +948,15 @@ const ProductManager: React.FC = () => {
                         <Input
                           id={`edit-track-url-${index}`}
                           name={`track_urls[${index}].url`}
-                          value={track.url || ''} // Ensure value is not null/undefined
+                          value={track.url || ''}
                           onChange={(e) => handleTrackChange(index, 'url', e.target.value)}
                           placeholder="https://example.com/track.mp3"
                           className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
-                          disabled={!!track.file} // Disable if a file is selected
+                          disabled={!!track.file}
                         />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
                       
-                      {/* Standard input for audio upload */}
                       <div className="space-y-1">
                         <Label htmlFor={`edit-track-file-upload-${index}`} className="flex items-center text-sm mb-1">
                           <FileAudio className="mr-1" size={14} />
@@ -978,7 +969,7 @@ const ProductManager: React.FC = () => {
                             accept="audio/*"
                             onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
                             className="flex-1"
-                            disabled={!!track.url} // Disable if a URL is entered
+                            disabled={!!track.url}
                           />
                         </div>
                         {track.file && (
@@ -992,7 +983,7 @@ const ProductManager: React.FC = () => {
                         <Input
                           id={`edit-track-caption-${index}`}
                           name={`track_urls[${index}].caption`}
-                          value={track.caption} // Caption is now always a string
+                          value={track.caption}
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
@@ -1033,7 +1024,7 @@ const ProductManager: React.FC = () => {
               </div>
             </div>
           )}
-          <DialogFooter> {/* Correctly using DialogFooter */}
+          <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
