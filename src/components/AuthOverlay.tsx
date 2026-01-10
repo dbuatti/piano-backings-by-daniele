@@ -20,11 +20,10 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
   React.useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => { // Added event
       if (session) {
-        // Only navigate if the event is SIGNED_IN and not already on the target path
-        const targetPath = redirectPath || '/user-dashboard';
-        if (event === 'SIGNED_IN' && window.location.pathname !== targetPath) {
+        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
+        // The onClose() should still happen to close the overlay.
+        if (event === 'SIGNED_IN') { // Only close on successful sign-in
           onClose();
-          navigate(targetPath);
         }
       }
     });
@@ -32,7 +31,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [onClose, navigate, redirectPath]);
+  }, [onClose]); // Removed navigate and redirectPath from dependencies as they are not used for navigation here anymore.
 
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({

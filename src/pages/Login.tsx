@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation(); // Use useLocation
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,10 +24,7 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        // Only navigate if the event is SIGNED_IN and we are not already on the target page
-        if (event === 'SIGNED_IN' && location.pathname !== '/user-dashboard') {
-          navigate('/user-dashboard');
-        }
+        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
       } else {
         setIsAuthenticated(false);
       }
@@ -38,10 +35,7 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        // Only navigate if not already on the user dashboard
-        if (location.pathname !== '/user-dashboard') {
-          navigate('/user-dashboard');
-        }
+        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
       }
     };
     checkInitialSession();
@@ -49,7 +43,7 @@ const Login = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, location.pathname]); // Add location.pathname to dependencies
+  }, []); // Removed navigate and location.pathname from dependencies as they are not used for navigation here anymore.
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
