@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -548,7 +548,6 @@ const FormPage = () => {
                           id="name" name="name" value={formData.name} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting || !!user}
-                          autoComplete="name" {/* Added autocomplete */}
                         />
                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -560,7 +559,6 @@ const FormPage = () => {
                           id="phone" name="phone" value={formData.phone} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting}
-                          autoComplete="tel" {/* Added autocomplete */}
                         />
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -574,7 +572,6 @@ const FormPage = () => {
                           id="form-email" name="email" type="email" value={formData.email} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.email && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
-                          autoComplete="email" {/* Added autocomplete */}
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -587,7 +584,6 @@ const FormPage = () => {
                           id="form-confirmEmail" name="confirmEmail" type="email" value={formData.confirmEmail} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.confirmEmail && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
-                          autoComplete="email" {/* Added autocomplete */}
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -605,7 +601,6 @@ const FormPage = () => {
                       <Input 
                         id="songTitle" name="songTitle" value={formData.songTitle} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.songTitle && "border-red-300")}
-                        autoComplete="off" {/* Added autocomplete */}
                       />
                     </div>
                     <div className="space-y-2" ref={musicalOrArtistRef}>
@@ -613,7 +608,6 @@ const FormPage = () => {
                       <Input 
                         id="musicalOrArtist" name="musicalOrArtist" value={formData.musicalOrArtist} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.musicalOrArtist && "border-red-300")}
-                        autoComplete="off" {/* Added autocomplete */}
                       />
                     </div>
                   </div>
@@ -751,7 +745,6 @@ const FormPage = () => {
                       onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
                       required
                       error={errors.sheetMusic}
-                      autocomplete="off" {/* Added autocomplete */}
                     />
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -761,7 +754,6 @@ const FormPage = () => {
                             id="youtubeLink" name="youtubeLink" value={formData.youtubeLink} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="https://youtube.com/..."
-                            autoComplete="url" {/* Added autocomplete */}
                           />
                           <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -773,7 +765,6 @@ const FormPage = () => {
                             id="additionalLinks" name="additionalLinks" value={formData.additionalLinks} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="Spotify, Dropbox, etc..."
-                            autoComplete="url" {/* Added autocomplete */}
                           />
                           <LinkIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -789,7 +780,6 @@ const FormPage = () => {
                               id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
                               className="pl-10 h-12 rounded-xl border-gray-200 bg-white"
                               placeholder="Voice memo link..."
-                              autoComplete="url" {/* Added autocomplete */}
                             />
                             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           </div>
@@ -802,7 +792,6 @@ const FormPage = () => {
                             icon={MicIcon}
                             accept="audio/*"
                             onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                            autocomplete="off" {/* Added autocomplete */}
                           />
                         </div>
                       </div>
@@ -848,7 +837,6 @@ const FormPage = () => {
                           <Input 
                             id="deliveryDate" name="deliveryDate" type="date" value={formData.deliveryDate} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
-                            autoComplete="off" {/* Added autocomplete */}
                           />
                           <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -886,7 +874,6 @@ const FormPage = () => {
                         id="specialRequests" name="specialRequests" value={formData.specialRequests} onChange={handleInputChange}
                         placeholder="Any rubato sections, specific cuts, or phrasing notes..."
                         className="rounded-xl border-gray-200 min-h-[100px]"
-                        autoComplete="off" {/* Added autocomplete */}
                       />
                     </div>
                   </div>

@@ -14,7 +14,6 @@ interface FileInputProps {
   note?: string;
   error?: string;
   disabled?: boolean;
-  autocomplete?: string; // New prop for autocomplete
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -28,7 +27,6 @@ const FileInput: React.FC<FileInputProps> = ({
   note,
   error,
   disabled = false,
-  autocomplete = "off", // Default autocomplete to "off" for file inputs
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -116,7 +114,6 @@ const FileInput: React.FC<FileInputProps> = ({
           ref={fileInputRef}
           className="hidden"
           disabled={disabled}
-          autoComplete={autocomplete}
         />
         
         {file && !disabled && (

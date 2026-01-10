@@ -378,24 +378,24 @@ const EditRequest: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name" className="text-sm mb-1">Name</Label>
-                    <Input id="name" name="name" value={request.name || ''} onChange={handleInputChange} placeholder="Client Name" autoComplete="name" />
+                    <Input id="name" name="name" value={request.name || ''} onChange={handleInputChange} placeholder="Client Name" />
                   </div>
                   <div>
                     <Label htmlFor="email" className="text-sm mb-1">Email</Label>
-                    <Input id="email" name="email" type="email" value={request.email || ''} onChange={handleInputChange} placeholder="Client Email" autoComplete="email" />
+                    <Input id="email" name="email" type="email" value={request.email || ''} onChange={handleInputChange} placeholder="Client Email" />
                   </div>
                   <div>
                     <Label htmlFor="song_title" className="text-sm mb-1">Song Title</Label>
-                    <Input id="song_title" name="song_title" value={request.song_title || ''} onChange={handleInputChange} placeholder="Song Title" required autoComplete="off" />
+                    <Input id="song_title" name="song_title" value={request.song_title || ''} onChange={handleInputChange} placeholder="Song Title" required />
                   </div>
                   <div>
                     <Label htmlFor="musical_or_artist" className="text-sm mb-1">Musical or Artist</Label>
-                    <Input id="musical_or_artist" name="musical_or_artist" value={request.musical_or_artist || ''} onChange={handleInputChange} placeholder="Musical or Artist" required autoComplete="off" />
+                    <Input id="musical_or_artist" name="musical_or_artist" value={request.musical_or_artist || ''} onChange={handleInputChange} placeholder="Musical or Artist" required />
                   </div>
                   <div>
                     <Label htmlFor="category" className="text-sm mb-1">Category</Label>
                     <Select onValueChange={(value) => handleSelectChange('category', value)} value={request.category || ''}>
-                      <SelectTrigger id="category">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -415,7 +415,7 @@ const EditRequest: React.FC = () => {
                   Track Type
                 </h2>
                 <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || ''}>
-                  <SelectTrigger id="track_type">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select track type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -436,7 +436,7 @@ const EditRequest: React.FC = () => {
                   <div>
                     <Label htmlFor="song_key" className="text-sm mb-1">Song Key</Label>
                     <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={request.song_key || ''}>
-                      <SelectTrigger id="song_key">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select key" />
                       </SelectTrigger>
                       <SelectContent>
@@ -449,7 +449,7 @@ const EditRequest: React.FC = () => {
                   <div>
                     <Label htmlFor="different_key" className="text-sm mb-1">Different Key Required?</Label>
                     <Select onValueChange={(value) => handleSelectChange('different_key', value)} value={request.different_key || 'No'}>
-                      <SelectTrigger id="different_key">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select option" />
                       </SelectTrigger>
                       <SelectContent>
@@ -463,7 +463,7 @@ const EditRequest: React.FC = () => {
                     <div>
                       <Label htmlFor="key_for_track" className="text-sm mb-1">Requested Key</Label>
                       <Select onValueChange={(value) => handleSelectChange('key_for_track', value)} value={request.key_for_track || ''}>
-                        <SelectTrigger id="key_for_track">
+                        <SelectTrigger>
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
                         <SelectContent>
@@ -483,7 +483,7 @@ const EditRequest: React.FC = () => {
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">4</span>
                   Materials
                 </h2>
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Sheet Music File Input */}
                   <div>
                     <FileInput
@@ -494,7 +494,6 @@ const EditRequest: React.FC = () => {
                       onChange={(file) => handleFileInputChange(file, 'sheetMusicFile')}
                       note="Upload a new PDF to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
-                      autocomplete="off"
                     />
                     {request.sheet_music_url && !sheetMusicFile && (
                       <div className="mt-2">
@@ -524,7 +523,6 @@ const EditRequest: React.FC = () => {
                       onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
                       note="Upload a new audio file to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
-                      autocomplete="off"
                     />
                     {request.voice_memo && !voiceMemoFile && (
                       <div className="mt-2">
@@ -546,11 +544,11 @@ const EditRequest: React.FC = () => {
 
                   <div>
                     <Label htmlFor="youtube_link" className="text-sm mb-1 flex items-center"><LinkIcon className="mr-1 h-4 w-4" /> YouTube Link</Label>
-                    <Input id="youtube_link" name="youtube_link" value={request.youtube_link || ''} onChange={handleInputChange} placeholder="https://www.youtube.com/watch?v=..." autoComplete="url" />
+                    <Input id="youtube_link" name="youtube_link" value={request.youtube_link || ''} onChange={handleInputChange} placeholder="https://www.youtube.com/watch?v=..." />
                   </div>
                   <div>
                     <Label htmlFor="additional_links" className="text-sm mb-1 flex items-center"><LinkIcon className="mr-1 h-4 w-4" /> Additional Links</Label>
-                    <Input id="additional_links" name="additional_links" value={request.additional_links || ''} onChange={handleInputChange} placeholder="https://..." autoComplete="url" />
+                    <Input id="additional_links" name="additional_links" value={request.additional_links || ''} onChange={handleInputChange} placeholder="https://..." />
                   </div>
                 </div>
               </div>
@@ -565,7 +563,7 @@ const EditRequest: React.FC = () => {
                   <div>
                     <Label htmlFor="track_purpose" className="text-sm mb-1">Track Purpose</Label>
                     <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || ''}>
-                      <SelectTrigger id="track_purpose">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select purpose" />
                       </SelectTrigger>
                       <SelectContent>
@@ -602,7 +600,7 @@ const EditRequest: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="delivery_date" className="text-sm mb-1">Delivery Date</Label>
-                    <Input id="delivery_date" name="delivery_date" type="date" value={request.delivery_date || ''} onChange={handleInputChange} autoComplete="off" />
+                    <Input id="delivery_date" name="delivery_date" type="date" value={request.delivery_date || ''} onChange={handleInputChange} />
                   </div>
                   <div>
                     <Label className="text-sm mb-1">Additional Services</Label>
@@ -621,7 +619,7 @@ const EditRequest: React.FC = () => {
                   </div>
                   <div>
                     <Label htmlFor="special_requests" className="text-sm mb-1">Special Requests</Label>
-                    <Textarea id="special_requests" name="special_requests" value={request.special_requests || ''} onChange={handleInputChange} rows={4} autoComplete="off" />
+                    <Textarea id="special_requests" name="special_requests" value={request.special_requests || ''} onChange={handleInputChange} rows={4} />
                   </div>
                 </div>
               </div>
@@ -636,7 +634,7 @@ const EditRequest: React.FC = () => {
                   <div>
                     <Label htmlFor="status" className="text-sm mb-1">Status</Label>
                     <Select onValueChange={(value) => handleSelectChange('status', value)} value={request.status || 'pending'}>
-                      <SelectTrigger id="status">
+                      <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -667,7 +665,6 @@ const EditRequest: React.FC = () => {
                       value={request.cost?.toString() || ''} 
                       onChange={handleInputChange} 
                       placeholder="e.g., 25.00" 
-                      autoComplete="off"
                     />
                     <p className="text-xs text-gray-500 mt-1">This is the automatically calculated cost.</p>
                   </div>
@@ -684,7 +681,6 @@ const EditRequest: React.FC = () => {
                       value={request.final_price?.toString() || ''} 
                       onChange={handleInputChange} 
                       placeholder="e.g., 35.00" 
-                      autoComplete="off"
                     />
                     <p className="text-xs text-gray-500 mt-1">Overrides all other costs in client view.</p>
                   </div>
@@ -700,7 +696,6 @@ const EditRequest: React.FC = () => {
                       value={request.estimated_cost_low?.toString() || ''} 
                       onChange={handleInputChange} 
                       placeholder="e.g., 25.00" 
-                      autoComplete="off"
                     />
                     <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
                   </div>
@@ -716,7 +711,6 @@ const EditRequest: React.FC = () => {
                       value={request.estimated_cost_high?.toString() || ''} 
                       onChange={handleInputChange} 
                       placeholder="e.g., 45.00" 
-                      autoComplete="off"
                     />
                     <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
                   </div>

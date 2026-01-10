@@ -149,7 +149,6 @@ const ReportIssueButton: React.FC = () => {
                 className="col-span-3"
                 placeholder="your.email@example.com"
                 disabled={!!userEmail} // Disable if pre-filled by logged-in user
-                autoComplete="email"
               />
               {form.formState.errors.email && (
                 <p className="col-span-4 text-right text-sm text-red-500">
@@ -166,7 +165,6 @@ const ReportIssueButton: React.FC = () => {
                 {...form.register("issue_description")}
                 className="col-span-3 min-h-[100px]"
                 placeholder="Describe the issue or your feedback here..."
-                autoComplete="off"
               />
               {form.formState.errors.issue_description && (
                 <p className="col-span-4 text-right text-sm text-red-500">
@@ -180,11 +178,9 @@ const ReportIssueButton: React.FC = () => {
               </Label>
               <Input
                 id="page_url"
-                name="page_url"
                 value={location.pathname + location.search}
                 className="col-span-3 text-xs text-gray-500"
                 readOnly
-                autoComplete="off"
               />
             </div>
             <DialogFooter>
