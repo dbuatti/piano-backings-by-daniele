@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,33 +14,42 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation(); // Use useLocation
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+        // Only navigate if the event is SIGNED_IN and we are not already on the target page
+        if (event === 'SIGNED_IN' && location.pathname !== '/user-dashboard') {
+          navigate('/user-dashboard');
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    // Initial check for session
+    const checkInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        navigate('/user-dashboard');
+        // Only navigate if not already on the user dashboard
+        if (location.pathname !== '/user-dashboard') {
+          navigate('/user-dashboard');
+        }
       }
     };
-    checkAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setIsAuthenticated(true);
-        navigate('/user-dashboard');
-      }
-    });
+    checkInitialSession();
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]); // Add location.pathname to dependencies
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

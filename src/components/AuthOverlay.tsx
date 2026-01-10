@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
@@ -20,10 +18,14 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
   const [showEmailAuth, setShowEmailAuth] = useState(false); // State to toggle email auth form
 
   React.useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => { // Added event
       if (session) {
-        onClose();
-        navigate(redirectPath || '/user-dashboard');
+        // Only navigate if the event is SIGNED_IN and not already on the target path
+        const targetPath = redirectPath || '/user-dashboard';
+        if (event === 'SIGNED_IN' && window.location.pathname !== targetPath) {
+          onClose();
+          navigate(targetPath);
+        }
       }
     });
 
