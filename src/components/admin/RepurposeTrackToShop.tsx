@@ -12,17 +12,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch"; // Import Switch
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription, // Import DialogDescription
+  DialogFooter, // ADDED DialogFooter
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle, Music } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { format } from 'date-fns';
-import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
-import { TrackInfo } from '@/utils/helpers';
-import { FileAudio } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { TrackInfo, getSafeBackingTypes } from '@/utils/helpers';
+import { format } from 'date-fns';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Import Tooltip components
 
 interface BackingRequest {
   id: string;
@@ -673,6 +690,7 @@ const RepurposeTrackToShop: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-full"
                 disabled={isLoadingRequests}
+                autoComplete="off"
               />
             </div>
             <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
@@ -781,7 +799,7 @@ const RepurposeTrackToShop: React.FC = () => {
       </CardContent>
 
       {/* Conditional rendering of the product form */}
-      {isFormPreFilled ? (
+      {isFormPreFilled && (
         <CardContent>
           <div>
             <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
@@ -798,6 +816,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   onChange={handleFormChange}
                   placeholder="e.g., Defying Gravity - Piano Backing Track"
                   className={cn("mt-1", formErrors.title && "border-red-500")}
+                  autoComplete="off"
                 />
                 {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
               </div>
@@ -810,6 +829,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   onChange={handleFormChange}
                   placeholder="e.g., Stephen Schwartz"
                   className={cn("mt-1", formErrors.artist_name && "border-red-500")}
+                  autoComplete="off"
                 />
                 {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
               </div>
@@ -823,6 +843,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   placeholder="A detailed description of the product..."
                   rows={4}
                   className={cn("mt-1", formErrors.description && "border-red-500")}
+                  autoComplete="off"
                 />
                 {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
               </div>
@@ -838,6 +859,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     onChange={handleFormChange}
                     placeholder="e.g., 25.00"
                     className={cn("mt-1", formErrors.price && "border-red-500")}
+                    autoComplete="off"
                   />
                   {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
                 </div>
@@ -912,6 +934,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     onChange={handleSheetMusicFileChange}
                     note="Upload a PDF for the sheet music. This will be available for preview."
                     error={formErrors.sheet_music_url}
+                    autocomplete="off"
                   />
                   {productForm.sheet_music_url && sheetMusicFile && (
                     <div className="mt-2">
@@ -952,6 +975,7 @@ const RepurposeTrackToShop: React.FC = () => {
                     onChange={handleFormChange}
                     placeholder="e.g., C Major, A Minor, Various"
                     className={cn("mt-1", formErrors.key_signature && "border-red-500")}
+                    autoComplete="off"
                   />
                   {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
                   <div className="flex items-center space-x-2 mt-2">
@@ -979,6 +1003,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   onChange={handleFormChange}
                   placeholder="https://dropbox.com/sh/..."
                   className="mt-1"
+                  autoComplete="url"
                 />
                 <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
               </div>
@@ -1034,6 +1059,7 @@ const RepurposeTrackToShop: React.FC = () => {
                           placeholder="https://example.com/track.mp3"
                           className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
                           disabled={!!track.file}
+                          autoComplete="url"
                         />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
@@ -1051,6 +1077,8 @@ const RepurposeTrackToShop: React.FC = () => {
                             onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
                             className="flex-1"
                             disabled={!!track.url}
+                            name={`track-file-upload-${index}`}
+                            autoComplete="off"
                           />
                         </div>
                         {track.file && (
@@ -1068,6 +1096,7 @@ const RepurposeTrackToShop: React.FC = () => {
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                          autoComplete="off"
                         />
                         {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
                       </div>
@@ -1085,6 +1114,7 @@ const RepurposeTrackToShop: React.FC = () => {
                   onChange={handleImageFileChange}
                   note="Upload a cover image for your product. If left empty, a text-based image will be generated."
                   error={formErrors.image_url}
+                  autocomplete="off"
                 />
                 {productForm.image_url && (
                   <div className="mt-2">
@@ -1123,13 +1153,7 @@ const RepurposeTrackToShop: React.FC = () => {
                 )}
               </Button>
             </div>
-          </div>
-        </CardContent>
-      ) : (
-        <CardContent>
-          <p className="text-center text-gray-500 py-4">Select one or more completed requests above to define a new product or bundle.</p>
-        </CardContent>
-      )}
+          </CardContent>
     </Card>
   );
 };

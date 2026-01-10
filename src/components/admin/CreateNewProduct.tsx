@@ -346,6 +346,7 @@ const CreateNewProduct: React.FC = () => {
               onChange={handleFormChange}
               placeholder="e.g., Defying Gravity - Piano Backing Track"
               className={cn("mt-1", formErrors.title && "border-red-500")}
+              autoComplete="off"
             />
             {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
           </div>
@@ -358,6 +359,7 @@ const CreateNewProduct: React.FC = () => {
               onChange={handleFormChange}
               placeholder="e.g., Stephen Schwartz"
               className={cn("mt-1", formErrors.artist_name && "border-red-500")}
+              autoComplete="off"
             />
             {formErrors.artist_name && <p className="text-red-500 text-xs mt-1">{formErrors.artist_name}</p>}
           </div>
@@ -371,6 +373,7 @@ const CreateNewProduct: React.FC = () => {
               placeholder="A detailed description of the product..."
               rows={4}
               className={cn("mt-1", formErrors.description && "border-red-500")}
+              autoComplete="off"
             />
             {formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}
           </div>
@@ -386,6 +389,7 @@ const CreateNewProduct: React.FC = () => {
                 onChange={handleFormChange}
                 placeholder="e.g., 25.00"
                 className={cn("mt-1", formErrors.price && "border-red-500")}
+                autoComplete="off"
               />
               {formErrors.price && <p className="text-red-500 text-xs mt-1">{formErrors.price}</p>}
             </div>
@@ -460,6 +464,7 @@ const CreateNewProduct: React.FC = () => {
                 onChange={handleSheetMusicFileChange}
                 note="Upload a PDF for the sheet music. This will be available for preview."
                 error={formErrors.sheet_music_url}
+                autocomplete="off"
               />
               {productForm.sheet_music_url && sheetMusicFile && (
                 <div className="mt-2">
@@ -500,6 +505,7 @@ const CreateNewProduct: React.FC = () => {
                 onChange={handleFormChange}
                 placeholder="e.g., C Major, A Minor"
                 className={cn("mt-1", formErrors.key_signature && "border-red-500")}
+                autoComplete="off"
               />
               {formErrors.key_signature && <p className="text-red-500 text-xs mt-1">{formErrors.key_signature}</p>}
               <div className="flex items-center space-x-2 mt-2">
@@ -527,6 +533,7 @@ const CreateNewProduct: React.FC = () => {
               onChange={handleFormChange}
               placeholder="https://dropbox.com/sh/..."
               className="mt-1"
+              autoComplete="url"
             />
             <p className="text-xs text-gray-500 mt-1">If provided, this link will be used instead of individual track downloads on the purchase confirmation page and delivery email.</p>
           </div>
@@ -570,6 +577,7 @@ const CreateNewProduct: React.FC = () => {
                           placeholder="https://example.com/track.mp3"
                           className={cn("mt-1", formErrors[`track_urls[${index}].url`] && "border-red-500")}
                           disabled={!!track.file}
+                          autoComplete="url"
                         />
                         {formErrors[`track_urls[${index}].url`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].url`]}</p>}
                       </div>
@@ -587,6 +595,8 @@ const CreateNewProduct: React.FC = () => {
                             onChange={(e) => handleTrackChange(index, 'file', e.target.files ? e.target.files[0] : null)}
                             className="flex-1"
                             disabled={!!track.url}
+                            name={`track-file-upload-${index}`}
+                            autoComplete="off"
                           />
                         </div>
                         {track.file && (
@@ -604,6 +614,7 @@ const CreateNewProduct: React.FC = () => {
                           onChange={(e) => handleTrackChange(index, 'caption', e.target.value)}
                           placeholder="Track Caption (e.g., Main Mix, Instrumental)"
                           className={cn("mt-1", formErrors[`track_urls[${index}].caption`] && "border-red-500")}
+                          autoComplete="off"
                         />
                         {formErrors[`track_urls[${index}].caption`] && <p className="text-red-500 text-xs mt-1">{formErrors[`track_urls[${index}].caption`]}</p>}
                       </div>
@@ -621,6 +632,7 @@ const CreateNewProduct: React.FC = () => {
                   onChange={handleImageFileChange}
                   note="Upload a cover image for your product. If left empty, a text-based image will be generated."
                   error={formErrors.image_url}
+                  autocomplete="off"
                 />
                 {productForm.image_url && (
                   <div className="mt-2">
