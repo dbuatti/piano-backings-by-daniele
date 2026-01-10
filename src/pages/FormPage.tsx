@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -880,7 +880,7 @@ const FormPage = () => {
                                 // Removed autoComplete
                               />
                               <Label htmlFor={`additional_services-${service.id}`} className="flex flex-col"> {/* NEW: Add htmlFor */}
-                                <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
+                                <span className="font-bold text-sm text-[#1C0357]">{service.label}</span>
                                 <span className="text-[10px] text-gray-500">{service.desc}</span>
                               </Label>
                             </div>
