@@ -548,6 +548,7 @@ const FormPage = () => {
                           id="name" name="name" value={formData.name} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting || !!user}
+                          autoComplete="name" // NEW: Add autocomplete
                         />
                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -559,6 +560,7 @@ const FormPage = () => {
                           id="phone" name="phone" value={formData.phone} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting}
+                          autoComplete="tel" // NEW: Add autocomplete
                         />
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -572,6 +574,7 @@ const FormPage = () => {
                           id="form-email" name="email" type="email" value={formData.email} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.email && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
+                          autoComplete="email" // NEW: Add autocomplete
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -584,6 +587,7 @@ const FormPage = () => {
                           id="form-confirmEmail" name="confirmEmail" type="email" value={formData.confirmEmail} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.confirmEmail && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
+                          autoComplete="email" // NEW: Add autocomplete
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -601,6 +605,7 @@ const FormPage = () => {
                       <Input 
                         id="songTitle" name="songTitle" value={formData.songTitle} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.songTitle && "border-red-300")}
+                        autoComplete="off" // NEW: Add autocomplete
                       />
                     </div>
                     <div className="space-y-2" ref={musicalOrArtistRef}>
@@ -608,6 +613,7 @@ const FormPage = () => {
                       <Input 
                         id="musicalOrArtist" name="musicalOrArtist" value={formData.musicalOrArtist} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.musicalOrArtist && "border-red-300")}
+                        autoComplete="organization" // NEW: Add autocomplete
                       />
                     </div>
                   </div>
@@ -635,8 +641,8 @@ const FormPage = () => {
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-                    <Select onValueChange={(v) => handleSelectChange('category', v)} value={formData.category}>
-                      <SelectTrigger className={cn("h-12 rounded-xl border-gray-200", errors.category && "border-red-300")}>
+                    <Select onValueChange={(v) => handleSelectChange('category', v)} value={formData.category} name="category">
+                      <SelectTrigger id="category" className={cn("h-12 rounded-xl border-gray-200", errors.category && "border-red-300")}>
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -655,20 +661,21 @@ const FormPage = () => {
                     value={formData.trackType} 
                     onValueChange={(v) => handleSelectChange('trackType', v)}
                     className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                    name="trackType" // Moved name to RadioGroup
                   >
                     {[
                       { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10', desc: 'Fast voice memo' },
                       { id: 'one-take', icon: Headphones, label: 'One-Take', price: '$10-20', desc: 'Clean DAW recording' },
                       { id: 'polished', icon: Sparkles, label: 'Polished', price: '$15-35', desc: 'Audition-ready track' }
                     ].map((item) => (
-                      <Label key={item.id} className="cursor-pointer group">
+                      <Label key={item.id} htmlFor={item.id} className="cursor-pointer group">
                         <div className={cn(
                           "relative flex flex-col p-5 rounded-2xl border-2 transition-all duration-300 text-center h-full",
                           formData.trackType === item.id 
                             ? "border-[#1C0357] bg-[#1C0357]/5 shadow-sm" 
                             : "border-gray-100 hover:border-[#D1AAF2] bg-white"
                         )}>
-                          <RadioGroupItem value={item.id} className="sr-only" />
+                          <RadioGroupItem id={item.id} value={item.id} className="sr-only" /> {/* Removed name and autoComplete */}
                           <item.icon className={cn("h-8 w-8 mx-auto mb-3", formData.trackType === item.id ? "text-[#1C0357]" : "text-gray-400")} />
                           <span className="font-bold text-[#1C0357]">{item.label}</span>
                           <span className="text-xs font-black text-[#F538BC] mt-1">{item.price}</span>
@@ -690,9 +697,9 @@ const FormPage = () => {
                   <SectionHeader num={4} title="Musical Details" subtitle="Keys and Transpositions." />
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Sheet Music Key</Label>
-                      <Select onValueChange={(v) => handleSelectChange('songKey', v)} value={formData.songKey}>
-                        <SelectTrigger className={cn("h-12 rounded-xl border-gray-200", errors.songKey && "border-red-300")}>
+                      <Label htmlFor="songKey" className="text-xs font-bold uppercase tracking-wider text-gray-500">Sheet Music Key</Label>
+                      <Select onValueChange={(v) => handleSelectChange('songKey', v)} value={formData.songKey} name="songKey">
+                        <SelectTrigger id="songKey" className={cn("h-12 rounded-xl border-gray-200", errors.songKey && "border-red-300")}>
                           <SelectValue placeholder="What key is the sheet music in?" />
                         </SelectTrigger>
                         <SelectContent>
@@ -703,9 +710,9 @@ const FormPage = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Final Track Key</Label>
-                      <Select onValueChange={(v) => handleSelectChange('differentKey', v)} value={formData.differentKey}>
-                        <SelectTrigger className="h-12 rounded-xl border-gray-200">
+                      <Label htmlFor="differentKey" className="text-xs font-bold uppercase tracking-wider text-gray-500">Final Track Key</Label>
+                      <Select onValueChange={(v) => handleSelectChange('differentKey', v)} value={formData.differentKey} name="differentKey">
+                        <SelectTrigger id="differentKey" className="h-12 rounded-xl border-gray-200">
                           <SelectValue placeholder="Does the track need a different key?" />
                         </SelectTrigger>
                         <SelectContent>
@@ -717,9 +724,9 @@ const FormPage = () => {
                     </div>
                     {formData.differentKey === 'Yes' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Requested Key</Label>
-                        <Select onValueChange={(v) => handleSelectChange('keyForTrack', v)} value={formData.keyForTrack}>
-                          <SelectTrigger className="h-12 rounded-xl border-gray-200">
+                        <Label htmlFor="keyForTrack" className="text-xs font-bold uppercase tracking-wider text-gray-500">Requested Key</Label>
+                        <Select onValueChange={(v) => handleSelectChange('keyForTrack', v)} value={formData.keyForTrack} name="keyForTrack">
+                          <SelectTrigger id="keyForTrack" className="h-12 rounded-xl border-gray-200">
                             <SelectValue placeholder="Select target key" />
                           </SelectTrigger>
                           <SelectContent>
@@ -739,32 +746,36 @@ const FormPage = () => {
                   <div className="space-y-6">
                     <FileInput
                       id="sheetMusic"
+                      name="sheetMusic" // NEW: Add name prop
                       label="Sheet Music (PDF)"
                       icon={FileTextIcon}
                       accept=".pdf"
                       onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
                       required
                       error={errors.sheetMusic}
+                      autocomplete="off" // NEW: Add autocomplete
                     />
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">YouTube Reference (Tempo)</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="youtubeLink">YouTube Reference (Tempo)</Label> {/* NEW: Add htmlFor */}
                         <div className="relative group">
                           <Input 
                             id="youtubeLink" name="youtubeLink" value={formData.youtubeLink} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="https://youtube.com/..."
+                            autoComplete="url" // NEW: Add autocomplete
                           />
                           <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Additional Reference Links (Optional)</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="additionalLinks">Additional Reference Links (Optional)</Label> {/* NEW: Add htmlFor */}
                         <div className="relative group">
                           <Input 
                             id="additionalLinks" name="additionalLinks" value={formData.additionalLinks} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="Spotify, Dropbox, etc..."
+                            autoComplete="url" // NEW: Add autocomplete
                           />
                           <LinkIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -774,12 +785,13 @@ const FormPage = () => {
                       <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Voice Memo (Optional)</Label>
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">Option 1: Provide a Link</Label>
+                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight" htmlFor="voiceMemo">Option 1: Provide a Link</Label> {/* NEW: Add htmlFor */}
                           <div className="relative group">
                             <Input 
                               id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
                               className="pl-10 h-12 rounded-xl border-gray-200 bg-white"
                               placeholder="Voice memo link..."
+                              autoComplete="url" // NEW: Add autocomplete
                             />
                             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           </div>
@@ -788,10 +800,12 @@ const FormPage = () => {
                           <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">Option 2: Upload Audio</Label>
                           <FileInput
                             id="voiceMemoFile"
+                            name="voiceMemoFile" // NEW: Add name prop
                             label="Upload File"
                             icon={MicIcon}
                             accept="audio/*"
                             onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                            autocomplete="off" // NEW: Add autocomplete
                           />
                         </div>
                       </div>
@@ -816,14 +830,17 @@ const FormPage = () => {
                             formData.backingType.includes(type.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 hover:border-[#D1AAF2] bg-white"
                           )} >
                             <Checkbox 
+                              id={`backing_type-${type.id}`} // NEW: Add id
+                              name="backingType" // NEW: Add name
                               checked={!!formData.backingType.includes(type.id)} 
                               onCheckedChange={(checked) => handleBackingTypeChange(type.id, checked)}
                               className="mt-1" 
+                              // Removed autoComplete
                             />
-                            <div className="flex flex-col">
+                            <Label htmlFor={`backing_type-${type.id}`} className="flex flex-col"> {/* NEW: Add htmlFor */}
                               <span className="font-bold text-sm text-[#1C0357]">{type.label}</span>
                               <span className="text-[10px] text-gray-500 font-medium">{type.desc}</span>
-                            </div>
+                            </Label>
                           </div>
                         ))}
                       </div>
@@ -832,11 +849,12 @@ const FormPage = () => {
 
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Delivery Deadline</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="deliveryDate">Delivery Deadline</Label> {/* NEW: Add htmlFor */}
                         <div className="relative group">
                           <Input 
                             id="deliveryDate" name="deliveryDate" type="date" value={formData.deliveryDate} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
+                            autoComplete="bday" // NEW: Add autocomplete
                           />
                           <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -855,13 +873,16 @@ const FormPage = () => {
                               formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
                             )} >
                               <Checkbox 
+                                id={`additional_services-${service.id}`} // NEW: Add id
+                                name="additionalServices" // NEW: Add name
                                 checked={formData.additionalServices.includes(service.id)} 
                                 onCheckedChange={(checked) => handleAdditionalServiceChange(service.id, checked)}
+                                // Removed autoComplete
                               />
-                              <div className="flex flex-col">
+                              <Label htmlFor={`additional_services-${service.id}`} className="flex flex-col"> {/* NEW: Add htmlFor */}
                                 <span className="font-bold text-xs text-[#1C0357]">{service.label}</span>
                                 <span className="text-[10px] text-gray-500">{service.desc}</span>
-                              </div>
+                              </Label>
                             </div>
                           ))}
                         </div>
@@ -869,11 +890,12 @@ const FormPage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Special Notes</Label>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="specialRequests">Special Notes</Label> {/* NEW: Add htmlFor */}
                       <Textarea 
                         id="specialRequests" name="specialRequests" value={formData.specialRequests} onChange={handleInputChange}
                         placeholder="Any rubato sections, specific cuts, or phrasing notes..."
                         className="rounded-xl border-gray-200 min-h-[100px]"
+                        autoComplete="off" // NEW: Add autocomplete
                       />
                     </div>
                   </div>
@@ -886,8 +908,15 @@ const FormPage = () => {
                     consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white",
                     errors.consent && "border-red-200 bg-red-50"
                   )}>
-                    <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} className="mt-1" />
-                    <Label htmlFor="consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer font-medium">
+                    <Checkbox 
+                      id="consent" 
+                      name="consent" // NEW: Add name
+                      checked={consentChecked} 
+                      onCheckedChange={(v) => setConsentChecked(v as boolean)} 
+                      className="mt-1" 
+                      // Removed autoComplete
+                    />
+                    <Label htmlFor="consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer font-medium"> {/* NEW: Add htmlFor */}
                       I understand that unless I purchase <span className="text-[#1C0357] font-bold">Exclusive Ownership</span>, Piano Backings by Daniele retains rights to sell or share this track publicly.
                     </Label>
                   </div>
