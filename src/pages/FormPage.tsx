@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge"; // ADDED
 import { 
   Tooltip,
   TooltipContent,
@@ -40,8 +41,9 @@ import {
   ChevronRight,
   Info,
   HelpCircle,
-  Link as LinkIconLucide
-} from "lucide-react";
+  Link as LinkIconLucide,
+  DollarSign // Added DollarSign
+} from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -154,6 +156,12 @@ const FormPage = () => {
     const completedCount = requiredFields.filter(Boolean).length;
     return (completedCount / requiredFields.length) * 100;
   }, [formData, consentChecked]);
+
+  // Check if any paid additional service is selected
+  const hasPaidService = useMemo(() => {
+    const paidServices = ['rush-order', 'complex-songs', 'additional-edits', 'exclusive-ownership'];
+    return formData.additionalServices.some(service => paidServices.includes(service));
+  }, [formData.additionalServices]);
 
   const emailRef = useRef<HTMLDivElement>(null);
   const confirmEmailRef = useRef<HTMLDivElement>(null);
@@ -860,7 +868,14 @@ const FormPage = () => {
                         </div>
                       </div>
                       <div className="space-y-4">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Add-ons</Label>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Add-ons</Label>
+                          {hasPaidService && (
+                            <Badge className="bg-[#F538BC] text-white text-xs font-bold">
+                              <DollarSign className="h-3 w-3 mr-1" /> Extra Cost
+                            </Badge>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 gap-3">
                           {[
                             { id: 'rush-order', label: 'Rush Order', price: '+$10', desc: '24hr turnaround' },
