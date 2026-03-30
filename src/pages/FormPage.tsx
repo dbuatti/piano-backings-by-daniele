@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -570,7 +570,7 @@ const FormPage = () => {
                 <div className="space-y-8">
                   <div className="space-y-4">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || undefined}>
+                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || ""}>
                       <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                       <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                     </Select>
