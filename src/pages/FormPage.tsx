@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge"; // ADDED
+import { Badge } from "@/components/ui/badge";
 import { 
   Tooltip,
   TooltipContent,
@@ -42,7 +42,8 @@ import {
   Info,
   HelpCircle,
   Link as LinkIconLucide,
-  DollarSign // Added DollarSign
+  DollarSign,
+  Files
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -125,8 +126,8 @@ const FormPage = () => {
     differentKey: 'No',
     keyForTrack: '',
     voiceMemo: '',
-    voiceMemoFile: null as File | null,
-    sheetMusic: null as File | null,
+    voiceMemoFiles: [] as File[], // Changed to array
+    sheetMusicFiles: [] as File[], // Changed to array
     youtubeLink: '',
     additionalLinks: '',
     backingType: [] as string[],
@@ -149,7 +150,7 @@ const FormPage = () => {
       formData.trackType,
       formData.songKey,
       formData.backingType.length > 0,
-      formData.sheetMusic,
+      formData.sheetMusicFiles.length > 0,
       consentChecked
     ];
     
@@ -157,22 +158,14 @@ const FormPage = () => {
     return (completedCount / requiredFields.length) * 100;
   }, [formData, consentChecked]);
 
-  // Check if any paid additional service is selected
   const hasPaidService = useMemo(() => {
     const paidServices = ['rush-order', 'complex-songs', 'additional-edits', 'exclusive-ownership'];
     return formData.additionalServices.some(service => paidServices.includes(service));
   }, [formData.additionalServices]);
 
   const emailRef = useRef<HTMLDivElement>(null);
-  const confirmEmailRef = useRef<HTMLDivElement>(null);
   const songTitleRef = useRef<HTMLDivElement>(null);
-  const musicalOrArtistRef = useRef<HTMLDivElement>(null);
-  const categoryRef = useRef<HTMLDivElement>(null);
   const trackTypeRef = useRef<HTMLDivElement>(null);
-  const songKeyRef = useRef<HTMLDivElement>(null);
-  const backingTypeRef = useRef<HTMLDivElement>(null);
-  const sheetMusicRef = useRef<HTMLDivElement>(null);
-  const consentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -195,18 +188,6 @@ const FormPage = () => {
     };
     checkUser();
   }, []);
-
-  useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.replace('#', '');
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
-    }
-  }, [location]);
 
   useEffect(() => {
     const fetchIncompleteTracks = async () => {
@@ -252,12 +233,11 @@ const FormPage = () => {
     setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  const handleFileInputChange = (file: File | null, fieldName: string) => {
-    setFormData(prev => ({ ...prev, [fieldName]: file }));
+  const handleFilesChange = (files: File[] | null, fieldName: 'sheetMusicFiles' | 'voiceMemoFiles') => {
+    setFormData(prev => ({ ...prev, [fieldName]: files || [] }));
     setErrors(prev => ({ ...prev, [fieldName]: '' }));
   };
 
-  // Renamed for clarity and adjusted to receive 'checked' state
   const handleAdditionalServiceChange = (service: string, checked: boolean | 'indeterminate') => {
     setFormData(prev => {
       const newServices = checked
@@ -289,8 +269,8 @@ const FormPage = () => {
       differentKey: 'No',
       keyForTrack: '',
       voiceMemo: '',
-      voiceMemoFile: null,
-      sheetMusic: null,
+      voiceMemoFiles: [],
+      sheetMusicFiles: [],
       youtubeLink: 'https://www.youtube.com/watch?v=bIZNxHMDpjY',
       additionalLinks: 'https://example.com/extra-reference',
       backingType: ['full-song', 'audition-cut'],
@@ -320,17 +300,12 @@ const FormPage = () => {
     if (!formData.trackType) newErrors.trackType = 'Track Type is required.';
     if (!formData.songKey) newErrors.songKey = 'Sheet music key is required.';
     if (formData.backingType.length === 0) newErrors.backingType = 'At least one backing type is required.';
-    if (!formData.sheetMusic) newErrors.sheetMusic = 'Sheet music is required.';
+    if (formData.sheetMusicFiles.length === 0) newErrors.sheetMusicFiles = 'At least one sheet music PDF is required.';
     if (!consentChecked) newErrors.consent = 'You must agree to the terms.';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setIsSubmitting(false);
-      
-      if (newErrors.email) emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      else if (newErrors.songTitle) songTitleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      else if (newErrors.trackType) trackTypeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
       toast({ title: "Validation Error", description: "Please check the required fields.", variant: "destructive" });
       return;
     }
@@ -338,32 +313,37 @@ const FormPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      let sheetMusicUrl = null;
-      if (formData.sheetMusic) {
-        const fileExt = formData.sheetMusic.name.split('.').pop();
-        const fileName = `sheet-music-${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from('sheet-music').upload(fileName, formData.sheetMusic);
+      // Upload multiple sheet music files
+      const sheetMusicUrls = [];
+      for (const file of formData.sheetMusicFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `sheet-music-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage.from('sheet-music').upload(fileName, file);
         if (uploadError) throw uploadError;
         const { data: { publicUrl } } = supabase.storage.from('sheet-music').getPublicUrl(uploadData.path);
-        sheetMusicUrl = publicUrl;
+        sheetMusicUrls.push({ url: publicUrl, caption: file.name });
       }
       
-      let voiceMemoFileUrl = null;
-      if (formData.voiceMemoFile) {
-        const fileExt = formData.voiceMemoFile.name.split('.').pop();
-        const fileName = `voice-memo-${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-memos').upload(fileName, formData.voiceMemoFile);
+      // Upload multiple voice memo files
+      const voiceMemoUrls = [];
+      for (const file of formData.voiceMemoFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `voice-memo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-memos').upload(fileName, file);
         if (!uploadError) {
           const { data: { publicUrl } } = supabase.storage.from('voice-memos').getPublicUrl(uploadData.path);
-          voiceMemoFileUrl = publicUrl;
+          voiceMemoUrls.push({ url: publicUrl, caption: file.name });
         }
       }
       
       const submissionData = {
         formData: {
           ...formData,
-          voiceMemoFileUrl,
-          sheetMusicUrl
+          sheetMusicUrls, // Array of objects
+          voiceMemoUrls,  // Array of objects
+          // Legacy fields for backward compatibility in Edge Function
+          sheetMusicUrl: sheetMusicUrls[0]?.url || null,
+          voiceMemoFileUrl: voiceMemoUrls[0]?.url || null
         }
       };
       
@@ -556,7 +536,7 @@ const FormPage = () => {
                           id="name" name="name" value={formData.name} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting || !!user}
-                          autoComplete="name" // NEW: Add autocomplete
+                          autoComplete="name"
                         />
                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -568,7 +548,7 @@ const FormPage = () => {
                           id="phone" name="phone" value={formData.phone} onChange={handleInputChange}
                           className="pl-10 h-12 rounded-xl border-gray-200 focus:ring-[#D1AAF2]"
                           disabled={isSubmitting}
-                          autoComplete="tel" // NEW: Add autocomplete
+                          autoComplete="tel"
                         />
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -582,20 +562,20 @@ const FormPage = () => {
                           id="form-email" name="email" type="email" value={formData.email} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.email && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
-                          autoComplete="email" // NEW: Add autocomplete
+                          autoComplete="email"
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
                       {errors.email && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.email}</p>}
                     </div>
-                    <div className="space-y-2" ref={confirmEmailRef}>
+                    <div className="space-y-2">
                       <Label htmlFor="form-confirmEmail" className="text-xs font-bold uppercase tracking-wider text-gray-500">Confirm Email</Label>
                       <div className="relative group">
                         <Input 
                           id="form-confirmEmail" name="confirmEmail" type="email" value={formData.confirmEmail} onChange={handleInputChange}
                           className={cn("pl-10 h-12 rounded-xl border-gray-200", errors.confirmEmail && "border-red-300 bg-red-50")}
                           disabled={isSubmitting || !!user}
-                          autoComplete="email" // NEW: Add autocomplete
+                          autoComplete="email"
                         />
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                       </div>
@@ -613,19 +593,19 @@ const FormPage = () => {
                       <Input 
                         id="songTitle" name="songTitle" value={formData.songTitle} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.songTitle && "border-red-300")}
-                        autoComplete="off" // NEW: Add autocomplete
+                        autoComplete="off"
                       />
                     </div>
-                    <div className="space-y-2" ref={musicalOrArtistRef}>
+                    <div className="space-y-2">
                       <Label htmlFor="musicalOrArtist" className="text-xs font-bold uppercase tracking-wider text-gray-500">Musical or Artist</Label>
                       <Input 
                         id="musicalOrArtist" name="musicalOrArtist" value={formData.musicalOrArtist} onChange={handleInputChange}
                         className={cn("h-12 rounded-xl border-gray-200", errors.musicalOrArtist && "border-red-300")}
-                        autoComplete="organization" // NEW: Add autocomplete
+                        autoComplete="organization"
                       />
                     </div>
                   </div>
-                  <div className="mt-6 space-y-2" ref={categoryRef}>
+                  <div className="mt-6 space-y-2">
                     <div className="flex items-center gap-2">
                       <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-gray-500">Category</Label>
                       <TooltipProvider>
@@ -669,7 +649,7 @@ const FormPage = () => {
                     value={formData.trackType} 
                     onValueChange={(v) => handleSelectChange('trackType', v)}
                     className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                    name="trackType" // Moved name to RadioGroup
+                    name="trackType"
                   >
                     {[
                       { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10', desc: 'Fast voice memo' },
@@ -683,7 +663,7 @@ const FormPage = () => {
                             ? "border-[#1C0357] bg-[#1C0357]/5 shadow-sm" 
                             : "border-gray-100 hover:border-[#D1AAF2] bg-white"
                         )}>
-                          <RadioGroupItem id={item.id} value={item.id} className="sr-only" /> {/* Removed name and autoComplete */}
+                          <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
                           <item.icon className={cn("h-8 w-8 mx-auto mb-3", formData.trackType === item.id ? "text-[#1C0357]" : "text-gray-400")} />
                           <span className="font-bold text-[#1C0357]">{item.label}</span>
                           <span className="text-xs font-black text-[#F538BC] mt-1">{item.price}</span>
@@ -701,7 +681,7 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 4: Musical Details */}
-                <SectionWrapper ref={songKeyRef}>
+                <SectionWrapper>
                   <SectionHeader num={4} title="Musical Details" subtitle="Keys and Transpositions." />
                   <div className="space-y-6">
                     <div className="space-y-2">
@@ -749,57 +729,58 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 5: Materials */}
-                <SectionWrapper ref={sheetMusicRef}>
+                <SectionWrapper>
                   <SectionHeader num={5} title="Materials" subtitle="Upload your sheet music and references." />
                   <div className="space-y-6">
                     <FileInput
                       id="sheetMusic"
-                      name="sheetMusic" // NEW: Add name prop
-                      label="Sheet Music (PDF)"
+                      name="sheetMusic"
+                      label="Sheet Music (PDFs)"
                       icon={FileTextIcon}
                       accept=".pdf"
-                      onChange={(file) => handleFileInputChange(file, 'sheetMusic')}
+                      onChange={(files) => handleFilesChange(files as File[], 'sheetMusicFiles')}
                       required
-                      error={errors.sheetMusic}
-                      autocomplete="off" // NEW: Add autocomplete
+                      multiple // ENABLED MULTIPLE
+                      error={errors.sheetMusicFiles}
+                      note="You can select multiple PDFs if you have multiple songs or cuts."
                     />
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="youtubeLink">YouTube Reference (Tempo)</Label> {/* NEW: Add htmlFor */}
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="youtubeLink">YouTube Reference (Tempo)</Label>
                         <div className="relative group">
                           <Input 
                             id="youtubeLink" name="youtubeLink" value={formData.youtubeLink} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="https://youtube.com/..."
-                            autoComplete="url" // NEW: Add autocomplete
+                            autoComplete="url"
                           />
                           <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="additionalLinks">Additional Reference Links (Optional)</Label> {/* NEW: Add htmlFor */}
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="additionalLinks">Additional Reference Links (Optional)</Label>
                         <div className="relative group">
                           <Input 
                             id="additionalLinks" name="additionalLinks" value={formData.additionalLinks} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
                             placeholder="Spotify, Dropbox, etc..."
-                            autoComplete="url" // NEW: Add autocomplete
+                            autoComplete="url"
                           />
                           <LinkIconLucide className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
                       </div>
                     </div>
                     <div className="p-4 bg-gray-50 rounded-2xl space-y-4">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Voice Memo (Optional)</Label>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Voice Memos (Optional)</Label>
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight" htmlFor="voiceMemo">Option 1: Provide a Link</Label> {/* NEW: Add htmlFor */}
+                          <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight" htmlFor="voiceMemo">Option 1: Provide a Link</Label>
                           <div className="relative group">
                             <Input 
                               id="voiceMemo" name="voiceMemo" value={formData.voiceMemo} onChange={handleInputChange}
                               className="pl-10 h-12 rounded-xl border-gray-200 bg-white"
                               placeholder="Voice memo link..."
-                              autoComplete="url" // NEW: Add autocomplete
+                              autoComplete="url"
                             />
                             <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           </div>
@@ -808,12 +789,12 @@ const FormPage = () => {
                           <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">Option 2: Upload Audio</Label>
                           <FileInput
                             id="voiceMemoFile"
-                            name="voiceMemoFile" // NEW: Add name prop
-                            label="Upload File"
+                            name="voiceMemoFile"
+                            label="Upload Files"
                             icon={MicIcon}
                             accept="audio/*"
-                            onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
-                            autocomplete="off" // NEW: Add autocomplete
+                            multiple // ENABLED MULTIPLE
+                            onChange={(files) => handleFilesChange(files as File[], 'voiceMemoFiles')}
                           />
                         </div>
                       </div>
@@ -822,7 +803,7 @@ const FormPage = () => {
                 </SectionWrapper>
 
                 {/* Section 6: Backing Type */}
-                <SectionWrapper ref={backingTypeRef}>
+                <SectionWrapper>
                   <SectionHeader num={6} title="Services & Timeline" subtitle="Finalize your requirements." />
                   <div className="space-y-8">
                     <div>
@@ -838,14 +819,13 @@ const FormPage = () => {
                             formData.backingType.includes(type.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 hover:border-[#D1AAF2] bg-white"
                           )} >
                             <Checkbox 
-                              id={`backing_type-${type.id}`} // NEW: Add id
-                              name="backingType" // NEW: Add name
+                              id={`backing_type-${type.id}`}
+                              name="backingType"
                               checked={!!formData.backingType.includes(type.id)} 
                               onCheckedChange={(checked) => handleBackingTypeChange(type.id, checked)}
                               className="mt-1" 
-                              // Removed autoComplete
                             />
-                            <Label htmlFor={`backing_type-${type.id}`} className="flex flex-col"> {/* NEW: Add htmlFor */}
+                            <Label htmlFor={`backing_type-${type.id}`} className="flex flex-col">
                               <span className="font-bold text-sm text-[#1C0357]">{type.label}</span>
                               <span className="text-[10px] text-gray-500 font-medium">{type.desc}</span>
                             </Label>
@@ -857,12 +837,12 @@ const FormPage = () => {
 
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="deliveryDate">Delivery Deadline</Label> {/* NEW: Add htmlFor */}
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="deliveryDate">Delivery Deadline</Label>
                         <div className="relative group">
                           <Input 
                             id="deliveryDate" name="deliveryDate" type="date" value={formData.deliveryDate} onChange={handleInputChange}
                             className="pl-10 h-12 rounded-xl border-gray-200"
-                            autoComplete="bday" // NEW: Add autocomplete
+                            autoComplete="bday"
                           />
                           <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1C0357] transition-colors" size={18} />
                         </div>
@@ -888,13 +868,12 @@ const FormPage = () => {
                               formData.additionalServices.includes(service.id) ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-50 bg-white"
                             )} >
                               <Checkbox 
-                                id={`additional_services-${service.id}`} // NEW: Add id
-                                name="additionalServices" // NEW: Add name
+                                id={`additional_services-${service.id}`}
+                                name="additionalServices"
                                 checked={formData.additionalServices.includes(service.id)} 
                                 onCheckedChange={(checked) => handleAdditionalServiceChange(service.id, checked)}
-                                // Removed autoComplete
                               />
-                              <Label htmlFor={`additional_services-${service.id}`} className="flex flex-col"> {/* NEW: Add htmlFor */}
+                              <Label htmlFor={`additional_services-${service.id}`} className="flex flex-col">
                                 <span className="font-bold text-sm text-[#1C0357]">{service.label}</span>
                                 <span className="text-[10px] text-gray-500">{service.desc}</span>
                               </Label>
@@ -905,19 +884,19 @@ const FormPage = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="specialRequests">Special Notes</Label> {/* NEW: Add htmlFor */}
+                      <Label className="text-xs font-bold uppercase tracking-wider text-gray-500" htmlFor="specialRequests">Special Notes</Label>
                       <Textarea 
                         id="specialRequests" name="specialRequests" value={formData.specialRequests} onChange={handleInputChange}
                         placeholder="Any rubato sections, specific cuts, or phrasing notes..."
                         className="rounded-xl border-gray-200 min-h-[100px]"
-                        autoComplete="off" // NEW: Add autocomplete
+                        autoComplete="off"
                       />
                     </div>
                   </div>
                 </SectionWrapper>
 
                 {/* Section 7: Final Step */}
-                <SectionWrapper ref={consentRef}>
+                <SectionWrapper>
                   <div className={cn(
                     "p-5 rounded-2xl border-2 transition-all flex gap-4",
                     consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white",
@@ -925,13 +904,12 @@ const FormPage = () => {
                   )}>
                     <Checkbox 
                       id="consent" 
-                      name="consent" // NEW: Add name
+                      name="consent"
                       checked={consentChecked} 
                       onCheckedChange={(v) => setConsentChecked(v as boolean)} 
                       className="mt-1" 
-                      // Removed autoComplete
                     />
-                    <Label htmlFor="consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer font-medium"> {/* NEW: Add htmlFor */}
+                    <Label htmlFor="consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer font-medium">
                       I understand that unless I purchase <span className="text-[#1C0357] font-bold">Exclusive Ownership</span>, Piano Backings by Daniele retains rights to sell or share this track publicly.
                     </Label>
                   </div>
@@ -965,7 +943,7 @@ const FormPage = () => {
                     
                     {!user && (
                       <p className="text-xs text-gray-400 font-bold">
-                        TIP: <Link to="/auth" className="text-[#1C0357] hover:underline">Sign In</Link> to track your order status.
+                        TIP: <Link to="/login" className="text-[#1C0357] hover:underline">Sign In</Link> to track your order status.
                       </p>
                     )}
                   </div>

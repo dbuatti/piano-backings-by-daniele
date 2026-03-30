@@ -1,21 +1,22 @@
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LucideIcon, UploadCloud, FileText, FileAudio, XCircle } from 'lucide-react'; // Import FileText, FileAudio, XCircle
+import { LucideIcon, UploadCloud, FileText, FileAudio, XCircle, Files } from 'lucide-react';
 
 interface FileInputProps {
   id: string;
   label: string;
   icon: LucideIcon;
   accept?: string;
-  onChange: (file: File | null) => void;
+  onChange: (files: File[] | null) => void;
   required?: boolean;
   className?: string;
   note?: string;
   error?: string;
   disabled?: boolean;
-  name?: string; // NEW: Add name prop
-  autocomplete?: string; // NEW: Add autocomplete prop
+  name?: string;
+  autocomplete?: string;
+  multiple?: boolean; // Added multiple prop
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -29,19 +30,33 @@ const FileInput: React.FC<FileInputProps> = ({
   note,
   error,
   disabled = false,
-  name, // NEW: Destructure name prop
-  autocomplete = "off", // NEW: Destructure autocomplete prop with default
+  name,
+  autocomplete = "off",
+  multiple = false, // Default to false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement> | FileList) => {
     if (disabled) return;
-    const selectedFile = (event instanceof FileList) ? event[0] : event.target.files?.[0] || null;
     
-    setFile(selectedFile);
-    onChange(selectedFile);
+    let selectedFiles: File[] = [];
+    if (event instanceof FileList) {
+      selectedFiles = Array.from(event);
+    } else if (event.target.files) {
+      selectedFiles = Array.from(event.target.files);
+    }
+
+    if (multiple) {
+      const newFiles = [...files, ...selectedFiles];
+      setFiles(newFiles);
+      onChange(newFiles);
+    } else {
+      const newFile = selectedFiles[0] ? [selectedFiles[0]] : [];
+      setFiles(newFile);
+      onChange(newFile.length > 0 ? newFile : null);
+    }
   };
 
   const handleButtonClick = () => {
@@ -49,17 +64,19 @@ const FileInput: React.FC<FileInputProps> = ({
     fileInputRef.current?.click();
   };
 
-  const handleClearFile = (event: React.MouseEvent) => {
+  const handleRemoveFile = (index: number, event: React.MouseEvent) => {
     event.stopPropagation();
     if (disabled) return;
-    setFile(null);
-    onChange(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // Clear the input value
+    
+    const newFiles = files.filter((_, i) => i !== index);
+    setFiles(newFiles);
+    onChange(newFiles.length > 0 ? newFiles : null);
+    
+    if (newFiles.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  // Drag and drop handlers
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     if (disabled) return;
     event.preventDefault();
@@ -76,20 +93,17 @@ const FileInput: React.FC<FileInputProps> = ({
     if (disabled) return;
     event.preventDefault();
     setIsDragging(false);
-    const files = event.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleFileChange(files);
+    const droppedFiles = event.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      handleFileChange(droppedFiles);
     }
   };
 
-  const getFileIcon = (file: File | null) => {
-    if (!file) return UploadCloud;
-    if (file.type.startsWith('audio/')) return FileAudio;
-    if (file.type.includes('pdf')) return FileText;
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('audio/')) return FileAudio;
+    if (fileType.includes('pdf')) return FileText;
     return Icon;
   };
-
-  const CurrentFileIcon = getFileIcon(file);
 
   return (
     <div className={cn("space-y-1", className)}>
@@ -99,11 +113,11 @@ const FileInput: React.FC<FileInputProps> = ({
       </label>
       <div
         className={cn(
-          "relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-md text-sm transition-colors duration-200",
-          isDragging ? "border-[#F538BC] bg-[#F538BC]/10" : "border-gray-300 hover:border-gray-400",
-          file ? "border-green-500 bg-green-50" : "bg-white", // Success state when file is present
-          error && "border-red-500 bg-red-50", // Error state
-          disabled && "bg-gray-100 cursor-not-allowed opacity-70 border-gray-200 hover:border-gray-200"
+          "relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl text-sm transition-all duration-200",
+          isDragging ? "border-[#F538BC] bg-[#F538BC]/5" : "border-gray-200 hover:border-[#D1AAF2] bg-white",
+          files.length > 0 ? "border-green-200 bg-green-50/30" : "",
+          error && "border-red-300 bg-red-50",
+          disabled && "bg-gray-50 cursor-not-allowed opacity-70"
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -111,48 +125,74 @@ const FileInput: React.FC<FileInputProps> = ({
       >
         <input
           id={id}
-          name={name || id} // Use name prop, fallback to id
+          name={name || id}
           type="file"
           accept={accept}
           onChange={handleFileChange}
           ref={fileInputRef}
           className="hidden"
           disabled={disabled}
-          autoComplete={autocomplete} // NEW: Add autocomplete
+          multiple={multiple}
+          autoComplete={autocomplete}
         />
         
-        {file && !disabled && (
-          <Button 
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleClearFile}
-            className="absolute top-2 right-2 h-6 w-6 text-red-500 hover:bg-red-100"
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
+        {files.length === 0 ? (
+          <>
+            <UploadCloud className={cn("h-10 w-10 mb-3", isDragging ? "text-[#F538BC]" : "text-gray-300")} />
+            <p className="text-gray-600 mb-3 text-center font-medium">
+              Drag & drop {multiple ? 'files' : 'a file'} here or
+            </p>
+            <Button
+              type="button"
+              onClick={handleButtonClick}
+              variant="outline"
+              className="bg-white border-gray-200 text-[#1C0357] hover:bg-gray-50 font-bold rounded-lg"
+              disabled={disabled}
+            >
+              Browse Files
+            </Button>
+          </>
+        ) : (
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-green-700 uppercase tracking-wider flex items-center">
+                <Files className="mr-1 h-3 w-3" /> {files.length} File{files.length > 1 ? 's' : ''} Selected
+              </span>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleButtonClick}
+                className="h-7 text-[10px] font-bold uppercase text-[#1C0357]"
+              >
+                Add More
+              </Button>
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+              {files.map((file, index) => {
+                const FileIcon = getFileIcon(file.type);
+                return (
+                  <div key={index} className="flex items-center justify-between p-2 bg-white border border-green-100 rounded-lg group">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <FileIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-xs font-medium text-gray-700 truncate">{file.name}</span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => handleRemoveFile(index, e)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <XCircle size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
-
-        <CurrentFileIcon className={cn("h-8 w-8 mb-2", file ? "text-green-600" : isDragging ? "text-[#F538BC]" : "text-gray-400")} />
-        
-        <p className="text-gray-700 mb-2 text-center">
-          <span className="font-semibold">Drag & drop your file here</span> or
-        </p>
-        <Button
-          type="button"
-          onClick={handleButtonClick}
-          variant="outline"
-          className="py-1 px-3 h-auto text-sm font-semibold bg-[#D1AAF2] text-[#1C0357] hover:bg-[#D1AAF2]/80"
-          disabled={disabled}
-        >
-          Browse files
-        </Button>
-        <p className={cn("mt-2 truncate max-w-full", file ? "text-green-700 font-semibold" : "text-gray-500")}>
-          {file ? file.name : 'No file chosen'}
-        </p>
       </div>
-      {note && <p className="text-xs text-gray-500 mt-1">{note}</p>}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {note && <p className="text-[10px] text-gray-400 mt-1 font-medium">{note}</p>}
+      {error && <p className="text-red-500 text-[10px] font-bold uppercase mt-1">{error}</p>}
     </div>
   );
 };

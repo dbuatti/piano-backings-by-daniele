@@ -16,7 +16,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// --- Pricing Logic (inlined from utils.ts) ---
+// --- Pricing Logic ---
 const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
   'quick': 5.00,
   'one-take': 10.00,
@@ -69,7 +69,7 @@ function calculateRequestCost(request: any): number {
   return parseFloat(roundedTotalCost.toFixed(2));
 }
 
-// --- Sanitization and Validation Helpers (inlined from utils.ts) ---
+// --- Sanitization and Validation Helpers ---
 function sanitizeString(input: string | null | undefined, maxLength: number = 500): string | null {
   if (input === null || input === undefined) return null;
   
@@ -172,11 +172,11 @@ ${formData.specialRequests || 'None provided'}
 
 SHEET MUSIC
 ------------
-${formData.sheetMusicUrl ? 'Sheet music has been uploaded and will be included in this folder.' : 'No sheet music provided.'}
+${formData.sheetMusicUrls && formData.sheetMusicUrls.length > 0 ? `${formData.sheetMusicUrls.length} file(s) uploaded.` : 'No sheet music provided.'}
 
 VOICE MEMO
 ----------
-${formData.voiceMemoFileUrl ? 'Voice memo has been uploaded and will be included in this folder.' : 'No voice memo file provided.'}
+${formData.voiceMemoUrls && formData.voiceMemoUrls.length > 0 ? `${formData.voiceMemoUrls.length} file(s) uploaded.` : 'No voice memo file provided.'}
 
 ---
 This summary was automatically generated for Piano Backings by Daniele.
@@ -185,7 +185,7 @@ This summary was automatically generated for Piano Backings by Daniele.
   return summary;
 }
 
-// --- Dropbox Automation (inlined from dropbox.ts) ---
+// --- Dropbox Automation ---
 interface DropboxConfig {
   dropboxAppKey: string;
   dropboxAppSecret: string;
@@ -208,15 +208,13 @@ interface DropboxResult {
   voiceMemoUploadSuccess: boolean;
   voiceMemoUploadError: string | null;
   summaryUploadSuccess: boolean;
-  summaryUploadError: string | null; // Changed to string | null
+  summaryUploadError: string | null;
   parentFolderUsed: string;
   folderNameUsed: string;
   logicFileNameUsed: string;
 }
 
-// Function to get a new access token using the refresh token
 async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
-  console.log('Attempting to get Dropbox access token...');
   if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
     throw new Error('Dropbox credentials not fully configured in Supabase secrets');
   }
@@ -240,13 +238,10 @@ async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
   }
   
   const tokenData = await response.json();
-  console.log('Dropbox access token obtained.');
   return tokenData.access_token;
 }
 
-// Helper function to create a fallback reference file
 async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFolderPath: string, youtubeLink: string, mp3FileName: string) {
-  console.log('Creating fallback reference file...');
   try {
     const textContent = `YouTube Reference Link: ${youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
     const textEncoder = new TextEncoder();
@@ -273,7 +268,6 @@ async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFo
       const errorText = await dropboxUploadResponse.text();
       throw new Error(`Dropbox reference text upload error: ${dropboxUploadResponse.status} - ${errorText}`);
     }
-    console.log('Fallback reference file created successfully.');
   } catch (error) {
     console.error('Error creating fallback reference file:', error);
     throw error;
@@ -294,7 +288,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     voiceMemoUploadSuccess: false,
     voiceMemoUploadError: null,
     summaryUploadSuccess: false,
-    summaryUploadError: null, // Initialized as null
+    summaryUploadError: null,
     parentFolderUsed: '',
     folderNameUsed: '',
     logicFileNameUsed: '',
@@ -304,7 +298,6 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   
   if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
     result.dropboxError = 'Dropbox credentials not configured';
-    console.error(result.dropboxError);
     return result;
   }
 
@@ -312,7 +305,6 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     dropboxAccessToken = await getDropboxAccessToken(config);
   } catch (error: any) {
     result.dropboxError = `Dropbox token error: ${error.message}`;
-    console.error(result.dropboxError);
     return result;
   }
 
@@ -357,26 +349,7 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   result.dropboxFolderPath = fullPath;
 
   // 1. Create Folder
-  console.log('Attempting to create Dropbox folder:', fullPath);
   try {
-    const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        path: normalizedParentFolder
-      })
-    });
-    
-    if (parentCheckResponse.ok) {
-      console.log('Parent folder exists.');
-    } else {
-      const parentErrorText = await parentCheckResponse.text();
-      throw new Error(`Parent folder check failed: ${parentCheckResponse.status} - ${parentErrorText}`);
-    }
-    
     const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
       method: 'POST',
       headers: {
@@ -392,55 +365,18 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     if (dropboxResponse.ok) {
       const dropboxData = await dropboxResponse.json();
       result.dropboxFolderId = dropboxData.metadata.id;
-      console.log('Dropbox folder created successfully with ID:', result.dropboxFolderId);
     } else {
       const errorText = await dropboxResponse.text();
-      // Handle conflict (folder already exists)
-      try {
-        const errorObj = JSON.parse(errorText);
-        if (errorObj.error_summary && errorObj.error_summary.includes('path/conflict')) {
-          console.warn('Dropbox folder already exists, attempting to retrieve metadata.');
-          const listResponse = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${dropboxAccessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              path: fullPath
-            })
-          });
-          
-          if (listResponse.ok) {
-            const listData = await listResponse.json();
-            result.dropboxFolderId = listData.id;
-            console.log('Retrieved existing Dropbox folder ID:', result.dropboxFolderId);
-          } else {
-            result.dropboxError = `Dropbox API error (conflict, metadata fetch failed): ${listResponse.status} - ${await listResponse.text()}`;
-            console.error(result.dropboxError);
-          }
-        } else {
-          result.dropboxError = `Dropbox API error (create folder): ${dropboxResponse.status} - ${errorText}`;
-          console.error(result.dropboxError);
-        }
-      } catch (parseError) {
-        result.dropboxError = `Dropbox API error (create folder, parse error): ${dropboxResponse.status} - ${errorText}`;
-        console.error(result.dropboxError);
-      }
+      result.dropboxError = `Dropbox API error (create folder): ${dropboxResponse.status} - ${errorText}`;
     }
   } catch (error: any) {
     result.dropboxError = `Dropbox folder creation error: ${error.message}`;
-    console.error(result.dropboxError);
     return result;
   }
 
-  if (!result.dropboxFolderId) {
-    console.error('No Dropbox folder ID available, skipping subsequent Dropbox operations.');
-    return result;
-  }
+  if (!result.dropboxFolderId) return result;
 
   // 2. Copy Logic Pro X template file
-  console.log('Attempting to copy Logic Pro X template...');
   if (config.templateFilePath) {
     try {
       const newFileName = `${logicFileName}.logicx`;
@@ -461,40 +397,21 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       
       if (copyResponse.ok) {
         result.templateCopySuccess = true;
-        console.log('Logic Pro X template copied successfully.');
-      } else {
-        const errorText = await copyResponse.text();
-        result.templateCopyError = `Dropbox template copy error: ${copyResponse.status} - ${errorText}`;
-        console.error(result.templateCopyError);
       }
     } catch (error: any) {
       result.templateCopyError = `Template copy error: ${error.message}`;
-      console.error(result.templateCopyError);
     }
-  } else {
-    console.log('No templateFilePath configured, skipping template copy.');
   }
 
-  // 3. Download YouTube video as MP3 and upload to Dropbox
-  console.log('Attempting YouTube MP3 download and upload...');
+  // 3. YouTube MP3
   if (sanitizedData.youtubeLink) {
     try {
       const mp3FileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
       const uploadPath = `${result.dropboxFolderPath}/${mp3FileName}`;
-      
       const videoId = extractYouTubeId(sanitizedData.youtubeLink);
-      if (!videoId) {
-        throw new Error('Invalid YouTube URL');
-      }
       
-      if (!config.rapidApiKey) {
-        console.warn('RapidAPI key not configured, creating fallback reference text file for YouTube link.');
-        await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
-        result.youtubeMp3Success = true;
-        result.youtubeMp3Error = 'Created reference text file with YouTube link instead of MP3 due to missing API key';
-      } else {
+      if (videoId && config.rapidApiKey) {
         const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
-        
         const downloadResponse = await fetch(downloadUrl, {
           method: 'GET',
           headers: {
@@ -505,215 +422,111 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
         
         if (downloadResponse.ok) {
           const downloadData = await downloadResponse.json();
-          
           if (downloadData.url) {
             const mp3Response = await fetch(downloadData.url);
-            
             if (mp3Response.ok) {
               const mp3Buffer = await mp3Response.arrayBuffer();
-              
-              const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+              await fetch('https://content.dropboxapi.com/2/files/upload', {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${dropboxAccessToken}`,
-                  'Dropbox-API-Arg': JSON.stringify({
-                    path: uploadPath,
-                    mode: 'add',
-                    autorename: true,
-                    mute: false
-                  }),
+                  'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
                   'Content-Type': 'application/octet-stream'
                 },
                 body: mp3Buffer
               });
-              
-              if (dropboxUploadResponse.ok) {
-                result.youtubeMp3Success = true;
-                console.log('YouTube MP3 uploaded successfully.');
-              } else {
-                const errorText = await dropboxUploadResponse.text();
-                result.youtubeMp3Error = `Dropbox MP3 upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-                console.error(result.youtubeMp3Error);
-                await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
-                result.youtubeMp3Success = true;
-                result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
-              }
-            } else {
-              result.youtubeMp3Error = `Failed to download MP3: ${mp3Response.status}`;
-              console.error(result.youtubeMp3Error);
-              await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
               result.youtubeMp3Success = true;
-              result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
             }
-          } else {
-            result.youtubeMp3Error = 'No download URL found in API response';
-            console.error(result.youtubeMp3Error);
-            await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
-            result.youtubeMp3Success = true;
-            result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
           }
-        } else {
-          const errorText = await downloadResponse.text();
-          if (downloadResponse.status === 403) {
-            result.youtubeMp3Error = 'RapidAPI subscription error - Please check your API key and subscription to the YouTube Downloader API';
-          } else {
-            result.youtubeMp3Error = `Download API error: ${downloadResponse.status} - ${errorText}`;
-          }
-          console.error(result.youtubeMp3Error);
-          await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
-          result.youtubeMp3Success = true;
-          result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
         }
-      }
-    } catch (apiError: any) {
-      result.youtubeMp3Error = `YouTube MP3 processing error: ${apiError.message}`;
-      console.error(result.youtubeMp3Error);
-      try {
-        const mp3FileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
+      } else {
         await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
         result.youtubeMp3Success = true;
-        result.youtubeMp3Error += ' | Created reference text file with YouTube link as fallback';
-      } catch (fallbackError: any) {
-        console.error('Error creating YouTube fallback reference file:', fallbackError);
       }
+    } catch (apiError: any) {
+      console.error('YouTube MP3 error:', apiError);
     }
-  } else {
-    console.log('No YouTube link provided, skipping YouTube MP3 download.');
   }
 
-  // 4. Upload PDF to Dropbox folder if provided
-  console.log('Attempting PDF upload...');
-  if (sanitizedData.sheetMusicUrl) {
+  // 4. Upload PDFs (Multiple)
+  if (sanitizedData.sheetMusicUrls && sanitizedData.sheetMusicUrls.length > 0) {
     try {
-      const pdfResponse = await fetch(sanitizedData.sheetMusicUrl);
-      if (!pdfResponse.ok) {
-        throw new Error(`Failed to download PDF from Supabase: ${pdfResponse.status} ${pdfResponse.statusText}`);
+      for (const item of sanitizedData.sheetMusicUrls) {
+        const pdfResponse = await fetch(item.url);
+        if (pdfResponse.ok) {
+          const pdfBuffer = await pdfResponse.arrayBuffer();
+          const fileName = item.caption || `sheet_music_${Date.now()}.pdf`;
+          const uploadPath = `${result.dropboxFolderPath}/${fileName}`;
+          
+          await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dropboxAccessToken}`,
+              'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
+              'Content-Type': 'application/octet-stream'
+            },
+            body: pdfBuffer
+          });
+        }
       }
-      
-      const pdfBuffer = await pdfResponse.arrayBuffer();
-      const pdfFileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_sheet_music.pdf`;
-      
-      const uploadPath = `${result.dropboxFolderPath}/${pdfFileName}`;
-      
-      const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${dropboxAccessToken}`,
-          'Dropbox-API-Arg': JSON.stringify({
-            path: uploadPath,
-            mode: 'add',
-            autorename: true,
-            mute: false
-          }),
-          'Content-Type': 'application/octet-stream'
-        },
-        body: pdfBuffer
-      });
-      
-      if (dropboxUploadResponse.ok) {
-        result.pdfUploadSuccess = true;
-        console.log('PDF uploaded successfully.');
-      } else {
-        const errorText = await dropboxUploadResponse.text();
-        result.pdfUploadError = `Dropbox PDF upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-        console.error(result.pdfUploadError);
-      }
+      result.pdfUploadSuccess = true;
     } catch (error: any) {
-      result.pdfUploadError = `PDF upload error: ${error.message}`;
-      console.error(result.pdfUploadError);
+      result.pdfUploadError = error.message;
     }
-  } else {
-    console.log('No sheetMusicUrl provided, skipping PDF upload.');
   }
 
-  // 5. Upload voice memo to Dropbox folder if provided
-  console.log('Attempting voice memo upload...');
-  if (sanitizedData.voiceMemoFileUrl) {
+  // 5. Upload Voice Memos (Multiple)
+  if (sanitizedData.voiceMemoUrls && sanitizedData.voiceMemoUrls.length > 0) {
     try {
-      const voiceMemoResponse = await fetch(sanitizedData.voiceMemoFileUrl);
-      if (!voiceMemoResponse.ok) {
-        throw new Error(`Failed to download voice memo from Supabase: ${voiceMemoResponse.status} ${voiceMemoResponse.statusText}`);
+      for (const item of sanitizedData.voiceMemoUrls) {
+        const vmResponse = await fetch(item.url);
+        if (vmResponse.ok) {
+          const vmBuffer = await vmResponse.arrayBuffer();
+          const fileName = item.caption || `voice_memo_${Date.now()}.mp3`;
+          const uploadPath = `${result.dropboxFolderPath}/${fileName}`;
+          
+          await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dropboxAccessToken}`,
+              'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
+              'Content-Type': 'application/octet-stream'
+            },
+            body: vmBuffer
+          });
+        }
       }
-      
-      const voiceMemoBuffer = await voiceMemoResponse.arrayBuffer();
-      const fileExt = getFileExtensionFromUrl(sanitizedData.voiceMemoFileUrl);
-      const voiceMemoFileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_voice_memo.${fileExt}`;
-      
-      const uploadPath = `${result.dropboxFolderPath}/${voiceMemoFileName}`;
-      
-      const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${dropboxAccessToken}`,
-          'Dropbox-API-Arg': JSON.stringify({
-            path: uploadPath,
-            mode: 'add',
-            autorename: true,
-            mute: false
-          }),
-          'Content-Type': 'application/octet-stream'
-        },
-        body: voiceMemoBuffer
-      });
-      
-      if (dropboxUploadResponse.ok) {
-        result.voiceMemoUploadSuccess = true;
-        console.log('Voice memo uploaded successfully.');
-      } else {
-        const errorText = await dropboxUploadResponse.text();
-        result.voiceMemoUploadError = `Dropbox voice memo upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-        console.error(result.voiceMemoUploadError);
-      }
+      result.voiceMemoUploadSuccess = true;
     } catch (error: any) {
-      result.voiceMemoUploadError = `Voice memo upload error: ${error.message}`;
-      console.error(result.voiceMemoUploadError);
+      result.voiceMemoUploadError = error.message;
     }
-  } else {
-    console.log('No voiceMemoFileUrl provided, skipping voice memo upload.');
   }
 
-  // 6. Create and upload order summary text file
-  console.log('Creating and uploading order summary...');
+  // 6. Order Summary
   try {
     const summaryContent = createOrderSummary(sanitizedData);
     const textEncoder = new TextEncoder();
     const summaryBuffer = textEncoder.encode(summaryContent);
-    
     const summaryFileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_order_summary.txt`;
     const uploadPath = `${result.dropboxFolderPath}/${summaryFileName}`;
     
-    const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
+    await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Dropbox-API-Arg': JSON.stringify({
-          path: uploadPath,
-          mode: 'add',
-          autorename: true,
-          mute: false
-        }),
+        'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
         'Content-Type': 'application/octet-stream'
       },
       body: summaryBuffer
     });
-    
-    if (dropboxUploadResponse.ok) {
-      result.summaryUploadSuccess = true;
-      console.log('Order summary uploaded successfully.');
-    } else {
-      const errorText = await dropboxUploadResponse.text();
-      result.summaryUploadError = `Dropbox order summary upload error: ${dropboxUploadResponse.status} - ${errorText}`;
-      console.error(result.summaryUploadError); // Corrected property name
-    }
+    result.summaryUploadSuccess = true;
   } catch (error: any) {
-    result.summaryUploadError = `Order summary upload error: ${error.message}`;
-    console.error(result.summaryUploadError); // Corrected property name
+    result.summaryUploadError = error.message;
   }
 
   return result;
 }
 
-// HTML Email signature template (Defined locally for Deno compatibility)
 const EMAIL_SIGNATURE_HTML = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -727,17 +540,6 @@ const EMAIL_SIGNATURE_HTML = `
         <p style="margin: 5px 0; color: #333;"><strong style="color: #1C0357;">E</strong> <a href="mailto:pianobackingsbydaniele@gmail.com" style="color: #007bff; text-decoration: none;">pianobackingsbydaniele@gmail.com</a></p>
         <p style="margin: 10px 0 5px 0; font-weight: bold; color: #1C0357;">Piano Backings By Daniele</p>
         <p style="margin: 0;"><a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="color: #007bff; text-decoration: none;">www.facebook.com/PianoBackingsbyDaniele/</a></p>
-        <div style="margin-top: 15px;">
-          <a href="https://www.facebook.com/PianoBackingsbyDaniele/" target="_blank" style="display: inline-block; margin-right: 5px;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/1200px-2021_Facebook_icon.svg.png" alt="Facebook" width="24" height="24" style="vertical-align: middle;">
-          </a>
-          <a href="https://www.youtube.com/@pianobackingsbydaniele" target="_blank" style="display: inline-block; margin-right: 5px;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1200px-YouTube_full-color_icon_%282017%29.svg.png" alt="YouTube" width="24" height="24" style="vertical-align: middle;">
-          </a>
-          <a href="https://www.instagram.com/pianobackingsbydaniele/" target="_blank" style="display: inline-block;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/1200px-Instagram_logo_2017%29.svg.png" alt="Instagram" width="24" height="24" style="vertical-align: middle;">
-          </a>
-        </div>
       </td>
     </tr>
   </table>
@@ -745,26 +547,18 @@ const EMAIL_SIGNATURE_HTML = `
 `;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    // Handle CORS preflight request
-    return new Response(null, {
-      status: 204, // No Content
-      headers: corsHeaders,
-    });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
   try {
-    // --- 0. Setup Environment and Clients ---
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
     const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000';
-    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com'; // Get ADMIN_EMAIL
-    const adminNotificationRecipients = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'].filter((email, i, arr) => arr.indexOf(email) === i); // Ensure unique emails
+    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com';
+    const adminNotificationRecipients = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'].filter((email, i, arr) => arr.indexOf(email) === i);
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // --- 1. Authentication and User Info ---
     let userId = null;
     let userEmail = null;
     let userName = null;
@@ -774,32 +568,19 @@ serve(async (req) => {
       try {
         const token = authHeader.replace('Bearer ', '');
         const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-        
         if (!userError && user) {
           userId = user.id;
           userEmail = user.email;
           userName = user.user_metadata?.full_name || null;
         }
       } catch (authError) {
-        console.warn('Authentication failed for incoming request:', authError.message);
-        // Ignore auth errors if the request is anonymous
+        console.warn('Auth failed:', authError.message);
       }
     }
     
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (parseError: any) {
-      const rawBody = await req.text();
-      throw new Error(`Invalid JSON in request body: ${parseError.message}. Raw body: ${rawBody.substring(0, 200)}...`);
-    }
-
-    const { formData } = requestBody;
-    if (!formData) {
-      throw new Error('Missing formData in request body.');
-    }
+    const { formData } = await req.json();
+    if (!formData) throw new Error('Missing formData.');
     
-    // --- 2. Validate and Sanitize Inputs ---
     const sanitizedData = {
       email: validateEmail(formData.email),
       name: sanitizeString(formData.name, 100),
@@ -811,8 +592,8 @@ serve(async (req) => {
       keyForTrack: sanitizeString(formData.keyForTrack, 50),
       youtubeLink: validateUrl(formData.youtubeLink),
       voiceMemo: validateUrl(formData.voiceMemo),
-      voiceMemoFileUrl: validateUrl(formData.voiceMemoFileUrl),
-      sheetMusicUrl: validateUrl(formData.sheetMusicUrl),
+      sheetMusicUrls: formData.sheetMusicUrls || [],
+      voiceMemoUrls: formData.voiceMemoUrls || [],
       trackPurpose: sanitizeString(formData.trackPurpose, 50),
       backingType: Array.isArray(formData.backingType) ? formData.backingType.map((t: string) => sanitizeString(t, 50)).filter(Boolean) : [],
       deliveryDate: sanitizeString(formData.deliveryDate, 50),
@@ -823,18 +604,15 @@ serve(async (req) => {
       additionalLinks: validateUrl(formData.additionalLinks),
     };
     
-    // Use sanitized data for user info if not obtained from auth
     userEmail = userEmail || sanitizedData.email;
     userName = userName || sanitizedData.name;
     
-    // --- 3. Calculate Cost ---
     const calculatedCost = calculateRequestCost({
       trackType: sanitizedData.trackType,
       backingType: sanitizedData.backingType,
       additionalServices: sanitizedData.additionalServices,
     });
 
-    // --- 4. Dropbox Automation ---
     const dropboxConfig = {
       dropboxAppKey: Deno.env.get('DROPBOX_APP_KEY') || '',
       dropboxAppSecret: Deno.env.get('DROPBOX_APP_SECRET') || '',
@@ -846,7 +624,6 @@ serve(async (req) => {
 
     const dropboxResult = await handleDropboxAutomation(dropboxConfig, sanitizedData, userName || sanitizedData.email);
     
-    // --- 5. Database Insertion ---
     const guestAccessToken = crypto.randomUUID();
     
     const { data: insertedRecords, error: insertError } = await supabaseAdmin
@@ -863,8 +640,9 @@ serve(async (req) => {
           different_key: sanitizedData.differentKey,
           key_for_track: sanitizedData.keyForTrack,
           youtube_link: sanitizedData.youtubeLink,
-          voice_memo: sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl,
-          sheet_music_url: sanitizedData.sheetMusicUrl,
+          voice_memo: sanitizedData.voiceMemo,
+          sheet_music_urls: sanitizedData.sheetMusicUrls,
+          voice_memo_urls: sanitizedData.voiceMemoUrls,
           track_purpose: sanitizedData.trackPurpose,
           backing_type: sanitizedData.backingType,
           delivery_date: sanitizedData.deliveryDate,
@@ -880,231 +658,57 @@ serve(async (req) => {
       ])
       .select();
 
-    if (insertError) {
-      console.error('Supabase insert error:', insertError);
-      throw insertError;
-    }
+    if (insertError) throw insertError;
 
-    const newRequestData = insertedRecords && insertedRecords.length > 0 ? insertedRecords[0] : null;
-    if (!newRequestData) {
-        throw new Error('Failed to insert backing request into database: No data returned after insert.');
-    }
-
-    // --- 6. Email Notifications ---
+    const newRequestData = insertedRecords[0];
     const sendEmailUrl = `${supabaseUrl}/functions/v1/send-email`;
     const clientTrackViewLink = `${siteUrl}/track/${newRequestData.id}?token=${guestAccessToken}`;
     const clientFirstName = userName ? userName.split(' ')[0] : 'there';
 
-    // --- Client Confirmation Email ---
-    const clientEmailSubject = `Confirmation: Your Backing Track Request for "${sanitizedData.songTitle}"`;
+    // Client Email
     const clientEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <h2 style="color: #1C0357;">Request Submitted Successfully!</h2>
-        
         <p>Hi ${clientFirstName},</p>
-        <p>Thank you for submitting your custom piano backing track request for <strong>"${sanitizedData.songTitle}"</strong> from <strong>${sanitizedData.musicalOrArtist}</strong>.</p>
-        <p>We have received your request and will be in touch within <strong>24-48 hours</strong> with a quote and estimated delivery date.</p>
-        
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #1C0357;">Your Request Details:</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Song Title: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songTitle}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Musical/Artist: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.musicalOrArtist}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Category: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.category?.replace('-', ' ') || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Track Type: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.trackType?.replace('-', ' ') || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music Key: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.songKey || 'N/A'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Different Key Required: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.differentKey || 'No'}</td></tr>
-            ${sanitizedData.differentKey === 'Yes' ? `<tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Requested Key: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.keyForTrack || 'N/A'}</td></tr>` : ''}
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Backing Type(s): </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') || 'Not specified'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Delivery Date: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.deliveryDate ? new Date(sanitizedData.deliveryDate).toLocaleDateString() : 'Not specified'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Services: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee; text-transform: capitalize;">${sanitizedData.additionalServices.map((service: string) => service.replace('-', ' ')).join(', ') || 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">YouTube Link: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.youtubeLink ? `<a href="${sanitizedData.youtubeLink}">${sanitizedData.youtubeLink}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Additional Links: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.additionalLinks ? `<a href="${sanitizedData.additionalLinks}">${sanitizedData.additionalLinks}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Voice Memo Link: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl ? `<a href="${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}">${sanitizedData.voiceMemo || sanitizedData.voiceMemoFileUrl}</a>` : 'None'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Sheet Music: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.sheetMusicUrl ? `<a href="${sanitizedData.sheetMusicUrl}">View Sheet Music</a>` : 'Not provided'}</td></tr>
-            <tr><td style="padding: 5px 0; border-bottom: 1px solid #eee; font-weight: bold;">Phone Number: </td><td style="padding: 5px 0; border-bottom: 1px solid #eee;">${sanitizedData.phone || 'Not provided'}</td></tr>
-            <tr><td style="padding: 5px 0; font-weight: bold;">Special Requests: </td><td style="padding: 5px 0;">${sanitizedData.specialRequests || 'None'}</td></tr>
-          </table>
-        </div>
-
-        <p style="margin-top: 20px;">You can view the status of your request and any updates on your personal track page:</p>
+        <p>Thank you for submitting your custom piano backing track request for <strong>"${sanitizedData.songTitle}"</strong>.</p>
+        <p>We have received your request and will be in touch within <strong>24-48 hours</strong> with a quote.</p>
         <p style="text-align: center; margin: 30px 0;">
-          <a href="${clientTrackViewLink}" 
-             style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+          <a href="${clientTrackViewLink}" style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
             View Your Track Details
           </a>
         </p>
-        <p style="font-size: 12px; color: #666;">
-          This email was automatically generated by Piano Backings by Daniele.
-        </p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
     `;
     
-    try {
-      console.log('Sending client confirmation email...');
-      const clientEmailResponse = await fetch(sendEmailUrl, { // Store response
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`
-        },
-        body: JSON.stringify({
-          to: sanitizedData.email,
-          subject: clientEmailSubject,
-          html: clientEmailHtml,
-          senderEmail: defaultSenderEmail
-        })
-      });
-      const clientEmailResult = await clientEmailResponse.json(); // Parse response
-      console.log('Client confirmation email sent successfully. Response:', clientEmailResult); // Log response
-    } catch (emailError: any) {
-      console.error('Failed to send client confirmation email:', emailError);
-      // Log notification failure to database
-      await supabaseAdmin
-        .from('notifications')
-        .insert([
-          {
-            recipient: sanitizedData.email,
-            sender: defaultSenderEmail,
-            subject: clientEmailSubject,
-            content: clientEmailHtml,
-            status: 'failed',
-            type: 'client_confirmation',
-            error_message: emailError.message
-          }
-        ]);
-    }
+    await fetch(sendEmailUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+      body: JSON.stringify({ to: sanitizedData.email, subject: `Confirmation: Backing Track Request for "${sanitizedData.songTitle}"`, html: clientEmailHtml, senderEmail: defaultSenderEmail })
+    });
 
-    // --- Admin Notification Email ---
-    const adminEmailSubject = `New Backing Track Request: ${sanitizedData.songTitle}`;
+    // Admin Email
     const adminEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1C0357;">New Backing Track Request</h2>
-        
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #1C0357;">Request Details</h3>
-          
-          <div style="margin-bottom: 10px;">
-            <strong>Song:</strong> ${sanitizedData.songTitle}<br>
-            <strong>Musical/Artist:</strong> ${sanitizedData.musicalOrArtist}<br>
-            <strong>Requested by:</strong> ${userName || 'N/A'} (${sanitizedData.email})<br>
-            ${sanitizedData.phone ? `<strong>Phone:</strong> ${sanitizedData.phone}<br>` : ''}
-            <strong>Submitted:</strong> ${new Date().toLocaleString()}
-          </div>
-          
-          <div style="margin-bottom: 10px;">
-            <strong>Backing Type(s):</strong> ${sanitizedData.backingType.map((type: string) => type.replace('-', ' ')).join(', ') || 'Not specified'}<br>
-            <strong>Track Purpose:</strong> ${sanitizedData.trackPurpose?.replace('-', ' ') || 'Not specified'}<br>
-            ${sanitizedData.deliveryDate ? `<strong>Delivery Date:</strong> ${new Date(sanitizedData.deliveryDate).toLocaleDateString()}<br>` : ''}
-          </div>
-          
-          ${sanitizedData.additionalServices && sanitizedData.additionalServices.length > 0 ? `
-            <div style="margin-bottom: 10px;">
-              <strong>Additional Services:</strong><br>
-              <ul style="margin: 5px 0; padding-left: 20px;">
-                ${sanitizedData.additionalServices.map((service: string) => `<li>${service.replace('-', ' ')}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          
-          ${sanitizedData.specialRequests ? `
-            <div style="margin-bottom: 10px;">
-              <strong>Special Requests:</strong><br>
-              <p style="margin: 5px 0; padding: 10px; background-color: white; border-radius: 3px;">${sanitizedData.specialRequests}</p>
-            </div>
-          ` : ''}
-
-          ${sanitizedData.additionalLinks ? `
-            <div style="margin-bottom: 10px;">
-              <strong>Additional Links:</strong><br>
-              <p style="margin: 5px 0; padding: 10px; background-color: white; border-radius: 3px;"><a href="${sanitizedData.additionalLinks}">${sanitizedData.additionalLinks}</a></p>
-            </div>
-          ` : ''}
-        </div>
-        
+        <p><strong>Song:</strong> ${sanitizedData.songTitle}<br><strong>Musical/Artist:</strong> ${sanitizedData.musicalOrArtist}<br><strong>Requested by:</strong> ${userName || 'N/A'} (${sanitizedData.email})</p>
         <div style="margin: 20px 0;">
-          <a href="${siteUrl}/admin/request/${newRequestData.id}" 
-             style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          <a href="${siteUrl}/admin/request/${newRequestData.id}" style="background-color: #1C0357; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
             View Request Details
           </a>
         </div>
-        
-        <p style="font-size: 12px; color: #666;">
-          This email was automatically generated by Piano Backings by Daniele.
-        </p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
     `;
     
-    try {
-      console.log('Sending admin notification email...');
-      console.log('Admin notification recipients:', adminNotificationRecipients); // Log recipients
-      const adminEmailResponse = await fetch(sendEmailUrl, { // Store response
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`
-        },
-        body: JSON.stringify({
-          to: adminNotificationRecipients, // Use the array of admin emails
-          subject: adminEmailSubject,
-          html: adminEmailHtml,
-          senderEmail: defaultSenderEmail
-        })
-      });
-      const adminEmailResult = await adminEmailResponse.json(); // Parse response
-      console.log('Admin notification email sent successfully. Response:', adminEmailResult); // Log response
-    } catch (emailError: any) {
-      console.error('Failed to send admin notification email:', emailError);
-      // Log notification failure to database
-      await supabaseAdmin
-        .from('notifications')
-        .insert([
-          {
-            recipient: adminNotificationRecipients.join(', '), // Store all recipients
-            sender: defaultSenderEmail,
-            subject: adminEmailSubject,
-            content: adminEmailHtml,
-            status: 'failed',
-            type: 'admin_notification',
-            error_message: emailError.message
-          }
-        ]);
-    }
+    await fetch(sendEmailUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+      body: JSON.stringify({ to: adminNotificationRecipients, subject: `New Backing Track Request: ${sanitizedData.songTitle}`, html: adminEmailHtml, senderEmail: defaultSenderEmail })
+    });
 
-    // --- 7. Final Response ---
-    const responsePayload: any = { 
-      message: 'Request submitted successfully',
-      insertedRequest: newRequestData,
-      guestAccessToken,
-      calculatedCost,
-      ...dropboxResult,
-    };
-
-    return new Response(
-      JSON.stringify(responsePayload),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        },
-        status: 200
-      }
-    );
+    return new Response(JSON.stringify({ message: 'Request submitted successfully', ...dropboxResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
   } catch (error: any) {
-    console.error('Error in create-backing-request function (top level catch):', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message 
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        },
-        status: 500
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
   }
 });
