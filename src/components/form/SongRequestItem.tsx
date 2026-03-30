@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -196,4 +196,5 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
   );
 };
 
-export default SongRequestItem;
+// Use memo to prevent unnecessary re-renders of individual song items
+export default memo(SongRequestItem);

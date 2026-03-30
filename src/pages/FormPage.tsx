@@ -80,13 +80,12 @@ const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: nu
   </div>
 );
 
-const SectionWrapper = React.forwardRef<HTMLDivElement, { children: React.ReactNode, isComplete?: boolean }>(({ children, isComplete }, ref) => (
+// Simplified SectionWrapper to avoid ref-related infinite loops with Radix UI components
+const SectionWrapper = ({ children, isComplete }: { children: React.ReactNode, isComplete?: boolean }) => (
   <motion.div 
     initial={{ opacity: 0, y: 10 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
+    animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4 }}
-    ref={ref}
     className={cn(
       "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8",
       isComplete ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -94,9 +93,7 @@ const SectionWrapper = React.forwardRef<HTMLDivElement, { children: React.ReactN
   >
     {children}
   </motion.div>
-));
-
-SectionWrapper.displayName = "SectionWrapper";
+);
 
 const categoryDescriptions: Record<string, string> = {
   "Practice Tracks": "For practice in your own time. Not intended for self-tapes; track quality is not the primary focus.",
@@ -177,11 +174,6 @@ const FormPage = () => {
     };
   }, [globalData.trackType, globalData.backingType, globalData.additionalServices, songs.length]);
 
-  const contactRef = useRef<HTMLDivElement>(null);
-  const songsRef = useRef<HTMLDivElement>(null);
-  const qualityRef = useRef<HTMLDivElement>(null);
-  const backingRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -203,8 +195,12 @@ const FormPage = () => {
 
   const handleGlobalInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setGlobalData(prev => ({ ...prev, [name]: value }));
+    setGlobalData(prev => {
+      if (prev[name as keyof typeof prev] === value) return prev;
+      return { ...prev, [name]: value };
+    });
     setErrors(prev => {
+      if (!prev[name]) return prev;
       const newErrors = { ...prev };
       delete newErrors[name];
       return newErrors;
@@ -212,8 +208,12 @@ const FormPage = () => {
   }, []);
 
   const handleGlobalSelectChange = useCallback((name: string, value: string) => {
-    setGlobalData(prev => ({ ...prev, [name]: value }));
+    setGlobalData(prev => {
+      if (prev[name as keyof typeof prev] === value) return prev;
+      return { ...prev, [name]: value };
+    });
     setErrors(prev => {
+      if (!prev[name]) return prev;
       const newErrors = { ...prev };
       delete newErrors[name];
       return newErrors;
@@ -221,7 +221,12 @@ const FormPage = () => {
   }, []);
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
-    setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+    setSongs(prev => {
+      const song = prev.find(s => s.id === id);
+      if (song && song[field as keyof SongData] === value) return prev;
+      return prev.map(s => s.id === id ? { ...s, [field]: value } : s);
+    });
+    
     setErrors(prev => {
       if (!prev.songs?.[id]?.[field]) return prev;
       
