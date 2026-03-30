@@ -53,6 +53,7 @@ import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 import VisuallyHidden from '@/components/VisuallyHidden';
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
+import BulkUploadDialog from '@/components/form/BulkUploadDialog'; // Import new dialog
 
 const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: number, title: string, subtitle?: string, required?: boolean, isComplete?: boolean }) => (
   <div className="mb-6">
@@ -116,6 +117,10 @@ const FormPage = () => {
   const [loadingTrackCount, setLoadingTrackCount] = useState(true);
   const [isDraggingBulk, setIsDraggingBulk] = useState(false);
   
+  // Bulk upload dialog state
+  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
+  const [pendingBulkFiles, setPendingBulkFiles] = useState<File[]>([]);
+
   const { 
     isHolidayModeActive, 
     holidayReturnDate, 
@@ -255,7 +260,6 @@ const FormPage = () => {
   const handleBulkPdfUpload = (files: File[] | null) => {
     if (!files || files.length === 0) return;
 
-    // Filter for PDFs only
     const pdfFiles = files.filter(f => f.type === 'application/pdf');
     if (pdfFiles.length === 0) {
       toast({ title: "Invalid Files", description: "Please upload PDF files only.", variant: "destructive" });
@@ -276,24 +280,35 @@ const FormPage = () => {
       return;
     }
 
-    const confirmBulk = window.confirm(`You've uploaded ${pdfFiles.length} PDFs. Are these for ${pdfFiles.length} different songs? (Click Cancel if they are all for the same song)`);
+    // For multiple files, open the custom dialog
+    setPendingBulkFiles(pdfFiles);
+    setBulkUploadDialogOpen(true);
+  };
 
-    if (confirmBulk) {
-      const newSongs = pdfFiles.map(file => createNewSong({ 
-        sheetMusicFiles: [file],
-        songTitle: file.name.replace(/\.[^/.]+$/, "")
-      }));
-      
-      if (songs.length === 1 && songs[0].songTitle === '' && songs[0].sheetMusicFiles.length === 0) {
-        setSongs(newSongs);
-      } else {
-        setSongs(prev => [...prev, ...newSongs]);
-      }
-      toast({ title: "Songs Created", description: `Created ${pdfFiles.length} song slots from your PDFs.` });
+  const handleConfirmDifferentSongs = () => {
+    const newSongs = pendingBulkFiles.map(file => createNewSong({ 
+      sheetMusicFiles: [file],
+      songTitle: file.name.replace(/\.[^/.]+$/, "")
+    }));
+    
+    if (songs.length === 1 && songs[0].songTitle === '' && songs[0].sheetMusicFiles.length === 0) {
+      setSongs(newSongs);
     } else {
-      const firstSong = songs[0];
-      handleSongChange(firstSong.id, 'sheetMusicFiles', [...firstSong.sheetMusicFiles, ...pdfFiles]);
+      setSongs(prev => [...prev, ...newSongs]);
     }
+    
+    toast({ title: "Songs Created", description: `Created ${pendingBulkFiles.length} song slots from your PDFs.` });
+    setBulkUploadDialogOpen(false);
+    setPendingBulkFiles([]);
+  };
+
+  const handleConfirmSameSong = () => {
+    const firstSong = songs[0];
+    handleSongChange(firstSong.id, 'sheetMusicFiles', [...firstSong.sheetMusicFiles, ...pendingBulkFiles]);
+    
+    toast({ title: "Files Attached", description: `Attached ${pendingBulkFiles.length} files to the first song.` });
+    setBulkUploadDialogOpen(false);
+    setPendingBulkFiles([]);
   };
 
   const handleDragOverBulk = (e: React.DragEvent) => {
@@ -374,7 +389,6 @@ const FormPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Process each song
       for (const song of songs) {
         const sheetMusicUrls = [];
         for (const file of song.sheetMusicFiles) {
@@ -490,6 +504,14 @@ const FormPage = () => {
         isOpen={showAuthOverlay} 
         onClose={() => setShowAuthOverlay(false)} 
         redirectPath={location.pathname}
+      />
+
+      <BulkUploadDialog 
+        isOpen={bulkUploadDialogOpen}
+        onClose={() => { setBulkUploadDialogOpen(false); setPendingBulkFiles([]); }}
+        fileCount={pendingBulkFiles.length}
+        onConfirmDifferent={handleConfirmDifferentSongs}
+        onConfirmSame={handleConfirmSameSong}
       />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
