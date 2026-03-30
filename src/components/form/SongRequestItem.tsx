@@ -158,6 +158,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           icon={FileText}
           accept=".pdf"
           multiple
+          value={data.sheetMusicFiles} // Pass the files from state
           onChange={(files) => onChange(data.id, 'sheetMusicFiles', files || [])}
           error={errors.sheetMusicFiles}
           note="Upload the score for this specific song."

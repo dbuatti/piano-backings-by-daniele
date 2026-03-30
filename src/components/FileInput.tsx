@@ -1,4 +1,6 @@
-import React, { useRef, useState } from 'react';
+"use client";
+
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LucideIcon, UploadCloud, FileText, FileAudio, XCircle, Files } from 'lucide-react';
@@ -9,6 +11,7 @@ interface FileInputProps {
   icon: LucideIcon;
   accept?: string;
   onChange: (files: File[] | null) => void;
+  value?: File[]; // Added value prop to make it controlled
   required?: boolean;
   className?: string;
   note?: string;
@@ -16,7 +19,7 @@ interface FileInputProps {
   disabled?: boolean;
   name?: string;
   autocomplete?: string;
-  multiple?: boolean; // Added multiple prop
+  multiple?: boolean;
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -25,6 +28,7 @@ const FileInput: React.FC<FileInputProps> = ({
   icon: Icon,
   accept,
   onChange,
+  value,
   required = false,
   className,
   note,
@@ -32,11 +36,14 @@ const FileInput: React.FC<FileInputProps> = ({
   disabled = false,
   name,
   autocomplete = "off",
-  multiple = false, // Default to false
+  multiple = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [internalFiles, setInternalFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Use prop value if provided, otherwise use internal state
+  const files = value !== undefined ? value : internalFiles;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement> | FileList) => {
     if (disabled) return;
@@ -50,13 +57,16 @@ const FileInput: React.FC<FileInputProps> = ({
 
     if (multiple) {
       const newFiles = [...files, ...selectedFiles];
-      setFiles(newFiles);
+      if (value === undefined) setInternalFiles(newFiles);
       onChange(newFiles);
     } else {
       const newFile = selectedFiles[0] ? [selectedFiles[0]] : [];
-      setFiles(newFile);
+      if (value === undefined) setInternalFiles(newFile);
       onChange(newFile.length > 0 ? newFile : null);
     }
+    
+    // Reset input so same file can be selected again if removed
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleButtonClick = () => {
@@ -69,12 +79,8 @@ const FileInput: React.FC<FileInputProps> = ({
     if (disabled) return;
     
     const newFiles = files.filter((_, i) => i !== index);
-    setFiles(newFiles);
+    if (value === undefined) setInternalFiles(newFiles);
     onChange(newFiles.length > 0 ? newFiles : null);
-    
-    if (newFiles.length === 0 && fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -156,7 +162,7 @@ const FileInput: React.FC<FileInputProps> = ({
           <div className="w-full space-y-2">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-green-700 uppercase tracking-wider flex items-center">
-                <Files className="mr-1 h-3 w-3" /> {files.length} File{files.length > 1 ? 's' : ''} Selected
+                <Files className="mr-1 h-3 w-3" /> {files.length} File{files.length > 1 ? 's' : ''} Attached
               </span>
               <Button 
                 type="button" 
