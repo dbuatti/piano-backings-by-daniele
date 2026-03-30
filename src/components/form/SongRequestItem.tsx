@@ -42,7 +42,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
   onChange,
   onRemove,
   isOnlySong,
-  errors = {}
+  errors
 }) => {
   return (
     <motion.div
@@ -50,7 +50,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        "p-6 rounded-3xl border-2 transition-all duration-300 mb-6 relative group",
+        "p-6 rounded-3xl border-2 mb-6 relative group",
         isOnlySong ? "bg-white border-gray-100" : "bg-gray-50/50 border-[#D1AAF2]/30 shadow-sm"
       )}
     >
@@ -87,7 +87,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
             value={data.songTitle}
             onChange={(e) => onChange(data.id, 'songTitle', e.target.value)}
             placeholder="e.g. Defying Gravity"
-            className={cn("h-11 rounded-xl border-gray-200", errors.songTitle && "border-red-300 bg-red-50")}
+            className={cn("h-11 rounded-xl border-gray-200", errors?.songTitle && "border-red-300 bg-red-50")}
           />
         </div>
         <div className="space-y-2">
@@ -96,7 +96,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
             value={data.musicalOrArtist}
             onChange={(e) => onChange(data.id, 'musicalOrArtist', e.target.value)}
             placeholder="e.g. Wicked"
-            className={cn("h-11 rounded-xl border-gray-200", errors.musicalOrArtist && "border-red-300 bg-red-50")}
+            className={cn("h-11 rounded-xl border-gray-200", errors?.musicalOrArtist && "border-red-300 bg-red-50")}
           />
         </div>
       </div>
@@ -104,8 +104,8 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key</Label>
-          <Select value={data.songKey} onValueChange={(v) => onChange(data.id, 'songKey', v)}>
-            <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors.songKey && "border-red-300 bg-red-50")}>
+          <Select value={data.songKey || undefined} onValueChange={(v) => onChange(data.id, 'songKey', v)}>
+            <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")}>
               <SelectValue placeholder="Select key" />
             </SelectTrigger>
             <SelectContent>
@@ -131,6 +131,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       <AnimatePresence>
         {data.differentKey === 'Yes' && (
           <motion.div
+            key="transposition"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -138,7 +139,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           >
             <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
-              <Select value={data.keyForTrack} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
+              <Select value={data.keyForTrack || undefined} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
                 <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
                   <SelectValue placeholder="Select target key" />
                 </SelectTrigger>
@@ -158,9 +159,9 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           icon={FileText}
           accept=".pdf"
           multiple
-          value={data.sheetMusicFiles} // Pass the files from state
+          value={data.sheetMusicFiles}
           onChange={(files) => onChange(data.id, 'sheetMusicFiles', files || [])}
-          error={errors.sheetMusicFiles}
+          error={errors?.sheetMusicFiles}
           note="Upload the score for this specific song."
         />
 

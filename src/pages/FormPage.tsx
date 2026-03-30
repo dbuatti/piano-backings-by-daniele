@@ -75,7 +75,7 @@ const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: nu
           backgroundColor: isComplete ? "#22c55e" : "#1C0357",
           scale: isComplete ? [1, 1.2, 1] : 1
         }}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
       >
         {isComplete ? <Check size={16} strokeWidth={3} /> : num}
       </motion.span>
@@ -98,7 +98,7 @@ const SectionWrapper = React.forwardRef<HTMLDivElement, { children: React.ReactN
     transition={{ duration: 0.4 }}
     ref={ref}
     className={cn(
-      "bg-white rounded-3xl p-6 md:p-8 shadow-sm border transition-all duration-300 mb-8",
+      "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8",
       isComplete ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
     )}
   >
@@ -218,22 +218,38 @@ const FormPage = () => {
   const handleGlobalInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setGlobalData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
   }, []);
 
   const handleGlobalSelectChange = useCallback((name: string, value: string) => {
     setGlobalData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: '' }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
   }, []);
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
     setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
     setErrors(prev => {
-      const newErrors = { ...prev };
-      if (newErrors.songs?.[id]) {
-        delete newErrors.songs[id][field];
+      if (!prev.songs?.[id]?.[field]) return prev;
+      
+      const newSongsErrors = { ...prev.songs };
+      const newSongErrors = { ...newSongsErrors[id] };
+      delete newSongErrors[field];
+      
+      if (Object.keys(newSongErrors).length === 0) {
+        delete newSongsErrors[id];
+      } else {
+        newSongsErrors[id] = newSongErrors;
       }
-      return newErrors;
+      
+      return { ...prev, songs: newSongsErrors };
     });
   }, []);
 
@@ -466,7 +482,7 @@ const FormPage = () => {
 
         <AnimatePresence mode="wait">
           {isSubmittedSuccessfully ? (
-            <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
+            <Card key="success" className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
               <div className="bg-green-500 py-12 text-center text-white">
                 <CheckCircle className="h-20 w-20 mx-auto mb-6" />
                 <h2 className="text-3xl font-bold">Submission Successful!</h2>
@@ -480,7 +496,7 @@ const FormPage = () => {
               </CardContent>
             </Card>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <form key="form" onSubmit={handleSubmit}>
               {isHolidayModeActive && (
                 <Alert className="mb-8 border-none bg-[#F538BC]/10 text-[#F538BC] rounded-2xl py-4">
                   <Plane className="h-5 w-5" />
