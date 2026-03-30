@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from '@tanstack/react-query';
 
 import DashboardTabContent from '@/components/admin/DashboardTabContent';
-import UsersAndDataTabContent from '@/components/admin/UsersAndDataTabContent';
-import SystemAndConfigTabContent from '@/components/admin/SystemAndConfigTabContent';
-import DevelopmentAndTestingTabContent from '@/components/admin/DevelopmentAndTestingTabContent';
+import OperationsTabContent from '@/components/admin/OperationsTabContent';
+import SystemTabContent from '@/components/admin/SystemTabContent';
+import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import ProductManager from '@/components/admin/ProductManager';
@@ -22,12 +22,13 @@ import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDial
 
 import { 
   LayoutDashboard, 
-  Users, 
   Settings, 
   Wrench, 
   ShoppingCart, 
   PlusCircle, 
-  RefreshCw 
+  RefreshCw,
+  MessageSquare,
+  Activity
 } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -45,7 +46,7 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const activeTab = searchParams.get('tab') || 'dashboard';
+  const activeTab = searchParams.get('tab') || 'requests';
   const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
 
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
@@ -63,7 +64,7 @@ const AdminDashboard = () => {
   const { 
     updateStatus, updatePaymentStatus, shareTrack, 
     deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests,
-    updateCost, updateInternalNotes // Destructure new action
+    updateCost, updateInternalNotes
   } = useRequestActions(requests, setRequests);
 
   const {
@@ -178,24 +179,29 @@ const AdminDashboard = () => {
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-5 bg-white p-1 rounded-2xl shadow-sm border h-14">
-            <TabsTrigger value="dashboard" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
-              <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+            <TabsTrigger value="requests" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+              <LayoutDashboard className="mr-2 h-4 w-4" /> Requests
             </TabsTrigger>
-            <TabsTrigger value="shop-management" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+            <TabsTrigger value="shop" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
               <ShoppingCart className="mr-2 h-4 w-4" /> Shop
             </TabsTrigger>
-            <TabsTrigger value="users-data" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
-              <Users className="mr-2 h-4 w-4" /> Data
+            <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative">
+              <MessageSquare className="mr-2 h-4 w-4" /> Feedback
+              {unreadIssueReports > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                  {unreadIssueReports}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="system-config" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
-              <Settings className="mr-2 h-4 w-4" /> Config
+            <TabsTrigger value="operations" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+              <Settings className="mr-2 h-4 w-4" /> Operations
             </TabsTrigger>
-            <TabsTrigger value="dev-testing" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
-              <Wrench className="mr-2 h-4 w-4" /> Dev
+            <TabsTrigger value="system" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+              <Activity className="mr-2 h-4 w-4" /> System
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
+          <TabsContent value="requests">
             <DashboardTabContent
               requests={requests}
               loading={loading}
@@ -221,7 +227,7 @@ const AdminDashboard = () => {
               totalCost={totalCost}
               updateStatus={updateStatus}
               updatePaymentStatus={updatePaymentStatus}
-              updateInternalNotes={updateInternalNotes} // Pass new action
+              updateInternalNotes={updateInternalNotes}
               uploadTrack={handleUploadTrack}
               shareTrack={shareTrack}
               openEmailGenerator={(req) => navigate(`/email-generator/${req.id}`)}
@@ -234,7 +240,7 @@ const AdminDashboard = () => {
             />
           </TabsContent>
 
-          <TabsContent value="shop-management" className="mt-6 space-y-8">
+          <TabsContent value="shop" className="mt-6 space-y-8">
             <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as any)} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
                 <TabsTrigger value="create" className="rounded-lg font-bold"><PlusCircle className="mr-2 h-4 w-4" /> Create Product</TabsTrigger>
@@ -246,9 +252,17 @@ const AdminDashboard = () => {
             <ProductManager />
           </TabsContent>
 
-          <TabsContent value="users-data" className="mt-6"><UsersAndDataTabContent /></TabsContent>
-          <TabsContent value="system-config" className="mt-6"><SystemAndConfigTabContent /></TabsContent>
-          <TabsContent value="dev-testing" className="mt-6"><DevelopmentAndTestingTabContent /></TabsContent>
+          <TabsContent value="feedback" className="mt-6">
+            <IssueReportsTabContent />
+          </TabsContent>
+
+          <TabsContent value="operations" className="mt-6">
+            <OperationsTabContent />
+          </TabsContent>
+
+          <TabsContent value="system" className="mt-6">
+            <SystemTabContent />
+          </TabsContent>
         </Tabs>
         
         <UploadTrackDialog
