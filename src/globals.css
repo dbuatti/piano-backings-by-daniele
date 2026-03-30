@@ -32,7 +32,7 @@
     --input: 260 100% 16%; /* 1A0058 */
     --ring: 308 85% 59%; /* F538BC - Ring color matching accent */
 
-    --radius: 0.5rem;
+    --radius: 1rem; /* Increased for a more modern, friendly feel */
   }
 
   .dark {
@@ -71,7 +71,43 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-foreground;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full border-4 border-solid border-transparent bg-clip-padding;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .btn-primary-gradient {
+    @apply bg-gradient-to-r from-[#1C0357] to-[#2D0B8C] text-white shadow-lg hover:shadow-xl transition-all duration-300;
   }
 }
