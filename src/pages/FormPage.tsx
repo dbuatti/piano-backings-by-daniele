@@ -110,10 +110,10 @@ const FormPage = () => {
   const sectionStatus = useMemo(() => ({
     contact: !!globalData.email && globalData.email === globalData.confirmEmail && !!globalData.name,
     songs: songs.length > 0 && songs.every(s => !!s.songTitle && !!s.musicalOrArtist && !!s.songKey && s.sheetMusicFiles.length > 0),
-    quality: !!globalData.trackType && !!globalData.category,
+    quality: !!globalData.trackType && !!globalData.category && !!globalData.deliveryDate,
     backing: globalData.backingType.length > 0,
     final: consentChecked
-  }), [globalData.email, globalData.confirmEmail, globalData.name, globalData.trackType, globalData.category, globalData.backingType, songs, consentChecked]);
+  }), [globalData.email, globalData.confirmEmail, globalData.name, globalData.trackType, globalData.category, globalData.deliveryDate, globalData.backingType, songs, consentChecked]);
 
   const progress = useMemo(() => {
     const completedCount = Object.values(sectionStatus).filter(Boolean).length;
@@ -323,6 +323,7 @@ const FormPage = () => {
     if (globalData.email !== globalData.confirmEmail) { newErrors.confirmEmail = 'Mismatch'; hasErrors = true; }
     if (!globalData.name) { newErrors.name = 'Required'; hasErrors = true; }
     if (!globalData.category) { newErrors.category = 'Required'; hasErrors = true; }
+    if (!globalData.deliveryDate) { newErrors.deliveryDate = 'Required'; hasErrors = true; }
     if (!globalData.trackType) { newErrors.trackType = 'Required'; hasErrors = true; }
     if (globalData.backingType.length === 0) { newErrors.backingType = 'Required'; hasErrors = true; }
     if (!consentChecked) { newErrors.consent = 'Required'; hasErrors = true; }
@@ -342,7 +343,7 @@ const FormPage = () => {
     if (hasErrors) {
       setErrors(newErrors);
       setIsSubmitting(false);
-      toast({ title: "Missing Information", variant: "destructive" });
+      toast({ title: "Missing Information", variant: "destructive", description: "Please fill out all required fields." });
       return;
     }
 
@@ -502,8 +503,8 @@ const FormPage = () => {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Full Name</Label>
-                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Full Name <span className="text-red-500">*</span></Label>
+                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} className={cn("h-12 rounded-xl", errors.name && "border-red-300 bg-red-50")} disabled={isSubmitting || !!user} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Phone (Optional)</Label>
@@ -512,12 +513,13 @@ const FormPage = () => {
               </div>
               <div className="grid md:grid-cols-2 gap-6 mt-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</Label>
-                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Email <span className="text-red-500">*</span></Label>
+                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} className={cn("h-12 rounded-xl", errors.email && "border-red-300 bg-red-50")} disabled={isSubmitting || !!user} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Confirm Email</Label>
-                  <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Confirm Email <span className="text-red-500">*</span></Label>
+                  <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} className={cn("h-12 rounded-xl", errors.confirmEmail && "border-red-300 bg-red-50")} disabled={isSubmitting || !!user} />
+                  {errors.confirmEmail && <p className="text-xs text-red-500 font-bold mt-1 uppercase">Emails do not match.</p>}
                 </div>
               </div>
             </div>
@@ -575,20 +577,36 @@ const FormPage = () => {
                     {sectionStatus.quality ? <Check size={16} strokeWidth={3} /> : 3}
                   </span>
                   <div className="flex flex-col">
-                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Order Quality</h2>
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Order Details</h2>
                   </div>
                 </div>
               </div>
               <div className="space-y-8">
-                <div className="space-y-4">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                  <Select onValueChange={handleCategoryChange} value={globalData.category || ""}>
-                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
-                    <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category <span className="text-red-500">*</span></Label>
+                    <Select onValueChange={handleCategoryChange} value={globalData.category || ""}>
+                      <SelectTrigger className={cn("h-12 rounded-xl", errors.category ? "border-red-500 bg-red-50" : "")}><SelectValue placeholder="Select a category" /></SelectTrigger>
+                      <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-4">
+                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center">
+                      Due Date <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input 
+                      type="date" 
+                      name="deliveryDate" 
+                      value={globalData.deliveryDate} 
+                      onChange={handleGlobalInputChange} 
+                      min={new Date().toISOString().split('T')[0]}
+                      className={cn("h-12 rounded-xl border-gray-200", errors.deliveryDate ? "border-red-300 bg-red-50" : "")} 
+                    />
+                    {errors.deliveryDate && <p className="text-xs text-red-500 font-bold mt-1 uppercase">Please select a due date.</p>}
+                  </div>
                 </div>
                 <div className="space-y-4">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality</Label>
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality <span className="text-red-500">*</span></Label>
                   <RadioGroup value={globalData.trackType || ""} onValueChange={handleTrackTypeChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                       { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10' },
@@ -596,7 +614,7 @@ const FormPage = () => {
                       { id: 'polished', icon: Sparkles, label: 'Polished', price: '$15-35' }
                     ].map((item) => (
                       <Label key={item.id} htmlFor={item.id} className="cursor-pointer">
-                        <div className={cn("relative flex flex-col p-6 rounded-3xl border-2 transition-all text-center h-full", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white")}>
+                        <div className={cn("relative flex flex-col p-6 rounded-3xl border-2 transition-all text-center h-full", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : (errors.trackType ? "border-red-300 bg-red-50" : "border-gray-100 bg-white"))}>
                           <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
                           <item.icon className="h-6 w-6 mx-auto mb-4" />
                           <span className="font-black text-[#1C0357]">{item.label}</span>
@@ -691,9 +709,9 @@ const FormPage = () => {
               "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
               sectionStatus.final ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
             )}>
-              <div className={cn("p-6 rounded-3xl border-2 flex gap-4 transition-colors duration-300", consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white")}>
+              <div className={cn("p-6 rounded-3xl border-2 flex gap-4 transition-colors duration-300", consentChecked ? "border-green-100 bg-green-50/30" : (errors.consent ? "border-red-300 bg-red-50" : "border-gray-100 bg-white"))}>
                 <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} />
-                <Label htmlFor="consent" className="text-sm text-gray-600 font-bold">I understand that unless I purchase Exclusive Ownership, Piano Backings by Daniele retains rights to sell or share these tracks.</Label>
+                <Label htmlFor="consent" className="text-sm text-gray-600 font-bold">I understand that unless I purchase Exclusive Ownership, Piano Backings by Daniele retains rights to sell or share these tracks. <span className="text-red-500">*</span></Label>
               </div>
               <div className="mt-12 flex flex-col items-center gap-8">
                 <Button type="submit" disabled={isSubmitting || isHolidayModeActive || !consentChecked} className="h-20 rounded-full bg-[#1C0357] px-16 text-xl font-black shadow-2xl">
