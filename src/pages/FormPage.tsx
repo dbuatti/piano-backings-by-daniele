@@ -34,7 +34,8 @@ import {
   Check,
   Plus,
   UploadCloud,
-  Calculator
+  Calculator,
+  Layers
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -100,6 +101,12 @@ const categoryDescriptions: Record<string, string> = {
   "Performance Tracks": "High-quality tracks suitable for live use in concerts or public performances."
 };
 
+const backingTypeOptions = [
+  { id: 'full-song', label: 'Full Song', desc: 'The complete song as written.' },
+  { id: 'audition-cut', label: 'Audition Cut', desc: 'A specific 16/32 bar cut or selection.' },
+  { id: 'note-bash', label: 'Melody Note Bash', desc: 'Plonked melody notes to help you learn.' }
+];
+
 const FormPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -163,7 +170,7 @@ const FormPage = () => {
     contact: !!globalData.email && globalData.email === globalData.confirmEmail && !!globalData.name,
     songs: songs.length > 0 && songs.every(s => !!s.songTitle && !!s.musicalOrArtist && !!s.songKey && s.sheetMusicFiles.length > 0),
     quality: !!globalData.trackType && !!globalData.category,
-    services: globalData.backingType.length > 0,
+    backing: globalData.backingType.length > 0,
     final: consentChecked
   }), [globalData, songs, consentChecked]);
 
@@ -190,7 +197,7 @@ const FormPage = () => {
   const contactRef = useRef<HTMLDivElement>(null);
   const songsRef = useRef<HTMLDivElement>(null);
   const qualityRef = useRef<HTMLDivElement>(null);
-  const servicesRef = useRef<HTMLDivElement>(null);
+  const backingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -561,8 +568,42 @@ const FormPage = () => {
                 </div>
               </SectionWrapper>
 
+              <SectionWrapper ref={backingRef} isComplete={sectionStatus.backing}>
+                <SectionHeader num={4} title="Backing Type" subtitle="What exactly do you need recorded?" isComplete={sectionStatus.backing} required />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {backingTypeOptions.map((option) => (
+                    <div 
+                      key={option.id}
+                      className={cn(
+                        "relative p-6 rounded-3xl border-2 transition-all cursor-pointer group",
+                        globalData.backingType.includes(option.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
+                      )}
+                      onClick={() => handleBackingTypeChange(option.id, !globalData.backingType.includes(option.id))}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                          globalData.backingType.includes(option.id) ? "bg-[#1C0357] text-white" : "bg-gray-50 text-gray-400 group-hover:bg-[#D1AAF2]/20 group-hover:text-[#1C0357]"
+                        )}>
+                          <Layers size={20} />
+                        </div>
+                        <Checkbox 
+                          id={`backing-${option.id}`} 
+                          checked={globalData.backingType.includes(option.id)}
+                          onCheckedChange={(v) => handleBackingTypeChange(option.id, v)}
+                          className="rounded-full border-gray-300 data-[state=checked]:bg-[#1C0357]"
+                        />
+                      </div>
+                      <h3 className="font-black text-[#1C0357] mb-1">{option.label}</h3>
+                      <p className="text-xs text-gray-500 font-medium leading-relaxed">{option.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
+              </SectionWrapper>
+
               <SectionWrapper isComplete={progress > 80}>
-                <SectionHeader num={4} title="Price Summary" isComplete={progress > 80} />
+                <SectionHeader num={5} title="Price Summary" isComplete={progress > 80} />
                 <div className="bg-[#1C0357] text-white rounded-3xl p-8 shadow-xl text-center">
                   <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.3em] mb-2">Total Estimated Cost</p>
                   <div className="flex items-baseline justify-center gap-1">
@@ -570,6 +611,7 @@ const FormPage = () => {
                     <span className="text-6xl font-black tracking-tighter text-white">{priceBreakdown.total.toFixed(2)}</span>
                     <span className="text-sm font-bold text-white/40 ml-2">AUD</span>
                   </div>
+                  <p className="text-[10px] text-white/40 mt-4 font-bold uppercase tracking-widest">Final price confirmed via email after review</p>
                 </div>
               </SectionWrapper>
 
