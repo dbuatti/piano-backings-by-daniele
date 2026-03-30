@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+"use client";
+
+import React, { useState } from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, History, ClipboardList, Mail, ArrowLeft } from 'lucide-react';
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import VisuallyHidden from '@/components/VisuallyHidden';
 
 interface AuthOverlayProps {
   isOpen: boolean;
@@ -16,27 +17,6 @@ interface AuthOverlayProps {
 const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath }) => {
   const [showEmailAuth, setShowEmailAuth] = useState(false);
   
-  // Use a ref for onClose to prevent the useEffect from re-running 
-  // and creating a loop if onClose isn't stable in the parent.
-  const onCloseRef = useRef(onClose);
-  
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && event === 'SIGNED_IN') {
-        // Only trigger close on actual sign-in event
-        onCloseRef.current();
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []); // Empty dependency array ensures this only runs once on mount
-
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -46,10 +26,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
     });
   };
 
-  const handleEmailSignInClick = () => {
-    setShowEmailAuth(true);
-  };
-
   const handleContinueAnonymously = () => {
     onClose();
   };
@@ -57,17 +33,15 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg p-0 rounded-2xl bg-white shadow-xl border-none overflow-hidden">
-        {!showEmailAuth ? (
-          <VisuallyHidden.Root>
-            <DialogTitle>Authentication Options</DialogTitle>
-            <DialogDescription>Choose how you want to sign in or continue.</DialogDescription>
-          </VisuallyHidden.Root>
-        ) : (
-          <DialogHeader className="text-center mb-6">
-            <DialogTitle className="text-2xl font-bold text-[#1C0357]">Sign In with Email</DialogTitle>
-            <DialogDescription className="text-gray-500 text-sm">Enter your email to sign in or create an account.</DialogDescription>
-          </DialogHeader>
-        )}
+        {/* Consistent Header structure to prevent focus loops during state swaps */}
+        <DialogHeader className={showEmailAuth ? "p-6 text-center" : "sr-only"}>
+          <DialogTitle className="text-2xl font-bold text-[#1C0357]">
+            {showEmailAuth ? "Sign In with Email" : "Authentication Options"}
+          </DialogTitle>
+          <DialogDescription className="text-gray-500 text-sm">
+            {showEmailAuth ? "Enter your email to sign in or create an account." : "Choose how you want to sign in or continue."}
+          </DialogDescription>
+        </DialogHeader>
 
         {!showEmailAuth ? (
           <div className="flex flex-col items-center">
@@ -121,7 +95,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
               </div>
 
               <button
-                onClick={handleEmailSignInClick}
+                onClick={() => setShowEmailAuth(true)}
                 className="w-full bg-[#1C0357] text-white py-3 px-6 rounded-full flex items-center justify-center space-x-2 font-semibold shadow-md hover:bg-[#2a067a] transition-colors mb-4"
               >
                 <Mail className="w-5 h-5" />
@@ -137,7 +111,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
             </div>
           </div>
         ) : (
-          <div className="p-6">
+          <div className="p-6 pt-0">
             <button onClick={() => setShowEmailAuth(false)} className="mb-4 text-gray-500 hover:text-gray-700 flex items-center space-x-2">
               <ArrowLeft size={16} />
               <span>Back</span>
@@ -165,22 +139,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
                     password_input_placeholder: 'Your password',
                     button_label: 'Sign Up',
                     link_text: 'Don\'t have an account? Sign Up',
-                  },
-                  forgotten_password: {
-                    email_label: 'Email Address',
-                    email_input_placeholder: 'Your email address',
-                    button_label: 'Send Reset Instructions',
-                    link_text: 'Forgot your password?',
-                  },
-                  update_password: {
-                    password_label: 'New Password',
-                    password_input_placeholder: 'Your new password',
-                    button_label: 'Update Password',
-                  },
-                  magic_link: {
-                    email_input_placeholder: 'Your email address',
-                    button_label: 'Send Magic Link',
-                    link_text: 'Send a magic link email',
                   },
                 },
               }}

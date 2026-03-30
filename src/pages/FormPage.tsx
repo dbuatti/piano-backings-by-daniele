@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -131,7 +131,10 @@ const FormPage = () => {
     };
   }, [globalData.trackType, globalData.backingType, globalData.additionalServices, songs.length]);
 
+  // Centralized Auth Logic to prevent loops
   useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -144,12 +147,33 @@ const FormPage = () => {
         }));
         setShowAuthOverlay(false);
       } else {
-        // Delay showing overlay to allow page to load
-        const timer = setTimeout(() => setShowAuthOverlay(true), 1000);
-        return () => clearTimeout(timer);
+        // Only show overlay if we're not already logged in
+        timer = setTimeout(() => setShowAuthOverlay(true), 1500);
       }
     };
+    
     checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && event === 'SIGNED_IN') {
+        setUser(session.user);
+        setGlobalData(prev => ({
+          ...prev,
+          email: session.user.email || '',
+          confirmEmail: session.user.email || '',
+          name: session.user.user_metadata?.full_name || ''
+        }));
+        setShowAuthOverlay(false);
+        if (timer) clearTimeout(timer);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleGlobalInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
