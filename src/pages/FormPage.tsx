@@ -56,45 +56,6 @@ const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
   ...initialData
 });
 
-const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: number, title: string, subtitle?: string, required?: boolean, isComplete?: boolean }) => (
-  <div className="mb-6">
-    <div className="flex items-center gap-3">
-      <motion.span 
-        initial={false}
-        animate={{ 
-          backgroundColor: isComplete ? "#22c55e" : "#1C0357",
-          scale: isComplete ? [1, 1.2, 1] : 1
-        }}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
-      >
-        {isComplete ? <Check size={16} strokeWidth={3} /> : num}
-      </motion.span>
-      <div className="flex flex-col">
-        <h2 className="text-xl font-bold text-[#1C0357] tracking-tight flex items-center">
-          {title} 
-          {required && !isComplete && <span className="text-red-500 ml-1 text-xs font-normal">(Required)</span>}
-        </h2>
-        {subtitle && <p className="text-sm text-gray-500 font-medium">{subtitle}</p>}
-      </div>
-    </div>
-  </div>
-);
-
-// Simplified SectionWrapper to avoid ref-related infinite loops with Radix UI components
-const SectionWrapper = ({ children, isComplete }: { children: React.ReactNode, isComplete?: boolean }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4 }}
-    className={cn(
-      "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8",
-      isComplete ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-    )}
-  >
-    {children}
-  </motion.div>
-);
-
 const categoryDescriptions: Record<string, string> = {
   "Practice Tracks": "For practice in your own time. Not intended for self-tapes; track quality is not the primary focus.",
   "Audition Tracks": "Tracks intended for use in professional self-tapes and recordings.",
@@ -302,19 +263,29 @@ const FormPage = () => {
 
   const handleBackingTypeChange = useCallback((type: string, checked: boolean | 'indeterminate') => {
     setGlobalData(prev => {
-      const newBackingTypes = checked
+      const isChecked = checked === true || checked === 'indeterminate';
+      const newBackingTypes = isChecked
         ? [...prev.backingType, type]
         : prev.backingType.filter(t => t !== type);
-      return { ...prev, backingType: newBackingTypes };
+      
+      // Deduplicate
+      const uniqueBackingTypes = [...new Set(newBackingTypes)];
+      
+      if (JSON.stringify(prev.backingType) === JSON.stringify(uniqueBackingTypes)) return prev;
+      return { ...prev, backingType: uniqueBackingTypes };
     });
   }, []);
 
   const handleAdditionalServiceChange = useCallback((service: string, checked: boolean | 'indeterminate') => {
     setGlobalData(prev => {
-      const newServices = checked
+      const isChecked = checked === true || checked === 'indeterminate';
+      const newServices = isChecked
         ? [...prev.additionalServices, service]
         : prev.additionalServices.filter(s => s !== service);
-      return { ...prev, additionalServices: newServices };
+      
+      const uniqueServices = [...new Set(newServices)];
+      if (JSON.stringify(prev.additionalServices) === JSON.stringify(uniqueServices)) return prev;
+      return { ...prev, additionalServices: uniqueServices };
     });
   }, []);
 
@@ -447,7 +418,10 @@ const FormPage = () => {
         <Header />
         {!isSubmittedSuccessfully && (
           <div className="w-full h-1.5 bg-gray-100 overflow-hidden">
-            <motion.div className="h-full bg-[#F538BC]" initial={{ width: 0 }} animate={{ width: `${progress}%` }} />
+            <div 
+              className="h-full bg-[#F538BC] transition-all duration-500 ease-out" 
+              style={{ width: `${progress}%` }} 
+            />
           </div>
         )}
       </div>
@@ -488,8 +462,24 @@ const FormPage = () => {
                 </Alert>
               )}
 
-              <SectionWrapper isComplete={sectionStatus.contact}>
-                <SectionHeader num={1} title="Contact Details" isComplete={sectionStatus.contact} />
+              {/* Section 1: Contact Details */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                sectionStatus.contact ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                      sectionStatus.contact ? "bg-green-500" : "bg-[#1C0357]"
+                    )}>
+                      {sectionStatus.contact ? <Check size={16} strokeWidth={3} /> : 1}
+                    </span>
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Contact Details</h2>
+                    </div>
+                  </div>
+                </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Full Name</Label>
@@ -510,10 +500,26 @@ const FormPage = () => {
                     <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
                   </div>
                 </div>
-              </SectionWrapper>
+              </div>
 
-              <SectionWrapper isComplete={sectionStatus.songs}>
-                <SectionHeader num={2} title="Song Details" isComplete={sectionStatus.songs} />
+              {/* Section 2: Song Details */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                sectionStatus.songs ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                      sectionStatus.songs ? "bg-green-500" : "bg-[#1C0357]"
+                    )}>
+                      {sectionStatus.songs ? <Check size={16} strokeWidth={3} /> : 2}
+                    </span>
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Song Details</h2>
+                    </div>
+                  </div>
+                </div>
                 <div 
                   className={cn("mb-8 p-6 rounded-[32px] border-2 border-dashed transition-all", isDraggingBulk ? "bg-[#F538BC]/10 border-[#F538BC]" : "bg-[#D1AAF2]/10 border-[#D1AAF2]/30")}
                   onDragOver={(e) => { e.preventDefault(); setIsDraggingBulk(true); }}
@@ -535,10 +541,26 @@ const FormPage = () => {
                 <Button type="button" onClick={addSong} className="w-full h-16 mt-4 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black text-lg flex items-center justify-center gap-2">
                   <Plus size={24} /> Add Another Song
                 </Button>
-              </SectionWrapper>
+              </div>
 
-              <SectionWrapper isComplete={sectionStatus.quality}>
-                <SectionHeader num={3} title="Order Quality" isComplete={sectionStatus.quality} />
+              {/* Section 3: Order Quality */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                sectionStatus.quality ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                      sectionStatus.quality ? "bg-green-500" : "bg-[#1C0357]"
+                    )}>
+                      {sectionStatus.quality ? <Check size={16} strokeWidth={3} /> : 3}
+                    </span>
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Order Quality</h2>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-8">
                   <div className="space-y-4">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
@@ -567,10 +589,27 @@ const FormPage = () => {
                     </RadioGroup>
                   </div>
                 </div>
-              </SectionWrapper>
+              </div>
 
-              <SectionWrapper isComplete={sectionStatus.backing}>
-                <SectionHeader num={4} title="Backing Type" subtitle="What exactly do you need recorded?" isComplete={sectionStatus.backing} required />
+              {/* Section 4: Backing Type */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                sectionStatus.backing ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                      sectionStatus.backing ? "bg-green-500" : "bg-[#1C0357]"
+                    )}>
+                      {sectionStatus.backing ? <Check size={16} strokeWidth={3} /> : 4}
+                    </span>
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Backing Type</h2>
+                      <p className="text-sm text-gray-500 font-medium">What exactly do you need recorded?</p>
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {backingTypeOptions.map((option) => (
                     <div 
@@ -602,10 +641,26 @@ const FormPage = () => {
                   ))}
                 </div>
                 {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
-              </SectionWrapper>
+              </div>
 
-              <SectionWrapper isComplete={progress > 80}>
-                <SectionHeader num={5} title="Price Summary" isComplete={progress > 80} />
+              {/* Section 5: Price Summary */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                progress > 80 ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                      progress > 80 ? "bg-green-500" : "bg-[#1C0357]"
+                    )}>
+                      {progress > 80 ? <Check size={16} strokeWidth={3} /> : 5}
+                    </span>
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Price Summary</h2>
+                    </div>
+                  </div>
+                </div>
                 <div className="bg-[#1C0357] text-white rounded-3xl p-8 shadow-xl text-center">
                   <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.3em] mb-2">Total Estimated Cost</p>
                   <div className="flex items-baseline justify-center gap-1">
@@ -615,10 +670,14 @@ const FormPage = () => {
                   </div>
                   <p className="text-[10px] text-white/40 mt-4 font-bold uppercase tracking-widest">Final price confirmed via email after review</p>
                 </div>
-              </SectionWrapper>
+              </div>
 
-              <SectionWrapper isComplete={sectionStatus.final}>
-                <div className={cn("p-6 rounded-3xl border-2 flex gap-4", consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white")}>
+              {/* Section 6: Final Consent */}
+              <div className={cn(
+                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+                sectionStatus.final ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+              )}>
+                <div className={cn("p-6 rounded-3xl border-2 flex gap-4 transition-colors duration-300", consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white")}>
                   <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} />
                   <Label htmlFor="consent" className="text-sm text-gray-600 font-bold">I understand that unless I purchase Exclusive Ownership, Piano Backings by Daniele retains rights to sell or share these tracks.</Label>
                 </div>
@@ -627,7 +686,7 @@ const FormPage = () => {
                     {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Send My Request"}
                   </Button>
                 </div>
-              </SectionWrapper>
+              </div>
             </form>
           )}
         </AnimatePresence>
