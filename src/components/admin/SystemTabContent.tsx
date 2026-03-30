@@ -5,7 +5,7 @@ import DevelopmentAndTestingTabContent from './DevelopmentAndTestingTabContent';
 
 const SystemTabContent: React.FC = () => {
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-8 py-6">
       <DropboxMonitor />
       <RequestOwnershipTabContent />
       <div className="border-t pt-8">

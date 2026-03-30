@@ -33,7 +33,7 @@ interface DashboardTabContentProps {
   totalCost: number;
   updateStatus: (id: string, status: any) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  updateInternalNotes: (id: string, notes: string) => void; // Added
+  updateInternalNotes: (id: string, notes: string) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -70,7 +70,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   totalCost,
   updateStatus,
   updatePaymentStatus,
-  updateInternalNotes, // Destructure
+  updateInternalNotes,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -81,7 +81,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   updateCost,
 }) => {
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full py-8">
       <AdminStatsCards 
         requests={requests} 
         totalIssueReports={totalIssueReports}
@@ -141,7 +141,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
           updateStatus={updateStatus}
           updatePaymentStatus={updatePaymentStatus}
           updateCost={updateCost}
-          updateInternalNotes={updateInternalNotes} // Pass through
+          updateInternalNotes={updateInternalNotes}
           uploadTrack={uploadTrack}
           shareTrack={shareTrack}
           openEmailGenerator={openEmailGenerator}

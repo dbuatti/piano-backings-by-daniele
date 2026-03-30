@@ -87,7 +87,7 @@ const IssueReportsTabContent: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full py-6">
       {isError && <ErrorDisplay error={fetchError} title="Failed to Load Reports" />}
 
       <Card className="shadow-lg border-none rounded-[40px] overflow-hidden">
