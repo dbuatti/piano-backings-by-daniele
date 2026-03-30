@@ -23,7 +23,6 @@ interface AppSettingsState {
 }
 
 export const useAppSettings = (): AppSettingsState => {
-  const { toast } = useToast();
   const [state, setState] = useState<AppSettingsState>({
     isHolidayModeActive: false,
     holidayReturnDate: null,
@@ -50,14 +49,10 @@ export const useAppSettings = (): AppSettingsState => {
         const parsedDate = new Date(data.holiday_mode_return_date);
         if (!isNaN(parsedDate.getTime())) {
           returnDate = parsedDate;
-          // If holiday mode is active but the return date is in the past, deactivate it
+          // If holiday mode is active but the return date is in the past, treat it as inactive in the UI
+          // We don't update the DB here to avoid a real-time loop
           if (activeHoliday && isPast(returnDate)) {
             activeHoliday = false;
-            // Optionally, update the database to reflect this change
-            await supabase
-              .from('app_settings')
-              .update({ is_holiday_mode_active: false })
-              .eq('id', data.id); 
           }
         }
       }
@@ -73,7 +68,6 @@ export const useAppSettings = (): AppSettingsState => {
     } catch (err: any) {
       console.error('Error fetching app settings:', err);
       setState(prev => ({ ...prev, isLoading: false, error: err }));
-      // Don't show toast for public users, only log
     }
   }, []);
 
@@ -88,7 +82,6 @@ export const useAppSettings = (): AppSettingsState => {
         { event: 'UPDATE', schema: 'public', table: 'app_settings' },
         (payload) => {
           console.log('Realtime update for app_settings:', payload);
-          // Refetch settings to ensure we have the latest state
           fetchSettings();
         }
       )

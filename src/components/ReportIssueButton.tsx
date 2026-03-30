@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Zod schema for form validation
 const issueReportSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   issue_description: z.string().min(10, { message: "Description must be at least 10 characters." }),
@@ -37,9 +36,9 @@ const ReportIssueButton: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams(); // Initialize useSearchParams
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lastHandledOpenFeedback = useRef<string | null>(null);
 
-  // Initialize react-hook-form
   const form = useForm<IssueReportFormValues>({
     resolver: zodResolver(issueReportSchema),
     defaultValues: {
@@ -48,7 +47,6 @@ const ReportIssueButton: React.FC = () => {
     },
   });
 
-  // Fetch user session to pre-fill email and get user_id
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -63,27 +61,29 @@ const ReportIssueButton: React.FC = () => {
       }
     };
     fetchUser();
-  }, [form, dialogOpen]); // Refetch when dialog opens to ensure latest session
+  }, [form, dialogOpen]);
 
-  // NEW: Check for query parameter to open dialog automatically
   useEffect(() => {
-    if (searchParams.get('openFeedback') === 'true') {
+    const openFeedback = searchParams.get('openFeedback');
+    if (openFeedback === 'true' && lastHandledOpenFeedback.current !== 'true') {
+      lastHandledOpenFeedback.current = 'true';
       setDialogOpen(true);
-      // Remove the query parameter to prevent reopening on refresh
-      setSearchParams(prev => {
-        prev.delete('openFeedback');
-        return prev;
-      }, { replace: true }); // Use replace to avoid adding to history
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('openFeedback');
+        return params;
+      }, { replace: true });
+    } else if (openFeedback !== 'true') {
+      lastHandledOpenFeedback.current = openFeedback;
     }
-  }, [searchParams, setSearchParams]); // Depend on searchParams and setSearchParams
+  }, [searchParams, setSearchParams]);
 
-  // Mutation for submitting the issue report
   const submitIssueMutation = useMutation({
     mutationFn: async (values: IssueReportFormValues) => {
       const { data, error } = await supabase
         .from('issue_reports')
         .insert({
-          user_id: userId, // Will be null if anonymous
+          user_id: userId,
           email: values.email,
           issue_description: values.issue_description,
           page_url: location.pathname + location.search,
@@ -99,9 +99,9 @@ const ReportIssueButton: React.FC = () => {
         description: "Thank you for your feedback! We'll look into it.",
       });
       setDialogOpen(false);
-      form.reset(); // Reset form fields
-      queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] }); // Invalidate unread count
-      queryClient.invalidateQueries({ queryKey: ['allIssueReports'] }); // Invalidate all reports for admin dashboard
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
+      queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
     },
     onError: (error: any) => {
       toast({
@@ -121,7 +121,6 @@ const ReportIssueButton: React.FC = () => {
       <Button
         onClick={() => setDialogOpen(true)}
         className="fixed bottom-6 right-6 shadow-lg bg-[#F538BC] hover:bg-[#F538BC]/90 text-white z-50 rounded-lg"
-        // Removed size="icon" to allow text
       >
         <MessageSquare className="mr-2 h-5 w-5" />
         Report an Issue
@@ -148,7 +147,7 @@ const ReportIssueButton: React.FC = () => {
                 {...form.register("email")}
                 className="col-span-3"
                 placeholder="your.email@example.com"
-                disabled={!!userEmail} // Disable if pre-filled by logged-in user
+                disabled={!!userEmail}
               />
               {form.formState.errors.email && (
                 <p className="col-span-4 text-right text-sm text-red-500">

@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { MadeWithDyad } from "@/components/made-with-dyad";
@@ -15,7 +14,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
-  Clock, XCircle, List, Search, Image // Imported Image icon
+  Clock, XCircle, List
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import {
@@ -26,15 +25,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getSafeBackingTypes } from '@/utils/helpers'; // Import getSafeBackingTypes
-// Removed Table imports as the table is being replaced
+import { getSafeBackingTypes } from '@/utils/helpers';
 
 interface TrackInfo {
   url: string;
   caption: string;
 }
 
-// New interface for Product (updated to use track_urls)
 export interface Product {
   id: string;
   title: string;
@@ -42,9 +39,9 @@ export interface Product {
   price: number;
   currency: string;
   image_url?: string | null;
-  track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
+  track_urls?: TrackInfo[] | null;
   is_active: boolean;
-  vocal_ranges?: string[]; // New field for vocal ranges
+  vocal_ranges?: string[];
 }
 
 const EmailGenerator = () => {
@@ -55,20 +52,17 @@ const EmailGenerator = () => {
   const [isSending, setIsSending] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', html: '' });
   const [recipientEmails, setRecipientEmails] = useState('');
-  const [lastAutoPopulatedEmail, setLastAutoPopulatedEmail] = useState(''); // NEW: State to track last auto-populated email
+  const [lastAutoPopulatedEmail, setLastAutoPopulatedEmail] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom'>('completion-payment');
   
   const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
   const [loadingAllRequests, setLoadingAllRequests] = useState(true);
-  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]); // Will now hold at most one ID
-  // Removed displayedRequest state, will derive it
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // New state for products
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loadingAllProducts, setLoadingAllProducts] = useState(true);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null); // New state for selected product
-  // Removed displayedProduct state, will derive it
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
-  // Derived states for the currently displayed request/product
   const displayedRequest = useMemo(() => {
     return allRequests.find(req => selectedRequestIds.includes(req.id!)) || null;
   }, [selectedRequestIds, allRequests]);
@@ -77,22 +71,26 @@ const EmailGenerator = () => {
     return allProducts.find(prod => prod.id === selectedProductId) || null;
   }, [selectedProductId, allProducts]);
 
-  const handleGenerateEmail = useCallback(async (selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom', itemToUse?: BackingRequest | Product) => {
+  const handleGenerateEmail = useCallback(async (
+    selectedTemplateType: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom', 
+    itemToUse?: BackingRequest | Product,
+    emailToUse?: string
+  ) => {
     setIsGenerating(true);
     try {
       let result;
+      const currentRecipientEmail = emailToUse !== undefined ? emailToUse : recipientEmails;
       
       if (selectedTemplateType === 'product-delivery') {
         const productForGeneration = itemToUse as Product || displayedProduct;
         if (!productForGeneration) {
-          throw new Error("No product data available to generate email. Please select a product from the dropdown.");
+          throw new Error("No product data available to generate email.");
         }
-        // Use recipientEmails as customerEmail for generation on this page
-        result = await generateProductDeliveryEmail(productForGeneration, recipientEmails || 'test@example.com');
+        result = await generateProductDeliveryEmail(productForGeneration, currentRecipientEmail || 'test@example.com');
       } else {
         const requestForGeneration = itemToUse as BackingRequest || displayedRequest;
         if (!requestForGeneration) {
-          throw new Error("No request data available to generate email. Please select a request from the dropdown.");
+          throw new Error("No request data available to generate email.");
         }
         const requestWithCost: BackingRequest = {
           ...requestForGeneration,
@@ -107,21 +105,12 @@ const EmailGenerator = () => {
           result = await generateCompletionAndPaymentEmail(requestWithCost);
         } else {
           setEmailData({ subject: '', html: '' });
-          toast({
-            title: "Custom Template Selected",
-            description: "You can now write your custom email.",
-          });
           setIsGenerating(false);
           return;
         }
       }
       
       setEmailData({ subject: result.subject, html: result.html });
-      
-      toast({
-        title: "Email Generated",
-        description: "Your email copy has been generated successfully.",
-      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -131,26 +120,20 @@ const EmailGenerator = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [displayedRequest, displayedProduct, templateType, toast, recipientEmails]);
+  }, [displayedRequest, displayedProduct, toast, recipientEmails]);
 
-  // Fetch all requests on component mount
   useEffect(() => {
     const fetchAllRequests = async () => {
       setLoadingAllRequests(true);
       try {
         const { data, error } = await supabase
           .from('backing_requests')
-          .select('*, track_urls') // Select track_urls to infer email status
+          .select('*, track_urls')
           .order('created_at', { ascending: false });
-        
         if (error) throw error;
         setAllRequests(data || []);
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: `Failed to fetch all requests: ${error.message}`,
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message, variant: "destructive" });
       } finally {
         setLoadingAllRequests(false);
       }
@@ -164,15 +147,10 @@ const EmailGenerator = () => {
           .from('products')
           .select('*')
           .order('created_at', { ascending: false });
-        
         if (error) throw error;
         setAllProducts(data || []);
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: `Failed to fetch all products: ${error.message}`, // Fix: changed err.message to error.message
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: error.message, variant: "destructive" });
       } finally {
         setLoadingAllProducts(false);
       }
@@ -180,7 +158,6 @@ const EmailGenerator = () => {
     fetchAllProducts();
   }, [toast]);
 
-  // Handle initial load from URL parameter or location state for requests
   useEffect(() => {
     if (allRequests.length > 0) {
       let initialRequest: BackingRequest | null = null;
@@ -191,12 +168,11 @@ const EmailGenerator = () => {
       }
 
       if (initialRequest) {
-        setSelectedRequestIds([initialRequest.id!]); // Select only this one
+        setSelectedRequestIds([initialRequest.id!]);
       }
     }
   }, [id, location.state, allRequests]);
 
-  // Update recipient emails and trigger email generation when selected item changes
   useEffect(() => {
     let newAutoPopulatedEmail = '';
     if (templateType === 'product-delivery') {
@@ -205,49 +181,31 @@ const EmailGenerator = () => {
       newAutoPopulatedEmail = displayedRequest ? displayedRequest.email : '';
     }
 
-    // Only update recipientEmails if it hasn't been manually changed
-    // OR if a new item is selected and the current recipientEmails matches the *previous* auto-populated value
-    // This ensures manual edits persist unless a new item is selected AND the field was previously auto-populated
     if (recipientEmails === lastAutoPopulatedEmail || recipientEmails === '') {
       setRecipientEmails(newAutoPopulatedEmail);
     }
-    setLastAutoPopulatedEmail(newAutoPopulatedEmail); // Always update this tracker to reflect what *should* be auto-populated
+    setLastAutoPopulatedEmail(newAutoPopulatedEmail);
 
-    // Trigger email generation
     if (templateType === 'product-delivery') {
       if (displayedProduct) {
-        handleGenerateEmail(templateType, displayedProduct);
+        handleGenerateEmail(templateType, displayedProduct, newAutoPopulatedEmail);
       } else {
         setEmailData({ subject: '', html: '' });
       }
     } else {
       if (displayedRequest) {
-        handleGenerateEmail(templateType, displayedRequest);
+        handleGenerateEmail(templateType, displayedRequest, newAutoPopulatedEmail);
       } else if (selectedRequestIds.length === 0 && !id) {
         setEmailData({ subject: '', html: '' });
       }
     }
-  }, [selectedRequestIds, selectedProductId, allRequests, allProducts, id, templateType, handleGenerateEmail, displayedRequest, displayedProduct]); // Removed lastAutoPopulatedEmail from dependencies to prevent infinite loop
+  }, [selectedRequestIds, selectedProductId, templateType, displayedRequest, displayedProduct]);
 
   const handleSendEmail = async () => {
     setIsSending(true);
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('You must be logged in to send emails');
-      }
-
-      if (!recipientEmails.trim()) {
-        throw new Error('Recipient email address(es) cannot be empty.');
-      }
-      if (!emailData.subject.trim()) {
-        throw new Error('Email subject cannot be empty.');
-      }
-      if (!emailData.html.trim()) {
-        throw new Error('Email body cannot be empty.');
-      }
+      if (!session) throw new Error('You must be logged in to send emails');
 
       const response = await fetch(
         `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`,
@@ -267,29 +225,16 @@ const EmailGenerator = () => {
       );
       
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to send email');
       
-      if (!response.ok) {
-        throw new Error(result.error || `Failed to send email: ${response.status} ${response.statusText}`);
-      }
-      
-      toast({
-        title: "Email Sent",
-        description: `Email sent to ${recipientEmails}`,
-      });
-      
+      toast({ title: "Email Sent", description: `Email sent to ${recipientEmails}` });
       setEmailData({ subject: '', html: '' });
       setRecipientEmails('');
       setShowPreview(false);
-      setTemplateType('completion-payment');
-      setSelectedRequestIds([]); // Clear selected requests after sending
-      setSelectedProductId(null); // Clear selected product after sending
+      setSelectedRequestIds([]);
+      setSelectedProductId(null);
     } catch (err: any) {
-      console.error('Error sending email:', err);
-      toast({
-        title: "Error",
-        description: `Failed to send email: ${err.message}`,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setIsSending(false);
     }
@@ -297,13 +242,10 @@ const EmailGenerator = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied to Clipboard",
-      description: "Text copied to clipboard successfully.",
-    });
+    toast({ title: "Copied to Clipboard" });
   };
 
-  const getStatusBadge = (status: string | undefined) => { // status can be undefined
+  const getStatusBadge = (status: string | undefined) => {
     switch (status) {
       case 'completed':
         return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
@@ -319,20 +261,18 @@ const EmailGenerator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
           <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests and product deliveries</p>
         </div>
         
-        {/* New: Top-level dropdown for selecting a request or product */}
         <div className="mb-6">
           <Label htmlFor="template-type" className="text-lg font-semibold text-[#1C0357] flex items-center mb-2">
             <List className="mr-2 h-5 w-5" />
             Select Template Type
           </Label>
-          <Select onValueChange={(value: 'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom') => setTemplateType(value)} value={templateType}>
+          <Select onValueChange={(value: any) => setTemplateType(value)} value={templateType}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select an email template" />
             </SelectTrigger>
@@ -354,41 +294,18 @@ const EmailGenerator = () => {
             </Label>
             <Select
               value={displayedRequest?.id || ''}
-              onValueChange={(requestId) => {
-                const selected = allRequests.find(req => req.id === requestId);
-                setSelectedRequestIds(selected ? [selected.id!] : []);
-              }}
+              onValueChange={(requestId) => setSelectedRequestIds([requestId])}
               disabled={loadingAllRequests}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={loadingAllRequests ? "Loading requests..." : "Select a request to generate email for"} />
+                <SelectValue placeholder={loadingAllRequests ? "Loading requests..." : "Select a request"} />
               </SelectTrigger>
               <SelectContent>
-                {allRequests.length === 0 && !loadingAllRequests ? (
-                  <SelectItem value="no-requests" disabled>No requests found</SelectItem>
-                ) : (
-                  allRequests.map((request) => (
-                    <SelectItem key={request.id} value={request.id!}>
-                      <div className="flex items-center justify-between w-full">
-                        <span className="flex-1 truncate">
-                          {request.song_title} ({request.name || request.email})
-                        </span>
-                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                          {request.is_paid ? (
-                            <Badge variant="default" className="bg-green-500">PAID</Badge>
-                          ) : (
-                            <Badge variant="destructive">UNPAID</Badge>
-                          )}
-                          {request.track_urls && request.track_urls.length > 0 ? (
-                            <Badge variant="default" className="bg-blue-500">TRACK UPLOADED</Badge>
-                          ) : (
-                            <Badge variant="secondary">NO TRACK</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
+                {allRequests.map((request) => (
+                  <SelectItem key={request.id} value={request.id!}>
+                    {request.song_title} ({request.name || request.email})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -401,49 +318,25 @@ const EmailGenerator = () => {
               Select a Product
             </Label>
             <Select
-              value={displayedProduct?.id || ''}
-              onValueChange={(productId) => {
-                const selected = allProducts.find(prod => prod.id === productId);
-                setSelectedProductId(selected ? selected.id : null);
-              }}
+              value={selectedProductId || ''}
+              onValueChange={(productId) => setSelectedProductId(productId)}
               disabled={loadingAllProducts}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={loadingAllProducts ? "Loading products..." : "Select a product to generate email for"} />
+                <SelectValue placeholder={loadingAllProducts ? "Loading products..." : "Select a product"} />
               </SelectTrigger>
               <SelectContent>
-                {allProducts.length === 0 && !loadingAllProducts ? (
-                  <SelectItem value="no-products" disabled>No products found</SelectItem>
-                ) : (
-                  allProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <span className="flex-1 truncate">
-                          {product.title} ({product.currency} {product.price.toFixed(2)})
-                        </span>
-                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                          {product.track_urls && product.track_urls.length > 0 ? ( // Changed from track_url
-                            <Badge variant="default" className="bg-blue-500">TRACK LINKED</Badge>
-                          ) : (
-                            <Badge variant="destructive">NO TRACK LINK</Badge>
-                          )}
-                          {product.is_active ? (
-                            <Badge variant="default" className="bg-green-500">ACTIVE</Badge>
-                          ) : (
-                            <Badge variant="secondary">INACTIVE</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
+                {allProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.title} ({product.currency} {product.price.toFixed(2)})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> {/* Adjusted grid to 2 columns */}
-          {/* Item Details Card (Left Column) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">
@@ -453,44 +346,15 @@ const EmailGenerator = () => {
             <CardContent>
               {templateType === 'product-delivery' && displayedProduct ? (
                 <div className="space-y-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium flex items-center">
-                      <Music className="mr-2 h-4 w-4 text-gray-600" />
-                      Product: <span className="ml-1 font-bold">{displayedProduct.title}</span>
-                    </div>
-                    <Badge variant={displayedProduct.is_active ? "default" : "secondary"} className={cn(displayedProduct.is_active ? "bg-green-500" : "bg-gray-400")}>
-                      {displayedProduct.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                  <div className="font-medium flex items-center">
+                    <Music className="mr-2 h-4 w-4 text-gray-600" />
+                    Product: <span className="ml-1 font-bold">{displayedProduct.title}</span>
                   </div>
                   <div className="flex items-center">
                     <DollarSign className="mr-2 h-4 w-4 text-gray-600" />
                     Price: <span className="ml-1 font-medium">{displayedProduct.currency} {displayedProduct.price.toFixed(2)}</span>
                   </div>
-                  <div>
-                    <div className="font-medium flex items-center mb-1">
-                      <FileText className="mr-2 h-4 w-4 text-gray-600" />
-                      Description:
-                    </div>
-                    <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedProduct.description}</p>
-                  </div>
-                  {displayedProduct.vocal_ranges && displayedProduct.vocal_ranges.length > 0 && (
-                    <div className="flex items-center">
-                      <Music className="mr-2 h-4 w-4 text-gray-600" />
-                      Vocal Ranges: <span className="ml-1 font-medium">{displayedProduct.vocal_ranges.join(', ')}</span>
-                    </div>
-                  )}
-                  {displayedProduct.track_urls && displayedProduct.track_urls.length > 0 && ( // Changed from track_url
-                    <div className="flex items-center">
-                      <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
-                      Track URL: <a href={displayedProduct.track_urls[0].url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.track_urls[0].url}</a>
-                    </div>
-                  )}
-                  {displayedProduct.image_url && (
-                    <div className="flex items-center">
-                      <Image className="mr-2 h-4 w-4 text-gray-600" />
-                      Image URL: <a href={displayedProduct.image_url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedProduct.image_url}</a>
-                    </div>
-                  )}
+                  <p className="text-gray-700 whitespace-pre-wrap">{displayedProduct.description}</p>
                 </div>
               ) : displayedRequest ? (
                 <div className="space-y-4 text-sm">
@@ -513,31 +377,6 @@ const EmailGenerator = () => {
                     <Calendar className="mr-2 h-4 w-4 text-gray-600" />
                     Submitted: <span className="ml-1 font-medium">{displayedRequest.created_at ? format(new Date(displayedRequest.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
                   </div>
-                  <div className="flex items-center">
-                    <Headphones className="mr-2 h-4 w-4 text-gray-600" />
-                    Type: <span className="ml-1 font-medium capitalize">
-                      {getSafeBackingTypes(displayedRequest.backing_type).map(t => t.replace('-', ' ')).join(', ') || 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <Key className="mr-2 h-4 w-4 text-gray-600" />
-                    Key: <span className="ml-1 font-medium">{displayedRequest.song_key || 'N/A'}</span>
-                  </div>
-                  {displayedRequest.youtube_link && (
-                    <div className="flex items-center">
-                      <LinkIcon className="mr-2 h-4 w-4 text-gray-600" />
-                      YouTube: <a href={displayedRequest.youtube_link} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-600 hover:underline truncate">{displayedRequest.youtube_link}</a>
-                    </div>
-                  )}
-                  {displayedRequest.special_requests && (
-                    <div>
-                      <div className="font-medium flex items-center mb-1">
-                        <FileText className="mr-2 h-4 w-4 text-gray-600" />
-                        Special Requests:
-                      </div>
-                      <p className="ml-6 text-gray-700 whitespace-pre-wrap">{displayedRequest.special_requests}</p>
-                    </div>
-                  )}
                   <div className="pt-4">
                     <Link to={`/admin/request/${displayedRequest.id}`}>
                       <Button variant="outline" className="w-full">
@@ -547,12 +386,11 @@ const EmailGenerator = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Select an item from the dropdown above to view its details.</p>
+                <p className="text-center text-gray-500 py-8">Select an item to view details.</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Generated Email Card (Right Column) */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-[#1C0357]">Generated Email</CardTitle>
@@ -568,7 +406,6 @@ const EmailGenerator = () => {
                     placeholder="client@example.com"
                     className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">This field is automatically populated from the selected item, but you can edit it.</p>
                 </div>
 
                 <div>
@@ -599,9 +436,8 @@ const EmailGenerator = () => {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => handleGenerateEmail(templateType)} // Regenerate current template
+                        onClick={() => handleGenerateEmail(templateType)}
                         disabled={isGenerating || templateType === 'custom' || (!displayedRequest && !displayedProduct)}
-                        className="flex items-center"
                       >
                         {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                         Generate
@@ -610,7 +446,6 @@ const EmailGenerator = () => {
                         variant="outline" 
                         size="sm" 
                         onClick={() => setShowPreview(true)}
-                        className="flex items-center"
                       >
                         <Eye className="w-4 h-4 mr-2" />
                         Preview
@@ -642,7 +477,6 @@ const EmailGenerator = () => {
           </Card>
         </div>
         
-        {/* Email Preview Dialog */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
