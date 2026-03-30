@@ -104,7 +104,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key</Label>
-          <Select value={data.songKey || undefined} onValueChange={(v) => onChange(data.id, 'songKey', v)}>
+          <Select value={data.songKey || ""} onValueChange={(v) => onChange(data.id, 'songKey', v)}>
             <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")}>
               <SelectValue placeholder="Select key" />
             </SelectTrigger>
@@ -139,7 +139,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           >
             <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
               <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
-              <Select value={data.keyForTrack || undefined} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
+              <Select value={data.keyForTrack || ""} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
                 <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
                   <SelectValue placeholder="Select target key" />
                 </SelectTrigger>
@@ -187,6 +187,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
                 placeholder="Dropbox, Drive, etc."
                 className="pl-10 h-11 rounded-xl border-gray-200"
               />
+              <Mic<dyad-write path="src/components/form/SongRequestItem.tsx" description="Completing the SongRequestItem component.">
               <Mic className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
           </div>
