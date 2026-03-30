@@ -114,6 +114,7 @@ const FormPage = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [incompleteTracksCount, setIncompleteTracksCount] = useState<number | null>(null);
   const [loadingTrackCount, setLoadingTrackCount] = useState(true);
+  const [isDraggingBulk, setIsDraggingBulk] = useState(false);
   
   const { 
     isHolidayModeActive, 
@@ -254,38 +255,66 @@ const FormPage = () => {
   const handleBulkPdfUpload = (files: File[] | null) => {
     if (!files || files.length === 0) return;
 
-    if (files.length === 1) {
-      // Just add to the first song if it's empty, or create a new one
+    // Filter for PDFs only
+    const pdfFiles = files.filter(f => f.type === 'application/pdf');
+    if (pdfFiles.length === 0) {
+      toast({ title: "Invalid Files", description: "Please upload PDF files only.", variant: "destructive" });
+      return;
+    }
+
+    if (pdfFiles.length === 1) {
       const firstSong = songs[0];
-      if (firstSong.sheetMusicFiles.length === 0) {
-        handleSongChange(firstSong.id, 'sheetMusicFiles', [files[0]]);
+      if (firstSong.sheetMusicFiles.length === 0 && firstSong.songTitle === '') {
+        handleSongChange(firstSong.id, 'sheetMusicFiles', [pdfFiles[0]]);
+        handleSongChange(firstSong.id, 'songTitle', pdfFiles[0].name.replace(/\.[^/.]+$/, ""));
       } else {
-        setSongs(prev => [...prev, createNewSong({ sheetMusicFiles: [files[0]] })]);
+        setSongs(prev => [...prev, createNewSong({ 
+          sheetMusicFiles: [pdfFiles[0]],
+          songTitle: pdfFiles[0].name.replace(/\.[^/.]+$/, "")
+        })]);
       }
       return;
     }
 
-    // Multiple files logic
-    const confirmBulk = window.confirm(`You've uploaded ${files.length} PDFs. Are these for ${files.length} different songs? (Click Cancel if they are all for the same song)`);
+    const confirmBulk = window.confirm(`You've uploaded ${pdfFiles.length} PDFs. Are these for ${pdfFiles.length} different songs? (Click Cancel if they are all for the same song)`);
 
     if (confirmBulk) {
-      const newSongs = files.map(file => createNewSong({ 
+      const newSongs = pdfFiles.map(file => createNewSong({ 
         sheetMusicFiles: [file],
-        songTitle: file.name.replace(/\.[^/.]+$/, "") // Pre-fill title from filename
+        songTitle: file.name.replace(/\.[^/.]+$/, "")
       }));
       
-      // If the first song was empty, replace it
       if (songs.length === 1 && songs[0].songTitle === '' && songs[0].sheetMusicFiles.length === 0) {
         setSongs(newSongs);
       } else {
         setSongs(prev => [...prev, ...newSongs]);
       }
-      toast({ title: "Songs Created", description: `Created ${files.length} song slots from your PDFs.` });
+      toast({ title: "Songs Created", description: `Created ${pdfFiles.length} song slots from your PDFs.` });
     } else {
-      // Add all to the current/first song
       const firstSong = songs[0];
-      handleSongChange(firstSong.id, 'sheetMusicFiles', [...firstSong.sheetMusicFiles, ...files]);
+      handleSongChange(firstSong.id, 'sheetMusicFiles', [...firstSong.sheetMusicFiles, ...pdfFiles]);
     }
+  };
+
+  const handleDragOverBulk = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingBulk(true);
+  };
+
+  const handleDragLeaveBulk = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingBulk(false);
+  };
+
+  const handleDropBulk = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingBulk(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    handleBulkPdfUpload(files);
   };
 
   const handleBackingTypeChange = (type: string, checked: boolean | 'indeterminate') => {
@@ -584,9 +613,17 @@ const FormPage = () => {
                 <SectionWrapper ref={songsRef} isComplete={sectionStatus.songs}>
                   <SectionHeader num={2} title="Song Details" subtitle="Add one or more songs to your order." isComplete={sectionStatus.songs} />
                   
-                  <div className="mb-8 p-6 bg-[#D1AAF2]/10 rounded-[32px] border-2 border-dashed border-[#D1AAF2]/30">
-                    <div className="flex flex-col items-center text-center">
-                      <UploadCloud className="h-10 w-10 text-[#1C0357] mb-3" />
+                  <div 
+                    className={cn(
+                      "mb-8 p-6 rounded-[32px] border-2 border-dashed transition-all duration-300",
+                      isDraggingBulk ? "bg-[#F538BC]/10 border-[#F538BC] scale-[1.02]" : "bg-[#D1AAF2]/10 border-[#D1AAF2]/30"
+                    )}
+                    onDragOver={handleDragOverBulk}
+                    onDragLeave={handleDragLeaveBulk}
+                    onDrop={handleDropBulk}
+                  >
+                    <div className="flex flex-col items-center text-center pointer-events-none">
+                      <UploadCloud className={cn("h-10 w-10 mb-3 transition-colors", isDraggingBulk ? "text-[#F538BC]" : "text-[#1C0357]")} />
                       <h3 className="text-lg font-black text-[#1C0357] mb-1">Quick Upload</h3>
                       <p className="text-sm text-gray-500 font-medium mb-4">Drag multiple PDFs here to automatically create song slots.</p>
                       <Input 
@@ -600,7 +637,7 @@ const FormPage = () => {
                       <Button 
                         type="button" 
                         variant="outline" 
-                        className="rounded-full border-[#1C0357] text-[#1C0357] font-bold"
+                        className="rounded-full border-[#1C0357] text-[#1C0357] font-bold pointer-events-auto"
                         onClick={() => document.getElementById('bulk-pdf')?.click()}
                       >
                         Select Multiple PDFs
