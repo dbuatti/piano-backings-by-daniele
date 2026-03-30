@@ -1,12 +1,11 @@
 "use client";
 
 import React, { memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Trash2, Music, Key, Youtube, Mic, FileText } from 'lucide-react';
+import { Trash2, Music, Youtube, Mic, FileText } from 'lucide-react';
 import FileInput from "@/components/FileInput";
 import { cn } from "@/lib/utils";
 
@@ -45,12 +44,9 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
   errors
 }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+    <div
       className={cn(
-        "p-6 rounded-3xl border-2 mb-6 relative group",
+        "p-6 rounded-3xl border-2 mb-6 relative group animate-in fade-in zoom-in-95 duration-300",
         isOnlySong ? "bg-white border-gray-100" : "bg-gray-50/50 border-[#D1AAF2]/30 shadow-sm"
       )}
     >
@@ -128,29 +124,21 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
         </div>
       </div>
 
-      <AnimatePresence>
-        {data.differentKey === 'Yes' && (
-          <motion.div
-            key="transposition"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-8 overflow-hidden"
-          >
-            <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
-              <Select value={data.keyForTrack || undefined} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
-                <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
-                  <SelectValue placeholder="Select target key" />
-                </SelectTrigger>
-                <SelectContent>
-                  {keyOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {data.differentKey === 'Yes' && (
+        <div className="mb-8 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
+            <Select value={data.keyForTrack || undefined} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
+              <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
+                <SelectValue placeholder="Select target key" />
+              </SelectTrigger>
+              <SelectContent>
+                {keyOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         <FileInput
@@ -192,7 +180,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

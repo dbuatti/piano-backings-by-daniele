@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -446,253 +445,251 @@ const FormPage = () => {
           <p className="text-lg md:text-xl text-gray-600 font-medium">Bring your sheet music to life with professional accompaniment.</p>
         </header>
 
-        <AnimatePresence mode="wait">
-          {isSubmittedSuccessfully ? (
-            <Card key="success" className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
-              <div className="bg-green-500 py-12 text-center text-white">
-                <CheckCircle className="h-20 w-20 mx-auto mb-6" />
-                <h2 className="text-3xl font-bold">Submission Successful!</h2>
+        {isSubmittedSuccessfully ? (
+          <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white animate-in fade-in zoom-in-95 duration-500">
+            <div className="bg-green-500 py-12 text-center text-white">
+              <CheckCircle className="h-20 w-20 mx-auto mb-6" />
+              <h2 className="text-3xl font-bold">Submission Successful!</h2>
+            </div>
+            <CardContent className="p-8 text-center">
+              <p className="text-gray-600 mb-8 text-lg">Daniele will review your materials and send a quote within 24-48 hours.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button onClick={() => navigate('/user-dashboard')} size="lg" className="rounded-full bg-[#1C0357]">View My Requests</Button>
+                <Button onClick={() => setIsSubmittedSuccessfully(false)} variant="outline" size="lg" className="rounded-full">New Submission</Button>
               </div>
-              <CardContent className="p-8 text-center">
-                <p className="text-gray-600 mb-8 text-lg">Daniele will review your materials and send a quote within 24-48 hours.</p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button onClick={() => navigate('/user-dashboard')} size="lg" className="rounded-full bg-[#1C0357]">View My Requests</Button>
-                  <Button onClick={() => setIsSubmittedSuccessfully(false)} variant="outline" size="lg" className="rounded-full">New Submission</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <form key="form" onSubmit={handleSubmit}>
-              {isHolidayModeActive && (
-                <Alert className="mb-8 border-none bg-[#F538BC]/10 text-[#F538BC] rounded-2xl py-4">
-                  <Plane className="h-5 w-5" />
-                  <AlertTitle className="font-bold">Holiday Mode Active</AlertTitle>
-                  <AlertDescription>{holidayReturnDate ? `Returning ${format(holidayReturnDate, 'MMMM d')}.` : "Currently on holiday."}</AlertDescription>
-                </Alert>
-              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <form onSubmit={handleSubmit} className="animate-in fade-in duration-500">
+            {isHolidayModeActive && (
+              <Alert className="mb-8 border-none bg-[#F538BC]/10 text-[#F538BC] rounded-2xl py-4">
+                <Plane className="h-5 w-5" />
+                <AlertTitle className="font-bold">Holiday Mode Active</AlertTitle>
+                <AlertDescription>{holidayReturnDate ? `Returning ${format(holidayReturnDate, 'MMMM d')}.` : "Currently on holiday."}</AlertDescription>
+              </Alert>
+            )}
 
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                sectionStatus.contact ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className="mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
-                      sectionStatus.contact ? "bg-green-500" : "bg-[#1C0357]"
-                    )}>
-                      {sectionStatus.contact ? <Check size={16} strokeWidth={3} /> : 1}
-                    </span>
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Contact Details</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Full Name</Label>
-                    <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Phone (Optional)</Label>
-                    <Input name="phone" value={globalData.phone} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting} />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6 mt-6">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</Label>
-                    <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Confirm Email</Label>
-                    <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              sectionStatus.contact ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                    sectionStatus.contact ? "bg-green-500" : "bg-[#1C0357]"
+                  )}>
+                    {sectionStatus.contact ? <Check size={16} strokeWidth={3} /> : 1}
+                  </span>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Contact Details</h2>
                   </div>
                 </div>
               </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Full Name</Label>
+                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Phone (Optional)</Label>
+                  <Input name="phone" value={globalData.phone} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting} />
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-6 mt-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</Label>
+                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Confirm Email</Label>
+                  <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} className="h-12 rounded-xl" disabled={isSubmitting || !!user} />
+                </div>
+              </div>
+            </div>
 
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                sectionStatus.songs ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className="mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
-                      sectionStatus.songs ? "bg-green-500" : "bg-[#1C0357]"
-                    )}>
-                      {sectionStatus.songs ? <Check size={16} strokeWidth={3} /> : 2}
-                    </span>
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Song Details</h2>
-                    </div>
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              sectionStatus.songs ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                    sectionStatus.songs ? "bg-green-500" : "bg-[#1C0357]"
+                  )}>
+                    {sectionStatus.songs ? <Check size={16} strokeWidth={3} /> : 2}
+                  </span>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Song Details</h2>
                   </div>
                 </div>
-                <div 
-                  className={cn("mb-8 p-6 rounded-[32px] border-2 border-dashed transition-all", isDraggingBulk ? "bg-[#F538BC]/10 border-[#F538BC]" : "bg-[#D1AAF2]/10 border-[#D1AAF2]/30")}
-                  onDragOver={(e) => { e.preventDefault(); setIsDraggingBulk(true); }}
-                  onDragLeave={() => setIsDraggingBulk(false)}
-                  onDrop={(e) => { e.preventDefault(); setIsDraggingBulk(false); handleBulkPdfUpload(Array.from(e.dataTransfer.files)); }}
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <UploadCloud className="h-10 w-10 mb-3 text-[#1C0357]" />
-                    <p className="text-sm text-gray-500 font-medium mb-4">Drag multiple PDFs here to create song slots.</p>
-                    <Button type="button" variant="outline" className="rounded-full" onClick={() => document.getElementById('bulk-pdf')?.click()}>Select PDFs</Button>
-                    <Input type="file" accept=".pdf" multiple className="hidden" id="bulk-pdf" onChange={(e) => handleBulkPdfUpload(Array.from(e.target.files || []))} />
+              </div>
+              <div 
+                className={cn("mb-8 p-6 rounded-[32px] border-2 border-dashed transition-all", isDraggingBulk ? "bg-[#F538BC]/10 border-[#F538BC]" : "bg-[#D1AAF2]/10 border-[#D1AAF2]/30")}
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingBulk(true); }}
+                onDragLeave={() => setIsDraggingBulk(false)}
+                onDrop={(e) => { e.preventDefault(); setIsDraggingBulk(false); handleBulkPdfUpload(Array.from(e.dataTransfer.files)); }}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <UploadCloud className="h-10 w-10 mb-3 text-[#1C0357]" />
+                  <p className="text-sm text-gray-500 font-medium mb-4">Drag multiple PDFs here to create song slots.</p>
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => document.getElementById('bulk-pdf')?.click()}>Select PDFs</Button>
+                  <Input type="file" accept=".pdf" multiple className="hidden" id="bulk-pdf" onChange={(e) => handleBulkPdfUpload(Array.from(e.target.files || []))} />
+                </div>
+              </div>
+              <div className="space-y-4">
+                {songs.map((song, index) => (
+                  <SongRequestItem key={song.id} index={index} data={song} onChange={handleSongChange} onRemove={removeSong} isOnlySong={songs.length === 1} errors={errors.songs?.[song.id]} />
+                ))}
+              </div>
+              <Button type="button" onClick={addSong} className="w-full h-16 mt-4 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black text-lg flex items-center justify-center gap-2">
+                <Plus size={24} /> Add Another Song
+              </Button>
+            </div>
+
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              sectionStatus.quality ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                    sectionStatus.quality ? "bg-green-500" : "bg-[#1C0357]"
+                  )}>
+                    {sectionStatus.quality ? <Check size={16} strokeWidth={3} /> : 3}
+                  </span>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Order Quality</h2>
                   </div>
+                </div>
+              </div>
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
+                  <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || undefined}>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
+                    <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-4">
-                  {songs.map((song, index) => (
-                    <SongRequestItem key={song.id} index={index} data={song} onChange={handleSongChange} onRemove={removeSong} isOnlySong={songs.length === 1} errors={errors.songs?.[song.id]} />
-                  ))}
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality</Label>
+                  <RadioGroup value={globalData.trackType || undefined} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10' },
+                      { id: 'one-take', icon: Headphones, label: 'One-Take', price: '$10-20' },
+                      { id: 'polished', icon: Sparkles, label: 'Polished', price: '$15-35' }
+                    ].map((item) => (
+                      <Label key={item.id} htmlFor={item.id} className="cursor-pointer">
+                        <div className={cn("relative flex flex-col p-6 rounded-3xl border-2 transition-all text-center h-full", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white")}>
+                          <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
+                          <item.icon className="h-6 w-6 mx-auto mb-4" />
+                          <span className="font-black text-[#1C0357]">{item.label}</span>
+                          <span className="text-xs font-black text-[#F538BC] mt-1">{item.price}</span>
+                        </div>
+                      </Label>
+                    ))}
+                  </RadioGroup>
                 </div>
-                <Button type="button" onClick={addSong} className="w-full h-16 mt-4 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black text-lg flex items-center justify-center gap-2">
-                  <Plus size={24} /> Add Another Song
+              </div>
+            </div>
+
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              sectionStatus.backing ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                    sectionStatus.backing ? "bg-green-500" : "bg-[#1C0357]"
+                  )}>
+                    {sectionStatus.backing ? <Check size={16} strokeWidth={3} /> : 4}
+                  </span>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Backing Type</h2>
+                    <p className="text-sm text-gray-500 font-medium">What exactly do you need recorded?</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {backingTypeOptions.map((option) => (
+                  <div 
+                    key={option.id}
+                    className={cn(
+                      "relative p-6 rounded-3xl border-2 transition-all cursor-pointer group",
+                      globalData.backingType.includes(option.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
+                    )}
+                    onClick={() => handleBackingTypeChange(option.id, !globalData.backingType.includes(option.id))}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                        globalData.backingType.includes(option.id) ? "bg-[#1C0357] text-white" : "bg-gray-50 text-gray-400 group-hover:bg-[#D1AAF2]/20 group-hover:text-[#1C0357]"
+                      )}>
+                        <Layers size={20} />
+                      </div>
+                      <Checkbox 
+                        id={`backing-${option.id}`} 
+                        checked={globalData.backingType.includes(option.id)}
+                        onCheckedChange={(v) => handleBackingTypeChange(option.id, v)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded-full border-gray-300 data-[state=checked]:bg-[#1C0357]"
+                      />
+                    </div>
+                    <h3 className="font-black text-[#1C0357] mb-1">{option.label}</h3>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">{option.desc}</p>
+                  </div>
+                ))}
+              </div>
+              {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
+            </div>
+
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              progress > 80 ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className="mb-6">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
+                    progress > 80 ? "bg-green-500" : "bg-[#1C0357]"
+                  )}>
+                    {progress > 80 ? <Check size={16} strokeWidth={3} /> : 5}
+                  </span>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Price Summary</h2>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-[#1C0357] text-white rounded-3xl p-8 shadow-xl text-center">
+                <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.3em] mb-2">Total Estimated Cost</p>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-2xl font-black text-white/60">$</span>
+                  <span className="text-6xl font-black tracking-tighter text-white">{priceBreakdown.total.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-white/40 ml-2">AUD</span>
+                </div>
+                <p className="text-[10px] text-white/40 mt-4 font-bold uppercase tracking-widest">Final price confirmed via email after review</p>
+              </div>
+            </div>
+
+            <div className={cn(
+              "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
+              sectionStatus.final ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
+            )}>
+              <div className={cn("p-6 rounded-3xl border-2 flex gap-4 transition-colors duration-300", consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white")}>
+                <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} />
+                <Label htmlFor="consent" className="text-sm text-gray-600 font-bold">I understand that unless I purchase Exclusive Ownership, Piano Backings by Daniele retains rights to sell or share these tracks.</Label>
+              </div>
+              <div className="mt-12 flex flex-col items-center gap-8">
+                <Button type="submit" disabled={isSubmitting || isHolidayModeActive || !consentChecked} className="h-20 rounded-full bg-[#1C0357] px-16 text-xl font-black shadow-2xl">
+                  {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Send My Request"}
                 </Button>
               </div>
-
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                sectionStatus.quality ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className="mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
-                      sectionStatus.quality ? "bg-green-500" : "bg-[#1C0357]"
-                    )}>
-                      {sectionStatus.quality ? <Check size={16} strokeWidth={3} /> : 3}
-                    </span>
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Order Quality</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || undefined}>
-                      <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
-                      <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-4">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality</Label>
-                    <RadioGroup value={globalData.trackType || undefined} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[
-                        { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10' },
-                        { id: 'one-take', icon: Headphones, label: 'One-Take', price: '$10-20' },
-                        { id: 'polished', icon: Sparkles, label: 'Polished', price: '$15-35' }
-                      ].map((item) => (
-                        <Label key={item.id} htmlFor={item.id} className="cursor-pointer">
-                          <div className={cn("relative flex flex-col p-6 rounded-3xl border-2 transition-all text-center h-full", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white")}>
-                            <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
-                            <item.icon className="h-6 w-6 mx-auto mb-4" />
-                            <span className="font-black text-[#1C0357]">{item.label}</span>
-                            <span className="text-xs font-black text-[#F538BC] mt-1">{item.price}</span>
-                          </div>
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                </div>
-              </div>
-
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                sectionStatus.backing ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className="mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
-                      sectionStatus.backing ? "bg-green-500" : "bg-[#1C0357]"
-                    )}>
-                      {sectionStatus.backing ? <Check size={16} strokeWidth={3} /> : 4}
-                    </span>
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Backing Type</h2>
-                      <p className="text-sm text-gray-500 font-medium">What exactly do you need recorded?</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {backingTypeOptions.map((option) => (
-                    <div 
-                      key={option.id}
-                      className={cn(
-                        "relative p-6 rounded-3xl border-2 transition-all cursor-pointer group",
-                        globalData.backingType.includes(option.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
-                      )}
-                      onClick={() => handleBackingTypeChange(option.id, !globalData.backingType.includes(option.id))}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                          globalData.backingType.includes(option.id) ? "bg-[#1C0357] text-white" : "bg-gray-50 text-gray-400 group-hover:bg-[#D1AAF2]/20 group-hover:text-[#1C0357]"
-                        )}>
-                          <Layers size={20} />
-                        </div>
-                        <Checkbox 
-                          id={`backing-${option.id}`} 
-                          checked={globalData.backingType.includes(option.id)}
-                          onCheckedChange={(v) => handleBackingTypeChange(option.id, v)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="rounded-full border-gray-300 data-[state=checked]:bg-[#1C0357]"
-                        />
-                      </div>
-                      <h3 className="font-black text-[#1C0357] mb-1">{option.label}</h3>
-                      <p className="text-xs text-gray-500 font-medium leading-relaxed">{option.desc}</p>
-                    </div>
-                  ))}
-                </div>
-                {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
-              </div>
-
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                progress > 80 ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className="mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-colors duration-300",
-                      progress > 80 ? "bg-green-500" : "bg-[#1C0357]"
-                    )}>
-                      {progress > 80 ? <Check size={16} strokeWidth={3} /> : 5}
-                    </span>
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-[#1C0357] tracking-tight">Price Summary</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-[#1C0357] text-white rounded-3xl p-8 shadow-xl text-center">
-                  <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.3em] mb-2">Total Estimated Cost</p>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-black text-white/60">$</span>
-                    <span className="text-6xl font-black tracking-tighter text-white">{priceBreakdown.total.toFixed(2)}</span>
-                    <span className="text-sm font-bold text-white/40 ml-2">AUD</span>
-                  </div>
-                  <p className="text-[10px] text-white/40 mt-4 font-bold uppercase tracking-widest">Final price confirmed via email after review</p>
-                </div>
-              </div>
-
-              <div className={cn(
-                "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
-                sectionStatus.final ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
-              )}>
-                <div className={cn("p-6 rounded-3xl border-2 flex gap-4 transition-colors duration-300", consentChecked ? "border-green-100 bg-green-50/30" : "border-gray-100 bg-white")}>
-                  <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} />
-                  <Label htmlFor="consent" className="text-sm text-gray-600 font-bold">I understand that unless I purchase Exclusive Ownership, Piano Backings by Daniele retains rights to sell or share these tracks.</Label>
-                </div>
-                <div className="mt-12 flex flex-col items-center gap-8">
-                  <Button type="submit" disabled={isSubmitting || isHolidayModeActive || !consentChecked} className="h-20 rounded-full bg-[#1C0357] px-16 text-xl font-black shadow-2xl">
-                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Send My Request"}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          )}
-        </AnimatePresence>
+            </div>
+          </form>
+        )}
         <MadeWithDyad />
       </div>
     </div>
