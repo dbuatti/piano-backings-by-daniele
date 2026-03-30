@@ -38,7 +38,8 @@ import {
   Check,
   Plus,
   Files,
-  UploadCloud
+  UploadCloud,
+  Calculator
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -53,7 +54,8 @@ import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 import VisuallyHidden from '@/components/VisuallyHidden';
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
-import BulkUploadDialog from '@/components/form/BulkUploadDialog'; // Import new dialog
+import BulkUploadDialog from '@/components/form/BulkUploadDialog';
+import { calculateRequestCost } from '@/utils/pricing';
 
 const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: number, title: string, subtitle?: string, required?: boolean, isComplete?: boolean }) => (
   <div className="mb-6">
@@ -173,6 +175,22 @@ const FormPage = () => {
     const completedCount = Object.values(sectionStatus).filter(Boolean).length;
     return (completedCount / Object.keys(sectionStatus).length) * 100;
   }, [sectionStatus]);
+
+  // Price calculation logic
+  const priceBreakdown = useMemo(() => {
+    const mockRequest = {
+      track_type: globalData.trackType,
+      backing_type: globalData.backingType,
+      additional_services: globalData.additionalServices
+    };
+    const perSong = calculateRequestCost(mockRequest);
+    return {
+      perSong: perSong.totalCost,
+      total: perSong.totalCost * songs.length,
+      baseCosts: perSong.baseCosts,
+      serviceCosts: perSong.serviceCosts
+    };
+  }, [globalData.trackType, globalData.backingType, globalData.additionalServices, songs.length]);
 
   const contactRef = useRef<HTMLDivElement>(null);
   const songsRef = useRef<HTMLDivElement>(null);
@@ -859,7 +877,52 @@ const FormPage = () => {
                   </div>
                 </SectionWrapper>
 
-                {/* Section 5: Final Step */}
+                {/* Price Summary Section */}
+                <SectionWrapper isComplete={progress > 80}>
+                  <SectionHeader num={5} title="Price Summary" subtitle="Estimated cost for your request." isComplete={progress > 80} />
+                  <div className="bg-[#1C0357] text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#F538BC]/10 blur-3xl rounded-full" />
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center">
+                          <Calculator className="text-[#F1E14F]" size={20} />
+                        </div>
+                        <h3 className="text-xl font-black tracking-tight">Estimated Total</h3>
+                      </div>
+
+                      <div className="space-y-4 mb-8">
+                        <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-white/60 uppercase tracking-widest">Cost Per Song</span>
+                            <span className="text-xs text-white/40 font-medium">Based on quality & services</span>
+                          </div>
+                          <span className="text-2xl font-black text-[#F1E14F]">${priceBreakdown.perSong.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-white/60 uppercase tracking-widest">Number of Songs</span>
+                            <span className="text-xs text-white/40 font-medium">Slots added above</span>
+                          </div>
+                          <span className="text-2xl font-black text-white">× {songs.length}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center">
+                        <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.3em] mb-2">Total Estimated Cost</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-white/60">$</span>
+                          <span className="text-6xl font-black tracking-tighter text-white">{priceBreakdown.total.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-white/40 ml-2">AUD</span>
+                        </div>
+                        <p className="text-[10px] text-white/40 mt-6 font-medium max-w-xs">
+                          *Final price may vary slightly based on song complexity. You will receive a confirmed quote within 24-48 hours.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </SectionWrapper>
+
+                {/* Section 6: Final Step */}
                 <SectionWrapper ref={finalRef} isComplete={sectionStatus.final}>
                   <div className={cn(
                     "p-6 rounded-3xl border-2 transition-all duration-500 flex gap-4",
