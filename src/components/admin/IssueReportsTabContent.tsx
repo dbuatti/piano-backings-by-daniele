@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Trash2, Loader2 } from 'lucide-react'; // Added Trash2 and Loader2
+import { MessageSquare, Trash2, Loader2 } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import IssueReportsTable from './IssueReportsTable'; // Import the new table component
+import IssueReportsTable from './IssueReportsTable';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Added AlertDialog imports
+} from "@/components/ui/alert-dialog";
 
 interface IssueReport {
   id: string;
@@ -27,6 +27,7 @@ interface IssueReport {
   page_url: string | null;
   created_at: string;
   is_read: boolean;
+  status?: string;
 }
 
 const IssueReportsTabContent: React.FC = () => {
@@ -34,9 +35,7 @@ const IssueReportsTabContent: React.FC = () => {
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
-  const [error, setError] = useState<any>(null);
 
-  // Fetch all issue reports
   const { data: reports, isLoading, isError, error: fetchError } = useQuery<IssueReport[], Error>({
     queryKey: ['allIssueReports'],
     queryFn: async () => {
@@ -48,59 +47,23 @@ const IssueReportsTabContent: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Mutation to mark reports as read (used on page load)
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async (reportIds: string[]) => {
-      if (reportIds.length === 0) return;
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
         .from('issue_reports')
-        .update({ is_read: true })
-        .in('id', reportIds);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
-      queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
-    },
-    onError: (err: any) => {
-      console.error('Failed to mark reports as read:', err);
-    }
-  });
-
-  // Mark all unread reports as read when the page loads
-  useEffect(() => {
-    if (reports && reports.length > 0) {
-      const unreadReportIds = reports.filter(report => !report.is_read).map(report => report.id);
-      if (unreadReportIds.length > 0) {
-        markAllAsReadMutation.mutate(unreadReportIds);
-      }
-    }
-  }, [reports, markAllAsReadMutation]); // Only run when reports data changes
-
-  // Mutation to toggle read status for a single report
-  const toggleReadStatusMutation = useMutation({
-    mutationFn: async ({ id, is_read }: { id: string; is_read: boolean }) => {
-      const { error } = await supabase
-        .from('issue_reports')
-        .update({ is_read: !is_read })
+        .update({ status, is_read: true }) // Mark as read when status changes
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Status Updated", description: "Report read status toggled." });
+      toast({ title: "Status Updated" });
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to update status: ${err.message}`, variant: "destructive" });
-    }
   });
 
-  // Mutation to delete a report
   const deleteReportMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -110,90 +73,50 @@ const IssueReportsTabContent: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Report Deleted", description: "Issue report has been permanently removed." });
+      toast({ title: "Report Deleted" });
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to delete report: ${err.message}`, variant: "destructive" });
-    }
   });
-
-  const openDeleteDialog = (id: string) => {
-    setReportToDelete(id);
-    setDeleteDialogOpen(true);
-  };
 
   const confirmDelete = () => {
     if (reportToDelete) {
       deleteReportMutation.mutate(reportToDelete);
       setDeleteDialogOpen(false);
-      setReportToDelete(null);
     }
   };
 
-  if (isError) {
-    setError(fetchError);
-  }
-
   return (
     <div className="container mx-auto py-8">
-      {error && (
-        <div className="mb-6">
-          <ErrorDisplay error={error} title="Failed to Load Reports" />
-        </div>
-      )}
+      {isError && <ErrorDisplay error={fetchError} title="Failed to Load Reports" />}
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-            <MessageSquare className="mr-2 h-5 w-5" />
-            All Submitted Reports
+      <Card className="shadow-lg border-none rounded-[40px] overflow-hidden">
+        <CardHeader className="bg-[#1C0357] text-white p-8">
+          <CardTitle className="text-3xl font-black flex items-center">
+            <MessageSquare className="mr-3 h-8 w-8 text-[#F538BC]" />
+            Client Feedback & Issues
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-8">
           <IssueReportsTable
             reports={reports || []}
             isLoading={isLoading}
-            toggleReadStatus={(id, is_read) => toggleReadStatusMutation.mutate({ id, is_read })}
-            openDeleteDialog={openDeleteDialog}
-            deleteDialogOpen={deleteDialogOpen}
-            setDeleteDialogOpen={setDeleteDialogOpen}
-            confirmDelete={confirmDelete}
-            isTogglingReadStatus={toggleReadStatusMutation.isPending}
-            isDeletingReport={deleteReportMutation.isPending}
+            updateStatus={(id, status) => updateStatusMutation.mutate({ id, status })}
+            openDeleteDialog={(id) => { setReportToDelete(id); setDeleteDialogOpen(true); }}
+            isUpdating={updateStatusMutation.isPending}
           />
         </CardContent>
       </Card>
 
-      {/* Single Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-              <Trash2 className="mr-2 h-5 w-5 text-red-600" />
-              Delete Issue Report
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the issue report.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Delete Issue Report?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently remove this feedback from your records.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteReportMutation.isPending}
-            >
-              {deleteReportMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

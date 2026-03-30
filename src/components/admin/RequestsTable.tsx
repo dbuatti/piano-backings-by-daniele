@@ -4,13 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,8 +15,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider
 } from "@/components/ui/tooltip";
-import { format } from 'date-fns';
 import { 
   Calendar, 
   CalendarDays, 
@@ -31,27 +24,21 @@ import {
   Clock, 
   CreditCard, 
   DollarSign, 
-  Eye, 
-  ExternalLink, 
-  Facebook, 
   FileAudio, 
   Hash, 
-  Instagram, 
-  Mail, 
   MoreHorizontal, 
   Music, 
-  Share2, 
   Tag, 
   Trash2, 
   Upload, 
   User, 
   X, 
-  Youtube 
+  Download,
+  StickyNote
 } from 'lucide-react';
-import { calculateRequestCost } from '@/utils/pricing';
-import { getSafeBackingTypes } from '@/utils/helpers';
 import RequestTableRow from './RequestTableRow';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { exportRequestsToCSV } from '@/utils/csvExport';
 
 interface RequestsTableProps {
   filteredRequests: any[];
@@ -63,6 +50,7 @@ interface RequestsTableProps {
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
   updateCost: (id: string, newCost: number | null) => void;
+  updateInternalNotes: (id: string, notes: string) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -83,6 +71,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   updateStatus,
   updatePaymentStatus,
   updateCost,
+  updateInternalNotes,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -102,6 +91,16 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
             Backing Requests
           </span>
           <div className="flex flex-wrap items-center gap-4">
+            <Button 
+              onClick={() => exportRequestsToCSV(filteredRequests)}
+              variant="outline"
+              className="flex items-center border-[#1C0357] text-[#1C0357]"
+              size="sm"
+              disabled={filteredRequests.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
             <Button 
               onClick={handleSelectAll}
               variant="outline"
@@ -128,32 +127,14 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                   <DropdownMenuContent>
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        selectedRequests.forEach(id => updateStatus(id, 'in-progress'));
-                      }}
-                    >
+                    <DropdownMenuItem onClick={() => selectedRequests.forEach(id => updateStatus(id, 'in-progress'))}>
                       <Clock className="w-4 h-4 mr-2" /> Mark In Progress
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        selectedRequests.forEach(id => updateStatus(id, 'completed'));
-                      }}
-                    >
+                    <DropdownMenuItem onClick={() => selectedRequests.forEach(id => updateStatus(id, 'completed'))}>
                       <Check className="w-4 h-4 mr-2" /> Mark Completed
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        selectedRequests.forEach(id => updateStatus(id, 'cancelled'));
-                      }}
-                    >
-                      <X className="w-4 h-4 mr-2" /> Mark Cancelled
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={openBatchDeleteDialog}
-                      className="text-red-600"
-                    >
+                    <DropdownMenuItem onClick={openBatchDeleteDialog} className="text-red-600">
                       <Trash2 className="w-4 h-4 mr-2" /> Delete Selected
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -185,8 +166,8 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                   <TableHead className="text-white"><div className="flex items-center"><Hash className="w-4 h-4 mr-2" />Status</div></TableHead>
                   <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><CreditCard className="w-4 h-4 mr-2" />Payment</div></TableHead>
                   <TableHead className="text-white"><div className="flex items-center"><DollarSign className="w-4 h-4 mr-2" />Cost</div></TableHead>
-                  <TableHead className="text-white hidden lg:table-cell"><div className="flex items-center"><Upload className="w-4 h-4 mr-2" />Platforms</div></TableHead>
-                  <TableHead className="text-right text-white w-[250px]">Actions</TableHead>
+                  <TableHead className="text-white"><div className="flex items-center"><StickyNote className="w-4 h-4 mr-2" />Notes</div></TableHead>
+                  <TableHead className="text-right text-white w-[150px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,14 +177,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       <div className="text-center">
                         <FileAudio className="mx-auto h-16 w-16 text-gray-300" />
                         <h3 className="mt-4 text-lg font-medium text-gray-900">No requests found</h3>
-                        <p className="mt-1 text-gray-500">
-                          Try adjusting your search or filter criteria
-                        </p>
-                        <div className="mt-6">
-                          <Button onClick={clearFilters} variant="outline">
-                            Clear Filters
-                          </Button>
-                        </div>
+                        <Button onClick={clearFilters} variant="outline" className="mt-4">Clear Filters</Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -217,6 +191,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       updateStatus={updateStatus}
                       updatePaymentStatus={updatePaymentStatus}
                       updateCost={updateCost}
+                      updateInternalNotes={updateInternalNotes}
                       uploadTrack={uploadTrack}
                       shareTrack={shareTrack}
                       openEmailGenerator={openEmailGenerator}

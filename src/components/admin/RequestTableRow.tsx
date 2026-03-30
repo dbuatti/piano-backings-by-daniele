@@ -4,6 +4,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,11 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format } from 'date-fns';
 import { 
   Calendar, 
@@ -50,7 +56,8 @@ import {
   X, 
   Youtube,
   Loader2,
-  Copy // Added Copy icon
+  Copy,
+  StickyNote
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
@@ -64,6 +71,7 @@ interface RequestTableRowProps {
   updateStatus: (id: string, status: string) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
   updateCost: (id: string, newCost: number | null) => void;
+  updateInternalNotes: (id: string, notes: string) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -79,6 +87,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   updateStatus,
   updatePaymentStatus,
   updateCost,
+  updateInternalNotes,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -93,14 +102,15 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
   );
   const [isUpdatingCost, setIsUpdatingCost] = useState(false);
+  const [notes, setNotes] = useState(request.internal_notes || '');
   const { toast } = useToast();
 
-  // Update currentCost if request.cost changes from outside (e.g., initial load or another admin edits)
   React.useEffect(() => {
     setCurrentCost(
       request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
     );
-  }, [request.cost, request]);
+    setNotes(request.internal_notes || '');
+  }, [request.cost, request.internal_notes, request]);
 
   const getBadgeVariant = (type: string) => {
     switch (type) {
@@ -160,7 +170,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         try {
           await onDirectFileUpload(request.id, file);
         } catch (e) {
-          // Error handling is done in the hook, just ensure loading state is cleared
         } finally {
           setIsDirectUploading(false);
         }
@@ -172,10 +181,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         });
       }
     }
-  };
-
-  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentCost(e.target.value);
   };
 
   const handleCostBlur = async () => {
@@ -191,20 +196,8 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     }
   };
 
-  const handleCostKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
-  };
-
-  const isCostManuallySet = request.cost !== null;
-
-  const handleCopyToClipboard = (text: string, message: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: message,
-    });
+  const handleSaveNotes = () => {
+    updateInternalNotes(request.id, notes);
   };
 
   return (
@@ -247,7 +240,10 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
                   variant="ghost" 
                   size="icon" 
                   className="h-5 w-5 ml-1 text-gray-400 hover:text-[#1C0357]"
-                  onClick={() => handleCopyToClipboard(request.email, "Email address copied to clipboard")}
+                  onClick={() => {
+                    navigator.clipboard.writeText(request.email);
+                    toast({ title: "Copied!", description: "Email address copied." });
+                  }}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -312,44 +308,50 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
             type="number"
             step="0.01"
             value={currentCost}
-            onChange={handleCostChange}
+            onChange={(e) => setCurrentCost(e.target.value)}
             onFocus={() => setEditingCost(true)}
             onBlur={handleCostBlur}
-            onKeyDown={handleCostKeyDown}
             className={cn(
               "w-20 h-8 p-1 text-sm border-none focus:ring-0 focus:outline-none",
               editingCost ? "bg-white border border-blue-300" : "bg-transparent"
             )}
-            style={{ paddingLeft: '0.25rem' }}
           />
           {isUpdatingCost && (
             <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
           )}
-          {!editingCost && isCostManuallySet && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="ml-1 text-xs text-gray-500 cursor-help">(M)</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>This cost was manually set.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
       </TableCell>
-      <TableCell className="hidden lg:table-cell py-3">
-        <div className="flex flex-col gap-1">
-          {request.uploaded_platforms && getPlatformIcons(request.uploaded_platforms)}
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => openUploadPlatformsDialog(request.id)}
-            className="mt-1 text-xs h-6"
-          >
-            Edit
-          </Button>
+      <TableCell className="py-3">
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={cn("h-8 w-8", request.internal_notes ? "text-[#F538BC]" : "text-gray-400")}
+              >
+                <StickyNote className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium leading-none text-[#1C0357]">Internal Notes</h4>
+                <p className="text-xs text-gray-500">Private notes for your reference only.</p>
+                <Textarea 
+                  value={notes} 
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add notes about progress, client preferences, etc..."
+                  className="min-h-[100px] text-sm"
+                />
+                <Button size="sm" className="w-full bg-[#1C0357]" onClick={handleSaveNotes}>
+                  Save Notes
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <div className="hidden lg:block">
+            {request.uploaded_platforms && getPlatformIcons(request.uploaded_platforms)}
+          </div>
         </div>
       </TableCell>
       <TableCell className="text-right py-3">
@@ -368,19 +370,14 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
                   <Eye className="w-4 h-4 mr-2" /> View Details
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to={`/track/${request.id}`}>
-                  <User className="w-4 h-4 mr-2" /> Client View
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => uploadTrack(request.id)}>
                 <Upload className="w-4 h-4 mr-2" /> Upload Track
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareTrack(request.id)}>
-                <Share2 className="w-4 h-4 mr-2" /> Share Link
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openEmailGenerator(request)}>
                 <Mail className="w-4 h-4 mr-2" /> Email Client
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openUploadPlatformsDialog(request.id)}>
+                <Tag className="w-4 h-4 mr-2" /> Edit Platforms
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

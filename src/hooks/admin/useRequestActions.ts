@@ -16,6 +16,7 @@ interface BackingRequest {
   shared_link?: string;
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
   cost?: number;
+  internal_notes?: string;
 }
 
 export const useRequestActions = (requests: BackingRequest[], setRequests: React.Dispatch<React.SetStateAction<BackingRequest[]>>) => {
@@ -96,8 +97,32 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         description: `Failed to update cost: ${error.message}`,
         variant: "destructive",
       });
-      // Re-fetch requests to revert to original value if update fails
-      setRequests(prev => [...prev]);
+    }
+  };
+
+  const updateInternalNotes = async (id: string, notes: string) => {
+    try {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ internal_notes: notes })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.map(req =>
+        req.id === id ? { ...req, internal_notes: notes } : req
+      ));
+
+      toast({
+        title: "Notes Saved",
+        description: "Internal notes updated.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to save notes: ${error.message}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -183,7 +208,8 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
   return {
     updateStatus,
     updatePaymentStatus,
-    updateCost, // Expose the new updateCost function
+    updateCost,
+    updateInternalNotes,
     shareTrack,
     deleteRequest,
     batchDeleteRequests,

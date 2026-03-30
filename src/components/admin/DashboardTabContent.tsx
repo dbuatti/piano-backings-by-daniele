@@ -1,49 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Filter, PlusCircle, Trash2, Mail, Upload, Share2 } from 'lucide-react';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import AdminStatsCards from './AdminStatsCards';
 import RequestsTable from './RequestsTable';
-import IssueReportsTable from './IssueReportsTable';
-import { useRequestActions } from '@/hooks/admin/useRequestActions';
-import { calculateRequestCost } from '@/utils/pricing';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import UploadTrackDialog from './UploadTrackDialog';
-import UploadPlatformsDialog from './UploadPlatformsDialog';
-import { uploadFileToSupabase } from '@/utils/supabase-client';
-import AdminFiltersAndViews from './AdminFiltersAndViews'; // Import AdminFiltersAndViews
-import RequestsCalendar from './RequestsCalendar'; // Import RequestsCalendar
-import PricingMatrix from '../PricingMatrix'; // Import PricingMatrix
-import { Card, CardContent } from '@/components/ui/card'; // Import Card components
-
-interface TrackInfo {
-  url: string;
-  caption: string;
-}
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[];
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number | null;
-}
+import AdminFiltersAndViews from './AdminFiltersAndViews';
+import RequestsCalendar from './RequestsCalendar';
+import PricingMatrix from '../PricingMatrix';
+import { cn } from '@/lib/utils';
 
 interface DashboardTabContentProps {
-  requests: BackingRequest[];
+  requests: any[];
   loading: boolean;
   totalIssueReports: number;
   unreadIssueReports: number;
@@ -59,23 +25,24 @@ interface DashboardTabContentProps {
   setViewMode: React.Dispatch<React.SetStateAction<'list' | 'calendar' | 'pricing'>>;
   selectedDate: Date | null;
   setSelectedDate: React.Dispatch<React.SetStateAction<Date | null>>;
-  filteredRequests: BackingRequest[];
+  filteredRequests: any[];
   clearFilters: () => void;
   selectedRequests: string[];
   handleSelectAll: () => void;
   handleSelectRequest: (id: string) => void;
   totalCost: number;
-  updateStatus: (id: string, status: BackingRequest['status']) => void;
+  updateStatus: (id: string, status: any) => void;
   updatePaymentStatus: (id: string, isPaid: boolean) => void;
+  updateInternalNotes: (id: string, notes: string) => void; // Added
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
-  openEmailGenerator: (request: BackingRequest) => void;
+  openEmailGenerator: (request: any) => void;
   openDeleteDialog: (id: string) => void;
   openBatchDeleteDialog: () => void;
   openUploadPlatformsDialog: (id: string) => void;
   onDirectFileUpload: (id: string, file: File) => void;
   updateTrackCaption: (requestId: string, trackUrl: string, newCaption: string) => Promise<boolean>;
-  updateCost: (id: string, newCost: number | null) => Promise<void>; // Added updateCost
+  updateCost: (id: string, newCost: number | null) => Promise<void>;
 }
 
 const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
@@ -96,13 +63,14 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   selectedDate,
   setSelectedDate,
   filteredRequests,
-  clearFilters, // Destructure clearFilters
+  clearFilters,
   selectedRequests,
   handleSelectAll,
   handleSelectRequest,
   totalCost,
   updateStatus,
   updatePaymentStatus,
+  updateInternalNotes, // Destructure
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -110,8 +78,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
   openBatchDeleteDialog,
   openUploadPlatformsDialog,
   onDirectFileUpload,
-  updateTrackCaption,
-  updateCost, // Destructure updateCost
+  updateCost,
 }) => {
   return (
     <div className="container mx-auto py-8">
@@ -121,8 +88,8 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
         unreadIssueReports={unreadIssueReports}
       />
 
-      <Card className="shadow-lg mb-6 bg-white">
-        <CardContent className="p-4">
+      <Card className="shadow-lg mb-6 bg-white border-none rounded-[32px]">
+        <CardContent className="p-6">
           <AdminFiltersAndViews
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -139,27 +106,27 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
         </CardContent>
       </Card>
 
-      <div className="flex justify-end mb-4 space-x-2">
+      <div className="flex justify-end mb-6 space-x-2">
         <Button 
           variant={viewMode === 'list' ? 'default' : 'outline'} 
           onClick={() => setViewMode('list')}
-          className={viewMode === 'list' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
+          className={cn("rounded-full px-6", viewMode === 'list' ? 'bg-[#1C0357]' : '')}
         >
           List View
         </Button>
         <Button 
           variant={viewMode === 'calendar' ? 'default' : 'outline'} 
           onClick={() => setViewMode('calendar')}
-          className={viewMode === 'calendar' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
+          className={cn("rounded-full px-6", viewMode === 'calendar' ? 'bg-[#1C0357]' : '')}
         >
-          Calendar View
+          Calendar
         </Button>
         <Button 
           variant={viewMode === 'pricing' ? 'default' : 'outline'} 
           onClick={() => setViewMode('pricing')}
-          className={viewMode === 'pricing' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90 text-white' : ''}
+          className={cn("rounded-full px-6", viewMode === 'pricing' ? 'bg-[#1C0357]' : '')}
         >
-          Pricing Matrix
+          Pricing
         </Button>
       </div>
 
@@ -173,7 +140,8 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
           totalCost={totalCost}
           updateStatus={updateStatus}
           updatePaymentStatus={updatePaymentStatus}
-          updateCost={updateCost} // Pass updateCost
+          updateCost={updateCost}
+          updateInternalNotes={updateInternalNotes} // Pass through
           uploadTrack={uploadTrack}
           shareTrack={shareTrack}
           openEmailGenerator={openEmailGenerator}
@@ -181,7 +149,7 @@ const DashboardTabContent: React.FC<DashboardTabContentProps> = ({
           openBatchDeleteDialog={openBatchDeleteDialog}
           openUploadPlatformsDialog={openUploadPlatformsDialog}
           onDirectFileUpload={onDirectFileUpload}
-          clearFilters={clearFilters} // PASS clearFilters
+          clearFilters={clearFilters}
         />
       )}
 
