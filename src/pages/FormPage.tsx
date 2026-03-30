@@ -568,14 +568,14 @@ const FormPage = () => {
               <div className="space-y-8">
                 <div className="space-y-4">
                   <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                  <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || undefined}>
+                  <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || ""}>
                     <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                     <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-4">
                   <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality</Label>
-                  <RadioGroup value={globalData.trackType || undefined} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <RadioGroup value={globalData.trackType || ""} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                       { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10' },
                       { id: 'one-take', icon: Headphones, label: 'One-Take', price: '$10-20' },

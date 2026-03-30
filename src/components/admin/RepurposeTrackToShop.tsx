@@ -803,7 +803,7 @@ const RepurposeTrackToShop: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category || undefined}>
+                <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
                   <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -819,7 +819,7 @@ const RepurposeTrackToShop: React.FC = () => {
 
               <div>
                 <Label htmlFor="track_type">Track Type</Label>
-                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type || undefined}>
+                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
                   <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
                     <SelectValue placeholder="Select track type" />
                   </SelectTrigger>

@@ -372,7 +372,7 @@ const EditRequest: React.FC = () => {
                   </div>
                   <div>
                     <Label htmlFor="category" className="text-sm mb-1">Category</Label>
-                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={request.category || undefined}>
+                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={request.category || ''}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -391,7 +391,7 @@ const EditRequest: React.FC = () => {
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
                   Track Type
                 </h2>
-                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || undefined}>
+                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || ''}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select track type" />
                   </SelectTrigger>
@@ -411,7 +411,7 @@ const EditRequest: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="song_key" className="text-sm mb-1">Song Key</Label>
-                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={request.song_key || undefined}>
+                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={request.song_key || ''}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select key" />
                       </SelectTrigger>
@@ -438,7 +438,7 @@ const EditRequest: React.FC = () => {
                   {request.different_key === 'Yes' && (
                     <div>
                       <Label htmlFor="key_for_track" className="text-sm mb-1">Requested Key</Label>
-                      <Select onValueChange={(value) => handleSelectChange('key_for_track', value)} value={request.key_for_track || undefined}>
+                      <Select onValueChange={(value) => handleSelectChange('key_for_track', value)} value={request.key_for_track || ''}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
@@ -534,7 +534,7 @@ const EditRequest: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="track_purpose" className="text-sm mb-1">Track Purpose</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || undefined}>
+                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || ''}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select purpose" />
                       </SelectTrigger>
