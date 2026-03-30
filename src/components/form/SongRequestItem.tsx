@@ -43,6 +43,20 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
   isOnlySong,
   errors
 }) => {
+  
+  // Stabilize callbacks passed down to Radix Select components
+  const handleSongKeyChange = React.useCallback((v: string) => {
+    onChange(data.id, 'songKey', v);
+  }, [data.id, onChange]);
+
+  const handleDifferentKeyChange = React.useCallback((v: string) => {
+    onChange(data.id, 'differentKey', v);
+  }, [data.id, onChange]);
+
+  const handleKeyForTrackChange = React.useCallback((v: string) => {
+    onChange(data.id, 'keyForTrack', v);
+  }, [data.id, onChange]);
+
   return (
     <div
       className={cn(
@@ -100,7 +114,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key</Label>
-          <Select value={data.songKey || ""} onValueChange={(v) => onChange(data.id, 'songKey', v)}>
+          <Select value={data.songKey || ""} onValueChange={handleSongKeyChange}>
             <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")}>
               <SelectValue placeholder="Select key" />
             </SelectTrigger>
@@ -111,7 +125,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
         </div>
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Transposition</Label>
-          <Select value={data.differentKey || "No"} onValueChange={(v) => onChange(data.id, 'differentKey', v)}>
+          <Select value={data.differentKey || "No"} onValueChange={handleDifferentKeyChange}>
             <SelectTrigger className="h-11 rounded-xl border-gray-200">
               <SelectValue />
             </SelectTrigger>
@@ -128,7 +142,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
         <div className="mb-8 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
-            <Select value={data.keyForTrack || ""} onValueChange={(v) => onChange(data.id, 'keyForTrack', v)}>
+            <Select value={data.keyForTrack || ""} onValueChange={handleKeyForTrackChange}>
               <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
                 <SelectValue placeholder="Select target key" />
               </SelectTrigger>

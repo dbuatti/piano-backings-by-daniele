@@ -102,6 +102,11 @@ const FormPage = () => {
   const [errors, setErrors] = useState<Record<string, any>>({});
   const [consentChecked, setConsentChecked] = useState(false);
 
+  // Quick debug to spot render loops
+  useEffect(() => {
+    console.count('FormPage rendered');
+  });
+
   const sectionStatus = useMemo(() => ({
     contact: !!globalData.email && globalData.email === globalData.confirmEmail && !!globalData.name,
     songs: songs.length > 0 && songs.every(s => !!s.songTitle && !!s.musicalOrArtist && !!s.songKey && s.sheetMusicFiles.length > 0),
@@ -199,6 +204,15 @@ const FormPage = () => {
       return newErrors;
     });
   }, []);
+
+  // Stabilize Radix Select / RadioGroup callbacks
+  const handleCategoryChange = useCallback((v: string) => {
+    handleGlobalSelectChange('category', v);
+  }, [handleGlobalSelectChange]);
+
+  const handleTrackTypeChange = useCallback((v: string) => {
+    handleGlobalSelectChange('trackType', v);
+  }, [handleGlobalSelectChange]);
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
     setSongs(prev => {
@@ -568,14 +582,14 @@ const FormPage = () => {
               <div className="space-y-8">
                 <div className="space-y-4">
                   <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                  <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || ""}>
+                  <Select onValueChange={handleCategoryChange} value={globalData.category || ""}>
                     <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                     <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-4">
                   <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Track Quality</Label>
-                  <RadioGroup value={globalData.trackType || ""} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <RadioGroup value={globalData.trackType || ""} onValueChange={handleTrackTypeChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                       { id: 'quick', icon: Mic, label: 'Quick Ref', price: '$5-10' },
                       { id: 'one-take', icon: Headphones, label: 'One-Take', price: '$10-20' },
@@ -615,13 +629,13 @@ const FormPage = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {backingTypeOptions.map((option) => (
-                  <div 
+                  <Label 
                     key={option.id}
+                    htmlFor={`backing-${option.id}`}
                     className={cn(
-                      "relative p-6 rounded-3xl border-2 transition-all cursor-pointer group",
+                      "relative p-6 rounded-3xl border-2 transition-all cursor-pointer group block",
                       globalData.backingType.includes(option.id) ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white hover:border-[#D1AAF2]"
                     )}
-                    onClick={() => handleBackingTypeChange(option.id, !globalData.backingType.includes(option.id))}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className={cn(
@@ -634,13 +648,12 @@ const FormPage = () => {
                         id={`backing-${option.id}`} 
                         checked={globalData.backingType.includes(option.id)}
                         onCheckedChange={(v) => handleBackingTypeChange(option.id, v)}
-                        onClick={(e) => e.stopPropagation()}
                         className="rounded-full border-gray-300 data-[state=checked]:bg-[#1C0357]"
                       />
                     </div>
                     <h3 className="font-black text-[#1C0357] mb-1">{option.label}</h3>
                     <p className="text-xs text-gray-500 font-medium leading-relaxed">{option.desc}</p>
-                  </div>
+                  </Label>
                 ))}
               </div>
               {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
