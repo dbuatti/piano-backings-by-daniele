@@ -210,6 +210,23 @@ const RequestDetails = () => {
     toast({ title: "Copied!", description: message });
   };
 
+  const handleCopyRequestDetails = () => {
+    if (!request) return;
+    
+    const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+    
+    const details = `🎵 Song: ${request.song_title} by ${request.musical_or_artist}
+👤 Client: ${request.name || 'N/A'} (${request.email})
+🔑 Key: ${request.song_key || 'N/A'}${request.different_key === 'Yes' ? ` -> ${request.key_for_track}` : ''}
+📅 Due: ${request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+🎼 Type: ${request.track_type || 'N/A'} | ${normalizedBackingTypes.join(', ')}
+📝 Special Requests: ${request.special_requests || 'None'}
+🔗 Admin Link: ${window.location.origin}/admin/request/${request.id}`;
+
+    navigator.clipboard.writeText(details);
+    toast({ title: "Copied!", description: "Request details copied to clipboard." });
+  };
+
   if (loading || !request) return <div className="p-8 text-center">Loading...</div>;
 
   const costBreakdown = calculateRequestCost(request);
@@ -233,6 +250,7 @@ const RequestDetails = () => {
                 <Link to={`/admin/request/${id}/edit`}><Button className="bg-[#1C0357] hover:bg-[#1C0357]/90"><Edit className="mr-2 h-4 w-4" /> Edit Request</Button></Link>
                 <Link to={`/track/${id}`}><Button variant="outline"><Eye className="w-4 h-4 mr-2" /> Client View</Button></Link>
                 <Button onClick={() => navigate(`/email-generator/${id}`)} variant="outline"><Mail className="w-4 h-4 mr-2" /> Email Client</Button>
+                <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="w-4 h-4 mr-2" /> Copy Details</Button>
               </div>
               <div className="flex gap-3">
                 <Button onClick={triggerDropboxAutomation} disabled={isTriggeringDropbox || !!request.dropbox_folder_id} variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white">

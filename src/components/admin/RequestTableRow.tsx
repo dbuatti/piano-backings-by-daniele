@@ -200,6 +200,19 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     updateInternalNotes(request.id, notes);
   };
 
+  const handleCopyDetails = () => {
+    const details = `🎵 Song: ${request.song_title} by ${request.musical_or_artist}
+👤 Client: ${request.name || 'N/A'} (${request.email})
+🔑 Key: ${request.song_key || 'N/A'}${request.different_key === 'Yes' ? ` -> ${request.key_for_track}` : ''}
+📅 Due: ${request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
+🎼 Type: ${request.track_type || 'N/A'} | ${normalizedBackingTypes.join(', ')}
+📝 Special Requests: ${request.special_requests || 'None'}
+🔗 Admin Link: ${window.location.origin}/admin/request/${request.id}`;
+
+    navigator.clipboard.writeText(details);
+    toast({ title: "Copied!", description: "Request details copied to clipboard." });
+  };
+
   return (
     <TableRow 
       key={request.id} 
@@ -369,6 +382,9 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
                 <Link to={`/admin/request/${request.id}`}>
                   <Eye className="w-4 h-4 mr-2" /> View Details
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyDetails}>
+                <Copy className="w-4 h-4 mr-2" /> Copy Details
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => uploadTrack(request.id)}>
                 <Upload className="w-4 h-4 mr-2" /> Upload Track
