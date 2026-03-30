@@ -52,6 +52,20 @@ import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
 import BulkUploadDialog from '@/components/form/BulkUploadDialog';
 import { calculateRequestCost } from '@/utils/pricing';
 
+const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
+  id: Math.random().toString(36).substring(7),
+  songTitle: '',
+  musicalOrArtist: '',
+  songKey: '',
+  differentKey: 'No',
+  keyForTrack: '',
+  youtubeLink: '',
+  voiceMemoLink: '',
+  sheetMusicFiles: [],
+  voiceMemoFiles: [],
+  ...initialData
+});
+
 const SectionHeader = ({ num, title, subtitle, required, isComplete }: { num: number, title: string, subtitle?: string, required?: boolean, isComplete?: boolean }) => (
   <div className="mb-6">
     <div className="flex items-center gap-3">
@@ -128,27 +142,7 @@ const FormPage = () => {
     isLoading: isLoadingAppSettings 
   } = useAppSettings();
 
-  const createNewSong = useCallback((initialData: Partial<SongData> = {}): SongData => ({
-    id: Math.random().toString(36).substring(7),
-    songTitle: '',
-    musicalOrArtist: '',
-    songKey: '',
-    differentKey: 'No',
-    keyForTrack: '',
-    youtubeLink: '',
-    voiceMemoLink: '',
-    sheetMusicFiles: [],
-    voiceMemoFiles: [],
-    ...initialData
-  }), []);
-
-  const [songs, setSongs] = useState<SongData[]>([]);
-  
-  useEffect(() => {
-    if (songs.length === 0) {
-      setSongs([createNewSong()]);
-    }
-  }, [createNewSong, songs.length]);
+  const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
 
   const [globalData, setGlobalData] = useState({
     email: '',
@@ -246,7 +240,7 @@ const FormPage = () => {
   const addSong = useCallback(() => {
     setSongs(prev => [...prev, createNewSong()]);
     toast({ title: "Song Added" });
-  }, [createNewSong, toast]);
+  }, [toast]);
 
   const removeSong = useCallback((id: string) => {
     setSongs(prev => prev.length > 1 ? prev.filter(s => s.id !== id) : prev);
@@ -274,7 +268,7 @@ const FormPage = () => {
     }
     setPendingBulkFiles(pdfFiles);
     setBulkUploadDialogOpen(true);
-  }, [songs, createNewSong, handleSongChange, toast]);
+  }, [songs, handleSongChange, toast]);
 
   const handleConfirmDifferentSongs = useCallback(() => {
     const newSongs = pendingBulkFiles.map(file => createNewSong({ 
@@ -288,7 +282,7 @@ const FormPage = () => {
     }
     setBulkUploadDialogOpen(false);
     setPendingBulkFiles([]);
-  }, [pendingBulkFiles, songs, createNewSong]);
+  }, [pendingBulkFiles, songs]);
 
   const handleConfirmSameSong = useCallback(() => {
     const firstSong = songs[0];
@@ -315,6 +309,14 @@ const FormPage = () => {
         : prev.additionalServices.filter(s => s !== service);
       return { ...prev, additionalServices: newServices };
     });
+  }, []);
+
+  const handleCloseAuthOverlay = useCallback(() => {
+    setShowAuthOverlay(false);
+  }, []);
+
+  const handleCloseBulkUpload = useCallback(() => {
+    setBulkUploadDialogOpen(false);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -451,8 +453,8 @@ const FormPage = () => {
         )}
       </div>
       
-      <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />
-      <BulkUploadDialog isOpen={bulkUploadDialogOpen} onClose={() => setBulkUploadDialogOpen(false)} fileCount={pendingBulkFiles.length} onConfirmDifferent={handleConfirmDifferentSongs} onConfirmSame={handleConfirmSameSong} />
+      <AuthOverlay isOpen={showAuthOverlay} onClose={handleCloseAuthOverlay} redirectPath={location.pathname} />
+      <BulkUploadDialog isOpen={bulkUploadDialogOpen} onClose={handleCloseBulkUpload} fileCount={pendingBulkFiles.length} onConfirmDifferent={handleConfirmDifferentSongs} onConfirmSame={handleConfirmSameSong} />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         <header className="text-center mb-12">
