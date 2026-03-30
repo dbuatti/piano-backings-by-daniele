@@ -11,30 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { 
   Music, 
   Calendar as CalendarIcon, 
-  User as UserIcon,
   Mail,
   Mic,
   Headphones,
   Sparkles,
   Plane,
   CheckCircle,
-  Phone,
   XCircle,
   Loader2,
   ChevronRight,
-  HelpCircle,
   Check,
   Plus,
   UploadCloud,
-  Calculator,
   Layers
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
@@ -129,7 +119,6 @@ const FormPage = () => {
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isDraggingBulk, setIsDraggingBulk] = useState(false);
   const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
   const [pendingBulkFiles, setPendingBulkFiles] = useState<File[]>([]);
@@ -204,11 +193,8 @@ const FormPage = () => {
           confirmEmail: session.user.email || '',
           name: session.user.user_metadata?.full_name || ''
         }));
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        setIsAdmin(adminEmails.includes(session.user.email));
         setShowAuthOverlay(false);
       } else {
-        setIsAdmin(false);
         setTimeout(() => setShowAuthOverlay(true), 1000);
       }
     };
@@ -325,14 +311,6 @@ const FormPage = () => {
         : prev.additionalServices.filter(s => s !== service);
       return { ...prev, additionalServices: newServices };
     });
-  }, []);
-
-  const handleCloseAuthOverlay = useCallback(() => {
-    setShowAuthOverlay(false);
-  }, []);
-
-  const handleCloseBulkUpload = useCallback(() => {
-    setBulkUploadDialogOpen(false);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -469,8 +447,8 @@ const FormPage = () => {
         )}
       </div>
       
-      <AuthOverlay isOpen={showAuthOverlay} onClose={handleCloseAuthOverlay} redirectPath={location.pathname} />
-      <BulkUploadDialog isOpen={bulkUploadDialogOpen} onClose={handleCloseBulkUpload} fileCount={pendingBulkFiles.length} onConfirmDifferent={handleConfirmDifferentSongs} onConfirmSame={handleConfirmSameSong} />
+      <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />
+      <BulkUploadDialog isOpen={bulkUploadDialogOpen} onClose={() => setBulkUploadDialogOpen(false)} fileCount={pendingBulkFiles.length} onConfirmDifferent={handleConfirmDifferentSongs} onConfirmSame={handleConfirmSameSong} />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         <header className="text-center mb-12">
@@ -505,7 +483,7 @@ const FormPage = () => {
                 </Alert>
               )}
 
-              <SectionWrapper ref={contactRef} isComplete={sectionStatus.contact}>
+              <SectionWrapper isComplete={sectionStatus.contact}>
                 <SectionHeader num={1} title="Contact Details" isComplete={sectionStatus.contact} />
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -529,7 +507,7 @@ const FormPage = () => {
                 </div>
               </SectionWrapper>
 
-              <SectionWrapper ref={songsRef} isComplete={sectionStatus.songs}>
+              <SectionWrapper isComplete={sectionStatus.songs}>
                 <SectionHeader num={2} title="Song Details" isComplete={sectionStatus.songs} />
                 <div 
                   className={cn("mb-8 p-6 rounded-[32px] border-2 border-dashed transition-all", isDraggingBulk ? "bg-[#F538BC]/10 border-[#F538BC]" : "bg-[#D1AAF2]/10 border-[#D1AAF2]/30")}
@@ -554,12 +532,12 @@ const FormPage = () => {
                 </Button>
               </SectionWrapper>
 
-              <SectionWrapper ref={qualityRef} isComplete={sectionStatus.quality}>
+              <SectionWrapper isComplete={sectionStatus.quality}>
                 <SectionHeader num={3} title="Order Quality" isComplete={sectionStatus.quality} />
                 <div className="space-y-8">
                   <div className="space-y-4">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category}>
+                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || ""}>
                       <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                       <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                     </Select>
@@ -586,7 +564,7 @@ const FormPage = () => {
                 </div>
               </SectionWrapper>
 
-              <SectionWrapper ref={backingRef} isComplete={sectionStatus.backing}>
+              <SectionWrapper isComplete={sectionStatus.backing}>
                 <SectionHeader num={4} title="Backing Type" subtitle="What exactly do you need recorded?" isComplete={sectionStatus.backing} required />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {backingTypeOptions.map((option) => (
@@ -609,6 +587,7 @@ const FormPage = () => {
                           id={`backing-${option.id}`} 
                           checked={globalData.backingType.includes(option.id)}
                           onCheckedChange={(v) => handleBackingTypeChange(option.id, v)}
+                          onClick={(e) => e.stopPropagation()}
                           className="rounded-full border-gray-300 data-[state=checked]:bg-[#1C0357]"
                         />
                       </div>

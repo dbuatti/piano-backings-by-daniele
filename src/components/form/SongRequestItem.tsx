@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Trash2, Music, Key, Youtube, Mic, FileText, Plus, HelpCircle } from 'lucide-react';
+import { Trash2, Music, Key, Youtube, Mic, FileText } from 'lucide-react';
 import FileInput from "@/components/FileInput";
 import { cn } from "@/lib/utils";
 
@@ -115,7 +115,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
         </div>
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Transposition</Label>
-          <Select value={data.differentKey} onValueChange={(v) => onChange(data.id, 'differentKey', v)}>
+          <Select value={data.differentKey || "No"} onValueChange={(v) => onChange(data.id, 'differentKey', v)}>
             <SelectTrigger className="h-11 rounded-xl border-gray-200">
               <SelectValue />
             </SelectTrigger>
@@ -187,7 +187,6 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
                 placeholder="Dropbox, Drive, etc."
                 className="pl-10 h-11 rounded-xl border-gray-200"
               />
-              <Mic<dyad-write path="src/components/form/SongRequestItem.tsx" description="Completing the SongRequestItem component.">
               <Mic className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
           </div>
