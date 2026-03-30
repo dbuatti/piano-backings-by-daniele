@@ -1,31 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Music, 
-  Calendar as CalendarIcon, 
-  Mail,
-  Mic,
-  Headphones,
-  Sparkles,
   Plane,
   CheckCircle,
   XCircle,
   Loader2,
-  ChevronRight,
-  Check,
   Plus,
   UploadCloud,
-  Layers
+  Layers,
+  Check,
+  Mic,
+  Headphones,
+  Sparkles
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -113,7 +109,7 @@ const FormPage = () => {
     quality: !!globalData.trackType && !!globalData.category,
     backing: globalData.backingType.length > 0,
     final: consentChecked
-  }), [globalData, songs, consentChecked]);
+  }), [globalData.email, globalData.confirmEmail, globalData.name, globalData.trackType, globalData.category, globalData.backingType, songs, consentChecked]);
 
   const progress = useMemo(() => {
     const completedCount = Object.values(sectionStatus).filter(Boolean).length;
@@ -148,7 +144,9 @@ const FormPage = () => {
         }));
         setShowAuthOverlay(false);
       } else {
-        setTimeout(() => setShowAuthOverlay(true), 1000);
+        // Delay showing overlay to allow page to load
+        const timer = setTimeout(() => setShowAuthOverlay(true), 1000);
+        return () => clearTimeout(timer);
       }
     };
     checkUser();
@@ -190,17 +188,14 @@ const FormPage = () => {
     
     setErrors(prev => {
       if (!prev.songs?.[id]?.[field]) return prev;
-      
       const newSongsErrors = { ...prev.songs };
       const newSongErrors = { ...newSongsErrors[id] };
       delete newSongErrors[field];
-      
       if (Object.keys(newSongErrors).length === 0) {
         delete newSongsErrors[id];
       } else {
         newSongsErrors[id] = newSongErrors;
       }
-      
       return { ...prev, songs: newSongsErrors };
     });
   }, []);
@@ -267,27 +262,13 @@ const FormPage = () => {
       const newBackingTypes = isChecked
         ? [...prev.backingType, type]
         : prev.backingType.filter(t => t !== type);
-      
-      // Deduplicate
       const uniqueBackingTypes = [...new Set(newBackingTypes)];
-      
       if (JSON.stringify(prev.backingType) === JSON.stringify(uniqueBackingTypes)) return prev;
       return { ...prev, backingType: uniqueBackingTypes };
     });
   }, []);
 
-  const handleAdditionalServiceChange = useCallback((service: string, checked: boolean | 'indeterminate') => {
-    setGlobalData(prev => {
-      const isChecked = checked === true || checked === 'indeterminate';
-      const newServices = isChecked
-        ? [...prev.additionalServices, service]
-        : prev.additionalServices.filter(s => s !== service);
-      
-      const uniqueServices = [...new Set(newServices)];
-      if (JSON.stringify(prev.additionalServices) === JSON.stringify(uniqueServices)) return prev;
-      return { ...prev, additionalServices: uniqueServices };
-    });
-  }, []);
+  const closeAuthOverlay = useCallback(() => setShowAuthOverlay(false), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -426,7 +407,7 @@ const FormPage = () => {
         )}
       </div>
       
-      <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />
+      <AuthOverlay isOpen={showAuthOverlay} onClose={closeAuthOverlay} redirectPath={location.pathname} />
       <BulkUploadDialog isOpen={bulkUploadDialogOpen} onClose={() => setBulkUploadDialogOpen(false)} fileCount={pendingBulkFiles.length} onConfirmDifferent={handleConfirmDifferentSongs} onConfirmSame={handleConfirmSameSong} />
 
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
@@ -462,7 +443,6 @@ const FormPage = () => {
                 </Alert>
               )}
 
-              {/* Section 1: Contact Details */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 sectionStatus.contact ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -502,7 +482,6 @@ const FormPage = () => {
                 </div>
               </div>
 
-              {/* Section 2: Song Details */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 sectionStatus.songs ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -543,7 +522,6 @@ const FormPage = () => {
                 </Button>
               </div>
 
-              {/* Section 3: Order Quality */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 sectionStatus.quality ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -591,7 +569,6 @@ const FormPage = () => {
                 </div>
               </div>
 
-              {/* Section 4: Backing Type */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 sectionStatus.backing ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -643,7 +620,6 @@ const FormPage = () => {
                 {errors.backingType && <p className="text-red-500 text-xs font-bold mt-4 uppercase tracking-widest">Please select at least one backing type.</p>}
               </div>
 
-              {/* Section 5: Price Summary */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 progress > 80 ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"
@@ -672,7 +648,6 @@ const FormPage = () => {
                 </div>
               </div>
 
-              {/* Section 6: Final Consent */}
               <div className={cn(
                 "bg-white rounded-3xl p-6 md:p-8 shadow-sm border mb-8 transition-all duration-300",
                 sectionStatus.final ? "border-green-100 shadow-green-50/50" : "border-gray-100 hover:shadow-md"

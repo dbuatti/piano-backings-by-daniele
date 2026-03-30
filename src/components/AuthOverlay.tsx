@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, History, ClipboardList, Mail, ArrowLeft } from 'lucide-react';
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden'; // Import VisuallyHidden
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 
 interface AuthOverlayProps {
   isOpen: boolean;
@@ -14,24 +14,28 @@ interface AuthOverlayProps {
 }
 
 const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath }) => {
-  const navigate = useNavigate();
-  const [showEmailAuth, setShowEmailAuth] = useState(false); // State to toggle email auth form
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
+  
+  // Use a ref for onClose to prevent the useEffect from re-running 
+  // and creating a loop if onClose isn't stable in the parent.
+  const onCloseRef = useRef(onClose);
+  
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-  React.useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => { // Added event
-      if (session) {
-        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
-        // The onClose() should still happen to close the overlay.
-        if (event === 'SIGNED_IN') { // Only close on successful sign-in
-          onClose();
-        }
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && event === 'SIGNED_IN') {
+        // Only trigger close on actual sign-in event
+        onCloseRef.current();
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [onClose]); // Removed navigate and redirectPath from dependencies as they are not used for navigation here anymore.
+  }, []); // Empty dependency array ensures this only runs once on mount
 
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
@@ -53,7 +57,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg p-0 rounded-2xl bg-white shadow-xl border-none overflow-hidden">
-        {/* Always include DialogTitle and DialogDescription for accessibility */}
         {!showEmailAuth ? (
           <VisuallyHidden.Root>
             <DialogTitle>Authentication Options</DialogTitle>
@@ -67,11 +70,8 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
         )}
 
         {!showEmailAuth ? (
-          // Initial choice screen
           <div className="flex flex-col items-center">
-            {/* Top purple section */}
             <div className="w-full bg-[#1C0357] text-white p-8 pb-16 relative overflow-hidden">
-              {/* Pattern dots */}
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff33 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
               <div className="relative z-10 flex flex-col items-center space-y-6">
                 <button
@@ -85,7 +85,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
               </div>
             </div>
 
-            {/* Bottom white section with benefits and email sign-in */}
             <div className="w-full p-8 pt-12 bg-white -mt-8 relative z-20">
               <p className="text-gray-700 text-center mb-8">
                 Don't lose track of your request! By signing in or creating an account, you can:
@@ -138,7 +137,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
             </div>
           </div>
         ) : (
-          // Email authentication form
           <div className="p-6">
             <button onClick={() => setShowEmailAuth(false)} className="mb-4 text-gray-500 hover:text-gray-700 flex items-center space-x-2">
               <ArrowLeft size={16} />
@@ -147,7 +145,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
             <Auth
               supabaseClient={supabase}
               appearance={{ theme: ThemeSupa }}
-              providers={[]} // No social providers here, only email/password/magic link
+              providers={[]}
               redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`}
               magicLink={true}
               localization={{
