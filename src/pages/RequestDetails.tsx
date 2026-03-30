@@ -34,7 +34,8 @@ import {
   Save,
   Copy,
   Files,
-  Mic
+  Mic,
+  Youtube // Added missing import
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';

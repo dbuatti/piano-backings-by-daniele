@@ -450,7 +450,8 @@ const RepurposeTrackToShop: React.FC = () => {
     }));
   };
 
-  const handleImageFileChange = (file: File | null) => {
+  const handleImageFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setImageFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
@@ -460,12 +461,13 @@ const RepurposeTrackToShop: React.FC = () => {
     setFormErrors(prev => ({ ...prev, image_url: '' }));
   };
 
-  const handleSheetMusicFileChange = (file: File | null) => {
+  const handleSheetMusicFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setSheetMusicFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      // If clearing the file input, revert to the original URL if a request was selected, otherwise clear
+      // If file is cleared, revert to the original URL if a request was selected, otherwise clear
       setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequests.length > 0 ? selectedRequests[0].sheet_music_url || '' : '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));

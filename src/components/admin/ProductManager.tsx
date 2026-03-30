@@ -370,7 +370,8 @@ const ProductManager: React.FC = () => {
     }));
   };
 
-  const handleImageFileChange = (file: File | null) => {
+  const handleImageFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setImageFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
@@ -380,7 +381,8 @@ const ProductManager: React.FC = () => {
     setFormErrors(prev => ({ ...prev, image_url: '' }));
   };
 
-  const handleEditSheetMusicFileChange = (file: File | null) => {
+  const handleEditSheetMusicFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setEditSheetMusicFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));

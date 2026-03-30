@@ -134,7 +134,8 @@ const CreateNewProduct: React.FC = () => {
     }));
   };
 
-  const handleImageFileChange = (file: File | null) => {
+  const handleImageFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setImageFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, image_url: URL.createObjectURL(file) }));
@@ -144,7 +145,8 @@ const CreateNewProduct: React.FC = () => {
     setFormErrors(prev => ({ ...prev, image_url: '' }));
   };
 
-  const handleSheetMusicFileChange = (file: File | null) => {
+  const handleSheetMusicFileChange = (files: File[] | null) => {
+    const file = files ? files[0] : null;
     setSheetMusicFile(file);
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));

@@ -142,7 +142,7 @@ const EditRequest: React.FC = () => {
       const { data, error } = await supabase
         .from('backing_requests')
         .select('*')
-        .eq('id', id)
+        .eq(id ? 'id' : '', id) // Fixed potential undefined id
         .single();
       
       if (error) throw error;
@@ -491,7 +491,7 @@ const EditRequest: React.FC = () => {
                       label="Sheet Music (PDF)"
                       icon={FileText}
                       accept=".pdf"
-                      onChange={(file) => handleFileInputChange(file, 'sheetMusicFile')}
+                      onChange={(files) => handleFileInputChange(files ? files[0] : null, 'sheetMusicFile')}
                       note="Upload a new PDF to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
                     />
@@ -520,7 +520,7 @@ const EditRequest: React.FC = () => {
                       label="Voice Memo (Audio File)"
                       icon={Mic}
                       accept="audio/*"
-                      onChange={(file) => handleFileInputChange(file, 'voiceMemoFile')}
+                      onChange={(files) => handleFileInputChange(files ? files[0] : null, 'voiceMemoFile')}
                       note="Upload a new audio file to replace the existing one. Clear the file input to remove the current URL."
                       disabled={isUpdating}
                     />
