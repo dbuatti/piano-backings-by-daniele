@@ -131,7 +131,6 @@ const FormPage = () => {
     };
   }, [globalData.trackType, globalData.backingType, globalData.additionalServices, songs.length]);
 
-  // Centralized Auth Logic to prevent loops
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
@@ -147,7 +146,6 @@ const FormPage = () => {
         }));
         setShowAuthOverlay(false);
       } else {
-        // Only show overlay if we're not already logged in
         timer = setTimeout(() => setShowAuthOverlay(true), 1500);
       }
     };
@@ -283,11 +281,17 @@ const FormPage = () => {
   const handleBackingTypeChange = useCallback((type: string, checked: boolean | 'indeterminate') => {
     setGlobalData(prev => {
       const isChecked = checked === true || checked === 'indeterminate';
+      const currentBackingTypes = Array.isArray(prev.backingType) ? prev.backingType : [];
       const newBackingTypes = isChecked
-        ? [...prev.backingType, type]
-        : prev.backingType.filter(t => t !== type);
+        ? [...currentBackingTypes, type]
+        : currentBackingTypes.filter(t => t !== type);
       const uniqueBackingTypes = [...new Set(newBackingTypes)];
-      if (JSON.stringify(prev.backingType) === JSON.stringify(uniqueBackingTypes)) return prev;
+      
+      if (currentBackingTypes.length === uniqueBackingTypes.length && 
+          currentBackingTypes.every(t => uniqueBackingTypes.includes(t))) {
+        return prev;
+      }
+      
       return { ...prev, backingType: uniqueBackingTypes };
     });
   }, []);
@@ -566,7 +570,7 @@ const FormPage = () => {
                 <div className="space-y-8">
                   <div className="space-y-4">
                     <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Category</Label>
-                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || ""}>
+                    <Select onValueChange={(v) => handleGlobalSelectChange('category', v)} value={globalData.category || undefined}>
                       <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                       <SelectContent>{Object.keys(categoryDescriptions).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                     </Select>

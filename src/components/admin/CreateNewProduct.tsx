@@ -15,8 +15,7 @@ import { Loader2, Music, DollarSign, Image, Link, PlusCircle, UploadCloud, FileT
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
-import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator'; // Import the generator
+import { TrackInfo } from '@/utils/helpers';
 
 interface ProductForm {
   title: string;
@@ -34,7 +33,7 @@ interface ProductForm {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
-  master_download_link: string; // NEW FIELD
+  master_download_link: string;
 }
 
 const CreateNewProduct: React.FC = () => {
@@ -57,13 +56,12 @@ const CreateNewProduct: React.FC = () => {
     show_sheet_music_url: true,
     show_key_signature: true,
     track_type: '',
-    master_download_link: '', // Initialize new field
+    master_download_link: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Helper to truncate URL for display
   const truncateUrl = (url: string | null, maxLength: number = 40) => {
     if (!url) return 'N/A';
     if (url.length <= maxLength) return url;
@@ -100,16 +98,16 @@ const CreateNewProduct: React.FC = () => {
   const handleTrackChange = (index: number, field: keyof TrackInfo | 'selected' | 'file', value: string | boolean | File | null) => {
     setProductForm(prev => {
       const newTrackUrls = [...prev.track_urls];
-      const currentTrack = { ...newTrackUrls[index] }; // Create a copy to modify
+      const currentTrack = { ...newTrackUrls[index] };
 
       if (field === 'file') {
         currentTrack.file = value as File | null;
-        if (value) { // If a file is selected, clear the URL
+        if (value) {
           currentTrack.url = null;
         }
       } else if (field === 'url') {
         currentTrack.url = value as string | null;
-        if (value) { // If a URL is entered, clear the file
+        if (value) {
           currentTrack.file = null;
         }
       } else {
@@ -123,7 +121,7 @@ const CreateNewProduct: React.FC = () => {
   const addTrackUrl = () => {
     setProductForm(prev => ({
       ...prev,
-      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }] // Default to selected, include file, url is null
+      track_urls: [...prev.track_urls, { url: null, caption: '', selected: true, file: null }]
     }));
   };
 
@@ -151,7 +149,6 @@ const CreateNewProduct: React.FC = () => {
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      // If file is cleared, clear the URL in the form state
       setProductForm(prev => ({ ...prev, sheet_music_url: '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
@@ -175,7 +172,6 @@ const CreateNewProduct: React.FC = () => {
   };
 
   const validateForm = () => {
-    console.log('validateForm called');
     const errors: Record<string, string> = {};
     if (!productForm.title.trim()) errors.title = 'Title is required.';
     if (!productForm.description.trim()) errors.description = 'Description is required.';
@@ -185,13 +181,11 @@ const CreateNewProduct: React.FC = () => {
     if (!productForm.category.trim()) errors.category = 'Category is required.';
     if (!productForm.track_type.trim()) errors.track_type = 'Track Type is required.';
     
-    console.log('Validating track_urls:', productForm.track_urls);
-
     productForm.track_urls.filter(track => track.selected).forEach((track, index) => {
-      if (!track.url && !track.file) { // Require either URL or file
+      if (!track.url && !track.file) {
         errors[`track_urls[${index}].url`] = `Track URL or file ${index + 1} is required.`
       }
-      if (!track.caption.trim()) { // Caption must be a non-empty string
+      if (!track.caption.trim()) {
         errors[`track_urls[${index}].caption`] = `Caption for track ${index + 1} is required.`
       }
     });
@@ -206,13 +200,13 @@ const CreateNewProduct: React.FC = () => {
 
       const tracksToSave = track_urls
         .filter(track => track.selected)
-        .map(({ selected, file, ...rest }) => rest); // This map correctly removes 'selected' and 'file'
+        .map(({ selected, file, ...rest }) => rest);
 
       const { data, error } = await supabase
         .from('products')
         .insert([{
           ...fieldsToCreate,
-          track_urls: tracksToSave, // This is the array being inserted
+          track_urls: tracksToSave,
         }])
         .select();
       
@@ -224,15 +218,15 @@ const CreateNewProduct: React.FC = () => {
         title: "Product Added",
         description: `${productForm.title} has been added to the shop!`,
       });
-      setProductForm({ // Reset form
+      setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
         artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
         track_type: '', master_download_link: '',
       });
       setImageFile(null);
       setSheetMusicFile(null);
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] }); // Invalidate shop products to refresh ProductManager
-      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] }); // Invalidate for repurpose component
+      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
     },
     onError: (err: any) => {
       toast({
@@ -258,7 +252,6 @@ const CreateNewProduct: React.FC = () => {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
       } catch (uploadError: any) {
-        console.log('Image upload error:', uploadError);
         toast({
           title: "Image Upload Error",
           description: `Failed to upload image: ${uploadError.message}`, 
@@ -270,12 +263,9 @@ const CreateNewProduct: React.FC = () => {
 
     let sheetMusicUrlToSave = productForm.sheet_music_url;
     if (sheetMusicFile) {
-      console.log('Starting sheet music upload...');
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
-        console.log('Sheet music upload successful, URL:', sheetMusicUrlToSave);
       } catch (uploadError: any) {
-        console.log('Sheet music upload error:', uploadError);
         toast({
           title : "Sheet Music Upload Error",
           description: `Failed to upload sheet music: ${uploadError.message}`,
@@ -287,41 +277,33 @@ const CreateNewProduct: React.FC = () => {
       sheetMusicUrlToSave = null;
     }
 
-    // Process track URLs: upload files and replace with URLs
     const processedTrackUrls: TrackInfo[] = [];
     for (const track of productForm.track_urls) {
-      if (track.selected) { // Only process selected tracks
-        console.log('Processing track:', track.caption || 'Unnamed');
+      if (track.selected) {
         let trackUrlToSave = track.url;
         if (track.file) {
-          console.log('Starting track file upload:', track.caption || 'Unnamed');
           try {
-            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks'); // Use 'shop-tracks' folder within 'product-tracks' bucket
-            console.log('Track file upload successful, URL:', trackUrlToSave);
+            trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
           } catch (uploadError: any) {
-            console.log('Track upload error:', uploadError);
             toast({
               title: "Track Upload Error",
               description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
               variant: "destructive",
             });
-            return; // Stop if any track upload fails
+            return;
           }
         }
-        // Add the processed track (with URL and without file) to the list
         processedTrackUrls.push({ url: trackUrlToSave, caption: track.caption, selected: track.selected });
       }
     }
 
-    console.log('Constructing new product object');
     const newProduct = {
       ...productForm,
       price: parseFloat(productForm.price),
       image_url: imageUrlToSave,
       sheet_music_url: sheetMusicUrlToSave,
-      track_urls: processedTrackUrls, // Use the processed track URLs
+      track_urls: processedTrackUrls,
     }; 
-    console.log('Calling createProductMutation.mutate with:', newProduct);
     createProductMutation.mutate(newProduct);
   };
 
@@ -407,7 +389,7 @@ const CreateNewProduct: React.FC = () => {
           </div>
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category}>
+            <Select onValueChange={(value) => handleSelectChange('category', value)} value={productForm.category || undefined}>
               <SelectTrigger className={cn("mt-1", formErrors.category && "border-red-500")}>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -423,7 +405,7 @@ const CreateNewProduct: React.FC = () => {
 
           <div>
             <Label htmlFor="track_type">Track Type</Label>
-            <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type}>
+            <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={productForm.track_type || undefined}>
               <SelectTrigger className={cn("mt-1", formErrors.track_type && "border-red-500")}>
                 <SelectValue placeholder="Select track type" />
               </SelectTrigger>
@@ -463,17 +445,9 @@ const CreateNewProduct: React.FC = () => {
                 note="Upload a PDF for the sheet music. This will be available for preview."
                 error={formErrors.sheet_music_url}
               />
-              {productForm.sheet_music_url && sheetMusicFile && (
+              {productForm.sheet_music_url && (
                 <div className="mt-2">
                   <Label className="text-xs text-gray-500">Preview:</Label>
-                  <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
-                    {truncateUrl(productForm.sheet_music_url, 30)}
-                  </a>
-                </div>
-              )}
-              {productForm.sheet_music_url && !sheetMusicFile && (
-                <div className="mt-2">
-                  <Label className="text-xs text-gray-500">Existing URL:</Label>
                   <a href={productForm.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm truncate mt-1">
                     {truncateUrl(productForm.sheet_music_url, 30)}
                   </a>
@@ -516,7 +490,6 @@ const CreateNewProduct: React.FC = () => {
             </div>
           </div>
           
-          {/* NEW: Master Download Link Override */}
           <div className="border-t pt-4">
             <Label htmlFor="master_download_link" className="flex items-center text-base font-medium">
               <Link className="mr-2 h-5 w-5" />

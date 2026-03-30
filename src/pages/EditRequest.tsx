@@ -17,8 +17,8 @@ import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { calculateRequestCost } from '@/utils/pricing';
-import FileInput from '@/components/FileInput'; // Import FileInput
-import { uploadFileToSupabase } from '@/utils/supabase-client'; // Import uploadFileToSupabase
+import FileInput from '@/components/FileInput';
+import { uploadFileToSupabase } from '@/utils/supabase-client';
 
 interface BackingRequest {
   id: string;
@@ -108,7 +108,6 @@ const EditRequest: React.FC = () => {
   const [error, setError] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // New states for file uploads
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [voiceMemoFile, setVoiceMemoFile] = useState<File | null>(null);
 
@@ -142,12 +141,11 @@ const EditRequest: React.FC = () => {
       const { data, error } = await supabase
         .from('backing_requests')
         .select('*')
-        .eq(id ? 'id' : '', id) // Fixed potential undefined id
+        .eq('id', id)
         .single();
       
       if (error) throw error;
       
-      // Ensure backing_type is an array for the form
       const normalizedBackingType = getSafeBackingTypes(data.backing_type);
       const normalizedAdditionalServices = Array.isArray(data.additional_services) ? data.additional_services : [];
 
@@ -155,14 +153,11 @@ const EditRequest: React.FC = () => {
         ...data,
         backing_type: normalizedBackingType,
         additional_services: normalizedAdditionalServices,
-        // Format delivery_date for input type="date"
         delivery_date: data.delivery_date ? format(new Date(data.delivery_date), 'yyyy-MM-dd') : null,
-        // Ensure new pricing fields are numbers or null
         final_price: data.final_price !== null ? parseFloat(data.final_price) : null,
         estimated_cost_low: data.estimated_cost_low !== null ? parseFloat(data.estimated_cost_low) : null,
         estimated_cost_high: data.estimated_cost_high !== null ? parseFloat(data.estimated_cost_high) : null,
       });
-      // Reset file inputs when fetching new request data
       setSheetMusicFile(null);
       setVoiceMemoFile(null);
     } catch (err: any) {
@@ -182,7 +177,6 @@ const EditRequest: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (name === 'cost' || name === 'final_price' || name === 'estimated_cost_low' || name === 'estimated_cost_high') {
-      // Convert to number or null if empty
       setRequest(prev => prev ? { ...prev, [name]: value === '' ? null : parseFloat(value) } : null);
     } else {
       setRequest(prev => prev ? { ...prev, [name]: value } : null);
@@ -204,17 +198,14 @@ const EditRequest: React.FC = () => {
     });
   };
 
-  // Handler for FileInput component
   const handleFileInputChange = (file: File | null, fieldName: 'sheetMusicFile' | 'voiceMemoFile') => {
     if (fieldName === 'sheetMusicFile') {
       setSheetMusicFile(file);
-      // If a new file is selected, clear the existing URL in the form state
       if (file) {
         setRequest(prev => prev ? { ...prev, sheet_music_url: null } : null);
       }
     } else if (fieldName === 'voiceMemoFile') {
       setVoiceMemoFile(file);
-      // If a new file is selected, clear the existing URL in the form state
       if (file) {
         setRequest(prev => prev ? { ...prev, voice_memo: null } : null);
       }
@@ -232,29 +223,20 @@ const EditRequest: React.FC = () => {
     let updatedVoiceMemoUrl = request.voice_memo;
 
     try {
-      // Handle Sheet Music File Upload
       if (sheetMusicFile) {
         const { data: uploadData, error: uploadError } = await uploadFileToSupabase(sheetMusicFile, `sheet-music/${request.id}/`, 'sheet-music');
         if (uploadError) throw new Error(`Sheet music upload failed: ${uploadError.message}`);
         updatedSheetMusicUrl = uploadData?.path ? supabase.storage.from('sheet-music').getPublicUrl(uploadData.path).data.publicUrl : null;
-      } else if (request.sheet_music_url === null && currentRequest?.sheet_music_url) {
-        // If user cleared the URL and no new file, set to null
-        updatedSheetMusicUrl = null;
       }
 
-      // Handle Voice Memo File Upload
       if (voiceMemoFile) {
         const { data: uploadData, error: uploadError } = await uploadFileToSupabase(voiceMemoFile, `voice-memos/${request.id}/`, 'voice-memos');
         if (uploadError) throw new Error(`Voice memo upload failed: ${uploadError.message}`);
         updatedVoiceMemoUrl = uploadData?.path ? supabase.storage.from('voice-memos').getPublicUrl(uploadData.path).data.publicUrl : null;
-      } else if (request.voice_memo === null && currentRequest?.voice_memo) {
-        // If user cleared the URL and no new file, set to null
-        updatedVoiceMemoUrl = null;
       }
 
       const { id, created_at, track_urls, shared_link, dropbox_folder_id, uploaded_platforms, ...updates } = request;
       
-      // Ensure backing_type and additional_services are stored as arrays
       const payload = {
         ...updates,
         backing_type: Array.isArray(updates.backing_type) ? updates.backing_type : (updates.backing_type ? [updates.backing_type] : []),
@@ -263,8 +245,8 @@ const EditRequest: React.FC = () => {
         final_price: updates.final_price === null ? null : parseFloat(updates.final_price.toString()),
         estimated_cost_low: updates.estimated_cost_low === null ? null : parseFloat(updates.estimated_cost_low.toString()),
         estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()),
-        sheet_music_url: updatedSheetMusicUrl, // Use the potentially new URL
-        voice_memo: updatedVoiceMemoUrl, // Use the potentially new URL
+        sheet_music_url: updatedSheetMusicUrl,
+        voice_memo: updatedVoiceMemoUrl,
       };
 
       const { error } = await supabase
@@ -278,7 +260,7 @@ const EditRequest: React.FC = () => {
         title: "Request Updated",
         description: "Backing track request has been updated successfully.",
       });
-      navigate(`/admin/request/${id}`); // Go back to details page
+      navigate(`/admin/request/${id}`);
     } catch (err: any) {
       console.error('Error updating request:', err);
       setError(err);
@@ -340,9 +322,6 @@ const EditRequest: React.FC = () => {
     );
   }
 
-  // Store the original request data to compare if files were cleared
-  const currentRequest = request;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
@@ -369,7 +348,6 @@ const EditRequest: React.FC = () => {
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Basic Information */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">1</span>
@@ -394,7 +372,7 @@ const EditRequest: React.FC = () => {
                   </div>
                   <div>
                     <Label htmlFor="category" className="text-sm mb-1">Category</Label>
-                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={request.category || ''}>
+                    <Select onValueChange={(value) => handleSelectChange('category', value)} value={request.category || undefined}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -408,13 +386,12 @@ const EditRequest: React.FC = () => {
                 </div>
               </div>
 
-              {/* Track Type */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
                   Track Type
                 </h2>
-                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || ''}>
+                <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select track type" />
                   </SelectTrigger>
@@ -426,7 +403,6 @@ const EditRequest: React.FC = () => {
                 </Select>
               </div>
 
-              {/* Musical Details */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span>
@@ -435,7 +411,7 @@ const EditRequest: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="song_key" className="text-sm mb-1">Song Key</Label>
-                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={request.song_key || ''}>
+                    <Select onValueChange={(value) => handleSelectChange('song_key', value)} value={request.song_key || undefined}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select key" />
                       </SelectTrigger>
@@ -462,7 +438,7 @@ const EditRequest: React.FC = () => {
                   {request.different_key === 'Yes' && (
                     <div>
                       <Label htmlFor="key_for_track" className="text-sm mb-1">Requested Key</Label>
-                      <Select onValueChange={(value) => handleSelectChange('key_for_track', value)} value={request.key_for_track || ''}>
+                      <Select onValueChange={(value) => handleSelectChange('key_for_track', value)} value={request.key_for_track || undefined}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select key" />
                         </SelectTrigger>
@@ -477,14 +453,12 @@ const EditRequest: React.FC = () => {
                 </div>
               </div>
 
-              {/* Materials */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">4</span>
                   Materials
                 </h2>
                 <div className="space-y-4">
-                  {/* Sheet Music File Input */}
                   <div>
                     <FileInput
                       id="sheetMusicFile"
@@ -513,7 +487,6 @@ const EditRequest: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Voice Memo File Input */}
                   <div>
                     <FileInput
                       id="voiceMemoFile"
@@ -553,7 +526,6 @@ const EditRequest: React.FC = () => {
                 </div>
               </div>
 
-              {/* Purpose */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
@@ -562,7 +534,7 @@ const EditRequest: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="track_purpose" className="text-sm mb-1">Track Purpose</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || ''}>
+                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || undefined}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select purpose" />
                       </SelectTrigger>
@@ -591,7 +563,6 @@ const EditRequest: React.FC = () => {
                 </div>
               </div>
 
-              {/* Additional Services & Timeline */}
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">6</span>
@@ -624,7 +595,6 @@ const EditRequest: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status and Payment */}
               <div className="pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">7</span>
@@ -668,7 +638,6 @@ const EditRequest: React.FC = () => {
                     />
                     <p className="text-xs text-gray-500 mt-1">This is the automatically calculated cost.</p>
                   </div>
-                  {/* New pricing fields */}
                   <div>
                     <Label htmlFor="final_price" className="text-sm mb-1 flex items-center">
                       <DollarSign className="mr-1 h-4 w-4" /> Final Agreed Price (AUD)
