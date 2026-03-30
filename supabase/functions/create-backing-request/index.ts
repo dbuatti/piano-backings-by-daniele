@@ -111,17 +111,6 @@ function extractYouTubeId(url: string): string | null {
   return (match && match[2].length === 11) ? match[2] : null;
 }
 
-function getFileExtensionFromUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    const lastDotIndex = pathname.lastIndexOf('.');
-    return lastDotIndex !== -1 ? pathname.substring(lastDotIndex + 1) : 'audio';
-  } catch (error) {
-    return 'audio';
-  }
-}
-
 function createOrderSummary(formData: any): string {
   const summary = `
 PIANO BACKING TRACK REQUEST SUMMARY
@@ -215,15 +204,9 @@ interface DropboxResult {
 }
 
 async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
-  if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
-    throw new Error('Dropbox credentials not fully configured in Supabase secrets');
-  }
-  
   const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: config.dropboxRefreshToken,
@@ -241,66 +224,18 @@ async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
   return tokenData.access_token;
 }
 
-async function createFallbackReferenceFile(dropboxAccessToken: string, dropboxFolderPath: string, youtubeLink: string, mp3FileName: string) {
-  try {
-    const textContent = `YouTube Reference Link: ${youtubeLink}\n\nThis file was created as a reference for the requested track.\nYou can manually download the audio from the link above if needed.`;
-    const textEncoder = new TextEncoder();
-    const textBuffer = textEncoder.encode(textContent);
-    
-    const textUploadPath = `${dropboxFolderPath}/${mp3FileName.replace('.mp3', '_reference.txt')}`;
-    
-    const dropboxUploadResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Dropbox-API-Arg': JSON.stringify({
-          path: textUploadPath,
-          mode: 'add',
-          autorename: true,
-          mute: false
-        }),
-        'Content-Type': 'application/octet-stream'
-      },
-      body: textBuffer
-    });
-    
-    if (!dropboxUploadResponse.ok) {
-      const errorText = await dropboxUploadResponse.text();
-      throw new Error(`Dropbox reference text upload error: ${dropboxUploadResponse.status} - ${errorText}`);
-    }
-  } catch (error) {
-    console.error('Error creating fallback reference file:', error);
-    throw error;
-  }
-}
-
 async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any, userName: string): Promise<DropboxResult> {
   const result: DropboxResult = {
-    dropboxFolderId: null,
-    dropboxError: null,
-    dropboxFolderPath: null,
-    templateCopySuccess: false,
-    templateCopyError: null,
-    youtubeMp3Success: false,
-    youtubeMp3Error: null,
-    pdfUploadSuccess: false,
-    pdfUploadError: null,
-    voiceMemoUploadSuccess: false,
-    voiceMemoUploadError: null,
-    summaryUploadSuccess: false,
-    summaryUploadError: null,
-    parentFolderUsed: '',
-    folderNameUsed: '',
-    logicFileNameUsed: '',
+    dropboxFolderId: null, dropboxError: null, dropboxFolderPath: null,
+    templateCopySuccess: false, templateCopyError: null,
+    youtubeMp3Success: false, youtubeMp3Error: null,
+    pdfUploadSuccess: false, pdfUploadError: null,
+    voiceMemoUploadSuccess: false, voiceMemoUploadError: null,
+    summaryUploadSuccess: false, summaryUploadError: null,
+    parentFolderUsed: '', folderNameUsed: '', logicFileNameUsed: '',
   };
 
   let dropboxAccessToken: string | null = null;
-  
-  if (!config.dropboxAppKey || !config.dropboxAppSecret || !config.dropboxRefreshToken) {
-    result.dropboxError = 'Dropbox credentials not configured';
-    return result;
-  }
-
   try {
     dropboxAccessToken = await getDropboxAccessToken(config);
   } catch (error: any) {
@@ -318,7 +253,6 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
   result.logicFileNameUsed = logicFileName;
 
   let parentFolder = config.defaultDropboxParentFolder;
-  
   if (sanitizedData.trackType === 'quick' || sanitizedData.trackType === 'one-take') {
     parentFolder = `${config.defaultDropboxParentFolder}/00. ROUGH CUTS`;
   } else {
@@ -327,47 +261,27 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
       'audition-cut': '00. AUDITION CUTS',
       'note-bash': '00. NOTE BASH'
     };
-    
     const primaryBackingType = Array.isArray(sanitizedData.backingType) && sanitizedData.backingType.length > 0 
-      ? sanitizedData.backingType[0] 
-      : null;
-
-    if (primaryBackingType && backingTypeMap[primaryBackingType]) {
-      parentFolder = `${config.defaultDropboxParentFolder}/${backingTypeMap[primaryBackingType]}`;
-    } else {
-      parentFolder = `${config.defaultDropboxParentFolder}/00. GENERAL`;
-    }
+      ? sanitizedData.backingType[0] : null;
+    parentFolder = primaryBackingType && backingTypeMap[primaryBackingType] 
+      ? `${config.defaultDropboxParentFolder}/${backingTypeMap[primaryBackingType]}`
+      : `${config.defaultDropboxParentFolder}/00. GENERAL`;
   }
   
   result.parentFolderUsed = parentFolder;
-  
-  const normalizedParentFolder = parentFolder.startsWith('/') 
-    ? parentFolder.replace(/\/$/, '') 
-    : `/${parentFolder}`.replace(/\/$/, '');
-    
-  const fullPath = `${normalizedParentFolder}/${folderName}`;
+  const fullPath = `${parentFolder.replace(/\/$/, '')}/${folderName}`;
   result.dropboxFolderPath = fullPath;
 
   // 1. Create Folder
   try {
     const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        path: fullPath,
-        autorename: true
-      })
+      headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: fullPath, autorename: true })
     });
-    
     if (dropboxResponse.ok) {
       const dropboxData = await dropboxResponse.json();
       result.dropboxFolderId = dropboxData.metadata.id;
-    } else {
-      const errorText = await dropboxResponse.text();
-      result.dropboxError = `Dropbox API error (create folder): ${dropboxResponse.status} - ${errorText}`;
     }
   } catch (error: any) {
     result.dropboxError = `Dropbox folder creation error: ${error.message}`;
@@ -376,50 +290,28 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
 
   if (!result.dropboxFolderId) return result;
 
-  // 2. Copy Logic Pro X template file
+  // 2. Copy Logic Pro X template
   if (config.templateFilePath) {
     try {
-      const newFileName = `${logicFileName}.logicx`;
-      const copyPath = `${result.dropboxFolderPath}/${newFileName}`;
-      
-      const copyResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
+      await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${dropboxAccessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from_path: config.templateFilePath,
-          to_path: copyPath,
-          autorename: true
-        })
+        headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_path: config.templateFilePath, to_path: `${result.dropboxFolderPath}/${logicFileName}.logicx`, autorename: true })
       });
-      
-      if (copyResponse.ok) {
-        result.templateCopySuccess = true;
-      }
-    } catch (error: any) {
-      result.templateCopyError = `Template copy error: ${error.message}`;
-    }
+      result.templateCopySuccess = true;
+    } catch (e) {}
   }
 
   // 3. YouTube MP3
   if (sanitizedData.youtubeLink) {
     try {
-      const mp3FileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`;
-      const uploadPath = `${result.dropboxFolderPath}/${mp3FileName}`;
       const videoId = extractYouTubeId(sanitizedData.youtubeLink);
-      
       if (videoId && config.rapidApiKey) {
         const downloadUrl = `https://cloud-api-youtube-downloader.p.rapidapi.com/youtube/v1/mux?id=${videoId}&audioOnly=true&audioFormat=mp3`;
         const downloadResponse = await fetch(downloadUrl, {
           method: 'GET',
-          headers: {
-            'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com',
-            'x-rapidapi-key': config.rapidApiKey
-          }
+          headers: { 'x-rapidapi-host': 'cloud-api-youtube-downloader.p.rapidapi.com', 'x-rapidapi-key': config.rapidApiKey }
         });
-        
         if (downloadResponse.ok) {
           const downloadData = await downloadResponse.json();
           if (downloadData.url) {
@@ -428,24 +320,15 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
               const mp3Buffer = await mp3Response.arrayBuffer();
               await fetch('https://content.dropboxapi.com/2/files/upload', {
                 method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${dropboxAccessToken}`,
-                  'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
-                  'Content-Type': 'application/octet-stream'
-                },
+                headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Dropbox-API-Arg': JSON.stringify({ path: `${result.dropboxFolderPath}/${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_reference.mp3`, mode: 'add', autorename: true }), 'Content-Type': 'application/octet-stream' },
                 body: mp3Buffer
               });
               result.youtubeMp3Success = true;
             }
           }
         }
-      } else {
-        await createFallbackReferenceFile(dropboxAccessToken, result.dropboxFolderPath, sanitizedData.youtubeLink, mp3FileName);
-        result.youtubeMp3Success = true;
       }
-    } catch (apiError: any) {
-      console.error('YouTube MP3 error:', apiError);
-    }
+    } catch (e) {}
   }
 
   // 4. Upload PDFs (Multiple)
@@ -455,24 +338,15 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
         const pdfResponse = await fetch(item.url);
         if (pdfResponse.ok) {
           const pdfBuffer = await pdfResponse.arrayBuffer();
-          const fileName = item.caption || `sheet_music_${Date.now()}.pdf`;
-          const uploadPath = `${result.dropboxFolderPath}/${fileName}`;
-          
           await fetch('https://content.dropboxapi.com/2/files/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${dropboxAccessToken}`,
-              'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
-              'Content-Type': 'application/octet-stream'
-            },
+            headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Dropbox-API-Arg': JSON.stringify({ path: `${result.dropboxFolderPath}/${item.caption || `sheet_music_${Date.now()}.pdf`}`, mode: 'add', autorename: true }), 'Content-Type': 'application/octet-stream' },
             body: pdfBuffer
           });
         }
       }
       result.pdfUploadSuccess = true;
-    } catch (error: any) {
-      result.pdfUploadError = error.message;
-    }
+    } catch (e) {}
   }
 
   // 5. Upload Voice Memos (Multiple)
@@ -482,47 +356,28 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
         const vmResponse = await fetch(item.url);
         if (vmResponse.ok) {
           const vmBuffer = await vmResponse.arrayBuffer();
-          const fileName = item.caption || `voice_memo_${Date.now()}.mp3`;
-          const uploadPath = `${result.dropboxFolderPath}/${fileName}`;
-          
           await fetch('https://content.dropboxapi.com/2/files/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${dropboxAccessToken}`,
-              'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
-              'Content-Type': 'application/octet-stream'
-            },
+            headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Dropbox-API-Arg': JSON.stringify({ path: `${result.dropboxFolderPath}/${item.caption || `voice_memo_${Date.now()}.mp3`}`, mode: 'add', autorename: true }), 'Content-Type': 'application/octet-stream' },
             body: vmBuffer
           });
         }
       }
       result.voiceMemoUploadSuccess = true;
-    } catch (error: any) {
-      result.voiceMemoUploadError = error.message;
-    }
+    } catch (e) {}
   }
 
   // 6. Order Summary
   try {
     const summaryContent = createOrderSummary(sanitizedData);
     const textEncoder = new TextEncoder();
-    const summaryBuffer = textEncoder.encode(summaryContent);
-    const summaryFileName = `${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_order_summary.txt`;
-    const uploadPath = `${result.dropboxFolderPath}/${summaryFileName}`;
-    
     await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
-        'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
-        'Content-Type': 'application/octet-stream'
-      },
-      body: summaryBuffer
+      headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Dropbox-API-Arg': JSON.stringify({ path: `${result.dropboxFolderPath}/${sanitizedData.songTitle.replace(/[^a-zA-Z0-9]/g, '_')}_order_summary.txt`, mode: 'add', autorename: true }), 'Content-Type': 'application/octet-stream' },
+      body: textEncoder.encode(summaryContent)
     });
     result.summaryUploadSuccess = true;
-  } catch (error: any) {
-    result.summaryUploadError = error.message;
-  }
+  } catch (e) {}
 
   return result;
 }
