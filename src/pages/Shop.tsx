@@ -6,7 +6,24 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, Filter, X, ShoppingCart, Music, Sparkles, Headphones, Mic2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Card } from "@/components/ui/card";
+import { 
+  Loader2, 
+  Search, 
+  Filter, 
+  X, 
+  ShoppingCart, 
+  Music, 
+  Sparkles, 
+  Headphones, 
+  Mic2, 
+  SlidersHorizontal, 
+  ArrowUpDown,
+  Star,
+  Zap,
+  ChevronRight,
+  Package
+} from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -29,6 +46,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 interface Product {
   id: string;
@@ -105,12 +124,21 @@ const Shop = () => {
     staleTime: 2 * 60 * 1000,
   });
 
+  // Separate Season Pack from main list
+  const featuredProducts = useMemo(() => {
+    return products?.filter(p => p.title.toLowerCase().includes('season pack')) || [];
+  }, [products]);
+
+  const regularProducts = useMemo(() => {
+    return products?.filter(p => !p.title.toLowerCase().includes('season pack')) || [];
+  }, [products]);
+
   const groupedProducts = useMemo(() => {
-    if (!products) return [];
+    if (!regularProducts) return [];
     const groups: { [key: string]: Product[] } = {};
     const order = ['full-song', 'audition-cut', 'note-bash', 'general'];
     
-    products.forEach(p => {
+    regularProducts.forEach(p => {
       const cat = p.category || 'general';
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(p);
@@ -121,25 +149,12 @@ const Shop = () => {
       label: key.replace('-', ' ').toUpperCase(),
       products: groups[key]
     }));
-  }, [products]);
+  }, [regularProducts]);
 
   const handleViewDetails = useCallback((product: Product) => {
     setSelectedProductForDetail(product);
     setIsDetailDialogOpen(true);
-    setSearchParams(prev => {
-      prev.set('product', product.id);
-      return prev;
-    }, { replace: true });
-  }, [setSearchParams]);
-
-  const handleCloseDetails = useCallback(() => {
-    setIsDetailDialogOpen(false);
-    setSelectedProductForDetail(null);
-    setSearchParams(prev => {
-      prev.delete('product');
-      return prev;
-    }, { replace: true });
-  }, [setSearchParams]);
+  }, []);
 
   const handleBuyNow = useCallback(async (product: Product) => {
     setIsBuying(true);
@@ -164,190 +179,261 @@ const Shop = () => {
     }
   }, [toast]);
 
-  const hasActiveFilters = currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all';
+  const FilterContent = () => (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Search Library</Label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Song, artist, or show..."
+            value={currentSearchTerm}
+            onChange={(e) => updateSearchParam('q', e.target.value)}
+            className="pl-10 h-11 bg-gray-50 border-none rounded-xl focus-visible:ring-[#1C0357]"
+          />
+        </div>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Backing Type</Label>
+        <div className="flex flex-col gap-2">
+          {['all', 'full-song', 'audition-cut', 'note-bash'].map(cat => (
+            <Button 
+              key={cat}
+              variant="ghost"
+              onClick={() => updateSearchParam('category', cat)}
+              className={cn(
+                "justify-start h-10 px-3 rounded-lg font-bold text-sm transition-all",
+                currentCategory === cat ? "bg-[#1C0357] text-white hover:bg-[#1C0357]" : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              {cat === 'all' ? 'All Tracks' : cat.replace('-', ' ')}
+              {currentCategory === cat && <ChevronRight className="ml-auto h-4 w-4" />}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Track Quality</Label>
+        <div className="flex flex-col gap-2">
+          {['all', 'polished', 'one-take', 'quick'].map(type => (
+            <Button 
+              key={type}
+              variant="ghost"
+              onClick={() => updateSearchParam('track_type', type)}
+              className={cn(
+                "justify-start h-10 px-3 rounded-lg font-bold text-sm transition-all",
+                currentTrackType === type ? "bg-[#F538BC] text-white hover:bg-[#F538BC]" : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              {type === 'all' ? 'Any Quality' : type}
+              {currentTrackType === type && <ChevronRight className="ml-auto h-4 w-4" />}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Sort By</Label>
+        <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
+          <SelectTrigger className="h-11 bg-gray-50 border-none rounded-xl font-bold text-sm">
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="title_asc">Title: A-Z</SelectItem>
+            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+            <SelectItem value="created_at_desc">Newest First</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {(currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all') && (
+        <Button 
+          variant="outline" 
+          className="w-full rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 font-black text-xs uppercase tracking-widest"
+          onClick={() => setSearchParams(new URLSearchParams())}
+        >
+          <X className="mr-2 h-4 w-4" /> Clear All Filters
+        </Button>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC]">
+    <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
         title="Sheet Music & Backing Track Library | Piano Backings by Daniele"
         description="Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."
       />
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Modern Hero Section */}
-        <section className="relative rounded-3xl overflow-hidden mb-12 bg-[#1C0357] text-white">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/music.png')]" />
-          <div className="relative z-10 px-8 py-16 md:py-24 max-w-3xl">
-            <Badge className="mb-4 bg-[#F538BC] text-white border-none">PREMIUM LIBRARY</Badge>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-6">
-              Find Your Perfect <span className="text-[#F538BC]">Accompaniment</span>
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-              Skip the wait and download high-quality studio tracks instantly. 
-              Each track is recorded live by Daniele Buatti.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/form-page">
-                <Button size="lg" className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white font-bold h-14 px-8 rounded-xl shadow-xl">
-                  Order Custom Track
-                </Button>
-              </Link>
-            </div>
-          </div>
-          <div className="absolute right-0 bottom-0 top-0 w-1/3 hidden lg:block bg-gradient-to-l from-[#F538BC]/20 to-transparent" />
-        </section>
-
-        {/* Quality Legend */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-          {[
-            { label: 'Polished', icon: Sparkles, color: 'text-[#F538BC]', bg: 'bg-pink-50', desc: 'Studio mix, perfect for reels & auditions.' },
-            { label: 'One-Take', icon: Headphones, color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Authentic performance feel, high accuracy.' },
-            { label: 'Quick Ref', icon: Mic2, color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Fast turnaround reference for learning.' },
-          ].map((item) => (
-            <div key={item.label} className={cn("flex items-center gap-4 p-4 rounded-2xl border border-transparent transition-all", item.bg)}>
-              <div className={cn("p-3 rounded-xl bg-white shadow-sm", item.color)}>
-                <item.icon size={24} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Featured Section - Season Pack Prominence */}
+        {featuredProducts.length > 0 && !currentSearchTerm && currentCategory === 'all' && (
+          <section className="mb-20">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="h-10 w-10 rounded-xl bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
+                <Star size={24} fill="currentColor" />
               </div>
-              <div>
-                <h4 className="font-bold text-[#1C0357] text-sm">{item.label} Quality</h4>
-                <p className="text-xs text-gray-500 font-medium">{item.desc}</p>
-              </div>
+              <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">Featured Offers</h2>
             </div>
-          ))}
-        </div>
-
-        {/* Dynamic Filters Bar */}
-        <div className="sticky top-20 z-40 bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-1/3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search library..."
-              value={currentSearchTerm}
-              onChange={(e) => updateSearchParam('q', e.target.value)}
-              className="pl-10 h-12 bg-gray-50 border-none rounded-xl focus-visible:ring-[#1C0357]"
-            />
-          </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
-              <SelectTrigger className="h-12 w-full md:w-48 bg-gray-50 border-none rounded-xl">
-                <ArrowUpDown className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="title_asc">Title A-Z</SelectItem>
-                <SelectItem value="price_asc">Price Low-High</SelectItem>
-                <SelectItem value="price_desc">Price High-Low</SelectItem>
-                <SelectItem value="created_at_desc">Newest First</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="h-12 px-6 rounded-xl border-2 border-gray-100 font-bold hover:bg-white flex-1 md:flex-none">
-                  <SlidersHorizontal className="mr-2 h-4 w-4" /> Filters
-                  {hasActiveFilters && <Badge className="ml-2 bg-[#F538BC]">{searchParams.size}</Badge>}
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Filter Collection</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-8 py-8">
-                  <div className="space-y-4">
-                    <Label className="text-sm font-bold uppercase tracking-widest text-gray-400">Backing Type</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['all', 'full-song', 'audition-cut', 'note-bash'].map(cat => (
-                        <Button 
-                          key={cat}
-                          variant={currentCategory === cat ? 'default' : 'outline'}
-                          onClick={() => updateSearchParam('category', cat)}
-                          className="capitalize h-10 text-xs font-bold"
-                        >
-                          {cat.replace('-', ' ')}
-                        </Button>
-                      ))}
+            
+            <div className="grid grid-cols-1 gap-8">
+              {featuredProducts.map(product => (
+                <div key={product.id} className="relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[40px] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                  <Card className="relative bg-[#1C0357] text-white rounded-[40px] overflow-hidden border-none shadow-2xl">
+                    <div className="grid md:grid-cols-2 items-center">
+                      <div className="p-10 md:p-16 space-y-6">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-[#F538BC] text-white border-none font-black px-3 py-1">NEW</Badge>
+                          <Badge variant="outline" className="text-white border-white/30 font-bold">Standard</Badge>
+                        </div>
+                        <h3 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                          {product.title}
+                        </h3>
+                        <p className="text-xl text-white/70 font-medium leading-relaxed max-w-md">
+                          {product.description}
+                        </p>
+                        <div className="pt-4 flex flex-col sm:flex-row items-center gap-6">
+                          <div className="flex items-baseline">
+                            <span className="text-2xl font-bold mr-1">$</span>
+                            <span className="text-6xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
+                            <span className="ml-2 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
+                          </div>
+                          <Button 
+                            onClick={() => handleBuyNow(product)}
+                            disabled={isBuying}
+                            className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-10 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all w-full sm:w-auto"
+                          >
+                            {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-2" /> Instant Purchase</>}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="hidden md:block relative h-full min-h-[400px]">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#1C0357] via-transparent to-transparent z-10" />
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-[#F538BC]/20 to-[#D1AAF2]/20 flex items-center justify-center">
+                            <Package size={120} className="text-white/10" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-4">
-                    <Label className="text-sm font-bold uppercase tracking-widest text-gray-400">Track Quality</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['all', 'polished', 'one-take', 'quick'].map(type => (
-                        <Button 
-                          key={type}
-                          variant={currentTrackType === type ? 'default' : 'outline'}
-                          onClick={() => updateSearchParam('track_type', type)}
-                          className="capitalize h-10 text-xs font-bold"
-                        >
-                          {type}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <Button 
-                    className="w-full h-12 bg-[#1C0357] font-bold"
-                    onClick={() => setIsFilterSheetOpen(false)}
-                  >
-                    Show Results
-                  </Button>
-                  {hasActiveFilters && (
-                    <Button variant="ghost" className="w-full text-red-500" onClick={() => {
-                      setSearchParams(new URLSearchParams());
-                      setIsFilterSheetOpen(false);
-                    }}>
-                      Reset All
-                    </Button>
-                  )}
+                  </Card>
                 </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-
-        {/* Content Sections */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-          </div>
-        ) : !products || products.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
-            <Music className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-[#1C0357] mb-2">No matches found</h3>
-            <p className="text-gray-500 mb-6">Try adjusting your filters or search keywords.</p>
-            <Button variant="outline" onClick={() => setSearchParams(new URLSearchParams())}>Clear all filters</Button>
-          </div>
-        ) : (
-          <div className="space-y-16 pb-20">
-            {groupedProducts.map(group => (
-              <section key={group.id} className="space-y-8">
-                <div className="flex items-end justify-between border-b-2 border-gray-100 pb-4">
-                  <div className="space-y-1">
-                    <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">{group.label}S</h2>
-                    <p className="text-sm font-medium text-gray-400">{group.products.length} professional tracks available</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {group.products.map(product => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onViewDetails={handleViewDetails}
-                      onBuyNow={handleBuyNow}
-                      isBuying={isBuying}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
         )}
+
+        <div className="flex flex-col lg:flex-row gap-12">
+          
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block w-72 flex-shrink-0">
+            <div className="sticky top-28">
+              <div className="flex items-center gap-2 mb-6">
+                <SlidersHorizontal size={18} className="text-[#1C0357]" />
+                <h3 className="font-black text-[#1C0357] uppercase tracking-widest text-sm">Filters</h3>
+              </div>
+              <FilterContent />
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <div className="flex-1">
+            
+            {/* Mobile Filter Trigger */}
+            <div className="lg:hidden mb-8 flex gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search library..."
+                  value={currentSearchTerm}
+                  onChange={(e) => updateSearchParam('q', e.target.value)}
+                  className="pl-10 h-12 bg-white border-gray-200 rounded-xl"
+                />
+              </div>
+              <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="h-12 w-12 p-0 rounded-xl border-gray-200 bg-white">
+                    <Filter size={20} className="text-[#1C0357]" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                  <SheetHeader className="text-left mb-8">
+                    <SheetTitle className="text-2xl font-black text-[#1C0357]">Filters</SheetTitle>
+                  </SheetHeader>
+                  <ScrollArea className="h-[calc(100vh-120px)] pr-4">
+                    <FilterContent />
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Results Grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+              </div>
+            ) : regularProducts.length === 0 ? (
+              <div className="text-center py-32 bg-white rounded-[40px] border-2 border-dashed border-gray-100">
+                <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Music className="h-10 w-10 text-gray-300" />
+                </div>
+                <h3 className="text-2xl font-black text-[#1C0357] mb-2">No tracks found</h3>
+                <p className="text-gray-500 font-medium mb-8">Try adjusting your filters or search keywords.</p>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl font-bold"
+                  onClick={() => setSearchParams(new URLSearchParams())}
+                >
+                  Clear all filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-20">
+                {groupedProducts.map(group => (
+                  <section key={group.id} className="space-y-8">
+                    <div className="flex items-center justify-between border-b-2 border-gray-100 pb-4">
+                      <div className="space-y-1">
+                        <h2 className="text-2xl font-black text-[#1C0357] tracking-tighter uppercase">{group.label}S</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{group.products.length} Tracks Available</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                      {group.products.map(product => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onViewDetails={handleViewDetails}
+                          onBuyNow={handleBuyNow}
+                          isBuying={isBuying}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </main>
 
       {selectedProductForDetail && (
         <ProductDetailDialog
           isOpen={isDetailDialogOpen}
-          onOpenChange={open => !open && handleCloseDetails()}
+          onOpenChange={open => !open && setSelectedProductForDetail(null)}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}

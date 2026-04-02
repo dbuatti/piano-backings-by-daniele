@@ -7,7 +7,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key, Theater } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
 
@@ -69,6 +69,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
           ) : (
             <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] via-[#2D0B8C] to-[#D1AAF2]/40 text-white p-6">
               <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+              <Music size={40} className="opacity-20" />
             </div>
           )}
         </AspectRatio>
