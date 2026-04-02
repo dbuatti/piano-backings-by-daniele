@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
@@ -14,13 +13,13 @@ import {
   XCircle,
   Loader2,
   Plus,
-  Check,
   Mic,
   Headphones,
   Sparkles,
   Package,
   Ticket,
-  User as UserIcon // Renamed to avoid conflict with local 'user' state
+  User as UserIcon,
+  CreditCard
 } from 'lucide-react';
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
@@ -32,7 +31,6 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
-import BulkUploadDialog from '@/components/form/BulkUploadDialog';
 import { calculateRequestCost } from '@/utils/pricing';
 
 const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
@@ -59,8 +57,6 @@ const FormPage = () => {
   const [user, setUser] = useState<any>(null);
   const [userCredits, setUserCredits] = useState<any[]>([]);
   const [useCredit, setUseCredit] = useState(false);
-  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
-  const [pendingBulkFiles, setPendingBulkFiles] = useState<File[]>([]);
 
   const { isHolidayModeActive, isServiceClosed, closureReason } = useAppSettings();
   const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
@@ -90,11 +86,7 @@ const FormPage = () => {
           name: session.user.user_metadata?.full_name || ''
         }));
         
-        // Fetch credits
-        const { data: credits } = await supabase
-          .from('user_credits')
-          .select('*')
-          .eq('user_id', session.user.id);
+        const { data: credits } = await supabase.from('user_credits').select('*').eq('user_id', session.user.id);
         setUserCredits(credits || []);
       } else {
         setTimeout(() => setShowAuthOverlay(true), 1500);
@@ -108,14 +100,9 @@ const FormPage = () => {
   }, [userCredits, globalData.trackType]);
 
   const priceBreakdown = useMemo(() => {
-    const mockRequest = {
-      track_type: globalData.trackType,
-      additional_services: globalData.additionalServices
-    };
+    const mockRequest = { track_type: globalData.trackType, additional_services: globalData.additionalServices };
     const perSong = calculateRequestCost(mockRequest);
-    return {
-      total: useCredit ? 0 : perSong.totalCost * songs.length,
-    };
+    return { total: useCredit ? 0 : perSong.totalCost * songs.length };
   }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit]);
 
   const handleGlobalInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -134,10 +121,7 @@ const FormPage = () => {
     setIsSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (useCredit && currentTierCredits < songs.length) {
-        throw new Error(`You only have ${currentTierCredits} credits, but you are requesting ${songs.length} songs.`);
-      }
+      const createdRequestIds: string[] = [];
 
       for (const song of songs) {
         const sheetMusicUrls = [];
@@ -152,26 +136,41 @@ const FormPage = () => {
             ...globalData,
             ...song,
             sheetMusicUrls,
-            is_paid: useCredit, // Mark as paid if using credit
+            is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }
         };
         
-        await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
+        const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
           body: JSON.stringify(submissionData),
         });
+        
+        const result = await response.json();
+        if (result.requestId) createdRequestIds.push(result.requestId);
       }
 
-      // Deduct credits if used
       if (useCredit && session) {
-        await supabase.from('user_credits').update({ 
-          balance: currentTierCredits - songs.length 
-        }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
+        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
+        setIsSubmittedSuccessfully(true);
+      } else if (priceBreakdown.total > 0) {
+        // Redirect to Stripe
+        const stripeResponse = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+          body: JSON.stringify({
+            request_ids: createdRequestIds,
+            amount: priceBreakdown.total,
+            customer_email: globalData.email,
+            description: `Custom Backing Tracks: ${songs.map(s => s.songTitle).join(', ')}`
+          }),
+        });
+        const stripeResult = await stripeResponse.json();
+        if (stripeResult.url) window.location.href = stripeResult.url;
+      } else {
+        setIsSubmittedSuccessfully(true);
       }
-
-      setIsSubmittedSuccessfully(true);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -212,12 +211,11 @@ const FormPage = () => {
           <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white p-12 text-center">
             <CheckCircle className="h-20 w-20 mx-auto mb-6 text-green-500" />
             <h2 className="text-3xl font-bold mb-4">Submission Successful!</h2>
-            <p className="text-gray-600 mb-8">Daniele will review your materials and send a quote within 24-48 hours.</p>
+            <p className="text-gray-600 mb-8">Daniele will review your materials and start recording soon.</p>
             <Button onClick={() => navigate('/user-dashboard')} className="rounded-full bg-[#1C0357]">View My Requests</Button>
           </Card>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Contact Details */}
             <Card className="rounded-3xl p-8">
               <h2 className="text-xl font-bold text-[#1C0357] mb-6 flex items-center gap-2">
                 <UserIcon size={20} /> Contact Details
@@ -234,7 +232,6 @@ const FormPage = () => {
               </div>
             </Card>
 
-            {/* Song Details */}
             <div className="space-y-4">
               {songs.map((song, index) => (
                 <SongRequestItem key={song.id} index={index} data={song} onChange={handleSongChange} onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} isOnlySong={songs.length === 1} />
@@ -244,7 +241,6 @@ const FormPage = () => {
               </Button>
             </div>
 
-            {/* Tier Selection */}
             <Card className="rounded-3xl p-8">
               <h2 className="text-xl font-bold text-[#1C0357] mb-6 flex items-center gap-2">
                 <Sparkles size={20} /> Choose Your Tier
@@ -264,7 +260,6 @@ const FormPage = () => {
                 ))}
               </RadioGroup>
 
-              {/* Credit Redemption */}
               {currentTierCredits > 0 && (
                 <div className="bg-[#D1AAF2]/20 p-6 rounded-2xl border-2 border-[#1C0357] flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
@@ -286,9 +281,8 @@ const FormPage = () => {
               </div>
             </Card>
 
-            {/* Price Summary */}
             <div className="bg-[#1C0357] text-white rounded-3xl p-8 text-center shadow-xl">
-              <p className="text-xs font-black text-[#F538BC] uppercase tracking-widest mb-2">Total Estimated Cost</p>
+              <p className="text-xs font-black text-[#F538BC] uppercase tracking-widest mb-2">Total Amount Due</p>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-6xl font-black">${priceBreakdown.total.toFixed(2)}</span>
                 <span className="text-sm font-bold opacity-40 ml-2">AUD</span>
@@ -302,7 +296,11 @@ const FormPage = () => {
                 <Label htmlFor="consent" className="text-sm font-bold text-gray-600">I understand the terms of service. *</Label>
               </div>
               <Button type="submit" disabled={isSubmitting || !consentChecked} className="h-20 rounded-full bg-[#1C0357] px-16 text-xl font-black w-full md:w-auto">
-                {isSubmitting ? <Loader2 className="animate-spin" /> : "Send My Request"}
+                {isSubmitting ? <Loader2 className="animate-spin" /> : (
+                  <span className="flex items-center gap-2">
+                    {useCredit ? "Submit Request" : <><CreditCard /> Pay & Submit</>}
+                  </span>
+                )}
               </Button>
             </div>
           </form>
