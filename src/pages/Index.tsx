@@ -24,7 +24,10 @@ import {
   Sparkles,
   Headphones,
   Mic,
-  Package
+  Package,
+  ShoppingCart,
+  ClipboardList,
+  Download
 } from 'lucide-react';
 
 const fadeInUp = {
@@ -91,6 +94,37 @@ const Index = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-48 pb-48">
         
+        {/* How it Works Section */}
+        <motion.section {...fadeInUp} className="relative">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-6 tracking-tighter">How it Works</h2>
+            <p className="text-xl text-gray-600 font-medium">Getting your professional track is simple.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-[#D1AAF2]/20 rounded-[32px] flex items-center justify-center text-[#1C0357] mb-8 shadow-inner">
+                <ClipboardList size={36} />
+              </div>
+              <h3 className="text-2xl font-black text-[#1C0357] mb-4">1. Submit Request</h3>
+              <p className="text-gray-600 font-medium">Fill out the form with your song details, sheet music, and any specific notes.</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-[#F538BC]/10 rounded-[32px] flex items-center justify-center text-[#F538BC] mb-8 shadow-inner">
+                <Music size={36} />
+              </div>
+              <h3 className="text-2xl font-black text-[#1C0357] mb-4">2. Daniele Records</h3>
+              <p className="text-gray-600 font-medium">I'll record your track with professional equipment and expressive musicality.</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-[#F1E14F]/20 rounded-[32px] flex items-center justify-center text-[#1C0357] mb-8 shadow-inner">
+                <Download size={36} />
+              </div>
+              <h3 className="text-2xl font-black text-[#1C0357] mb-4">3. Download & Sing</h3>
+              <p className="text-gray-600 font-medium">Receive your high-quality MP3 via your personal dashboard and email.</p>
+            </div>
+          </div>
+        </motion.section>
+
         {/* Pricing Tiers */}
         <motion.section {...fadeInUp} id="pricing">
           <div className="text-center mb-20">
@@ -157,18 +191,42 @@ const Index = () => {
           </div>
 
           {/* Season Pack Callout */}
-          <motion.div {...fadeInUp} className="mt-16 max-w-2xl mx-auto">
-            <div className="bg-[#1C0357] text-white rounded-[32px] p-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl">
-              <div className="h-16 w-16 bg-[#F538BC] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                <Package size={32} />
+          <motion.div {...fadeInUp} className="mt-16 max-w-4xl mx-auto">
+            <div className="bg-[#1C0357] text-white rounded-[40px] p-10 md:p-16 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#F538BC]/10 blur-[80px] rounded-full" />
+              <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                  <div className="h-16 w-16 bg-[#F538BC] rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                    <Package size={32} />
+                  </div>
+                  <h3 className="text-4xl font-black mb-4 tracking-tight">Season Pack — $95</h3>
+                  <p className="text-xl text-white/80 font-medium leading-relaxed mb-8">
+                    Get 3 Audition Ready tracks and save $15. Perfect for showcase prep or busy audition seasons.
+                  </p>
+                  <Link to="/shop">
+                    <Button className="bg-white text-[#1C0357] hover:bg-gray-100 font-black rounded-2xl px-10 py-6 text-lg shadow-xl">
+                      <ShoppingCart className="mr-2" /> Buy Pack in Shop
+                    </Button>
+                  </Link>
+                </div>
+                <div className="bg-white/5 rounded-[32px] p-8 border border-white/10 backdrop-blur-md">
+                  <h4 className="text-lg font-black mb-6 uppercase tracking-widest text-[#F538BC]">How to Redeem</h4>
+                  <ul className="space-y-6">
+                    <li className="flex items-start gap-4">
+                      <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-black flex-shrink-0">1</div>
+                      <p className="text-white/90 font-medium">Purchase the Season Pack from the <Link to="/shop" className="text-[#F538BC] hover:underline">Shop</Link>.</p>
+                    </li>
+                    <li className="flex items-start gap-4">
+                      <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-black flex-shrink-0">2</div>
+                      <p className="text-white/90 font-medium">Credits are automatically added to your account.</p>
+                    </li>
+                    <li className="flex items-start gap-4">
+                      <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-black flex-shrink-0">3</div>
+                      <p className="text-white/90 font-medium">Redeem them on the <Link to="/form-page" className="text-[#F538BC] hover:underline">Request Form</Link> by toggling "Use Credit".</p>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <div className="text-center md:text-left">
-                <h3 className="text-2xl font-black mb-1">Season Pack — $95</h3>
-                <p className="text-white/70 font-medium">Get 3 Audition Ready tracks and save $15. Mention this in special requests to redeem!</p>
-              </div>
-              <Link to="/form-page" className="flex-shrink-0">
-                <Button className="bg-white text-[#1C0357] hover:bg-gray-100 font-black rounded-xl px-6">Order Pack</Button>
-              </Link>
             </div>
           </motion.div>
         </motion.section>
