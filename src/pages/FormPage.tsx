@@ -19,7 +19,9 @@ import {
   Package,
   Ticket,
   User as UserIcon,
-  CreditCard
+  CreditCard,
+  Zap,
+  AlertCircle
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -99,14 +101,30 @@ const FormPage = () => {
   }, [userCredits, globalData.trackType]);
 
   const priceBreakdown = useMemo(() => {
-    const mockRequest = { track_type: globalData.trackType, additional_services: globalData.additionalServices };
+    // Map to the format expected by calculateRequestCost utility
+    const mockRequest = { 
+      track_type: globalData.trackType, 
+      additional_services: globalData.additionalServices 
+    };
     const perSong = calculateRequestCost(mockRequest);
-    return { total: useCredit ? 0 : perSong.totalCost * songs.length };
+    return { 
+      total: useCredit ? 0 : perSong.totalCost * songs.length,
+      perSong: perSong.totalCost
+    };
   }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit]);
 
   const handleGlobalInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setGlobalData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleServiceToggle = (serviceId: string) => {
+    setGlobalData(prev => {
+      const services = prev.additionalServices.includes(serviceId)
+        ? prev.additionalServices.filter(id => id !== serviceId)
+        : [...prev.additionalServices, serviceId];
+      return { ...prev, additionalServices: services };
+    });
   };
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
@@ -272,7 +290,41 @@ const FormPage = () => {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-[#1C0357] flex items-center gap-2">
+                  <Zap size={20} /> Additional Services
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15' },
+                    { id: 'complex-songs', label: 'Complex Score', price: '+$10' },
+                    { id: 'additional-edits', label: 'Additional Edits', price: '+$5' },
+                    { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' }
+                  ].map((service) => (
+                    <div 
+                      key={service.id}
+                      onClick={() => handleServiceToggle(service.id)}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                        globalData.additionalServices.includes(service.id) 
+                          ? "border-[#1C0357] bg-[#1C0357]/5" 
+                          : "border-gray-100 hover:border-gray-200"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox 
+                          checked={globalData.additionalServices.includes(service.id)} 
+                          onCheckedChange={() => handleServiceToggle(service.id)}
+                        />
+                        <span className="font-bold text-sm">{service.label}</span>
+                      </div>
+                      <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 mt-8">
                 <div className="space-y-2">
                   <Label>Due Date</Label>
                   <Input type="date" name="deliveryDate" value={globalData.deliveryDate} onChange={handleGlobalInputChange} min={new Date().toISOString().split('T')[0]} />
@@ -287,6 +339,11 @@ const FormPage = () => {
                 <span className="text-sm font-bold opacity-40 ml-2">AUD</span>
               </div>
               {useCredit && <p className="text-green-400 font-bold mt-2">Season Pack Credit Applied!</p>}
+              {!useCredit && songs.length > 1 && (
+                <p className="text-white/60 text-xs mt-2 font-medium">
+                  ({songs.length} songs @ ${priceBreakdown.perSong.toFixed(2)} each)
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col items-center gap-6">
