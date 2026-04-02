@@ -2,8 +2,8 @@
 
 export const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
   'quick': 5.00,
-  'one-take': 10.00,
-  'full-production': 15.00, // Renamed from 'polished'
+  'one-take': 10.00, // Changed from 15.00 to 10.00
+  'polished': 15.00, // Changed from 25.00 to 15.00
 };
 
 export const BACKING_TYPE_MODIFIERS: Record<string, number> = {
@@ -24,15 +24,15 @@ export const calculateRequestCost = (request: any) => {
   const baseCosts: { type: string; cost: number }[] = [];
   const serviceCosts: { service: string; cost: number }[] = [];
   
-  // Default to 'full-production' if track_type is missing
-  const trackType = request.track_type || 'full-production'; 
+  // Default to 'polished' if track_type is missing, as it's the highest base cost
+  const trackType = request.track_type || 'polished'; 
   
   // 1. Determine Base Cost (Effort/Quality)
-  const baseCost = TRACK_TYPE_BASE_COSTS[trackType] || TRACK_TYPE_BASE_COSTS['full-production'];
+  const baseCost = TRACK_TYPE_BASE_COSTS[trackType] || TRACK_TYPE_BASE_COSTS['polished'];
   baseCosts.push({ type: `${trackType.replace('-', ' ')} Base Cost`, cost: baseCost });
   totalCost += baseCost;
 
-  // 2. Determine Modifier (Length/Size)
+  // 2. Determine Modifier (Length/Size) - Use the maximum modifier if multiple backing types are selected
   const backingTypes = Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []);
   
   let maxModifier = 0;
@@ -74,6 +74,7 @@ export const calculateRequestCost = (request: any) => {
   };
 };
 
+// Remove the obsolete function
 export const getTrackTypeBaseDisplayRange = (trackType: string): string | null => {
   return null;
 };
