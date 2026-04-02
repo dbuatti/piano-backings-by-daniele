@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,6 +121,19 @@ const Header = () => {
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Shop
+              </Button>
+            </Link>
+
+            <Link to="/about">
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "text-white hover:bg-white/20 flex items-center px-4 rounded-full font-bold",
+                  isActive('/about') && "bg-white/20 shadow-inner"
+                )}
+              >
+                <HelpCircle className="mr-2 h-4 w-4" />
+                About & FAQ
               </Button>
             </Link>
 
@@ -275,6 +288,18 @@ const Header = () => {
                     >
                       <ShoppingCart className="mr-4 h-6 w-6" />
                       Shop
+                    </Link>
+
+                    <Link 
+                      to="/about"
+                      className={cn(
+                        "block px-6 py-4 rounded-2xl text-lg font-bold flex items-center transition-colors",
+                        isActive('/about') ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/10"
+                      )}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <HelpCircle className="mr-4 h-6 w-6" />
+                      About & FAQ
                     </Link>
                     
                     {session && (

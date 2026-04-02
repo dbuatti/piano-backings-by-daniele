@@ -14,6 +14,7 @@ import EditRequest from './pages/EditRequest';
 import EmailGenerator from './pages/EmailGenerator';
 import ClientTrackView from './pages/ClientTrackView';
 import PurchaseConfirmation from './pages/PurchaseConfirmation';
+import AboutServices from './pages/AboutServices'; // Import new page
 import NotFound from './pages/NotFound';
 import TestDropboxFunction from './pages/TestDropboxFunction';
 import TestDropboxCredentials from './pages/TestDropboxCredentials';
@@ -23,7 +24,7 @@ import TestEmailNotification from './pages/TestEmailNotification';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
-import Footer from './components/Footer'; // Import Footer
+import Footer from './components/Footer';
 
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
             <Route path="/form-page" element={<FormPage />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/about" element={<AboutServices />} /> {/* New Route */}
             <Route path="/login" element={<Login />} />
             <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
             <Route path="/admin" element={<AdminDashboard />} />
@@ -54,7 +56,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
-        <Footer /> {/* Add Footer here */}
+        <Footer />
       </div>
       <Toaster />
     </Router>

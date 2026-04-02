@@ -13,7 +13,8 @@ import {
   Globe, 
   Heart, 
   Cpu,
-  ChevronRight
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -27,6 +28,7 @@ const Footer = () => {
       links: [
         { label: "Order Custom Track", path: "/form-page" },
         { label: "Browse the Shop", path: "/shop" },
+        { label: "About & FAQ", path: "/about" },
         { label: "My Tracks", path: "/user-dashboard" },
         { label: "Pricing Matrix", path: "/#pricing" },
       ]
