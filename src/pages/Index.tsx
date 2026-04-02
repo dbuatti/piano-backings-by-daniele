@@ -183,19 +183,20 @@ const Index = () => {
                 <div className="w-16 h-16 bg-[#1C0357]/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#1C0357]">
                   <Sparkles size={32} />
                 </div>
-                <CardTitle className="text-3xl font-black text-[#1C0357]">Polished</CardTitle>
+                <CardTitle className="text-3xl font-black text-[#1C0357]">Full Production</CardTitle>
                 <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$15 - $35</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Refined, accurate track with correct notes and rhythm. Ideal for performances.</p>
+                <p className="mb-8 font-medium leading-relaxed">A premium pianistic upgrade focusing on intricate voicing, expressive dynamics, and professional shaping.</p>
                 <ul className="space-y-4 font-bold text-sm">
                   <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Note-Perfect</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Professional Finish</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Lifetime Support</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Expressive Voicing</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Professional Shaping</li>
                 </ul>
               </CardContent>
             </Card>
           </div>
+          <p className="text-center text-gray-400 text-xs mt-12 font-bold uppercase tracking-widest">Note: All tracks are solo piano recordings. No additional instruments are included.</p>
         </motion.section>
 
         {/* About Section */}
