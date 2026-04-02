@@ -108,11 +108,11 @@ const Index = () => {
                 <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$15</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Clean, functional recording for learning notes or checking a new key.</p>
+                <p className="mb-8 font-medium leading-relaxed">A simple, one-pass recording with the melody "bashed out". Functional and easy.</p>
                 <ul className="space-y-4 font-bold text-sm">
+                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Melody Focused</li>
                   <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Quick Reference</li>
-                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Accurate Phrasing</li>
-                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> For Practice Only</li>
+                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Not Performance Focused</li>
                 </ul>
               </CardContent>
             </Card>
@@ -127,9 +127,9 @@ const Index = () => {
                 <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$30</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Expressive, performance-quality recording of your 16 or 32 bar cut.</p>
+                <p className="mb-8 font-medium leading-relaxed">A detailed, comprehensive recording of your 16 or 32 bar cut. Expressive and note-perfect.</p>
                 <ul className="space-y-4 font-bold text-sm">
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Studio Quality</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Performance Quality</li>
                   <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Expressive Playing</li>
                   <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Perfect for Self-Tapes</li>
                 </ul>
@@ -146,7 +146,7 @@ const Index = () => {
                 <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$50</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Concert-level performance of the complete piece, fully voiced.</p>
+                <p className="mb-8 font-medium leading-relaxed">A concert-level, comprehensive performance of the complete piece. Fully voiced.</p>
                 <ul className="space-y-4 font-bold text-sm">
                   <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Complete Piece</li>
                   <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Dynamic Shaping</li>

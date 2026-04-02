@@ -346,9 +346,9 @@ const FormPage = () => {
               </div>
               <RadioGroup value={globalData.trackType} onValueChange={(v) => handleGlobalSelectChange('trackType', v)} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 {[
-                  { id: 'note-bash', icon: Mic, label: 'Note Bash', price: '$15', desc: 'Functional recording for learning.' },
-                  { id: 'audition-ready', icon: Headphones, label: 'Audition Ready', price: '$30', desc: 'Performance quality cut.' },
-                  { id: 'full-song', icon: Sparkles, label: 'Full Song', price: '$50', desc: 'Concert-level complete piece.' }
+                  { id: 'note-bash', icon: Mic, label: 'Note Bash', price: '$15', desc: 'Simple one-pass recording with melody bashed out. Functional reference.' },
+                  { id: 'audition-ready', icon: Headphones, label: 'Audition Ready', price: '$30', desc: 'Detailed comprehensive cut (16/32 bars). Performance quality.' },
+                  { id: 'full-song', icon: Sparkles, label: 'Full Song', price: '$50', desc: 'Concert-level comprehensive performance of the complete piece.' }
                 ].map((item) => (
                   <Label key={item.id} htmlFor={item.id} className="cursor-pointer">
                     <div className={cn("relative flex flex-col p-6 rounded-3xl border-2 transition-all text-center h-full", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white")}>

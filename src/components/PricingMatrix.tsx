@@ -42,9 +42,9 @@ const PricingMatrix = () => {
                     {tier.name}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600 py-6 px-6">
-                    {tier.id === 'note-bash' && "Functional recording for learning notes or checking keys."}
-                    {tier.id === 'audition-ready' && "Expressive, performance-quality recording of a 16/32 bar cut."}
-                    {tier.id === 'full-song' && "Concert-level performance of the complete piece."}
+                    {tier.id === 'note-bash' && "A simple, one-pass recording with the melody 'bashed out'. Functional reference for learning notes."}
+                    {tier.id === 'audition-ready' && "A detailed, comprehensive and expressive recording of a 16/32 bar cut. Performance quality."}
+                    {tier.id === 'full-song' && "A concert-level, comprehensive performance of the complete piece. Fully voiced and dynamically shaped."}
                   </TableCell>
                   <TableCell className="text-right font-black text-xl text-[#F538BC] py-6 px-6">
                     ${tier.price.toFixed(2)}
