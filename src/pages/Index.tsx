@@ -9,7 +9,6 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { 
-  Coffee, 
   Youtube, 
   Instagram, 
   Facebook, 
@@ -17,14 +16,15 @@ import {
   Info, 
   Music, 
   CreditCard, 
-  Phone, 
   ChevronRight, 
   Star,
   Zap,
   CheckCircle2,
   ArrowDown,
   Sparkles,
-  Headphones
+  Headphones,
+  Mic,
+  Package
 } from 'lucide-react';
 
 const fadeInUp = {
@@ -91,69 +91,28 @@ const Index = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-48 pb-48">
         
-        {/* How It Works */}
-        <motion.section {...fadeInUp} className="text-center">
-          <h2 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-16 tracking-tighter">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[
-              { 
-                step: "01", 
-                title: "Submit Music", 
-                desc: "Upload your PDF and references via our custom request form.",
-                icon: Mail,
-                color: "bg-[#D1AAF2]/20"
-              },
-              { 
-                step: "02", 
-                title: "Get a Quote", 
-                desc: "Receive a transparent price and delivery date within 24-48 hours.",
-                icon: Zap,
-                color: "bg-[#F1E14F]/20"
-              },
-              { 
-                step: "03", 
-                title: "Record & Deliver", 
-                desc: "Daniele records your track and sends it directly to your dashboard.",
-                icon: Music,
-                color: "bg-[#F538BC]/10"
-              }
-            ].map((item, i) => (
-              <div key={i} className="relative p-10 rounded-[40px] bg-white border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 group">
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-[#1C0357] text-white flex items-center justify-center font-black text-xl shadow-xl group-hover:scale-110 transition-transform">
-                  {item.step}
-                </div>
-                <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center text-[#1C0357] mx-auto mb-8 transition-transform group-hover:rotate-6", item.color)}>
-                  <item.icon size={36} />
-                </div>
-                <h3 className="text-2xl font-black text-[#1C0357] mb-4">{item.title}</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </motion.section>
-
-        {/* Track Quality Options */}
-        <motion.section {...fadeInUp} id="track-options">
+        {/* Pricing Tiers */}
+        <motion.section {...fadeInUp} id="pricing">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-6 tracking-tighter">Track Quality Options</h2>
-            <p className="text-xl text-gray-600 font-medium">Tailored levels of production to suit your specific needs.</p>
+            <h2 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-6 tracking-tighter">Simple Pricing</h2>
+            <p className="text-xl text-gray-600 font-medium">Choose the tier that fits your needs.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <Card className="shadow-xl border-none bg-white rounded-[40px] overflow-hidden hover:scale-[1.02] transition-all duration-500">
               <div className="h-3 bg-gray-100" />
               <CardHeader className="text-center pt-12">
                 <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-gray-400">
-                  <Mail size={32} />
+                  <Mic size={32} />
                 </div>
-                <CardTitle className="text-3xl font-black text-[#1C0357]">Quick Reference</CardTitle>
-                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$5 - $10</CardDescription>
+                <CardTitle className="text-3xl font-black text-[#1C0357]">Note Bash</CardTitle>
+                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$15</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Fast voice memo for learning or audition notes. Capture the phrasing quickly.</p>
+                <p className="mb-8 font-medium leading-relaxed">Clean, functional recording for learning notes or checking a new key.</p>
                 <ul className="space-y-4 font-bold text-sm">
-                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Phone/Mic Recording</li>
-                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Same-day potential</li>
-                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> For practice only</li>
+                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Quick Reference</li>
+                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> Accurate Phrasing</li>
+                  <li className="flex items-center justify-center gap-3 text-gray-400"><CheckCircle2 className="w-5 h-5" /> For Practice Only</li>
                 </ul>
               </CardContent>
             </Card>
@@ -164,15 +123,15 @@ const Index = () => {
                 <div className="w-16 h-16 bg-[#D1AAF2]/20 rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#1C0357]">
                   <Headphones size={32} />
                 </div>
-                <CardTitle className="text-3xl font-black text-[#1C0357]">One-Take</CardTitle>
-                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$10 - $20</CardDescription>
+                <CardTitle className="text-3xl font-black text-[#1C0357]">Audition Ready</CardTitle>
+                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$30</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Single-pass DAW recording with potential minor errors. Great for self-tapes.</p>
+                <p className="mb-8 font-medium leading-relaxed">Expressive, performance-quality recording of your 16 or 32 bar cut.</p>
                 <ul className="space-y-4 font-bold text-sm">
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> High Quality Audio</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Reverb & EQ</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Audition Ready</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Studio Quality</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Expressive Playing</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5 text-[#D1AAF2]" /> Perfect for Self-Tapes</li>
                 </ul>
               </CardContent>
             </Card>
@@ -183,19 +142,35 @@ const Index = () => {
                 <div className="w-16 h-16 bg-[#1C0357]/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#1C0357]">
                   <Sparkles size={32} />
                 </div>
-                <CardTitle className="text-3xl font-black text-[#1C0357]">Polished</CardTitle>
-                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$15 - $35</CardDescription>
+                <CardTitle className="text-3xl font-black text-[#1C0357]">Full Song</CardTitle>
+                <CardDescription className="font-black text-[#F538BC] text-lg mt-2">$50</CardDescription>
               </CardHeader>
               <CardContent className="text-center text-gray-600 pb-12 px-8">
-                <p className="mb-8 font-medium leading-relaxed">Refined, accurate track with correct notes and rhythm. Ideal for performances.</p>
+                <p className="mb-8 font-medium leading-relaxed">Concert-level performance of the complete piece, fully voiced.</p>
                 <ul className="space-y-4 font-bold text-sm">
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Note-Perfect</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Professional Finish</li>
-                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Lifetime Support</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Complete Piece</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Dynamic Shaping</li>
+                  <li className="flex items-center justify-center gap-3 text-[#1C0357]"><CheckCircle2 className="w-5 h-5" /> Performance Ready</li>
                 </ul>
               </CardContent>
             </Card>
           </div>
+
+          {/* Season Pack Callout */}
+          <motion.div {...fadeInUp} className="mt-16 max-w-2xl mx-auto">
+            <div className="bg-[#1C0357] text-white rounded-[32px] p-8 flex flex-col md:flex-row items-center gap-6 shadow-2xl">
+              <div className="h-16 w-16 bg-[#F538BC] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <Package size={32} />
+              </div>
+              <div className="text-center md:text-left">
+                <h3 className="text-2xl font-black mb-1">Season Pack — $95</h3>
+                <p className="text-white/70 font-medium">Get 3 Audition Ready tracks and save $15. Perfect for showcase prep or busy audition seasons.</p>
+              </div>
+              <Link to="/form-page" className="flex-shrink-0">
+                <Button className="bg-white text-[#1C0357] hover:bg-gray-100 font-black rounded-xl px-6">Order Pack</Button>
+              </Link>
+            </div>
+          </motion.div>
         </motion.section>
 
         {/* About Section */}
@@ -215,44 +190,28 @@ const Index = () => {
                     Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. What started as a passion project has evolved into a professional offering for the arts community.
                   </p>
                   <div className="p-8 bg-[#F1E14F]/10 rounded-[32px] border-l-8 border-[#F1E14F] text-gray-600 italic text-lg shadow-inner">
-                    "Songs by Sondheim, Jason Robert Brown, or Adam Guettel carry a complexity adjustment due to the intricate nature of their scores."
+                    "Dense scores by Sondheim, Jason Robert Brown, or Adam Guettel carry a complexity adjustment due to the intricate nature of their scores."
                   </div>
-                  <p>
-                    This platform streamlines the ordering process and keeps all your requests in one place. Your feedback helps improve the service.
-                  </p>
                 </div>
               </div>
               <div className="bg-[#1C0357] p-16 flex flex-col justify-center text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-[#F538BC]/10 blur-[80px] rounded-full" />
                 <h3 className="text-3xl font-black mb-10 flex items-center gap-4 relative z-10">
                   <CreditCard className="text-[#F1E14F] w-8 h-8" />
-                  Secure Payment
+                  Optional Add-ons
                 </h3>
-                <div className="space-y-8 relative z-10">
-                  <div className="flex items-start gap-5">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <CheckCircle2 size={20} className="text-[#F1E14F]" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-black">Transparent Pricing</p>
-                      <p className="text-white/60 font-medium">Pay before or after completion via secure links.</p>
-                    </div>
+                <div className="space-y-6 relative z-10">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <span className="font-bold">Rush Order (24h)</span>
+                    <span className="text-[#F1E14F] font-black">+$15</span>
                   </div>
-                  <div className="flex items-start gap-5">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <CheckCircle2 size={20} className="text-[#F1E14F]" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-black">Multiple Methods</p>
-                      <p className="text-white/60 font-medium">Bank transfer or 'Buy Me a Coffee' supported.</p>
-                    </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <span className="font-bold">Complex Score</span>
+                    <span className="text-[#F1E14F] font-black">+$10</span>
                   </div>
-                  <div className="mt-12 p-8 bg-white/5 rounded-[32px] border border-white/10 backdrop-blur-sm shadow-inner">
-                    <p className="text-xs font-black text-[#F1E14F] uppercase tracking-[0.3em] mb-4">Direct Deposit</p>
-                    <div className="space-y-2">
-                      <p className="font-mono text-2xl tracking-wider">BSB: 923100</p>
-                      <p className="font-mono text-2xl tracking-wider">ACC: 301110875</p>
-                    </div>
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <span className="font-bold">Exclusive Ownership</span>
+                    <span className="text-[#F1E14F] font-black">+$40</span>
                   </div>
                 </div>
               </div>

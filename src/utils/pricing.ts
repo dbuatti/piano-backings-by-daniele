@@ -1,22 +1,24 @@
+"use client";
+
 // src/utils/pricing.ts
 
-export const TRACK_TYPE_BASE_COSTS: Record<string, number> = {
-  'quick': 5.00,
-  'one-take': 10.00, // Changed from 15.00 to 10.00
-  'polished': 15.00, // Changed from 25.00 to 15.00
-};
-
-export const BACKING_TYPE_MODIFIERS: Record<string, number> = {
-  'note-bash': 5.00,
-  'audition-cut': 10.00,
-  'full-song': 15.00,
+/**
+ * New Pricing Model:
+ * - Note Bash: $15.00 (Functional recording)
+ * - Audition Ready: $30.00 (Performance quality, 16/32 bar cut)
+ * - Full Song: $50.00 (Concert-level performance, complete piece)
+ */
+export const TIER_PRICES: Record<string, number> = {
+  'note-bash': 15.00,
+  'audition-ready': 30.00,
+  'full-song': 50.00,
 };
 
 export const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
-  'rush-order': 10,
-  'complex-songs': 7,
-  'additional-edits': 5,
-  'exclusive-ownership': 40,
+  'rush-order': 15.00, // Updated from $10
+  'complex-songs': 10.00, // Updated from $7
+  'additional-edits': 5.00,
+  'exclusive-ownership': 40.00,
 };
 
 export const calculateRequestCost = (request: any) => {
@@ -24,47 +26,33 @@ export const calculateRequestCost = (request: any) => {
   const baseCosts: { type: string; cost: number }[] = [];
   const serviceCosts: { service: string; cost: number }[] = [];
   
-  // Default to 'polished' if track_type is missing, as it's the highest base cost
-  const trackType = request.track_type || 'polished'; 
+  // The new model uses a single tier selection
+  // We'll map the 'track_type' field to these tiers
+  const tier = request.track_type || 'audition-ready'; 
   
-  // 1. Determine Base Cost (Effort/Quality)
-  const baseCost = TRACK_TYPE_BASE_COSTS[trackType] || TRACK_TYPE_BASE_COSTS['polished'];
-  baseCosts.push({ type: `${trackType.replace('-', ' ')} Base Cost`, cost: baseCost });
+  const baseCost = TIER_PRICES[tier] || TIER_PRICES['audition-ready'];
+  baseCosts.push({ 
+    type: `${tier.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} Tier`, 
+    cost: baseCost 
+  });
   totalCost += baseCost;
 
-  // 2. Determine Modifier (Length/Size) - Use the maximum modifier if multiple backing types are selected
-  const backingTypes = Array.isArray(request.backing_type) ? request.backing_type : (request.backing_type ? [request.backing_type] : []);
-  
-  let maxModifier = 0;
-  let modifierType = 'No Length Modifier';
-
-  if (backingTypes.length > 0) {
-    backingTypes.forEach((type: string) => {
-      const modifier = BACKING_TYPE_MODIFIERS[type] || 0;
-      if (modifier > maxModifier) {
-        maxModifier = modifier;
-        modifierType = type;
-      }
-    });
-    
-    if (maxModifier > 0) {
-      baseCosts.push({ type: `${modifierType.replace('-', ' ')} Modifier`, cost: maxModifier });
-      totalCost += maxModifier;
-    }
-  }
-
-  // 3. Add additional service costs
+  // Add additional service costs
   if (request.additional_services && Array.isArray(request.additional_services)) {
     request.additional_services.forEach((service: string) => {
       const cost = ADDITIONAL_SERVICE_COSTS[service] || 0;
       if (cost > 0) {
-        serviceCosts.push({ service, cost });
+        serviceCosts.push({ 
+          service: service.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
+          cost 
+        });
         totalCost += cost;
       }
     });
   }
   
-  // 4. Round the final total cost to the nearest multiple of 5
+  // The final total is already in multiples of 5 based on the new pricing, 
+  // but we'll keep the rounding logic for safety.
   const roundedTotalCost = Math.round(totalCost / 5) * 5;
   
   return {
@@ -72,9 +60,4 @@ export const calculateRequestCost = (request: any) => {
     baseCosts,
     serviceCosts,
   };
-};
-
-// Remove the obsolete function
-export const getTrackTypeBaseDisplayRange = (trackType: string): string | null => {
-  return null;
 };
