@@ -164,7 +164,7 @@ const Index = () => {
               </div>
               <div className="text-center md:text-left">
                 <h3 className="text-2xl font-black mb-1">Season Pack — $95</h3>
-                <p className="text-white/70 font-medium">Get 3 Audition Ready tracks and save $15. Perfect for showcase prep or busy audition seasons.</p>
+                <p className="text-white/70 font-medium">Get 3 Audition Ready tracks and save $15. Mention this in special requests to redeem!</p>
               </div>
               <Link to="/form-page" className="flex-shrink-0">
                 <Button className="bg-white text-[#1C0357] hover:bg-gray-100 font-black rounded-xl px-6">Order Pack</Button>

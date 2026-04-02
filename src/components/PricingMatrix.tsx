@@ -76,10 +76,10 @@ const PricingMatrix = () => {
         <div className="mt-12 p-8 bg-[#1C0357] text-white rounded-[32px] shadow-xl">
           <h3 className="font-black text-xl mb-4 flex items-center gap-2">
             <Package className="text-[#F538BC]" />
-            Season Pack — $95.00
+            Season Pack — $95
           </h3>
           <p className="text-white/70 font-medium mb-4">
-            Get 3 Audition Ready tracks for a discounted price. Ideal for showcase prep or busy audition seasons.
+            Get 3 Audition Ready tracks and save $15. Mention this in special requests to redeem!
           </p>
           <ul className="text-sm space-y-2 text-white/60 font-bold">
             <li>• Save $15.00 compared to individual orders</li>
