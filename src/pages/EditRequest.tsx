@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon, DollarSign, Mic } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Headphones, FileText, Link as LinkIcon, DollarSign, Mic, Sparkles } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
@@ -51,6 +51,7 @@ interface BackingRequest {
   final_price?: number | null;
   estimated_cost_low?: number | null;
   estimated_cost_high?: number | null;
+  internal_notes?: string | null;
 }
 
 const keyOptions = [
@@ -79,23 +80,18 @@ const categoryOptions = [
   { value: 'General', label: 'General' }
 ];
 
-const trackTypeOptions = [
-  { value: 'quick', label: 'Quick Reference' },
-  { value: 'one-take', label: 'One-Take Recording' },
-  { value: 'polished', label: 'Polished Backing' }
-];
-
-const backingTypeOptions = [
-  { value: 'full-song', label: 'Full Song Backing' },
-  { value: 'audition-cut', label: 'Audition Cut Backing' },
-  { value: 'note-bash', label: 'Note/Melody Bash' }
+// Updated to match the new three-tier model
+const tierOptions = [
+  { value: 'note-bash', label: 'Note Bash ($15)' },
+  { value: 'audition-ready', label: 'Audition Ready ($30)' },
+  { value: 'full-song', label: 'Full Song ($50)' }
 ];
 
 const additionalServiceOptions = [
-  { value: 'rush-order', label: 'Rush Order' },
-  { value: 'complex-songs', label: 'Complex Songs' },
-  { value: 'additional-edits', label: 'Additional Edits' },
-  { value: 'exclusive-ownership', label: 'Exclusive Ownership' }
+  { value: 'rush-order', label: 'Rush Order (+$15)' },
+  { value: 'complex-songs', label: 'Complex Score (+$10)' },
+  { value: 'additional-edits', label: 'Additional Edits (+$5)' },
+  { value: 'exclusive-ownership', label: 'Exclusive Ownership (+$40)' }
 ];
 
 const EditRequest: React.FC = () => {
@@ -389,18 +385,19 @@ const EditRequest: React.FC = () => {
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span>
-                  Track Type
+                  Pricing Tier
                 </h2>
                 <Select onValueChange={(value) => handleSelectChange('track_type', value)} value={request.track_type || ''}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select track type" />
+                    <SelectValue placeholder="Select tier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {trackTypeOptions.map((option) => (
+                    {tierOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 mt-2">This selection determines the base price of the request.</p>
               </div>
 
               <div className="border-b border-gray-200 pb-4">
@@ -529,44 +526,7 @@ const EditRequest: React.FC = () => {
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
                   <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">5</span>
-                  Purpose
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="track_purpose" className="text-sm mb-1">Track Purpose</Label>
-                    <Select onValueChange={(value) => handleSelectChange('track_purpose', value)} value={request.track_purpose || ''}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select purpose" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="personal-practise">Personal Practise</SelectItem>
-                        <SelectItem value="audition-backing">Audition Backing Track</SelectItem>
-                        <SelectItem value="melody-bash">Note/melody bash</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-1">Backing Type(s)</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      {backingTypeOptions.map((option) => (
-                        <div key={option.value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`backing_type-${option.value}`}
-                            checked={Array.isArray(request.backing_type) && request.backing_type.includes(option.value)}
-                            onCheckedChange={(checked) => handleCheckboxChange('backing_type', option.value, checked as boolean)}
-                          />
-                          <Label htmlFor={`backing_type-${option.value}`}>{option.label}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">6</span>
-                  Additional Services & Timeline
+                  Timeline & Add-ons
                 </h2>
                 <div className="space-y-4">
                   <div>
@@ -597,8 +557,8 @@ const EditRequest: React.FC = () => {
 
               <div className="pb-4">
                 <h2 className="text-base font-semibold mb-3 text-[#1C0357] flex items-center">
-                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">7</span>
-                  Status & Payment
+                  <span className="bg-[#D1AAF2] text-[#1C0357] rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">6</span>
+                  Status, Payment & Notes
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -636,7 +596,7 @@ const EditRequest: React.FC = () => {
                       onChange={handleInputChange} 
                       placeholder="e.g., 25.00" 
                     />
-                    <p className="text-xs text-gray-500 mt-1">This is the automatically calculated cost.</p>
+                    <p className="text-xs text-gray-500 mt-1">This is the automatically calculated cost based on tier and add-ons.</p>
                   </div>
                   <div>
                     <Label htmlFor="final_price" className="text-sm mb-1 flex items-center">
@@ -653,35 +613,16 @@ const EditRequest: React.FC = () => {
                     />
                     <p className="text-xs text-gray-500 mt-1">Overrides all other costs in client view.</p>
                   </div>
-                  <div>
-                    <Label htmlFor="estimated_cost_low" className="text-sm mb-1 flex items-center">
-                      <DollarSign className="mr-1 h-4 w-4" /> Estimated Low (AUD)
-                    </Label>
-                    <Input 
-                      id="estimated_cost_low" 
-                      name="estimated_cost_low" 
-                      type="number" 
-                      step="0.01" 
-                      value={request.estimated_cost_low?.toString() || ''} 
+                  <div className="md:col-span-2">
+                    <Label htmlFor="internal_notes" className="text-sm mb-1">Internal Notes (Private)</Label>
+                    <Textarea 
+                      id="internal_notes" 
+                      name="internal_notes" 
+                      value={request.internal_notes || ''} 
                       onChange={handleInputChange} 
-                      placeholder="e.g., 25.00" 
+                      rows={3} 
+                      placeholder="Add private notes about this request (e.g., Season Pack usage)..."
                     />
-                    <p className="text-xs text-gray-500 mt-1">Overrides calculated lower bound.</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="estimated_cost_high" className="text-sm mb-1 flex items-center">
-                      <DollarSign className="mr-1 h-4 w-4" /> Estimated High (AUD)
-                    </Label>
-                    <Input 
-                      id="estimated_cost_high" 
-                      name="estimated_cost_high" 
-                      type="number" 
-                      step="0.01" 
-                      value={request.estimated_cost_high?.toString() || ''} 
-                      onChange={handleInputChange} 
-                      placeholder="e.g., 45.00" 
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Overrides calculated upper bound.</p>
                   </div>
                 </div>
               </div>

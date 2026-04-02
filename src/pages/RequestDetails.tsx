@@ -35,11 +35,14 @@ import {
   Copy,
   Files,
   Mic,
-  Youtube // Added missing import
+  Youtube,
+  Zap,
+  StickyNote
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from "@/components/ui/textarea";
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { Separator } from '@/components/ui/separator';
 import { calculateRequestCost } from '@/utils/pricing';
@@ -66,8 +69,8 @@ interface BackingRequest {
   youtube_link: string | null;
   voice_memo: string | null;
   sheet_music_url: string | null;
-  sheet_music_urls?: TrackInfo[]; // Added
-  voice_memo_urls?: TrackInfo[];  // Added
+  sheet_music_urls?: TrackInfo[];
+  voice_memo_urls?: TrackInfo[];
   track_purpose: string | null;
   backing_type: string[] | string | null;
   delivery_date: string | null;
@@ -86,8 +89,7 @@ interface BackingRequest {
   final_price?: number | null;
   estimated_cost_low?: number | null;
   estimated_cost_high?: number | null;
-  user_id?: string | null;
-  guest_access_token?: string | null;
+  internal_notes?: string | null;
 }
 
 const RequestDetails = () => {
@@ -99,12 +101,9 @@ const RequestDetails = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isUpdatingPricing, setIsUpdatingPricing] = useState(false);
 
   const [editableFinalPrice, setEditableFinalPrice] = useState<string>('');
   const [isUpdatingFinalPrice, setIsUpdatingFinalPrice] = useState(false);
-  const [estimatedLowInput, setEstimatedLowInput] = useState<string>('');
-  const [estimatedHighInput, setEstimatedHighInput] = useState<string>('');
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -139,8 +138,6 @@ const RequestDetails = () => {
 
       const calculatedCost = calculateRequestCost(data).totalCost;
       setEditableFinalPrice(data.final_price !== null ? data.final_price.toFixed(2) : calculatedCost.toFixed(2));
-      setEstimatedLowInput(data.estimated_cost_low !== null ? data.estimated_cost_low.toFixed(2) : (calculatedCost * 0.5).toFixed(2));
-      setEstimatedHighInput(data.estimated_cost_high !== null ? data.estimated_cost_high.toFixed(2) : (calculatedCost * 1.5).toFixed(2));
 
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -205,21 +202,16 @@ const RequestDetails = () => {
     }
   };
 
-  const handleCopyToClipboard = (text: string, message: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copied!", description: message });
-  };
-
   const handleCopyRequestDetails = () => {
     if (!request) return;
     
-    const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
+    const tierLabel = request.track_type?.replace('-', ' ').toUpperCase() || 'NOT SPECIFIED';
     
     const details = `🎵 Song: ${request.song_title} by ${request.musical_or_artist}
 👤 Client: ${request.name || 'N/A'} (${request.email})
 🔑 Key: ${request.song_key || 'N/A'}${request.different_key === 'Yes' ? ` -> ${request.key_for_track}` : ''}
 📅 Due: ${request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
-🎼 Type: ${request.track_type || 'N/A'} | ${normalizedBackingTypes.join(', ')}
+🎼 Tier: ${tierLabel}
 📝 Special Requests: ${request.special_requests || 'None'}
 🔗 Admin Link: ${window.location.origin}/admin/request/${request.id}`;
 
@@ -230,7 +222,6 @@ const RequestDetails = () => {
   if (loading || !request) return <div className="p-8 text-center">Loading...</div>;
 
   const costBreakdown = calculateRequestCost(request);
-  const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
   return (
     <TooltipProvider>
@@ -249,8 +240,8 @@ const RequestDetails = () => {
               <div className="flex flex-wrap gap-3">
                 <Link to={`/admin/request/${id}/edit`}><Button className="bg-[#1C0357] hover:bg-[#1C0357]/90"><Edit className="mr-2 h-4 w-4" /> Edit Request</Button></Link>
                 <Link to={`/track/${id}`}><Button variant="outline"><Eye className="w-4 h-4 mr-2" /> Client View</Button></Link>
-                <Button onClick={() => navigate(`/email-generator/${id}`)} variant="outline"><Mail className="w-4 h-4 mr-2" /> Email Client</Button>
-                <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="w-4 h-4 mr-2" /> Copy Details</Button>
+                <Button onClick={() => navigate(`/email-generator/${id}`)} variant="outline"><Mail className="mr-2 h-4 w-4" /> Email Client</Button>
+                <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="mr-2 h-4 w-4" /> Copy Details</Button>
               </div>
               <div className="flex gap-3">
                 <Button onClick={triggerDropboxAutomation} disabled={isTriggeringDropbox || !!request.dropbox_folder_id} variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white">
@@ -297,7 +288,35 @@ const RequestDetails = () => {
             </CardContent>
           </Card>
 
-          {/* Materials Card - UPDATED FOR MULTIPLE FILES */}
+          {/* Pricing Breakdown */}
+          <Card className="shadow-lg mb-6 bg-[#1C0357] text-white">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center"><DollarSign className="mr-2 h-5 w-5" /> Pricing Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-3">
+                {costBreakdown.baseCosts.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center">
+                    <span className="font-medium">{item.type}</span>
+                    <span className="font-bold">${item.cost.toFixed(2)}</span>
+                  </div>
+                ))}
+                {costBreakdown.serviceCosts.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center text-white/80">
+                    <span>+ {item.service}</span>
+                    <span>${item.cost.toFixed(2)}</span>
+                  </div>
+                ))}
+                <Separator className="bg-white/20 my-4" />
+                <div className="flex justify-between items-center text-2xl font-black">
+                  <span>Total Estimated</span>
+                  <span className="text-[#F538BC]">${costBreakdown.totalCost.toFixed(2)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Materials Card */}
           <Card className="shadow-lg mb-6">
             <CardHeader className="bg-[#D1AAF2]/20">
               <CardTitle className="text-2xl text-[#1C0357] flex items-center"><Files className="mr-2 h-5 w-5" /> Client Materials</CardTitle>
@@ -305,7 +324,7 @@ const RequestDetails = () => {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center"><FileText className="mr-2 h-5 w-5" /> Sheet Music (PDFs)</h3>
+                  <h3 className="font-semibold text-lg mb-4 text-[#1C0357] flex items-center"><FileText className="mr-2 h-5 w-5" /> Sheet Music</h3>
                   <div className="space-y-2">
                     {request.sheet_music_urls && request.sheet_music_urls.length > 0 ? (
                       request.sheet_music_urls.map((file, i) => (
@@ -357,20 +376,46 @@ const RequestDetails = () => {
             </CardContent>
           </Card>
 
+          {/* Internal Notes */}
+          <Card className="shadow-lg mb-6 border-2 border-yellow-200 bg-yellow-50/30">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center text-[#1C0357]"><StickyNote className="mr-2 h-5 w-5 text-yellow-600" /> Internal Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <Textarea 
+                value={request.internal_notes || ''} 
+                onChange={(e) => setRequest(prev => prev ? { ...prev, internal_notes: e.target.value } : null)}
+                onBlur={() => handleUpdateField('internal_notes', request.internal_notes)}
+                placeholder="Add private notes (e.g., Season Pack usage)..."
+                className="bg-white min-h-[100px]"
+              />
+              <p className="text-[10px] text-gray-400 mt-2 italic">Notes are saved automatically when you click away.</p>
+            </CardContent>
+          </Card>
+
           {/* Basic Info Card */}
           <Card className="shadow-lg mb-6">
             <CardHeader className="bg-[#D1AAF2]/20">
-              <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between"><span>Request Information</span></CardTitle>
+              <CardTitle className="text-2xl text-[#1C0357]">Request Information</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div><p className="text-sm text-gray-500">Client</p><p className="font-medium">{request.name || 'N/A'} ({request.email})</p></div>
                   <div><p className="text-sm text-gray-500">Song</p><p className="font-medium">{request.song_title} by {request.musical_or_artist}</p></div>
+                  <div><p className="text-sm text-gray-500">Key</p><p className="font-medium">{request.song_key || 'N/A'}{request.different_key === 'Yes' ? ` -> ${request.key_for_track}` : ''}</p></div>
                 </div>
                 <div className="space-y-4">
-                  <div><p className="text-sm text-gray-500">Backing Type</p><div className="flex flex-wrap gap-1">{normalizedBackingTypes.map((t, i) => <Badge key={i}>{t.replace('-', ' ')}</Badge>)}</div></div>
+                  <div><p className="text-sm text-gray-500">Tier</p><Badge className="capitalize bg-[#1C0357]">{request.track_type?.replace('-', ' ')}</Badge></div>
                   <div><p className="text-sm text-gray-500">Delivery Date</p><p className="font-medium">{request.delivery_date ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') : 'Not specified'}</p></div>
+                  <div>
+                    <p className="text-sm text-gray-500">Add-ons</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {request.additional_services && request.additional_services.length > 0 ? (
+                        request.additional_services.map((s, i) => <Badge key={i} variant="outline" className="capitalize">{s.replace('-', ' ')}</Badge>)
+                      ) : <span className="text-sm">None</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
