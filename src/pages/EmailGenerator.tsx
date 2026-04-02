@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link } from 'react-router-dom';
@@ -497,8 +496,6 @@ const EmailGenerator = () => {
             </div>
           </DialogContent>
         </Dialog>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

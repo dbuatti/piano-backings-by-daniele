@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from '@tanstack/react-query';
@@ -299,8 +298,6 @@ const AdminDashboard = () => {
           selectedRequestsCount={selectedRequests.length}
           onBatchDeleteRequests={confirmBatchDeleteRequests}
         />
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

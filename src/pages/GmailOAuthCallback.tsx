@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -146,8 +145,6 @@ const GmailOAuthCallback = () => {
             Return to Admin Dashboard
           </Button>
         </div>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

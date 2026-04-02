@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { 
@@ -307,8 +306,6 @@ const Index = () => {
         </motion.section>
 
       </div>
-      
-      <MadeWithDyad />
     </div>
   );
 };

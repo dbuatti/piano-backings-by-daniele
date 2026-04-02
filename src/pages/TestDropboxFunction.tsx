@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Play, Music, Folder, FileText, Youtube } from 'lucide-react';
 
 const TestDropboxFunction = () => {
@@ -188,8 +187,6 @@ const TestDropboxFunction = () => {
             )}
           </CardContent>
         </Card>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

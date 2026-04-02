@@ -21,7 +21,6 @@ import {
   User as UserIcon,
   CreditCard
 } from 'lucide-react';
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -305,7 +304,6 @@ const FormPage = () => {
             </div>
           </form>
         )}
-        <MadeWithDyad />
       </div>
     </div>
   );

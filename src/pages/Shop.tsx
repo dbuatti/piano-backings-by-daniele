@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from "@/components/ui/label"; // Fixed: Added Label import
+import { Label } from "@/components/ui/label";
 import { Loader2, Search, Filter, X, ShoppingCart, Music, Sparkles, Headphones, Mic2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import {
   Sheet,
@@ -311,7 +310,7 @@ const Shop = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
           </div>
-        ) : !products || products.length === 0 ? ( // Fixed: Use products instead of undefined filteredProducts
+        ) : !products || products.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
             <Music className="h-16 w-16 text-gray-200 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-[#1C0357] mb-2">No matches found</h3>
@@ -354,8 +353,6 @@ const Shop = () => {
           isBuying={isBuying}
         />
       )}
-
-      <MadeWithDyad />
     </div>
   );
 };

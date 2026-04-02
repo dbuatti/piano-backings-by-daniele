@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
@@ -31,12 +30,12 @@ import {
   UserPlus,
   Chrome,
   Loader2,
-  MessageSquare, // Added MessageSquare
-  Zap // Added Zap for services
+  MessageSquare,
+  Zap
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import Seo from "@/components/Seo";
 
 interface BackingRequest {
@@ -84,7 +83,7 @@ const ClientTrackView = () => {
   const [userSession, setUserSession] = useState<any>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // ADDED: isAdmin state
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchRequest = async () => {
@@ -150,7 +149,7 @@ const ClientTrackView = () => {
         const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
         const isAdmin = loggedInUserEmail && adminEmails.includes(loggedInUserEmail);
 
-        setIsAdmin(isAdmin); // SET isAdmin state
+        setIsAdmin(isAdmin);
 
         let hasAccess = false;
 
@@ -741,8 +740,6 @@ const ClientTrackView = () => {
             </Button>
           )}
         </div>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client'; // Corrected import
+import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
@@ -123,7 +122,6 @@ const PurchaseConfirmation = () => {
             </CardContent>
           </Card>
         </div>
-        <MadeWithDyad />
       </div>
     );
   }
@@ -172,7 +170,6 @@ const PurchaseConfirmation = () => {
           </CardContent>
         </Card>
       </main>
-      <MadeWithDyad />
     </div>
   );
 };

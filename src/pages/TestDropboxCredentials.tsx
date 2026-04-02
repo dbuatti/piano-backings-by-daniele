@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -53,7 +52,7 @@ const TestDropboxCredentials = () => {
       setError(err);
       toast({
         title: "Error",
-        description: `There was a problem testing the credentials: ${err.message}`,
+        description: `There was a problem testing the connection: ${err.message}`,
         variant: "destructive",
       });
     } finally {
@@ -134,8 +133,6 @@ const TestDropboxCredentials = () => {
             )}
           </CardContent>
         </Card>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
@@ -425,7 +424,6 @@ const RequestDetails = () => {
             <Button onClick={() => navigate('/admin')} variant="outline">Back to Dashboard</Button>
             <Link to={`/admin/request/${id}/edit`}><Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">Edit Request</Button></Link>
           </div>
-          <MadeWithDyad />
         </div>
       </div>
     </TooltipProvider>

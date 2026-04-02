@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -301,7 +300,6 @@ const EditRequest: React.FC = () => {
           <ErrorDisplay error={error} title="Failed to Load Request" />
           <Button onClick={() => navigate('/admin')} className="mt-4">Back to Dashboard</Button>
         </div>
-        <MadeWithDyad />
       </div>
     );
   }
@@ -313,7 +311,6 @@ const EditRequest: React.FC = () => {
         <div className="flex items-center justify-center h-96">
           <p>Request not found.</p>
         </div>
-        <MadeWithDyad />
       </div>
     );
   }
@@ -648,8 +645,6 @@ const EditRequest: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );

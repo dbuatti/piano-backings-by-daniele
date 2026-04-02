@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MadeWithDyad } from "@/components/made-with-dyad";
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +23,6 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
       } else {
         setIsAuthenticated(false);
       }
@@ -35,7 +33,6 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        // Removed explicit navigate call here. The Auth component's redirectTo prop handles it.
       }
     };
     checkInitialSession();
@@ -43,7 +40,7 @@ const Login = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // Removed navigate and location.pathname from dependencies as they are not used for navigation here anymore.
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,8 +151,6 @@ const Login = () => {
             </div>
           </CardContent>
         </Card>
-        
-        <MadeWithDyad />
       </div>
     </div>
   );
