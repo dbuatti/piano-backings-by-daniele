@@ -16,7 +16,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// --- Updated Pricing Logic ---
+// --- Pricing Logic (Synced with Frontend) ---
 const TIER_PRICES: Record<string, number> = {
   'note-bash': 15.00,
   'audition-ready': 30.00,
@@ -32,7 +32,6 @@ const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
 
 function calculateRequestCost(request: any): number {
   let totalCost = 0;
-  
   const tier = request.trackType || 'audition-ready'; 
   const baseCost = TIER_PRICES[tier] || TIER_PRICES['audition-ready'];
   totalCost += baseCost;
@@ -48,7 +47,7 @@ function calculateRequestCost(request: any): number {
   return parseFloat(roundedTotalCost.toFixed(2));
 }
 
-// --- Sanitization and Validation Helpers ---
+// --- Sanitization Helpers ---
 function sanitizeString(input: string | null | undefined, maxLength: number = 500): string | null {
   if (input === null || input === undefined) return null;
   let sanitized = input.trim().replace(/<[^>]*>?/gm, '');
@@ -63,40 +62,6 @@ function validateEmail(email: string | null | undefined): string {
   return sanitizedEmail;
 }
 
-function createOrderSummary(formData: any): string {
-  return `
-PIANO BACKING TRACK REQUEST SUMMARY
-==================================
-
-ORDER DETAILS
--------------
-Date: ${new Date().toLocaleString()}
-Request ID: ${Date.now()}
-
-CLIENT INFORMATION
-------------------
-Name: ${formData.name || 'Not provided'}
-Email: ${formData.email || 'Not provided'}
-
-TRACK INFORMATION
------------------
-Song Title: ${formData.songTitle}
-Musical/Artist: ${formData.musicalOrArtist}
-Song Key: ${formData.songKey || 'Not specified'}
-Tier: ${formData.trackType?.replace('-', ' ') || 'Audition Ready'}
-
-ADDITIONAL SERVICES
-------------------
-${formData.additionalServices && formData.additionalServices.length > 0 
-  ? formData.additionalServices.map((service: string) => `- ${service.replace('-', ' ')}`).join('\n') 
-  : 'None requested'}
-
-SPECIAL REQUESTS
-----------------
-${formData.specialRequests || 'None provided'}
-  `.trim();
-}
-
 // --- Dropbox Automation ---
 interface DropboxConfig {
   dropboxAppKey: string;
@@ -107,7 +72,7 @@ interface DropboxConfig {
 }
 
 async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
-  const response = await fetch('https://api.dropboxapi.com/oauth2/token', {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -122,7 +87,7 @@ async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
   return tokenData.access_token;
 }
 
-async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any, userName: string) {
+async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any, userName: string, sheetMusicUrls: any[]) {
   const result = { dropboxFolderId: null, dropboxFolderPath: null, templateCopySuccess: false, summaryUploadSuccess: false };
   let dropboxAccessToken;
   try { dropboxAccessToken = await getDropboxAccessToken(config); } catch (e) { return result; }
@@ -163,26 +128,27 @@ async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any
     result.templateCopySuccess = true;
   } catch (e) {}
 
-  // Upload Summary
-  try {
-    const summary = createOrderSummary(sanitizedData);
-    await fetch('https://content.dropboxapi.com/2/files/upload', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${dropboxAccessToken}`, 'Dropbox-API-Arg': JSON.stringify({ path: `${fullPath}/order_summary.txt`, mode: 'add' }), 'Content-Type': 'application/octet-stream' },
-      body: new TextEncoder().encode(summary)
-    });
-    result.summaryUploadSuccess = true;
-  } catch (e) {}
+  // Upload Sheet Music to Dropbox
+  for (const file of sheetMusicUrls) {
+    try {
+      const fileResponse = await fetch(file.url);
+      const fileBlob = await fileResponse.blob();
+      await fetch('https://content.dropboxapi.com/2/files/upload', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${dropboxAccessToken}`, 
+          'Dropbox-API-Arg': JSON.stringify({ path: `${fullPath}/${file.caption}`, mode: 'add' }), 
+          'Content-Type': 'application/octet-stream' 
+        },
+        body: fileBlob
+      });
+    } catch (e) {
+      console.error(`[create-backing-request] Failed to upload ${file.caption} to Dropbox`, e);
+    }
+  }
 
   return result;
 }
-
-const EMAIL_SIGNATURE_HTML = `
-<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-  <p style="margin: 0; font-weight: bold; color: #F538BC; font-size: 18px;">Daniele Buatti</p>
-  <p style="margin: 5px 0 0 0; color: #1C0357; font-size: 14px;">Piano Backings by Daniele</p>
-</div>
-`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
@@ -211,7 +177,13 @@ serve(async (req) => {
       trackType: sanitizeString(formData.trackType, 50),
       additionalServices: Array.isArray(formData.additionalServices) ? formData.additionalServices : [],
       specialRequests: sanitizeString(formData.specialRequests, 1000),
+      deliveryDate: formData.deliveryDate || null,
+      category: sanitizeString(formData.category, 100),
+      internalNotes: sanitizeString(formData.internal_notes, 2000),
     };
+    
+    const sheetMusicUrls = Array.isArray(formData.sheetMusicUrls) ? formData.sheetMusicUrls : [];
+    const voiceMemoUrls = Array.isArray(formData.voiceMemoUrls) ? formData.voiceMemoUrls : [];
     
     const calculatedCost = calculateRequestCost(sanitizedData);
     const dropboxConfig = {
@@ -222,7 +194,7 @@ serve(async (req) => {
       templateFilePath: Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx',
     };
 
-    const dropboxResult = await handleDropboxAutomation(dropboxConfig, sanitizedData, userName || sanitizedData.name || sanitizedData.email);
+    const dropboxResult = await handleDropboxAutomation(dropboxConfig, sanitizedData, userName || sanitizedData.name || sanitizedData.email, sheetMusicUrls);
     const guestAccessToken = crypto.randomUUID();
     
     const { data: insertedRecords, error: insertError } = await supabaseAdmin
@@ -237,35 +209,47 @@ serve(async (req) => {
         track_type: sanitizedData.trackType,
         additional_services: sanitizedData.additionalServices,
         special_requests: sanitizedData.specialRequests,
+        delivery_date: sanitizedData.deliveryDate,
+        category: sanitizedData.category,
         dropbox_folder_id: dropboxResult.dropboxFolderId,
         guest_access_token: guestAccessToken,
         cost: calculatedCost,
         is_paid: formData.is_paid || false,
-        internal_notes: formData.internal_notes || "",
+        internal_notes: sanitizedData.internalNotes || "",
+        sheet_music_urls: sheetMusicUrls,
+        voice_memo_urls: voiceMemoUrls,
+        youtube_link: formData.youtubeLink || null,
+        voice_memo: formData.voiceMemoLink || null,
+        different_key: formData.differentKey || 'No',
+        key_for_track: formData.keyForTrack || null,
       }])
       .select();
 
     if (insertError) throw insertError;
     const requestId = insertedRecords[0].id;
 
-    const clientEmailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <h2 style="color: #1C0357;">Request Received!</h2>
-        <p>Hi ${userName || sanitizedData.name || 'there'},</p>
-        <p>Thanks for your request for <strong>"${sanitizedData.songTitle}"</strong>.</p>
-        <p>I'll review your materials and start working on your track soon.</p>
-      </div>
-      ${EMAIL_SIGNATURE_HTML}
-    `;
-    
-    await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
-      body: JSON.stringify({ to: sanitizedData.email, subject: `Confirmation: Backing Track Request`, html: clientEmailHtml, senderEmail: defaultSenderEmail })
-    });
+    // Only send email if it's already paid (e.g. via Season Pack)
+    // Otherwise, wait for Stripe webhook to send the confirmation
+    if (formData.is_paid) {
+      const clientEmailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #1C0357;">Request Received!</h2>
+          <p>Hi ${userName || sanitizedData.name || 'there'},</p>
+          <p>Thanks for your request for <strong>"${sanitizedData.songTitle}"</strong>.</p>
+          <p>I'll review your materials and start working on your track soon.</p>
+        </div>
+      `;
+      
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+        body: JSON.stringify({ to: sanitizedData.email, subject: `Confirmation: Backing Track Request`, html: clientEmailHtml, senderEmail: defaultSenderEmail })
+      });
+    }
 
     return new Response(JSON.stringify({ message: 'Success', requestId, ...dropboxResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
   } catch (error: any) {
+    console.error("[create-backing-request] Error:", error);
     return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
   }
 });

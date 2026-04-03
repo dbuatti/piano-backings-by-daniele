@@ -101,7 +101,6 @@ const FormPage = () => {
   }, [userCredits, globalData.trackType]);
 
   const priceBreakdown = useMemo(() => {
-    // Map to the format expected by calculateRequestCost utility
     const mockRequest = { 
       track_type: globalData.trackType, 
       additional_services: globalData.additionalServices 
@@ -135,17 +134,35 @@ const FormPage = () => {
     e.preventDefault();
     if (isHolidayModeActive || isServiceClosed) return;
 
+    if (globalData.email !== globalData.confirmEmail) {
+      toast({ title: "Email Mismatch", description: "Please ensure your email addresses match.", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const createdRequestIds: string[] = [];
 
       for (const song of songs) {
+        // 1. Upload Sheet Music
         const sheetMusicUrls = [];
         for (const file of song.sheetMusicFiles) {
-          const { data: uploadData } = await supabase.storage.from('sheet-music').upload(`${Date.now()}-${file.name}`, file);
+          const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage.from('sheet-music').upload(fileName, file);
+          if (uploadError) throw uploadError;
           const { data: { publicUrl } } = supabase.storage.from('sheet-music').getPublicUrl(uploadData!.path);
           sheetMusicUrls.push({ url: publicUrl, caption: file.name });
+        }
+
+        // 2. Upload Voice Memos (if any)
+        const voiceMemoUrls = [];
+        for (const file of song.voiceMemoFiles) {
+          const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-memos').upload(fileName, file);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage.from('voice-memos').getPublicUrl(uploadData!.path);
+          voiceMemoUrls.push({ url: publicUrl, caption: file.name });
         }
         
         const submissionData = {
@@ -153,6 +170,7 @@ const FormPage = () => {
             ...globalData,
             ...song,
             sheetMusicUrls,
+            voiceMemoUrls,
             is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }
@@ -165,6 +183,7 @@ const FormPage = () => {
         });
         
         const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to create request");
         if (result.requestId) createdRequestIds.push(result.requestId);
       }
 
@@ -189,6 +208,7 @@ const FormPage = () => {
         setIsSubmittedSuccessfully(true);
       }
     } catch (error: any) {
+      console.error("Submission error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -240,12 +260,18 @@ const FormPage = () => {
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Full Name</Label>
-                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} disabled={!!user} />
+                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} disabled={!!user} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} disabled={!!user} />
+                  <Label>Email Address</Label>
+                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} disabled={!!user} required />
                 </div>
+                {!user && (
+                  <div className="space-y-2">
+                    <Label>Confirm Email</Label>
+                    <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} required />
+                  </div>
+                )}
               </div>
             </Card>
 
