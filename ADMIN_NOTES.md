@@ -19,7 +19,9 @@ This document outlines the specific Google accounts used for different services 
 
 ---
 
-## Edge Functions Deployment
+## Edge Functions Deployment (Manual Process)
+
+**Note:** Dyad writes the function code, but you must manually deploy them to Supabase using the CLI because deployment requires your personal account credentials.
 
 To deploy all Edge Functions from your local terminal:
 
