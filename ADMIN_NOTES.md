@@ -40,6 +40,22 @@ If "Deploy All" fails to find functions, deploy them individually:
 
 ---
 
+## Managing Secrets
+
+Ensure all sensitive API keys are set in Supabase Secrets (Dashboard -> Settings -> API -> Secrets). **Never hardcode these in the function files.**
+
+Required Secrets include:
+*   `STRIPE_SECRET_KEY`
+*   `STRIPE_WEBHOOK_SECRET`
+*   `GMAIL_CLIENT_ID`
+*   `GMAIL_CLIENT_SECRET`
+*   `GMAIL_USER` (pianobackingsbydaniele@gmail.com)
+*   `DROPBOX_APP_KEY`
+*   `DROPBOX_APP_SECRET`
+*   `DROPBOX_REFRESH_TOKEN`
+
+---
+
 **Important Considerations:**
 
 *   **OAuth Client Configuration:** Ensure the Google Cloud Project's OAuth 2.0 Client ID for "Web application" has the correct "Authorized JavaScript origins" and "Authorized redirect URIs" for both local development (`http://localhost:32100/...`) and production (`https://pianobackingsbydaniele.vercel.app/...`).
