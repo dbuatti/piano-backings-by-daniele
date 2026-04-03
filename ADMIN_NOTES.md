@@ -19,6 +19,16 @@ This document outlines the specific Google accounts used for different services 
 
 ---
 
+## Edge Functions Deployment
+
+To deploy all Edge Functions from your local terminal:
+
+1.  **Login:** `supabase login`
+2.  **Link Project:** `supabase link --project-ref kyfofikkswxtwgtqutdu`
+3.  **Deploy All:** `supabase functions deploy`
+
+---
+
 **Important Considerations:**
 
 *   **OAuth Client Configuration:** Ensure the Google Cloud Project's OAuth 2.0 Client ID for "Web application" has the correct "Authorized JavaScript origins" and "Authorized redirect URIs" for both local development (`http://localhost:32100/...`) and production (`https://pianobackingsbydaniele.vercel.app/...`).
