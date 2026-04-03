@@ -63,18 +63,6 @@ function validateEmail(email: string | null | undefined): string {
   return sanitizedEmail;
 }
 
-function validateUrl(url: string | null | undefined): string | null {
-  const sanitizedUrl = sanitizeString(url, 2048);
-  if (!sanitizedUrl) return null;
-  try { new URL(sanitizedUrl); return sanitizedUrl; } catch { return null; }
-}
-
-function extractYouTubeId(url: string): string | null {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
-}
-
 function createOrderSummary(formData: any): string {
   return `
 PIANO BACKING TRACK REQUEST SUMMARY
@@ -116,7 +104,6 @@ interface DropboxConfig {
   dropboxRefreshToken: string;
   defaultDropboxParentFolder: string;
   templateFilePath: string;
-  rapidApiKey: string;
 }
 
 async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
@@ -136,7 +123,7 @@ async function getDropboxAccessToken(config: DropboxConfig): Promise<string> {
 }
 
 async function handleDropboxAutomation(config: DropboxConfig, sanitizedData: any, userName: string) {
-  const result = { dropboxFolderId: null, dropboxFolderPath: null, templateCopySuccess: false, youtubeMp3Success: false, pdfUploadSuccess: false, voiceMemoUploadSuccess: false, summaryUploadSuccess: false };
+  const result = { dropboxFolderId: null, dropboxFolderPath: null, templateCopySuccess: false, summaryUploadSuccess: false };
   let dropboxAccessToken;
   try { dropboxAccessToken = await getDropboxAccessToken(config); } catch (e) { return result; }
 
@@ -204,16 +191,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const defaultSenderEmail = Deno.env.get('GMAIL_USER') || 'pianobackingsbydaniele@gmail.com';
-    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:3000';
-    const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'daniele.buatti@gmail.com';
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    let userId = null, userEmail = null, userName = null;
+    let userId = null, userName = null;
 
     const authHeader = req.headers.get('Authorization');
     if (authHeader) {
       const { data: { user } } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (user) { userId = user.id; userEmail = user.email; userName = user.user_metadata?.full_name; }
+      if (user) { userId = user.id; userName = user.user_metadata?.full_name; }
     }
     
     const { formData } = await req.json();
@@ -235,7 +220,6 @@ serve(async (req) => {
       dropboxRefreshToken: Deno.env.get('DROPBOX_REFRESH_TOKEN') || '',
       defaultDropboxParentFolder: Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS',
       templateFilePath: Deno.env.get('LOGIC_TEMPLATE_PATH') || '/_Template/X from Y prepared for Z.logicx',
-      rapidApiKey: Deno.env.get('RAPIDAPI_KEY') || '',
     };
 
     const dropboxResult = await handleDropboxAutomation(dropboxConfig, sanitizedData, userName || sanitizedData.name || sanitizedData.email);
@@ -256,17 +240,20 @@ serve(async (req) => {
         dropbox_folder_id: dropboxResult.dropboxFolderId,
         guest_access_token: guestAccessToken,
         cost: calculatedCost,
+        is_paid: formData.is_paid || false,
+        internal_notes: formData.internal_notes || "",
       }])
       .select();
 
     if (insertError) throw insertError;
+    const requestId = insertedRecords[0].id;
 
     const clientEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <h2 style="color: #1C0357;">Request Received!</h2>
-        <p>Hi ${userName || 'there'},</p>
+        <p>Hi ${userName || sanitizedData.name || 'there'},</p>
         <p>Thanks for your request for <strong>"${sanitizedData.songTitle}"</strong>.</p>
-        <p>I'll review your materials and send a quote within 24-48 hours.</p>
+        <p>I'll review your materials and start working on your track soon.</p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
     `;
@@ -277,7 +264,7 @@ serve(async (req) => {
       body: JSON.stringify({ to: sanitizedData.email, subject: `Confirmation: Backing Track Request`, html: clientEmailHtml, senderEmail: defaultSenderEmail })
     });
 
-    return new Response(JSON.stringify({ message: 'Success', ...dropboxResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    return new Response(JSON.stringify({ message: 'Success', requestId, ...dropboxResult }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
   }
