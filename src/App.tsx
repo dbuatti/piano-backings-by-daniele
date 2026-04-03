@@ -6,6 +6,7 @@ import Index from './pages/Index';
 import FormPage from './pages/FormPage';
 import UserDashboard from './pages/UserDashboard';
 import Shop from './pages/Shop';
+import Pricing from './pages/Pricing'; // Import new Pricing page
 import Login from './pages/Login';
 import GmailOAuthCallback from './pages/GmailOAuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
@@ -25,13 +26,13 @@ import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
 import Footer from './components/Footer';
-import ScrollToTop from './components/ScrollToTop'; // Import ScrollToTop
+import ScrollToTop from './components/ScrollToTop';
 
 
 function App() {
   return (
     <Router>
-      <ScrollToTop /> {/* Add ScrollToTop here */}
+      <ScrollToTop />
       <div className="flex flex-col min-h-screen">
         <HolidayModeBanner />
         <UnreadIssueReportsNotice />
@@ -41,6 +42,7 @@ function App() {
             <Route path="/form-page" element={<FormPage />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/shop" element={<Shop />} />
+            <Route path="/pricing" element={<Pricing />} /> {/* Add Pricing route */}
             <Route path="/about" element={<AboutServices />} />
             <Route path="/login" element={<Login />} />
             <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />

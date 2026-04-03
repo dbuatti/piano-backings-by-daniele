@@ -30,7 +30,7 @@ const Footer = () => {
         { label: "Browse the Shop", path: "/shop" },
         { label: "About & FAQ", path: "/about" },
         { label: "My Tracks", path: "/user-dashboard" },
-        { label: "Pricing Matrix", path: "/#pricing" },
+        { label: "Pricing Matrix", path: "/pricing" }, // Updated path
       ]
     },
     {
