@@ -1,172 +1,141 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, Loader2, Download, Music, Package, ArrowRight } from 'lucide-react';
 import Seo from '@/components/Seo';
-
-// Assuming these types and helpers exist based on the original error message
-interface TrackInfo {
-  id: string;
-  title: string;
-  artist: string;
-  track_urls: { url: string; label: string }[];
-}
-
-const downloadTrack = async (url: string, filename: string) => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch track');
-    const blob = await response.blob();
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch (error) {
-    console.error('Error downloading track:', error);
-    alert('Failed to download track. Please try again.');
-  }
-};
+import { downloadTrack } from '@/utils/helpers';
 
 const PurchaseConfirmation = () => {
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [trackInfo, setTrackInfo] = useState<TrackInfo | null>(null);
+  const [orderData, setOrderData] = useState<any>(null);
+  const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
-    const fetchOrderDetails = async () => {
-      const params = new URLSearchParams(location.search);
-      const orderId = params.get('orderId');
-
-      if (!orderId) {
-        setError('Order ID not found in URL.');
-        setLoading(false);
+    const verifyPurchase = async () => {
+      if (!sessionId) {
+        navigate('/');
         return;
       }
 
       try {
-        const { data, error } = await supabase
+        // Check for Shop Order first
+        const { data: order } = await supabase
           .from('orders')
-          .select('*, products(title, artist_name, track_urls)')
-          .eq('id', orderId)
+          .select('*, products(*)')
+          .eq('checkout_session_id', sessionId)
           .single();
 
-        if (error) throw error;
-
-        if (data && data.products) {
-          setTrackInfo({
-            id: data.products.id,
-            title: data.products.title,
-            artist: data.products.artist_name,
-            track_urls: data.products.track_urls || [],
-          });
+        if (order) {
+          setOrderData({ type: 'shop', ...order });
         } else {
-          setError('Order or product details not found.');
+          // Check for Custom Request
+          const { data: requests } = await supabase
+            .from('backing_requests')
+            .select('*')
+            .eq('stripe_session_id', sessionId);
+
+          if (requests && requests.length > 0) {
+            setOrderData({ type: 'custom', requests });
+          }
         }
-      } catch (err: any) {
-        console.error('Error fetching order details:', err.message);
-        setError('Failed to load order details. Please try again later.');
+      } catch (err) {
+        console.error("Verification error:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrderDetails();
-  }, [location.search]);
-
-  const handleDownload = (url: string, title: string, label: string) => {
-    downloadTrack(url, `${title} - ${label}.mp3`);
-  };
+    verifyPurchase();
+  }, [sessionId, navigate]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FDFCF7] flex flex-col">
         <Header />
         <div className="flex-1 flex flex-col items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-[#1C0357]" />
-          <p className="mt-4 text-[#1C0357] font-medium">Loading purchase details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#FDFCF7] flex flex-col">
-        <Seo 
-          title="Purchase Error"
-          description="There was an error confirming your purchase."
-        />
-        <Header />
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <Card className="border-2 border-red-100 shadow-xl overflow-hidden rounded-3xl max-w-md w-full">
-            <div className="bg-red-500 p-8 text-center text-white">
-              <XCircle className="h-16 w-16 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold">Purchase Error</h1>
-            </div>
-            <CardContent className="p-8 text-center">
-              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-                {error}
-              </p>
-              <Button onClick={() => navigate('/')} size="lg" className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white rounded-full px-10 py-6 text-lg">
-                Go to Homepage
-              </Button>
-            </CardContent>
-          </Card>
+          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+          <p className="mt-4 font-bold text-[#1C0357]">Verifying your purchase...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFCF7] flex flex-col">
-      <Seo 
-        title="Purchase Confirmed!"
-        description="Your purchase has been confirmed. Download your tracks now."
-      />
+    <div className="min-h-screen bg-[#FDFCF7]">
+      <Seo title="Thank You! | Purchase Confirmed" description="Your purchase has been confirmed." />
       <Header />
-      <main className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-        <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white max-w-2xl w-full">
-          <div className="bg-green-500 py-12 text-center text-white">
+      
+      <main className="max-w-3xl mx-auto py-16 px-4">
+        <Card className="rounded-[40px] border-none shadow-2xl overflow-hidden bg-white">
+          <div className="bg-green-500 p-12 text-center text-white">
             <div className="h-20 w-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-10 w-10" />
+              <CheckCircle size={40} />
             </div>
-            <h1 className="text-3xl font-bold">Purchase Confirmed!</h1>
-            <p className="mt-2 text-green-50 font-medium">Thank you for your order.</p>
+            <h1 className="text-4xl font-black tracking-tighter">Payment Successful!</h1>
+            <p className="text-green-50 font-medium mt-2">Thank you for supporting my work.</p>
           </div>
-          <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold text-[#1C0357] mb-4">
-              {trackInfo?.title} by {trackInfo?.artist}
-            </h2>
-            <p className="text-gray-600 mb-8 text-lg">
-              Your tracks are ready for download.
-            </p>
-            <div className="space-y-4 mb-8">
-              {trackInfo?.track_urls && trackInfo.track_urls.length > 0 ? (
-                trackInfo.track_urls.map((track, index) => (
-                  <Button
-                    key={index}
-                    onClick={() => handleDownload(track.url, trackInfo.title, track.label)}
-                    className="w-full bg-[#D1AAF2] hover:bg-[#D1AAF2]/90 text-[#1C0357] px-8 py-6 text-lg rounded-full shadow-md"
-                  >
-                    Download {track.label}
-                  </Button>
-                ))
-              ) : (
-                <p className="text-gray-500">No tracks available for download.</p>
-              )}
+
+          <CardContent className="p-12">
+            {orderData?.type === 'shop' ? (
+              <div className="space-y-8">
+                <div className="flex items-center gap-4 p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <div className="h-12 w-12 bg-[#1C0357] rounded-2xl flex items-center justify-center text-white">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Purchased Item</p>
+                    <h3 className="text-xl font-black text-[#1C0357]">{orderData.products.title}</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-black text-[#1C0357] uppercase tracking-widest text-sm">Your Downloads</h4>
+                  {orderData.products.track_urls?.map((track: any, i: number) => (
+                    <Button 
+                      key={i}
+                      onClick={() => downloadTrack(track.url, track.caption || 'track.mp3')}
+                      className="w-full h-16 bg-[#D1AAF2]/20 hover:bg-[#D1AAF2]/30 text-[#1C0357] border-2 border-[#D1AAF2]/50 rounded-2xl font-black justify-between px-6"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Music size={20} className="text-[#F538BC]" />
+                        {track.caption || `Track ${i + 1}`}
+                      </span>
+                      <Download size={20} />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-6">
+                <div className="p-8 bg-[#1C0357]/5 rounded-[32px] border-2 border-dashed border-[#1C0357]/10">
+                  <h3 className="text-2xl font-black text-[#1C0357] mb-2">Request Received</h3>
+                  <p className="text-gray-600 font-medium">
+                    I've received your custom request for <strong>{orderData?.requests?.map((r: any) => r.song_title).join(', ')}</strong>.
+                  </p>
+                  <p className="text-sm text-gray-400 mt-4">
+                    You'll receive an email notification as soon as your tracks are ready.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row gap-4">
+              <Button asChild className="flex-1 h-14 rounded-2xl bg-[#1C0357] font-black">
+                <Link to="/user-dashboard">
+                  Go to My Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1 h-14 rounded-2xl border-2 font-black">
+                <Link to="/shop">Continue Shopping</Link>
+              </Button>
             </div>
-            <Button onClick={() => navigate('/shop')} size="lg" variant="outline" className="border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/5 rounded-full px-10 py-6 text-lg">
-              Continue Shopping
-            </Button>
           </CardContent>
         </Card>
       </main>

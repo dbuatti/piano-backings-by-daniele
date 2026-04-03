@@ -32,7 +32,6 @@ serve(async (req) => {
     let metadata = {};
 
     if (product_id) {
-      // Shop Product Flow
       const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
       const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', product_id).single();
       if (!product) throw new Error('Product not found');
@@ -47,7 +46,6 @@ serve(async (req) => {
       }];
       metadata = { product_id: product.id };
     } else if (request_ids && amount) {
-      // Custom Request Flow
       line_items = [{
         price_data: {
           currency: 'aud',
@@ -67,8 +65,8 @@ serve(async (req) => {
       line_items,
       mode: 'payment',
       customer_email,
-      success_url: `${siteUrl}/user-dashboard?success=true`,
-      cancel_url: `${siteUrl}/form-page?canceled=true`,
+      success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/shop`,
       metadata,
     });
 
