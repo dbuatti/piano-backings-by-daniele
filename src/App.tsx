@@ -14,7 +14,7 @@ import EditRequest from './pages/EditRequest';
 import EmailGenerator from './pages/EmailGenerator';
 import ClientTrackView from './pages/ClientTrackView';
 import PurchaseConfirmation from './pages/PurchaseConfirmation';
-import AboutServices from './pages/AboutServices'; // Import new page
+import AboutServices from './pages/AboutServices';
 import NotFound from './pages/NotFound';
 import TestDropboxFunction from './pages/TestDropboxFunction';
 import TestDropboxCredentials from './pages/TestDropboxCredentials';
@@ -25,11 +25,13 @@ import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop'; // Import ScrollToTop
 
 
 function App() {
   return (
     <Router>
+      <ScrollToTop /> {/* Add ScrollToTop here */}
       <div className="flex flex-col min-h-screen">
         <HolidayModeBanner />
         <UnreadIssueReportsNotice />
@@ -39,7 +41,7 @@ function App() {
             <Route path="/form-page" element={<FormPage />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/shop" element={<Shop />} />
-            <Route path="/about" element={<AboutServices />} /> {/* New Route */}
+            <Route path="/about" element={<AboutServices />} />
             <Route path="/login" element={<Login />} />
             <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
             <Route path="/admin" element={<AdminDashboard />} />
