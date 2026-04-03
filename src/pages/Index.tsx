@@ -285,9 +285,9 @@ const Index = () => {
             <h2 className="text-4xl md:text-7xl font-black mb-16 relative z-10 tracking-tighter">Connect & Share</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 relative z-10">
               {[
-                { icon: Youtube, label: "YouTube", color: "text-red-500", href: "https://www.youtube.com/@danielebuatti" },
-                { icon: Instagram, label: "Instagram", color: "text-pink-400", href: "https://www.instagram.com/danielebuatti/" },
-                { icon: Facebook, label: "Facebook", color: "text-blue-400", href: "https://www.facebook.com/danielebuattimusic" },
+                { icon: Youtube, label: "YouTube", color: "text-red-500", href: "https://www.youtube.com/@pianobackingsbydaniele" },
+                { icon: Instagram, label: "Instagram", color: "text-pink-400", href: "https://www.instagram.com/pianobackingsbydaniele/" },
+                { icon: Facebook, label: "Facebook", color: "text-blue-400", href: "https://www.facebook.com/PianoBackingsbyDaniele/" },
                 { icon: Mail, label: "Email", color: "text-gray-300", href: "mailto:pianobackingsbydaniele@gmail.com" }
               ].map((social, i) => (
                 <a 

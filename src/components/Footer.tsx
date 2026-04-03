@@ -45,9 +45,9 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Instagram, href: "https://www.instagram.com/danielebuatti/", label: "Instagram" },
-    { icon: Youtube, href: "https://www.youtube.com/@danielebuatti", label: "YouTube" },
-    { icon: Facebook, href: "https://www.facebook.com/danielebuattimusic", label: "Facebook" },
+    { icon: Instagram, href: "https://www.instagram.com/pianobackingsbydaniele/", label: "Instagram" },
+    { icon: Youtube, href: "https://www.youtube.com/@pianobackingsbydaniele", label: "YouTube" },
+    { icon: Facebook, href: "https://www.facebook.com/PianoBackingsbyDaniele/", label: "Facebook" },
   ];
 
   return (
@@ -111,7 +111,7 @@ const Footer = () => {
                       <a 
                         href={link.href} 
                         target="_blank" 
-                        rel="noopener noreferrer"
+                        rel="noopener noreferrer" 
                         className="text-white/70 hover:text-white text-sm font-bold flex items-center group transition-colors"
                       >
                         {link.icon && <link.icon size={14} className="mr-2 text-white/30 group-hover:text-[#F538BC] transition-colors" />}
