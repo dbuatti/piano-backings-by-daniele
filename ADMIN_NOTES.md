@@ -27,6 +27,17 @@ To deploy all Edge Functions from your local terminal:
 2.  **Link Project:** `supabase link --project-ref kyfofikkswxtwgtqutdu`
 3.  **Deploy All:** `supabase functions deploy`
 
+If "Deploy All" fails to find functions, deploy them individually:
+*   `supabase functions deploy create-backing-request`
+*   `supabase functions deploy create-stripe-checkout`
+*   `supabase functions deploy get-guest-request-by-token`
+*   `supabase functions deploy get-order-by-session-id`
+*   `supabase functions deploy gmail-oauth-callback`
+*   `supabase functions deploy list-all-users`
+*   `supabase functions deploy send-email`
+*   `supabase functions deploy stripe-webhook`
+*   `supabase functions deploy test-dropbox`
+
 ---
 
 **Important Considerations:**
