@@ -96,11 +96,11 @@ const AboutServices = () => {
           >
             <div className="aspect-square rounded-[60px] bg-[#1C0357] overflow-hidden shadow-2xl rotate-3 group">
               <img 
-                src="https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&q=80&w=800" 
+                src="/daniele-profile.png" 
                 alt="Daniele Buatti - Pianist & Music Director"
-                className="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-700"
+                className="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1C0357]/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1C0357]/40 to-transparent" />
             </div>
             <div className="absolute -bottom-8 -left-8 bg-white p-8 rounded-[40px] shadow-xl max-w-xs -rotate-3 border border-gray-100">
               <p className="text-[#1C0357] font-black italic text-lg leading-tight">
