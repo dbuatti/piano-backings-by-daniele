@@ -17,7 +17,10 @@ import {
   ChevronRight,
   ArrowLeft,
   UploadCloud,
-  FileJson
+  FileJson,
+  Bug,
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { useAdmin } from '@/hooks/useAdmin';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
@@ -51,6 +55,7 @@ const FormPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin } = useAdmin();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionStep, setSubmissionStep] = useState<string>('');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
@@ -131,6 +136,71 @@ const FormPage = () => {
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
     setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   }, []);
+
+  const handleDebugPrefill = (type: 'single' | 'multiple') => {
+    const testEmail = user?.email || 'pianobackingsbydaniele@gmail.com';
+    const testName = user?.user_metadata?.full_name || 'Admin Debugger';
+    
+    setGlobalData({
+      email: testEmail,
+      confirmEmail: testEmail,
+      name: testName,
+      category: 'Audition Tracks',
+      trackType: 'audition-ready',
+      deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      additionalServices: ['rush-order'],
+      specialRequests: `DEBUG: Testing ${type} song submission flow.`,
+    });
+
+    if (type === 'single') {
+      setSongs([
+        createNewSong({
+          songTitle: 'Defying Gravity',
+          musicalOrArtist: 'Wicked',
+          songKey: 'C Major (0)',
+          differentKey: 'No',
+          youtubeLink: 'https://www.youtube.com/watch?v=MslDnWvH0p8',
+        })
+      ]);
+    } else {
+      setSongs([
+        createNewSong({
+          songTitle: 'I\'ll Know',
+          musicalOrArtist: 'Guys and Dolls',
+          songKey: 'C Major (0)',
+          differentKey: 'Yes',
+          keyForTrack: 'D Major (2♯)',
+          youtubeLink: 'https://www.youtube.com/watch?v=RbvVTG9pxCc',
+        }),
+        createNewSong({
+          songTitle: 'On My Own',
+          musicalOrArtist: 'Les Misérables',
+          songKey: 'F Major (1♭)',
+          differentKey: 'No',
+          youtubeLink: 'https://www.youtube.com/watch?v=Vj920_S6-7E',
+        })
+      ]);
+    }
+    setConsentChecked(true);
+    toast({ title: "Form Prefilled", description: `Loaded ${type} song test data.` });
+  };
+
+  const handleClearForm = () => {
+    setGlobalData({
+      email: user?.email || '',
+      confirmEmail: user?.email || '',
+      name: user?.user_metadata?.full_name || '',
+      category: 'Audition Tracks',
+      trackType: 'audition-ready',
+      deliveryDate: '',
+      additionalServices: [],
+      specialRequests: '',
+    });
+    setSongs([createNewSong()]);
+    setConsentChecked(false);
+    setUseCredit(false);
+    toast({ title: "Form Cleared" });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,6 +356,38 @@ const FormPage = () => {
           </h1>
           <p className="text-xl text-gray-500 font-medium">Professional accompaniment tailored to your voice.</p>
         </header>
+
+        {/* Admin Debug Tools */}
+        {isAdmin && (
+          <Card className="mb-12 border-2 border-orange-200 bg-orange-50/30 rounded-[32px] overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-orange-700 font-black uppercase tracking-widest text-xs">
+                  <Bug size={16} /> Admin Debug Tools
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleClearForm} className="text-orange-600 hover:bg-orange-100">
+                  <Trash2 size={14} className="mr-2" /> Clear Form
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Button 
+                  onClick={() => handleDebugPrefill('single')}
+                  variant="outline" 
+                  className="h-12 border-orange-200 bg-white text-orange-700 hover:bg-orange-50 font-bold rounded-xl"
+                >
+                  <Sparkles size={16} className="mr-2" /> Prefill Single Song
+                </Button>
+                <Button 
+                  onClick={() => handleDebugPrefill('multiple')}
+                  variant="outline" 
+                  className="h-12 border-orange-200 bg-white text-orange-700 hover:bg-orange-50 font-bold rounded-xl"
+                >
+                  <Plus size={16} className="mr-2" /> Prefill Multiple Songs
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isSubmittedSuccessfully ? (
           <Card className="border-none shadow-2xl rounded-[48px] overflow-hidden bg-white p-16 text-center">
