@@ -314,7 +314,7 @@ const FormPage = () => {
         });
         
         const stripeResult = await stripeResponse.json();
-        if (!stripeResult.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
+        if (!stripeResponse.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
         if (stripeResult.url) window.location.href = stripeResult.url;
       } else {
         setIsSubmittedSuccessfully(true);
