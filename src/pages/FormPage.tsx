@@ -17,7 +17,6 @@ import {
   ChevronRight,
   ArrowLeft,
   UploadCloud,
-  FileJson,
   Bug,
   Trash2,
   Sparkles,
@@ -97,7 +96,6 @@ const FormPage = () => {
         const { data: credits } = await supabase.from('user_credits').select('*').eq('user_id', session.user.id);
         setUserCredits(credits || []);
       } else {
-        // Delay overlay to let user see the form first
         timer = setTimeout(() => setShowAuthOverlay(true), 1500);
       }
     };
@@ -123,19 +121,23 @@ const FormPage = () => {
     };
   }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit]);
 
-  const handleGlobalInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleGlobalInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setGlobalData(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleServiceToggle = (serviceId: string) => {
+  const handleTrackTypeChange = useCallback((v: string) => {
+    setGlobalData(prev => ({ ...prev, trackType: v }));
+  }, []);
+
+  const handleServiceToggle = useCallback((serviceId: string) => {
     setGlobalData(prev => {
       const services = prev.additionalServices.includes(serviceId)
         ? prev.additionalServices.filter(id => id !== serviceId)
         : [...prev.additionalServices, serviceId];
       return { ...prev, additionalServices: services };
     });
-  };
+  }, []);
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
     setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
@@ -149,7 +151,7 @@ const FormPage = () => {
     setSongs(prev => [...prev, createNewSong()]);
   }, []);
 
-  const handleDebugPrefill = (type: 'single' | 'multiple') => {
+  const handleDebugPrefill = useCallback((type: 'single' | 'multiple') => {
     const testEmail = user?.email || 'pianobackingsbydaniele@gmail.com';
     const testName = user?.user_metadata?.full_name || 'Admin Debugger';
     
@@ -195,9 +197,9 @@ const FormPage = () => {
     }
     setConsentChecked(true);
     toast({ title: "Form Prefilled", description: `Loaded ${type} song test data.` });
-  };
+  }, [user, toast]);
 
-  const handleClearForm = () => {
+  const handleClearForm = useCallback(() => {
     setGlobalData({
       email: user?.email || '',
       confirmEmail: user?.email || '',
@@ -212,7 +214,7 @@ const FormPage = () => {
     setConsentChecked(false);
     setUseCredit(false);
     toast({ title: "Form Cleared" });
-  };
+  }, [user, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,13 +233,12 @@ const FormPage = () => {
       const authHeader = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {};
       const createdRequestIds: string[] = [];
 
-      // Process each song
       for (let i = 0; i < songs.length; i++) {
         const song = songs[i];
         const songLabel = songs.length > 1 ? ` (Song ${i + 1})` : '';
         
-        // 1. Parallel Upload Sheet Music
-        setSubmissionStep(`Uploading sheet music${songLabel}...`);
+        setSubmissionStep(`Uploading materials${songLabel}...`);
+        
         const sheetMusicUploadPromises = song.sheetMusicFiles.map(async (file) => {
           const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
           const { data: uploadData, error: uploadError } = await supabase.storage.from('sheet-music').upload(fileName, file);
@@ -245,10 +246,7 @@ const FormPage = () => {
           const { data: { publicUrl } } = supabase.storage.from('sheet-music').getPublicUrl(uploadData!.path);
           return { url: publicUrl, caption: file.name };
         });
-        const sheetMusicUrls = await Promise.all(sheetMusicUploadPromises);
 
-        // 2. Parallel Upload Voice Memos
-        setSubmissionStep(`Uploading voice memos${songLabel}...`);
         const voiceMemoUploadPromises = song.voiceMemoFiles.map(async (file) => {
           const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
           const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-memos').upload(fileName, file);
@@ -256,22 +254,24 @@ const FormPage = () => {
           const { data: { publicUrl } } = supabase.storage.from('voice-memos').getPublicUrl(uploadData!.path);
           return { url: publicUrl, caption: file.name };
         });
-        const voiceMemoUrls = await Promise.all(voiceMemoUploadPromises);
+
+        const [sheetMusicUrls, voiceMemoUrls] = await Promise.all([
+          Promise.all(sheetMusicUploadPromises),
+          Promise.all(voiceMemoUploadPromises)
+        ]);
         
-        // 3. Create Request via Edge Function
         setSubmissionStep(`Saving request details${songLabel}...`);
         
-        // Clean up song data to remove File objects before sending to JSON
         const { sheetMusicFiles, voiceMemoFiles, voiceMemoLink, ...songDataToSubmit } = song;
         
         const submissionData = {
           formData: {
             ...globalData,
             ...songDataToSubmit,
-            voiceMemo: voiceMemoLink, // Map correctly for backend
+            voiceMemo: voiceMemoLink,
             sheetMusicUrls,
             voiceMemoUrls,
-            backingType: [globalData.trackType], // Ensure backingType is sent as array
+            backingType: [globalData.trackType],
             is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }
@@ -291,7 +291,6 @@ const FormPage = () => {
         if (result.requestId) createdRequestIds.push(result.requestId);
       }
 
-      // 4. Handle Payment or Completion
       if (useCredit && session) {
         setSubmissionStep('Applying credits...');
         await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
@@ -322,9 +321,7 @@ const FormPage = () => {
       console.error("Submission error:", error);
       toast({ 
         title: "Submission Failed", 
-        description: error.message === 'Failed to fetch' 
-          ? "Network error. Please check your connection and try again." 
-          : error.message, 
+        description: error.message, 
         variant: "destructive" 
       });
     } finally {
@@ -369,7 +366,6 @@ const FormPage = () => {
           <p className="text-xl text-gray-500 font-medium">Professional accompaniment tailored to your voice.</p>
         </header>
 
-        {/* Admin Debug Tools */}
         {isAdmin && (
           <Card className="mb-12 border-2 border-orange-200 bg-orange-50/30 rounded-[32px] overflow-hidden">
             <CardContent className="p-6">
@@ -456,7 +452,7 @@ const FormPage = () => {
             <Card className="rounded-[40px] p-10 md:p-16 space-y-16 shadow-xl border-none bg-white">
               <TierSelection 
                 value={globalData.trackType}
-                onValueChange={(v) => setGlobalData(p => ({ ...p, trackType: v }))}
+                onValueChange={handleTrackTypeChange}
               />
 
               {currentTierCredits > 0 && (

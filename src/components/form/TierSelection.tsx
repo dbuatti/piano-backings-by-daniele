@@ -29,19 +29,20 @@ const TierSelection: React.FC<TierSelectionProps> = ({ value, onValueChange }) =
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         {tiers.map((item) => (
-          <Label 
-            key={item.id} 
-            htmlFor={item.id} 
-            className={cn(
-              "cursor-pointer p-6 rounded-3xl border-2 text-center transition-all hover:border-[#D1AAF2]",
-              value === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white"
-            )}
-          >
+          <div key={item.id} className="relative">
             <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
-            <item.icon className="h-6 w-6 mx-auto mb-2 text-[#F538BC]" />
-            <span className="font-black block">{item.label}</span>
-            <span className="text-xs font-bold text-[#F538BC]">{item.price}</span>
-          </Label>
+            <Label 
+              htmlFor={item.id} 
+              className={cn(
+                "flex flex-col items-center justify-center cursor-pointer p-6 rounded-3xl border-2 text-center transition-all hover:border-[#D1AAF2]",
+                value === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100 bg-white"
+              )}
+            >
+              <item.icon className="h-6 w-6 mb-2 text-[#F538BC]" />
+              <span className="font-black block">{item.label}</span>
+              <span className="text-xs font-bold text-[#F538BC]">{item.price}</span>
+            </Label>
+          </div>
         ))}
       </RadioGroup>
     </div>
