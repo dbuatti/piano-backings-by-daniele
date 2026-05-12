@@ -80,8 +80,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
             </>
           ) : (
             <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] via-[#2D0B8C] to-[#D1AAF2]/40 text-white p-6">
-              <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-              <Music size={40} className="opacity-20" />
+              {/* Replaced external texture with a CSS-based pattern */}
+              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+              <Music size={40} className="opacity-20 relative z-10" />
             </div>
           )}
         </AspectRatio>
