@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import Stripe from 'npm:stripe@^16.2.0';
+import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +16,12 @@ Deno.serve(async (req) => {
     if (!stripeSecretKey || !stripeWebhookSecret) throw new Error('Stripe keys not configured.');
 
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' });
+    
+    // Explicitly use the fetch-based HTTP client for Deno compatibility
+    const stripe = new Stripe(stripeSecretKey, { 
+      apiVersion: '2024-06-20',
+      httpClient: Stripe.createFetchHttpClient(),
+    });
 
     const signature = req.headers.get('stripe-signature');
     const body = await req.text();
@@ -66,8 +71,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ received: true }), { status: 200 });
+    return new Response(JSON.stringify({ received: true }), { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("[stripe-webhook] Error:", error.message);
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });
