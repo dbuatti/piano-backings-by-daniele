@@ -12,17 +12,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("[test-dropbox] Starting connection test...");
+    
     const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY');
     const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET');
     const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN');
     const defaultDropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
     
     if (!dropboxAppKey || !dropboxAppSecret || !dropboxRefreshToken) {
-      throw new Error('Dropbox credentials are not fully configured in Supabase secrets');
+      throw new Error('Dropbox credentials are not fully configured in Supabase secrets (App Key, Secret, or Refresh Token missing)');
     }
     
     const getDropboxAccessToken = async () => {
-      const response = await fetch('https://oauth2.googleapis.com/token', {
+      // Corrected endpoint to Dropbox instead of Google
+      const response = await fetch('https://api.dropbox.com/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -35,6 +38,7 @@ Deno.serve(async (req) => {
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error("[test-dropbox] Token refresh failed:", errorText);
         throw new Error(`Dropbox token refresh failed: ${response.status} - ${errorText}`);
       }
       
@@ -43,8 +47,12 @@ Deno.serve(async (req) => {
     };
     
     const dropboxAccessToken = await getDropboxAccessToken();
+    console.log("[test-dropbox] Successfully obtained access token");
+
     const folderName = `test_folder_${Date.now()}`;
     const fullPath = `${defaultDropboxParentFolder}/${folderName}`;
+    
+    console.log("[test-dropbox] Attempting to create test folder at:", fullPath);
     
     const dropboxResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
       method: 'POST',
@@ -61,7 +69,9 @@ Deno.serve(async (req) => {
     if (dropboxResponse.ok) {
       const dropboxData = await dropboxResponse.json();
       dropboxFolderId = dropboxData.metadata.id;
+      console.log("[test-dropbox] Test folder created successfully:", dropboxFolderId);
       
+      // Clean up: delete the test folder
       await fetch('https://api.dropboxapi.com/2/files/delete_v2', {
         method: 'POST',
         headers: {
@@ -72,6 +82,9 @@ Deno.serve(async (req) => {
       });
       parentFolderCheck = true;
     } else {
+      const errorText = await dropboxResponse.text();
+      console.warn("[test-dropbox] Folder creation failed, checking parent folder access instead:", errorText);
+      
       const parentCheckResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
         method: 'POST',
         headers: {
@@ -88,11 +101,13 @@ Deno.serve(async (req) => {
         message: 'Test function executed',
         dropboxFolderId,
         fullPath,
-        parentFolderCheck
+        parentFolderCheck,
+        status: dropboxFolderId ? 'success' : (parentFolderCheck ? 'partial' : 'failed')
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error) {
+    console.error("[test-dropbox] Error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
