@@ -31,8 +31,6 @@ Deno.serve(async (req) => {
 
     const signature = req.headers.get('stripe-signature');
     const body = await req.text();
-    
-    // Use constructEvent instead of constructEventAsync to avoid Deno microtask issues
     const event = stripe.webhooks.constructEvent(body, signature!, stripeWebhookSecret);
 
     console.log(`[stripe-webhook] Processing event: ${event.type}`);
@@ -42,22 +40,20 @@ Deno.serve(async (req) => {
       const productId = session.metadata?.product_id;
       const requestIds = session.metadata?.request_ids;
       const userId = session.client_reference_id;
+      const customerEmail = session.customer_details?.email;
 
-      // GUARD: If this session has NO metadata related to Piano Backings, ignore it.
-      // This prevents this webhook from interfering with your other businesses.
       if (!productId && !requestIds) {
         console.log("[stripe-webhook] Ignoring session: No Piano Backings metadata found.");
         return new Response(JSON.stringify({ ignored: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // 1. Handle Shop Product Purchase
       if (productId) {
-        console.log(`[stripe-webhook] Handling product purchase: ${productId}`);
         const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
-        
         if (product) {
           await supabaseAdmin.from('orders').insert({
             product_id: productId,
-            customer_email: session.customer_details?.email,
+            customer_email: customerEmail,
             amount: session.amount_total! / 100,
             currency: session.currency!.toUpperCase(),
             status: 'completed',
@@ -65,51 +61,55 @@ Deno.serve(async (req) => {
             checkout_session_id: session.id,
           });
 
-          if (product.product_type === 'credit_pack' && userId) {
-            const { data: existingCredits } = await supabaseAdmin.from('user_credits').select('balance').eq('user_id', userId).eq('credit_type', product.track_type).single();
-            const newBalance = (existingCredits?.balance || 0) + (product.credit_amount || 0);
-            
-            const expiresAt = new Date();
-            expiresAt.setMonth(expiresAt.getMonth() + 6);
-
-            await supabaseAdmin.from('user_credits').upsert({
-              user_id: userId,
-              credit_type: product.track_type,
-              balance: newBalance,
-              expires_at: expiresAt.toISOString(),
-              updated_at: new Date().toISOString()
+          // Send Product Delivery Email
+          try {
+            await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: customerEmail,
+                subject: `Your Purchase: "${product.title}" is Ready!`,
+                html: `<p>Hi there,</p><p>Thank you for your purchase of <strong>${product.title}</strong>!</p><p>You can download your tracks from your dashboard.</p>`,
+                senderEmail: 'pianobackingsbydaniele@gmail.com'
+              })
             });
-          }
+          } catch (e) { console.error("Email error:", e); }
         }
       }
 
+      // 2. Handle Custom Request Payment
       if (requestIds) {
-        console.log(`[stripe-webhook] Marking requests as paid: ${requestIds}`);
         const ids = requestIds.split(',');
-        const { error: updateError } = await supabaseAdmin
-          .from('backing_requests')
-          .update({ 
-            is_paid: true, 
-            stripe_session_id: session.id 
-          })
-          .in('id', ids);
-          
-        if (updateError) {
-          console.error("[stripe-webhook] Error updating requests:", updateError);
-          throw updateError;
-        }
+        await supabaseAdmin.from('backing_requests').update({ is_paid: true, stripe_session_id: session.id }).in('id', ids);
+        
+        // Send Payment Confirmation Email
+        try {
+          await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: customerEmail,
+              subject: `Payment Confirmed - Piano Backings by Daniele`,
+              html: `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                  <h2 style="color: #1C0357;">Payment Successful!</h2>
+                  <p>Hi,</p>
+                  <p>This email confirms that your payment of <strong>$${(session.amount_total! / 100).toFixed(2)} AUD</strong> has been received.</p>
+                  <p>I'm now working on your custom backing track(s). You'll receive another notification as soon as they are ready for download.</p>
+                  <p>Thank you for your support!</p>
+                  <p>Warmly,<br>Daniele Buatti</p>
+                </div>
+              `,
+              senderEmail: 'pianobackingsbydaniele@gmail.com'
+            })
+          });
+        } catch (e) { console.error("Email error:", e); }
       }
     }
 
-    return new Response(JSON.stringify({ received: true }), { 
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ received: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     console.error("[stripe-webhook] Error:", error.message);
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 400, // Return 400 for webhook errors so Stripe retries if appropriate
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

@@ -130,6 +130,34 @@ const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   `;
 };
 
+export const generateOrderReceivedEmail = async (request: BackingRequest) => {
+  const firstName = request.name.split(' ')[0];
+  const tierLabel = request.track_type?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
+
+  return {
+    subject: `Request Received: "${request.song_title}"`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <p>Hi ${firstName},</p>
+        <p>Thanks for your custom backing track request! I've received your materials and will begin working on your track soon.</p>
+        
+        <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
+          <p style="margin: 5px 0;"><strong>Song:</strong> ${request.song_title}</p>
+          <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${request.musical_or_artist}</p>
+          <p style="margin: 5px 0;"><strong>Tier:</strong> ${tierLabel}</p>
+          <p style="margin: 5px 0;"><strong>Requested Due Date:</strong> ${request.delivery_date || 'Standard (3-5 days)'}</p>
+        </div>
+
+        <p>You'll receive another email as soon as your track is ready for download. In the meantime, you can track the status of your order on your personal dashboard.</p>
+        
+        <p>Warmly,</p>
+      </div>
+      ${EMAIL_SIGNATURE_HTML}
+    `
+  };
+};
+
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;

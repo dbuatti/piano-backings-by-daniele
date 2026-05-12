@@ -105,7 +105,45 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError;
     const requestId = insertedRecords[0].id;
 
-    // 2. Dropbox Automation
+    // 2. Send "Order Received" Email
+    try {
+      const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
+      const tierLabel = formData.trackType?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
+      
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <p>Hi ${firstName},</p>
+          <p>Thanks for your custom backing track request! I've received your materials and will begin working on your track soon.</p>
+          
+          <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
+            <p style="margin: 5px 0;"><strong>Song:</strong> ${formData.songTitle}</p>
+            <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${formData.musicalOrArtist}</p>
+            <p style="margin: 5px 0;"><strong>Tier:</strong> ${tierLabel}</p>
+            <p style="margin: 5px 0;"><strong>Requested Due Date:</strong> ${formData.deliveryDate || 'Standard (3-5 days)'}</p>
+          </div>
+
+          <p>You'll receive another email as soon as your track is ready for download. In the meantime, you can track the status of your order on your personal dashboard.</p>
+          <p>Warmly,<br>Daniele Buatti</p>
+        </div>
+      `;
+
+      await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: formData.email,
+          subject: `Request Received: "${formData.songTitle}"`,
+          html: emailHtml,
+          senderEmail: 'pianobackingsbydaniele@gmail.com'
+        })
+      });
+      console.log("[create-backing-request] Confirmation email sent");
+    } catch (emailErr) {
+      console.error("[create-backing-request] Email error:", emailErr.message);
+    }
+
+    // 3. Dropbox Automation
     let dropboxFolderId = null;
     let templateCopySuccess = false;
 
