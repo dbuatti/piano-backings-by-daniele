@@ -20,7 +20,8 @@ import {
   FileJson,
   Bug,
   Trash2,
-  Sparkles
+  Sparkles,
+  XCircle
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -81,6 +82,7 @@ const FormPage = () => {
   const [consentChecked, setConsentChecked] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -96,11 +98,13 @@ const FormPage = () => {
         setUserCredits(credits || []);
       } else {
         // Delay overlay to let user see the form first
-        const timer = setTimeout(() => setShowAuthOverlay(true), 1500);
-        return () => clearTimeout(timer);
+        timer = setTimeout(() => setShowAuthOverlay(true), 1500);
       }
     };
     checkUser();
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const currentTierCredits = useMemo(() => {
@@ -135,6 +139,14 @@ const FormPage = () => {
 
   const handleSongChange = useCallback((id: string, field: string, value: any) => {
     setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  }, []);
+
+  const handleRemoveSong = useCallback((id: string) => {
+    setSongs(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  const handleAddSong = useCallback(() => {
+    setSongs(prev => [...prev, createNewSong()]);
   }, []);
 
   const handleDebugPrefill = (type: 'single' | 'multiple') => {
@@ -427,13 +439,13 @@ const FormPage = () => {
                     index={index} 
                     data={song} 
                     onChange={handleSongChange} 
-                    onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} 
+                    onRemove={handleRemoveSong} 
                     isOnlySong={songs.length === 1} 
                   />
                 ))}
                 <Button 
                   type="button" 
-                  onClick={() => setSongs(s => [...s, createNewSong()])} 
+                  onClick={handleAddSong} 
                   className="w-full h-20 rounded-3xl border-2 border-dashed border-[#1C0357]/20 bg-white text-[#1C0357] font-black text-lg hover:bg-[#1C0357]/5 hover:border-[#1C0357]/40 transition-all"
                 >
                   <Plus className="mr-2" /> Add Another Song
@@ -556,12 +568,6 @@ const Switch = ({ checked, onCheckedChange }: { checked: boolean, onCheckedChang
       checked ? "left-9" : "left-1"
     )} />
   </button>
-);
-
-const XCircle = ({ className, size }: { className?: string, size?: number }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
-  </svg>
 );
 
 export default FormPage;

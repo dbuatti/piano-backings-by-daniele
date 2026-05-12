@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,16 +45,24 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
 }) => {
   
   // Stabilize callbacks passed down to Radix Select components
-  const handleSongKeyChange = React.useCallback((v: string) => {
+  const handleSongKeyChange = useCallback((v: string) => {
     onChange(data.id, 'songKey', v);
   }, [data.id, onChange]);
 
-  const handleDifferentKeyChange = React.useCallback((v: string) => {
+  const handleDifferentKeyChange = useCallback((v: string) => {
     onChange(data.id, 'differentKey', v);
   }, [data.id, onChange]);
 
-  const handleKeyForTrackChange = React.useCallback((v: string) => {
+  const handleKeyForTrackChange = useCallback((v: string) => {
     onChange(data.id, 'keyForTrack', v);
+  }, [data.id, onChange]);
+
+  const handleSheetMusicChange = useCallback((files: File[] | null) => {
+    onChange(data.id, 'sheetMusicFiles', files || []);
+  }, [data.id, onChange]);
+
+  const handleVoiceMemoChange = useCallback((files: File[] | null) => {
+    onChange(data.id, 'voiceMemoFiles', files || []);
   }, [data.id, onChange]);
 
   return (
@@ -114,7 +122,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key</Label>
-          <Select value={data.songKey || ""} onValueChange={handleSongKeyChange}>
+          <Select value={data.songKey || undefined} onValueChange={handleSongKeyChange}>
             <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")}>
               <SelectValue placeholder="Select key" />
             </SelectTrigger>
@@ -142,7 +150,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
         <div className="mb-8 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
-            <Select value={data.keyForTrack || ""} onValueChange={handleKeyForTrackChange}>
+            <Select value={data.keyForTrack || undefined} onValueChange={handleKeyForTrackChange}>
               <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
                 <SelectValue placeholder="Select target key" />
               </SelectTrigger>
@@ -162,7 +170,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           accept=".pdf"
           multiple
           value={data.sheetMusicFiles}
-          onChange={(files) => onChange(data.id, 'sheetMusicFiles', files || [])}
+          onChange={handleSheetMusicChange}
           error={errors?.sheetMusicFiles}
           note="Upload the score for this specific song."
         />
