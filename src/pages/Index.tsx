@@ -198,7 +198,7 @@ const Index = () => {
                   <div className="h-16 w-16 bg-[#F538BC] rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                     <Package size={32} />
                   </div>
-                  <h3 className="text-4xl font-black mb-4 tracking-tight">Season Pack — $95</h3>
+                  <h3 className="text-4xl font-black mb-4 tracking-tight">Season Pack — $75</h3>
                   <p className="text-xl text-white/80 font-medium leading-relaxed mb-8">
                     Get 3 Audition Ready tracks and save $15. Perfect for showcase prep or busy audition seasons.
                   </p>
