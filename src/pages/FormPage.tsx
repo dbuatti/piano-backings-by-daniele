@@ -6,12 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle,
   Loader2,
   Plus,
   Ticket,
   CreditCard,
+  Music,
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -212,10 +216,13 @@ const FormPage = () => {
     return (
       <div className="min-h-screen bg-[#FDFCF7]">
         <Header />
-        <div className="max-w-3xl mx-auto py-16 px-4 text-center">
-          <h1 className="text-3xl font-bold mb-4">Requests Temporarily Closed</h1>
-          <p className="mb-8">{closureReason}</p>
-          <Button asChild className="bg-[#1C0357] rounded-full px-10 py-6 text-lg">
+        <div className="max-w-3xl mx-auto py-32 px-4 text-center">
+          <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
+            <XCircle size={40} />
+          </div>
+          <h1 className="text-4xl font-black text-[#1C0357] mb-6 tracking-tighter">Requests Temporarily Closed</h1>
+          <p className="text-xl text-gray-600 font-medium mb-12 leading-relaxed">{closureReason}</p>
+          <Button asChild className="bg-[#1C0357] hover:bg-[#2D0B8C] rounded-2xl px-12 py-8 text-xl font-black shadow-xl">
             <Link to="/shop">Browse the Shop Instead</Link>
           </Button>
         </div>
@@ -230,22 +237,30 @@ const FormPage = () => {
       
       <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />
 
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-3 tracking-tighter">
+      <div className="max-w-4xl mx-auto py-24 px-4 sm:px-6">
+        <header className="text-center mb-16">
+          <Link to="/" className="inline-flex items-center text-sm font-black text-[#1C0357]/40 hover:text-[#1C0357] mb-8 transition-colors uppercase tracking-widest">
+            <ArrowLeft size={14} className="mr-2" /> Back to Home
+          </Link>
+          <h1 className="text-5xl md:text-7xl font-black text-[#1C0357] mb-4 tracking-tighter">
             Custom Backing <span className="text-[#F538BC]">Request</span>
           </h1>
+          <p className="text-xl text-gray-500 font-medium">Professional accompaniment tailored to your voice.</p>
         </header>
 
         {isSubmittedSuccessfully ? (
-          <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white p-12 text-center">
-            <CheckCircle className="h-20 w-20 mx-auto mb-6 text-green-500" />
-            <h2 className="text-3xl font-bold mb-4">Submission Successful!</h2>
-            <p className="text-gray-600 mb-8">Daniele will review your materials and start recording soon.</p>
-            <Button onClick={() => navigate('/user-dashboard')} className="rounded-full bg-[#1C0357]">View My Requests</Button>
+          <Card className="border-none shadow-2xl rounded-[48px] overflow-hidden bg-white p-16 text-center">
+            <div className="h-24 w-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 text-green-500">
+              <CheckCircle size={48} />
+            </div>
+            <h2 className="text-4xl font-black text-[#1C0357] mb-4 tracking-tighter">Submission Successful!</h2>
+            <p className="text-xl text-gray-600 mb-12 font-medium">Daniele will review your materials and start recording soon.</p>
+            <Button onClick={() => navigate('/user-dashboard')} className="rounded-2xl bg-[#1C0357] px-12 py-7 text-lg font-black shadow-xl">
+              View My Requests <ChevronRight className="ml-2" />
+            </Button>
           </Card>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-12">
             <ContactDetailsForm 
               name={globalData.name}
               email={globalData.email}
@@ -254,39 +269,52 @@ const FormPage = () => {
               isUserLoggedIn={!!user}
             />
 
-            <div className="space-y-4">
-              {songs.map((song, index) => (
-                <SongRequestItem 
-                  key={song.id} 
-                  index={index} 
-                  data={song} 
-                  onChange={handleSongChange} 
-                  onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} 
-                  isOnlySong={songs.length === 1} 
-                />
-              ))}
-              <Button 
-                type="button" 
-                onClick={() => setSongs(s => [...s, createNewSong()])} 
-                className="w-full h-16 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black"
-              >
-                <Plus className="mr-2" /> Add Another Song
-              </Button>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between px-4">
+                <h2 className="text-2xl font-black text-[#1C0357] tracking-tight flex items-center gap-3">
+                  <Music className="text-[#F538BC]" /> Your Songs
+                </h2>
+                <Badge variant="secondary" className="bg-[#D1AAF2]/20 text-[#1C0357] font-black">
+                  {songs.length} {songs.length === 1 ? 'Song' : 'Songs'}
+                </Badge>
+              </div>
+              
+              <div className="space-y-6">
+                {songs.map((song, index) => (
+                  <SongRequestItem 
+                    key={song.id} 
+                    index={index} 
+                    data={song} 
+                    onChange={handleSongChange} 
+                    onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} 
+                    isOnlySong={songs.length === 1} 
+                  />
+                ))}
+                <Button 
+                  type="button" 
+                  onClick={() => setSongs(s => [...s, createNewSong()])} 
+                  className="w-full h-20 rounded-3xl border-2 border-dashed border-[#1C0357]/20 bg-white text-[#1C0357] font-black text-lg hover:bg-[#1C0357]/5 hover:border-[#1C0357]/40 transition-all"
+                >
+                  <Plus className="mr-2" /> Add Another Song
+                </Button>
+              </div>
             </div>
 
-            <Card className="rounded-3xl p-8 space-y-12">
+            <Card className="rounded-[40px] p-10 md:p-16 space-y-16 shadow-xl border-none bg-white">
               <TierSelection 
                 value={globalData.trackType}
                 onValueChange={(v) => setGlobalData(p => ({ ...p, trackType: v }))}
               />
 
               {currentTierCredits > 0 && (
-                <div className="bg-[#D1AAF2]/20 p-6 rounded-2xl border-2 border-[#1C0357] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Ticket className="text-[#1C0357]" />
+                <div className="bg-[#D1AAF2]/10 p-8 rounded-3xl border-2 border-[#1C0357] flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 bg-[#1C0357] rounded-2xl flex items-center justify-center text-white">
+                      <Ticket />
+                    </div>
                     <div>
-                      <p className="font-black text-[#1C0357]">You have {currentTierCredits} Season Pack credits!</p>
-                      <p className="text-xs text-gray-600">Apply a credit to this request?</p>
+                      <p className="font-black text-xl text-[#1C0357]">You have {currentTierCredits} Season Pack credits!</p>
+                      <p className="text-sm text-gray-600 font-medium">Apply a credit to this request?</p>
                     </div>
                   </div>
                   <Switch checked={useCredit} onCheckedChange={setUseCredit} />
@@ -298,9 +326,9 @@ const FormPage = () => {
                 onToggleService={handleServiceToggle}
               />
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="deliveryDate">Due Date</Label>
+              <div className="grid md:grid-cols-2 gap-10">
+                <div className="space-y-3">
+                  <Label htmlFor="deliveryDate" className="text-sm font-black uppercase tracking-widest text-gray-400">Requested Due Date</Label>
                   <Input 
                     id="deliveryDate"
                     type="date" 
@@ -308,34 +336,46 @@ const FormPage = () => {
                     value={globalData.deliveryDate} 
                     onChange={handleGlobalInputChange} 
                     min={new Date().toISOString().split('T')[0]} 
+                    className="h-14 rounded-2xl border-gray-200 font-bold"
                   />
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Standard delivery is 3-5 business days.</p>
                 </div>
               </div>
             </Card>
 
-            <div className="bg-[#1C0357] text-white rounded-3xl p-8 text-center shadow-xl">
-              <p className="text-xs font-black text-[#F538BC] uppercase tracking-widest mb-2">Total Amount Due</p>
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-6xl font-black">${priceBreakdown.total.toFixed(2)}</span>
-                <span className="text-sm font-bold opacity-40 ml-2">AUD</span>
+            <div className="bg-[#1C0357] text-white rounded-[40px] p-12 text-center shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#F538BC]/10 blur-[80px] rounded-full" />
+              <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.2em] mb-4 relative z-10">Total Amount Due</p>
+              <div className="flex items-baseline justify-center gap-2 relative z-10">
+                <span className="text-7xl md:text-8xl font-black tracking-tighter">${priceBreakdown.total.toFixed(2)}</span>
+                <span className="text-lg font-bold opacity-40 uppercase tracking-widest">AUD</span>
               </div>
-              {useCredit && <p className="text-green-400 font-bold mt-2">Season Pack Credit Applied!</p>}
+              {useCredit && <p className="text-green-400 font-black text-lg mt-4 relative z-10">Season Pack Credit Applied!</p>}
               {!useCredit && songs.length > 1 && (
-                <p className="text-white/60 text-xs mt-2 font-medium">
+                <p className="text-white/50 text-sm mt-6 font-bold uppercase tracking-widest relative z-10">
                   ({songs.length} songs @ ${priceBreakdown.perSong.toFixed(2)} each)
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col items-center gap-6">
-              <div className="flex items-center gap-3">
-                <Checkbox id="consent" checked={consentChecked} onCheckedChange={(v) => setConsentChecked(v as boolean)} />
-                <Label htmlFor="consent" className="text-sm font-bold text-gray-600">I understand the terms of service. *</Label>
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex items-center gap-4 bg-white px-8 py-4 rounded-full shadow-sm border border-gray-100">
+                <Checkbox 
+                  id="consent" 
+                  checked={consentChecked} 
+                  onCheckedChange={(v) => setConsentChecked(v as boolean)} 
+                  className="h-5 w-5 rounded-md border-2"
+                />
+                <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">I understand the terms of service. *</Label>
               </div>
-              <Button type="submit" disabled={isSubmitting || !consentChecked} className="h-20 rounded-full bg-[#1C0357] px-16 text-xl font-black w-full md:w-auto">
-                {isSubmitting ? <Loader2 className="animate-spin" /> : (
-                  <span className="flex items-center gap-2">
-                    {useCredit ? "Submit Request" : <><CreditCard /> Pay & Submit</>}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !consentChecked} 
+                className="h-24 rounded-[32px] bg-[#1C0357] hover:bg-[#2D0B8C] px-20 text-2xl font-black w-full md:w-auto shadow-2xl hover:shadow-[#1C0357]/30 transition-all active:scale-95"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (
+                  <span className="flex items-center gap-4">
+                    {useCredit ? "Submit Request" : <><CreditCard size={28} /> Pay & Submit</>}
                   </span>
                 )}
               </Button>
@@ -351,10 +391,28 @@ const Switch = ({ checked, onCheckedChange }: { checked: boolean, onCheckedChang
   <button 
     type="button"
     onClick={() => onCheckedChange(!checked)}
-    className={cn("w-12 h-6 rounded-full transition-colors relative", checked ? "bg-[#1C0357]" : "bg-gray-300")}
+    className={cn(
+      "w-16 h-8 rounded-full transition-all duration-300 relative shadow-inner", 
+      checked ? "bg-[#F538BC]" : "bg-gray-200"
+    )}
   >
-    <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", checked ? "left-7" : "left-1")} />
+    <div className={cn(
+      "absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-md", 
+      checked ? "left-9" : "left-1"
+    )} />
   </button>
+);
+
+const XCircle = ({ className, size }: { className?: string, size?: number }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
+  </svg>
+);
+
+const LayoutDashboard = ({ className }: { className?: string }) => (
+  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />
+  </svg>
 );
 
 export default FormPage;

@@ -275,57 +275,57 @@ const Shop = () => {
       />
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         
         {/* Featured Section - Season Pack Prominence */}
         {featuredProducts.length > 0 && !currentSearchTerm && currentCategory === 'all' && (
-          <section className="mb-20">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="h-10 w-10 rounded-xl bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
-                <Star size={24} fill="currentColor" />
+          <section className="mb-24">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="h-12 w-12 rounded-2xl bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
+                <Star size={28} fill="currentColor" />
               </div>
-              <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">Featured Offers</h2>
+              <h2 className="text-4xl font-black text-[#1C0357] tracking-tighter uppercase">Featured Offers</h2>
             </div>
             
-            <div className="grid grid-cols-1 gap-8">
+            <div className="grid grid-cols-1 gap-10">
               {featuredProducts.map(product => (
                 <div key={product.id} className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[40px] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                  <Card className="relative bg-[#1C0357] text-white rounded-[40px] overflow-hidden border-none shadow-2xl">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[48px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                  <Card className="relative bg-[#1C0357] text-white rounded-[48px] overflow-hidden border-none shadow-2xl">
                     <div className="grid md:grid-cols-2 items-center">
-                      <div className="p-10 md:p-16 space-y-6">
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-[#F538BC] text-white border-none font-black px-3 py-1">NEW</Badge>
-                          <Badge variant="outline" className="text-white border-white/30 font-bold">Standard</Badge>
+                      <div className="p-12 md:p-20 space-y-8">
+                        <div className="flex items-center gap-3">
+                          <Badge className="bg-[#F538BC] text-white border-none font-black px-4 py-1.5 text-xs tracking-widest">NEW</Badge>
+                          <Badge variant="outline" className="text-white border-white/30 font-bold px-4 py-1.5 text-xs tracking-widest">Standard</Badge>
                         </div>
-                        <h3 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+                        <h3 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
                           {product.title}
                         </h3>
                         <p className="text-xl text-white/70 font-medium leading-relaxed max-w-md">
                           {product.description}
                         </p>
-                        <div className="pt-4 flex flex-col sm:flex-row items-center gap-6">
+                        <div className="pt-6 flex flex-col sm:flex-row items-center gap-8">
                           <div className="flex items-baseline">
-                            <span className="text-2xl font-bold mr-1">$</span>
-                            <span className="text-6xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
-                            <span className="ml-2 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
+                            <span className="text-3xl font-bold mr-1">$</span>
+                            <span className="text-7xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
+                            <span className="ml-3 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
                           </div>
                           <Button 
                             onClick={() => handleBuyNow(product)}
                             disabled={isBuying}
-                            className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-10 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all w-full sm:w-auto"
+                            className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-12 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all w-full sm:w-auto"
                           >
-                            {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-2" /> Instant Purchase</>}
+                            {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-3" /> Instant Purchase</>}
                           </Button>
                         </div>
                       </div>
-                      <div className="hidden md:block relative h-full min-h-[400px]">
+                      <div className="hidden md:block relative h-full min-h-[500px]">
                         <div className="absolute inset-0 bg-gradient-to-r from-[#1C0357] via-transparent to-transparent z-10" />
                         {product.image_url ? (
                           <img src={product.image_url} alt={product.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
                         ) : (
                           <div className="absolute inset-0 bg-gradient-to-br from-[#F538BC]/20 to-[#D1AAF2]/20 flex items-center justify-center">
-                            <Package size={120} className="text-white/10" />
+                            <Package size={160} className="text-white/10" />
                           </div>
                         )}
                       </div>
@@ -337,14 +337,14 @@ const Shop = () => {
           </section>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-12">
+        <div className="flex flex-col lg:flex-row gap-16">
           
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:block w-72 flex-shrink-0">
-            <div className="sticky top-28">
-              <div className="flex items-center gap-2 mb-6">
-                <SlidersHorizontal size={18} className="text-[#1C0357]" />
-                <h3 className="font-black text-[#1C0357] uppercase tracking-widest text-sm">Filters</h3>
+          <aside className="hidden lg:block w-80 flex-shrink-0">
+            <div className="sticky top-32">
+              <div className="flex items-center gap-3 mb-8">
+                <SlidersHorizontal size={20} className="text-[#1C0357]" />
+                <h3 className="font-black text-[#1C0357] uppercase tracking-[0.2em] text-xs">Library Filters</h3>
               </div>
               <FilterContent />
             </div>
@@ -354,27 +354,27 @@ const Shop = () => {
           <div className="flex-1">
             
             {/* Mobile Filter Trigger */}
-            <div className="lg:hidden mb-8 flex gap-3">
+            <div className="lg:hidden mb-10 flex gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
                   placeholder="Search library..."
                   value={currentSearchTerm}
                   onChange={(e) => updateSearchParam('q', e.target.value)}
-                  className="pl-10 h-12 bg-white border-gray-200 rounded-xl"
+                  className="pl-12 h-14 bg-white border-gray-200 rounded-2xl text-lg"
                 />
               </div>
               <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="h-12 w-12 p-0 rounded-xl border-gray-200 bg-white">
-                    <Filter size={20} className="text-[#1C0357]" />
+                  <Button variant="outline" className="h-14 w-14 p-0 rounded-2xl border-gray-200 bg-white shadow-sm">
+                    <Filter size={24} className="text-[#1C0357]" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-                  <SheetHeader className="text-left mb-8">
-                    <SheetTitle className="text-2xl font-black text-[#1C0357]">Filters</SheetTitle>
+                <SheetContent side="left" className="w-[320px] sm:w-[400px] rounded-r-[40px] border-none">
+                  <SheetHeader className="text-left mb-10">
+                    <SheetTitle className="text-3xl font-black text-[#1C0357] tracking-tighter">Filters</SheetTitle>
                   </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-120px)] pr-4">
+                  <ScrollArea className="h-[calc(100vh-140px)] pr-4">
                     <FilterContent />
                   </ScrollArea>
                 </SheetContent>
@@ -383,35 +383,35 @@ const Shop = () => {
 
             {/* Results Grid */}
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
                 {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
               </div>
             ) : regularProducts.length === 0 ? (
-              <div className="text-center py-32 bg-white rounded-[40px] border-2 border-dashed border-gray-100">
-                <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Music className="h-10 w-10 text-gray-300" />
+              <div className="text-center py-40 bg-white rounded-[64px] border-2 border-dashed border-gray-100 shadow-inner">
+                <div className="h-24 w-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <Music className="h-12 w-12 text-gray-300" />
                 </div>
-                <h3 className="text-2xl font-black text-[#1C0357] mb-2">No tracks found</h3>
-                <p className="text-gray-500 font-medium mb-8">Try adjusting your filters or search keywords.</p>
+                <h3 className="text-3xl font-black text-[#1C0357] mb-3 tracking-tighter">No tracks found</h3>
+                <p className="text-gray-500 font-medium mb-10 text-lg">Try adjusting your filters or search keywords.</p>
                 <Button 
                   variant="outline" 
-                  className="rounded-xl font-bold"
+                  className="rounded-2xl font-black px-10 py-6 border-2"
                   onClick={() => setSearchParams(new URLSearchParams())}
                 >
                   Clear all filters
                 </Button>
               </div>
             ) : (
-              <div className="space-y-20">
+              <div className="space-y-24">
                 {groupedProducts.map(group => (
-                  <section key={group.id} className="space-y-8">
-                    <div className="flex items-center justify-between border-b-2 border-gray-100 pb-4">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-black text-[#1C0357] tracking-tighter uppercase">{group.label}S</h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{group.products.length} Tracks Available</p>
+                  <section key={group.id} className="space-y-10">
+                    <div className="flex items-center justify-between border-b-2 border-gray-100 pb-6">
+                      <div className="space-y-2">
+                        <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">{group.label}S</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">{group.products.length} Tracks Available</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
                       {group.products.map(product => (
                         <ProductCard
                           key={product.id}
