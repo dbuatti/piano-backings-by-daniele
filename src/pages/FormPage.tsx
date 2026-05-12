@@ -50,6 +50,7 @@ const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
   voiceMemoLink: '',
   sheetMusicFiles: [],
   voiceMemoFiles: [],
+  specialRequests: '', // Added this field
   ...initialData
 });
 
@@ -77,7 +78,7 @@ const FormPage = () => {
     trackType: 'audition-ready',
     deliveryDate: '',
     additionalServices: [] as string[],
-    specialRequests: '',
+    specialRequests: '', // This will now be "General Order Notes"
   });
 
   const [consentChecked, setConsentChecked] = useState(false);
@@ -176,6 +177,7 @@ const FormPage = () => {
           songKey: 'C Major (0)',
           differentKey: 'No',
           youtubeLink: 'https://www.youtube.com/watch?v=MslDnWvH0p8',
+          specialRequests: 'DEBUG: Song-specific note here.'
         })
       ]);
     } else {
@@ -187,6 +189,7 @@ const FormPage = () => {
           differentKey: 'Yes',
           keyForTrack: 'D Major (2♯)',
           youtubeLink: 'https://www.youtube.com/watch?v=RbvVTG9pxCc',
+          specialRequests: 'DEBUG: Note for song 1.'
         }),
         createNewSong({
           songTitle: 'On My Own',
@@ -194,6 +197,7 @@ const FormPage = () => {
           songKey: 'F Major (1♭)',
           differentKey: 'No',
           youtubeLink: 'https://www.youtube.com/watch?v=Vj920_S6-7E',
+          specialRequests: 'DEBUG: Note for song 2.'
         })
       ]);
     }
@@ -264,8 +268,14 @@ const FormPage = () => {
         
         setSubmissionStep(`Saving request details${songLabel}...`);
         
-        const { sheetMusicFiles, voiceMemoFiles, voiceMemoLink, ...songDataToSubmit } = song;
+        const { sheetMusicFiles, voiceMemoFiles, voiceMemoLink, specialRequests: songSpecificNotes, ...songDataToSubmit } = song;
         
+        // Combine song-specific notes with global order notes
+        const combinedNotes = [
+          songSpecificNotes.trim(),
+          globalData.specialRequests.trim()
+        ].filter(Boolean).join('\n\n--- GENERAL ORDER NOTES ---\n');
+
         const submissionData = {
           formData: {
             ...globalData,
@@ -274,6 +284,7 @@ const FormPage = () => {
             sheetMusicUrls,
             voiceMemoUrls,
             backingType: [globalData.trackType],
+            specialRequests: combinedNotes, // Use the combined notes
             is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }
@@ -494,14 +505,14 @@ const FormPage = () => {
                 
                 <div className="space-y-3">
                   <Label htmlFor="specialRequests" className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                    <MessageSquare size={14} /> Special Requests
+                    <MessageSquare size={14} /> General Order Notes
                   </Label>
                   <Textarea 
                     id="specialRequests"
                     name="specialRequests"
                     value={globalData.specialRequests} 
                     onChange={handleGlobalInputChange} 
-                    placeholder="Any specific notes for Daniele? (e.g. tempo changes, specific cuts, etc.)"
+                    placeholder="Any general notes for the entire order? (e.g. 'I'm in a rush for all of these', 'Please use my Season Pack credits')"
                     className="min-h-[120px] rounded-2xl border-gray-200 font-medium"
                   />
                 </div>

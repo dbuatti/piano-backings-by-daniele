@@ -3,9 +3,10 @@
 import React, { memo, useCallback } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Trash2, Music, Youtube, Mic, FileText } from 'lucide-react';
+import { Trash2, Music, Youtube, Mic, FileText, MessageSquare } from 'lucide-react';
 import FileInput from "@/components/FileInput";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export interface SongData {
   voiceMemoLink: string;
   sheetMusicFiles: File[];
   voiceMemoFiles: File[];
+  specialRequests: string; // Added this field
 }
 
 interface SongRequestItemProps {
@@ -44,7 +46,6 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
   errors
 }) => {
   
-  // Stabilize callbacks passed down to Radix Select components
   const handleSongKeyChange = useCallback((v: string) => {
     onChange(data.id, 'songKey', v);
   }, [data.id, onChange]);
@@ -200,6 +201,20 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
               <Mic className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
           </div>
+        </div>
+
+        {/* New Song-Specific Instructions Field */}
+        <div className="space-y-2 pt-2">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] flex items-center gap-1.5">
+            <MessageSquare size={12} className="text-[#F538BC]" /> 
+            Specific Instructions for this Song
+          </Label>
+          <Textarea
+            value={data.specialRequests}
+            onChange={(e) => onChange(data.id, 'specialRequests', e.target.value)}
+            placeholder="e.g. 'End on a long rumble of the tonic chord like the YouTube link', 'Skip the dance break', 'Follow the tempo of the voice memo'..."
+            className="min-h-[80px] rounded-xl border-gray-200 text-sm"
+          />
         </div>
       </div>
     </div>
