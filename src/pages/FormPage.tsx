@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   CheckCircle,
   Loader2,
@@ -20,7 +21,8 @@ import {
   Bug,
   Trash2,
   Sparkles,
-  XCircle
+  XCircle,
+  MessageSquare
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -293,7 +295,7 @@ const FormPage = () => {
 
       if (useCredit && session) {
         setSubmissionStep('Applying credits...');
-        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
+        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('id', session.user.id).eq('credit_type', globalData.trackType);
         setIsSubmittedSuccessfully(true);
       } else if (priceBreakdown.total > 0) {
         setSubmissionStep('Redirecting to secure payment...');
@@ -312,7 +314,7 @@ const FormPage = () => {
         });
         
         const stripeResult = await stripeResponse.json();
-        if (!stripeResponse.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
+        if (!stripeResult.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
         if (stripeResult.url) window.location.href = stripeResult.url;
       } else {
         setIsSubmittedSuccessfully(true);
@@ -488,6 +490,20 @@ const FormPage = () => {
                     className="h-14 rounded-2xl border-gray-200 font-bold"
                   />
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Standard delivery is 3-5 business days.</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="specialRequests" className="text-sm font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    <MessageSquare size={14} /> Special Requests
+                  </Label>
+                  <Textarea 
+                    id="specialRequests"
+                    name="specialRequests"
+                    value={globalData.specialRequests} 
+                    onChange={handleGlobalInputChange} 
+                    placeholder="Any specific notes for Daniele? (e.g. tempo changes, specific cuts, etc.)"
+                    className="min-h-[120px] rounded-2xl border-gray-200 font-medium"
+                  />
                 </div>
               </div>
             </Card>
