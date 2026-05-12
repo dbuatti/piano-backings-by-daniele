@@ -105,12 +105,12 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError;
     const requestId = insertedRecords[0].id;
 
-    // 2. Send "Order Received" Email
+    // 2. Send "Order Received" Email to Client
     try {
       const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
       const tierLabel = formData.trackType?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
       
-      const emailHtml = `
+      const clientEmailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
           <p>Hi ${firstName},</p>
           <p>Thanks for your custom backing track request! I've received your materials and will begin working on your track soon.</p>
@@ -134,16 +134,90 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           to: formData.email,
           subject: `Request Received: "${formData.songTitle}"`,
-          html: emailHtml,
+          html: clientEmailHtml,
           senderEmail: 'pianobackingsbydaniele@gmail.com'
         })
       });
-      console.log("[create-backing-request] Confirmation email sent");
+      console.log("[create-backing-request] Client confirmation email sent");
     } catch (emailErr) {
-      console.error("[create-backing-request] Email error:", emailErr.message);
+      console.error("[create-backing-request] Client email error:", emailErr.message);
     }
 
-    // 3. Dropbox Automation
+    // 3. Send "New Request Report" Email to Admin
+    try {
+      const adminRecipients = [
+        'daniele.buatti@gmail.com',
+        'info@danielebuatti.com',
+        'pianobackingsbydaniele@gmail.com'
+      ];
+
+      const sheetMusicLinks = formData.sheetMusicUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
+      const voiceMemoLinks = formData.voiceMemoUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
+      const siteUrl = 'https://pianobackingsbydaniele.vercel.app';
+
+      const adminEmailHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+          <h2 style="color: #1C0357; border-bottom: 2px solid #F538BC; padding-bottom: 10px;">New Track Request Report</h2>
+          
+          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1C0357; margin-top: 0;">Client Information</h3>
+            <p><strong>Name:</strong> ${formData.name || 'N/A'}</p>
+            <p><strong>Email:</strong> ${formData.email}</p>
+            <p><strong>User ID:</strong> ${userId || 'Guest'}</p>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1C0357; margin-top: 0;">Song Details</h3>
+            <p><strong>Title:</strong> ${formData.songTitle}</p>
+            <p><strong>Musical/Artist:</strong> ${formData.musicalOrArtist}</p>
+            <p><strong>Tier:</strong> ${formData.trackType?.replace('-', ' ').toUpperCase()}</p>
+            <p><strong>Key:</strong> ${formData.songKey || 'N/A'}</p>
+            <p><strong>Transposition:</strong> ${formData.differentKey} ${formData.keyForTrack ? `(To: ${formData.keyForTrack})` : ''}</p>
+            <p><strong>Due Date:</strong> ${formData.deliveryDate || 'Standard'}</p>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1C0357; margin-top: 0;">Materials & Links</h3>
+            <p><strong>Sheet Music:</strong></p>
+            <ul>${sheetMusicLinks}</ul>
+            <p><strong>Voice Memos:</strong></p>
+            <ul>${voiceMemoLinks}</ul>
+            <p><strong>YouTube:</strong> ${formData.youtubeLink ? `<a href="${formData.youtubeLink}">${formData.youtubeLink}</a>` : 'None'}</p>
+            <p><strong>Additional Links:</strong> ${formData.additionalLinks || 'None'}</p>
+          </div>
+
+          <div style="background-color: #fff4fc; padding: 20px; border-radius: 8px; border: 1px solid #F538BC; margin: 20px 0;">
+            <h3 style="color: #1C0357; margin-top: 0;">Requirements & Add-ons</h3>
+            <p><strong>Services:</strong> ${formData.additionalServices?.join(', ') || 'None'}</p>
+            <p><strong>Special Requests:</strong></p>
+            <p style="font-style: italic; white-space: pre-wrap;">${formData.specialRequests || 'No special requests.'}</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${siteUrl}/admin/request/${requestId}" 
+               style="background-color: #1C0357; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Open in Admin Dashboard
+            </a>
+          </div>
+        </div>
+      `;
+
+      await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: adminRecipients,
+          subject: `NEW REQUEST: ${formData.songTitle} - ${formData.name || formData.email}`,
+          html: adminEmailHtml,
+          senderEmail: 'pianobackingsbydaniele@gmail.com'
+        })
+      });
+      console.log("[create-backing-request] Admin notification email sent");
+    } catch (adminEmailErr) {
+      console.error("[create-backing-request] Admin email error:", adminEmailErr.message);
+    }
+
+    // 4. Dropbox Automation
     let dropboxFolderId = null;
     let templateCopySuccess = false;
 
