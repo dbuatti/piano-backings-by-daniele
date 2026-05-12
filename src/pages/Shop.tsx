@@ -293,7 +293,7 @@ const Shop = () => {
                   <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[48px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
                   <Card className="relative bg-[#1C0357] text-white rounded-[48px] overflow-hidden border-none shadow-2xl">
                     <div className="grid md:grid-cols-2 items-center">
-                      <div className="p-12 md:p-20 space-y-8">
+                      <div className="p-12 md:p-20 space-y-8 relative z-20">
                         <div className="flex items-center gap-3">
                           <Badge className="bg-[#F538BC] text-white border-none font-black px-4 py-1.5 text-xs tracking-widest">NEW</Badge>
                           <Badge variant="outline" className="text-white border-white/30 font-bold px-4 py-1.5 text-xs tracking-widest">Standard</Badge>
