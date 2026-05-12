@@ -1,9 +1,7 @@
-import { calculateRequestCost } from "./pricing"; // Import the pricing utility
+"use client";
 
-export interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined; // Updated to be more robust
-}
+import { calculateRequestCost } from "./pricing";
+import { TrackInfo } from "./helpers";
 
 export interface BackingRequest {
   id?: string;
@@ -12,29 +10,28 @@ export interface BackingRequest {
   song_title: string;
   musical_or_artist: string;
   track_purpose: string;
-  backing_type: string[]; // Changed to array
+  backing_type: string[];
   delivery_date: string;
-  special_requests?: string; // Made optional
+  special_requests?: string;
   song_key: string;
   additional_services: string[];
   track_type: string;
   youtube_link?: string;
   voice_memo?: string;
-  additional_links?: string; // Added new field
-  track_urls?: TrackInfo[]; // Changed to array of TrackInfo objects
-  cost?: number; // Added cost for payment reminders
-  status?: 'pending' | 'in-progress' | 'completed' | 'cancelled'; // Added status
-  created_at?: string; // Added created_at
-  is_paid?: boolean; // Added is_paid
-  category?: string; // Added category
-  user_id?: string | null; // Added user_id
-  guest_access_token?: string | null; // Added guest_access_token
-  final_price?: number | null; // New field
-  estimated_cost_low?: number | null; // New field
-  estimated_cost_high?: number | null; // New field
+  additional_links?: string;
+  track_urls?: TrackInfo[];
+  cost?: number;
+  status?: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  created_at?: string;
+  is_paid?: boolean;
+  category?: string;
+  user_id?: string | null;
+  guest_access_token?: string | null;
+  final_price?: number | null;
+  estimated_cost_low?: number | null;
+  estimated_cost_high?: number | null;
 }
 
-// New interface for Product
 export interface Product {
   id: string;
   title: string;
@@ -42,14 +39,13 @@ export interface Product {
   price: number;
   currency: string;
   image_url?: string | null;
-  track_urls?: TrackInfo[] | null; // Changed from track_url to track_urls (array of TrackInfo)
+  track_urls?: TrackInfo[] | null;
   is_active: boolean;
-  vocal_ranges?: string[]; // New field for vocal ranges
-  key_signature?: string | null; // Added new field
-  sheet_music_url?: string | null; // Added new field
+  vocal_ranges?: string[];
+  key_signature?: string | null;
+  sheet_music_url?: string | null;
 }
 
-// HTML Email signature template (Centralized for client-side use)
 export const EMAIL_SIGNATURE_HTML = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -80,14 +76,12 @@ export const EMAIL_SIGNATURE_HTML = `
 </div>
 `;
 
-// Helper function to convert plain text to basic HTML paragraphs (Centralized for client-side use)
 export const textToHtml = (text: string) => {
   return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
          text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
          `</div>`;
 };
 
-// Helper to generate track list HTML
 const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   if (!trackUrls || trackUrls.length === 0) return '';
   
@@ -112,7 +106,6 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   `;
 };
 
-// Helper to generate track list HTML for products
 const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
   if (!trackUrls || trackUrls.length === 0) return '';
   
@@ -203,10 +196,9 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
-  // Determine the suggested cost value
   const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
-    : calculatedCost; // Fallback to calculated cost if final_price is not set
+    : calculatedCost;
 
   const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
                                  <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
@@ -224,7 +216,6 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
                           </p>`;
   }
 
-  // Combine them in the desired order
   costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
 
   return {
@@ -290,10 +281,9 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
   const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
-  // Determine the suggested cost value
   const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
-    : calculatedCost; // Fallback to calculated cost if final_price is not set
+    : calculatedCost;
 
   const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
                                  <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
@@ -311,7 +301,6 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
                           </p>`;
   }
 
-  // Combine them in the desired order
   costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
 
   const trackAccessSection = `
@@ -364,28 +353,15 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
 };
 
 export const generateProductDeliveryEmail = async (product: Product, customerEmail: string) => {
-  const firstName = customerEmail.split('@')[0]; // Use email prefix as a fallback for first name
-  const siteUrl = window.location.origin; // Use window.location.origin for client-side
+  const firstName = customerEmail.split('@')[0];
+  const siteUrl = window.location.origin;
   const shopLink = `${siteUrl}/shop`;
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
   const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
 
-
   if (!product.track_urls || product.track_urls.length === 0) {
     throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
   }
-
-  const vocalRangesHtml = product.vocal_ranges && product.vocal_ranges.length > 0
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Vocal Ranges: </strong> ${product.vocal_ranges.join(', ')}</p>`
-    : '';
-  
-  const keySignatureHtml = product.key_signature
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Key Signature: </strong> ${product.key_signature}</p>`
-    : '';
-
-  const sheetMusicHtml = product.sheet_music_url
-    ? `<p style="margin-top: 10px; font-size: 0.9em; color: #555;"><strong>Sheet Music: </strong> <a href="${product.sheet_music_url}" target="_blank" style="color: #007bff; text-decoration: none;">View PDF</a></p>`
-    : '';
 
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
@@ -398,9 +374,6 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
         <p style="margin-top: 20px;">
           ${product.description}
         </p>
-        ${vocalRangesHtml}
-        ${keySignatureHtml}
-        ${sheetMusicHtml}
         <p style="margin-top: 20px;">
           We hope you enjoy your new track! Feel free to browse our other offerings:
         </p>

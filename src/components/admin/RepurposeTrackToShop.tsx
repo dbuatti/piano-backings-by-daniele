@@ -15,10 +15,9 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
-import { getSafeBackingTypes } from '@/utils/helpers';
+import { getSafeBackingTypes, TrackInfo } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import FileInput from '../FileInput';
-import { TrackInfo } from '@/utils/helpers';
 import { FileAudio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
@@ -35,7 +34,7 @@ interface BackingRequest {
   delivery_date: string;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   is_paid: boolean;
-  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
+  track_urls?: TrackInfo[];
   special_requests?: string;
   youtube_link?: string;
   additional_links?: string;
@@ -179,6 +178,10 @@ const RepurposeTrackToShop: React.FC = () => {
         song_key: req.song_key || '',
         additional_services: req.additional_services || [],
         track_type: req.track_type || '',
+        track_urls: req.track_urls?.map((t: any) => ({
+          url: t.url,
+          caption: typeof t.caption === 'string' ? t.caption : String(t.caption || '')
+        })) || [],
       })) || [];
     },
     staleTime: 5 * 60 * 1000,

@@ -1,13 +1,19 @@
-// src/utils/helpers.ts
+"use client";
+
+/**
+ * Standard interface for track information used throughout the application.
+ */
 export interface TrackInfo {
-  url: string | null; // Changed to allow null
-  caption: string; // Changed to always be string
+  url: string | null;
+  caption: string;
   selected?: boolean;
-  file?: File | null; // Added optional file property for UI state
+  file?: File | null;
 }
 
-// Add other helper functions or interfaces as needed
-export const getSafeBackingTypes = (backingType: string | string[] | undefined): string[] => {
+/**
+ * Safely parses backing types from various formats (string, array, JSON string).
+ */
+export const getSafeBackingTypes = (backingType: string | string[] | undefined | null): string[] => {
   if (!backingType) {
     return [];
   }
@@ -25,6 +31,9 @@ export const getSafeBackingTypes = (backingType: string | string[] | undefined):
   return [backingType];
 };
 
+/**
+ * Triggers a browser download for a given URL.
+ */
 export const downloadTrack = (url: string, filename: string) => {
   if (!url) return;
   
