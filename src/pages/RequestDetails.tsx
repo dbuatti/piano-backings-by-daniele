@@ -49,55 +49,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
-
-interface TrackInfo {
-  url: string;
-  caption: string | boolean | null | undefined;
-}
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  song_key: string | null;
-  different_key: string | null;
-  key_for_track: string | null;
-  youtube_link: string | null;
-  voice_memo: string | null;
-  sheet_music_url: string | null;
-  sheet_music_urls?: TrackInfo[];
-  voice_memo_urls?: TrackInfo[];
-  track_purpose: string | null;
-  backing_type: string[] | string | null;
-  delivery_date: string | null;
-  additional_services: string[] | null;
-  special_requests: string | null;
-  category: string | null;
-  track_type: string | null;
-  additional_links: string | null;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: TrackInfo[];
-  shared_link?: string | null;
-  dropbox_folder_id?: string | null;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
-  cost?: number | null;
-  final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
-  internal_notes?: string | null;
-}
+import { useAdmin } from '@/hooks/useAdmin';
+import { BackingRequest, TrackInfo } from '@/types/backing-request';
 
 const RequestDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAuthLoading } = useAdmin();
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -105,23 +66,15 @@ const RequestDetails = () => {
   const [isUpdatingFinalPrice, setIsUpdatingFinalPrice] = useState(false);
 
   useEffect(() => {
-    const checkAdminAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-        return;
-      }
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      if (adminEmails.includes(session.user.email)) {
-        setIsAdmin(true);
-        fetchRequest();
-      } else {
+    if (!isAuthLoading) {
+      if (!isAdmin) {
         toast({ title: "Access Denied", variant: "destructive" });
         navigate('/');
+      } else {
+        fetchRequest();
       }
-    };
-    checkAdminAccess();
-  }, [navigate, toast, id]);
+    }
+  }, [isAdmin, isAuthLoading, navigate, id]);
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -136,7 +89,7 @@ const RequestDetails = () => {
       setRequest(data);
 
       const calculatedCost = calculateRequestCost(data).totalCost;
-      setEditableFinalPrice(data.final_price !== null ? data.final_price.toFixed(2) : calculatedCost.toFixed(2));
+      setEditableFinalPrice(data.final_price !== null && data.final_price !== undefined ? data.final_price.toFixed(2) : calculatedCost.toFixed(2));
 
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -218,7 +171,7 @@ const RequestDetails = () => {
     toast({ title: "Copied!", description: "Request details copied to clipboard." });
   };
 
-  if (loading || !request) return <div className="p-8 text-center">Loading...</div>;
+  if (isAuthLoading || loading || !request) return <div className="p-8 text-center">Loading...</div>;
 
   const costBreakdown = calculateRequestCost(request);
 

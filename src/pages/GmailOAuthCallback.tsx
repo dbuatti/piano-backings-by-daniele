@@ -6,19 +6,23 @@ import Header from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { useAdmin } from '@/hooks/useAdmin';
 
 const GmailOAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
   const [status, setStatus] = useState('Processing OAuth callback...');
   const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      if (isAuthLoading) return;
+
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
-      const redirectUri = `${window.location.origin}/gmail-oauth-callback`; // Get the redirect URI from the client
+      const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
 
       if (errorParam) {
         const errorMessage = errorParam === 'access_denied' 
@@ -50,18 +54,15 @@ const GmailOAuthCallback = () => {
       try {
         setStatus('Exchanging authorization code for tokens...');
         
-        // Get current session for auth token (this is the Supabase user)
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
+        if (!user) {
           throw new Error('You must be logged into the application as an admin to complete this OAuth flow');
         }
         
-        // Check if user is admin (either daniele.buatti@gmail.com or pianobackingsbydaniele@gmail.com)
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (!adminEmails.includes(session.user.email)) {
+        if (!isAdmin) {
           throw new Error('Unauthorized: Only admin can complete Gmail OAuth');
         }
+        
+        const { data: { session } } = await supabase.auth.getSession();
         
         // Call our Edge Function to exchange the code for tokens
         const response = await fetch(
@@ -70,9 +71,9 @@ const GmailOAuthCallback = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
+              'Authorization': `Bearer ${session?.access_token}`
             },
-            body: JSON.stringify({ code, redirectUri }) // Pass redirectUri from client
+            body: JSON.stringify({ code, redirectUri })
           }
         );
         
@@ -80,8 +81,6 @@ const GmailOAuthCallback = () => {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to exchange code for tokens');
         }
-        
-        const result = await response.json();
         
         setStatus('OAuth completed successfully!');
         toast({
@@ -106,7 +105,7 @@ const GmailOAuthCallback = () => {
     };
     
     handleOAuthCallback();
-  }, [searchParams, navigate, toast]);
+  }, [searchParams, navigate, toast, isAdmin, isAuthLoading, user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">

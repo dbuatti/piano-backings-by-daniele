@@ -1,6 +1,11 @@
 "use client";
 
 /**
+ * Centralized list of administrator emails.
+ */
+export const ADMIN_EMAILS = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+
+/**
  * Standard interface for track information used throughout the application.
  */
 export interface TrackInfo {

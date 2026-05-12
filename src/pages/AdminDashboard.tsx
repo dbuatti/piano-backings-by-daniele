@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from '@tanstack/react-query';
+import { useAdmin } from '@/hooks/useAdmin';
 
 import DashboardTabContent from '@/components/admin/DashboardTabContent';
 import OperationsTabContent from '@/components/admin/OperationsTabContent';
@@ -38,12 +39,10 @@ import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
 import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
 
 const AdminDashboard = () => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [adminEmail, setAdminEmail] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
 
   const activeTab = searchParams.get('tab') || 'requests';
   const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
@@ -106,7 +105,7 @@ const AdminDashboard = () => {
       if (error) throw error;
       return count || 0;
     },
-    enabled: isAdmin && authChecked,
+    enabled: isAdmin,
   });
 
   const { data: unreadIssueReports = 0 } = useQuery<number, Error>({
@@ -119,30 +118,15 @@ const AdminDashboard = () => {
       if (error) throw error;
       return count || 0;
     },
-    enabled: isAdmin && authChecked,
+    enabled: isAdmin,
     refetchInterval: 30000,
   });
 
-  const checkAdminAccess = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/login');
-      return;
-    }
-    const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-    if (adminEmails.includes(session.user.email)) {
-      setIsAdmin(true);
-      setAdminEmail(session.user.email);
-      setAuthChecked(true);
-      fetchRequests();
-    } else {
+  useEffect(() => {
+    if (!isAuthLoading && !isAdmin) {
       navigate('/');
     }
-  }, [navigate, fetchRequests]);
-
-  useEffect(() => {
-    checkAdminAccess();
-  }, [checkAdminAccess]);
+  }, [isAdmin, isAuthLoading, navigate]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
@@ -164,7 +148,8 @@ const AdminDashboard = () => {
     }
   };
 
-  if (!authChecked) return <div className="p-8 text-center">Loading...</div>;
+  if (isAuthLoading) return <div className="p-8 text-center">Loading...</div>;
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
@@ -173,7 +158,7 @@ const AdminDashboard = () => {
         <AdminDashboardHeader 
           title="Admin Dashboard" 
           description="Manage your studio operations and client requests." 
-          adminEmail={adminEmail}
+          adminEmail={user?.email}
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

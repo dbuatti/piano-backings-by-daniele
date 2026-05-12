@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
-import { useParams, useLocation, Link } from 'react-router-dom';
+import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import { 
   Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
@@ -25,6 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface TrackInfo {
   url: string;
@@ -47,6 +48,9 @@ const EmailGenerator = () => {
   const { toast } = useToast();
   const { id } = useParams<{ id?: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAdmin, isLoading: isAuthLoading } = useAdmin();
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [emailData, setEmailData] = useState({ subject: '', html: '' });
@@ -61,6 +65,13 @@ const EmailGenerator = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loadingAllProducts, setLoadingAllProducts] = useState(true);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && !isAdmin) {
+      toast({ title: "Access Denied", variant: "destructive" });
+      navigate('/');
+    }
+  }, [isAdmin, isAuthLoading, navigate, toast]);
 
   const displayedRequest = useMemo(() => {
     return allRequests.find(req => selectedRequestIds.includes(req.id!)) || null;
@@ -122,6 +133,8 @@ const EmailGenerator = () => {
   }, [displayedRequest, displayedProduct, toast, recipientEmails]);
 
   useEffect(() => {
+    if (!isAdmin) return;
+
     const fetchAllRequests = async () => {
       setLoadingAllRequests(true);
       try {
@@ -155,7 +168,7 @@ const EmailGenerator = () => {
       }
     };
     fetchAllProducts();
-  }, [toast]);
+  }, [toast, isAdmin]);
 
   useEffect(() => {
     if (allRequests.length > 0) {
@@ -256,6 +269,9 @@ const EmailGenerator = () => {
         return <Badge variant="outline">Pending</Badge>;
     }
   };
+
+  if (isAuthLoading) return <div className="p-8 text-center">Loading...</div>;
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">

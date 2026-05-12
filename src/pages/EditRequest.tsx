@@ -18,40 +18,8 @@ import { cn } from '@/lib/utils';
 import { calculateRequestCost } from '@/utils/pricing';
 import FileInput from '@/components/FileInput';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
-
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  song_key: string | null;
-  different_key: string | null;
-  key_for_track: string | null;
-  youtube_link: string | null;
-  voice_memo: string | null;
-  sheet_music_url: string | null;
-  track_purpose: string | null;
-  backing_type: string[] | string | null;
-  delivery_date: string | null;
-  additional_services: string[] | null;
-  special_requests: string | null;
-  category: string | null;
-  track_type: string | null;
-  additional_links: string | null;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_urls?: { url: string; caption: string | boolean | null | undefined }[];
-  shared_link?: string | null;
-  dropbox_folder_id?: string | null;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
-  cost?: number | null;
-  final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
-  internal_notes?: string | null;
-}
+import { useAdmin } from '@/hooks/useAdmin';
+import { BackingRequest } from '@/types/backing-request';
 
 const keyOptions = [
   { value: 'C Major (0)', label: 'C Major (0)' },
@@ -97,37 +65,29 @@ const EditRequest: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isLoading: isAuthLoading } = useAdmin();
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [voiceMemoFile, setVoiceMemoFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const checkAdminAccess = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-        return;
-      }
-      const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-      if (adminEmails.includes(session.user.email)) {
-        setIsAdmin(true);
-        fetchRequest();
-      } else {
+    if (!isAuthLoading) {
+      if (!isAdmin) {
         toast({
           title: "Access Denied",
           description: "You don't have permission to access this page.",
           variant: "destructive",
         });
         navigate('/');
+      } else {
+        fetchRequest();
       }
-    };
-    checkAdminAccess();
-  }, [navigate, toast, id]);
+    }
+  }, [isAdmin, isAuthLoading, navigate, id]);
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -269,7 +229,7 @@ const EditRequest: React.FC = () => {
     }
   };
 
-  if (!isAdmin) {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />

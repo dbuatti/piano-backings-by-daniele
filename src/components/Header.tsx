@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,50 +20,13 @@ import {
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const location = useLocation();
-  const [session, setSession] = React.useState<any>(null);
-  const [isAdmin, setIsAdmin] = React.useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      
-      if (session) {
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
-        }
-      }
-    };
-    
-    checkSession();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      
-      if (session) {
-        const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
-        if (adminEmails.includes(session.user.email)) {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
-      } else {
-        setIsAdmin(false);
-      }
-    });
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  const { isAdmin, user } = useAdmin();
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      setIsAdmin(false);
       setMobileMenuOpen(false);
       toast({
         title: "Logged out",
@@ -137,7 +101,7 @@ const Header = () => {
               </Button>
             </Link>
 
-            {session && (
+            {user && (
               <Link to="/user-dashboard">
                 <Button 
                   variant="ghost" 
@@ -191,7 +155,7 @@ const Header = () => {
               </DropdownMenu>
             )}
             
-            {session ? (
+            {user ? (
               <Button 
                 onClick={handleLogout}
                 variant="ghost" 
@@ -302,7 +266,7 @@ const Header = () => {
                       About & FAQ
                     </Link>
                     
-                    {session && (
+                    {user && (
                       <Link 
                         to="/user-dashboard"
                         className={cn(
@@ -334,7 +298,7 @@ const Header = () => {
                     )}
                     
                     <div className="pt-4 mt-4 border-t border-white/20">
-                      {session ? (
+                      {user ? (
                         <Button 
                           onClick={handleLogout}
                           variant="ghost" 
