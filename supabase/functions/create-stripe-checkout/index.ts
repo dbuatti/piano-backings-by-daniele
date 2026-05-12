@@ -18,60 +18,123 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
+    console.log("[create-stripe-checkout] Function invoked");
+    
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:8080';
-    if (!stripeSecretKey) throw new Error('STRIPE_SECRET_KEY not set');
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://pianobackingsbydaniele.vercel.app';
+    
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured in Supabase secrets');
+    }
 
-    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
-    const { product_id, request_ids, amount, description, customer_email } = await req.json();
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-06-20',
+      httpClient: Stripe.createFetchHttpClient(),
+    });
+
+    const requestData = await req.json();
+    const { product_id, request_ids, amount, description, customer_email } = requestData;
+
+    console.log("[create-stripe-checkout] Received data:", { 
+      hasProductId: !!product_id, 
+      hasRequestIds: !!request_ids, 
+      amount, 
+      customer_email 
+    });
 
     let line_items = [];
-    let metadata = {};
+    let metadata: Record<string, string> = {};
 
+    // Case 1: Shop Product Purchase
     if (product_id) {
-      const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', product_id).single();
-      if (!product) throw new Error('Product not found');
+      console.log("[create-stripe-checkout] Handling Shop Product:", product_id);
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { data: product, error: productError } = await supabaseAdmin
+        .from('products')
+        .select('*')
+        .eq('id', product_id)
+        .single();
+
+      if (productError || !product) {
+        throw new Error(`Product not found: ${productError?.message || 'Unknown error'}`);
+      }
 
       line_items = [{
         price_data: {
-          currency: product.currency.toLowerCase(),
-          product_data: { name: product.title, description: product.description },
+          currency: product.currency?.toLowerCase() || 'aud',
+          product_data: {
+            name: product.title,
+            description: product.description || undefined,
+          },
           unit_amount: Math.round(product.price * 100),
         },
         quantity: 1,
       }];
       metadata = { product_id: product.id };
-    } else if (request_ids && amount) {
+    } 
+    // Case 2: Custom Backing Request Payment
+    else if (request_ids && amount) {
+      console.log("[create-stripe-checkout] Handling Custom Request(s):", request_ids);
+      
+      // Ensure request_ids is a string for metadata
+      const idsString = Array.isArray(request_ids) ? request_ids.join(',') : request_ids;
+
       line_items = [{
         price_data: {
           currency: 'aud',
-          product_data: { 
-            name: 'Custom Piano Backing Request', 
-            description: description || `${request_ids.length} track(s) requested` 
+          product_data: {
+            name: 'Custom Piano Backing Request',
+            description: description || 'Professional piano accompaniment recorded to your specifications.',
           },
           unit_amount: Math.round(amount * 100),
         },
         quantity: 1,
       }];
-      metadata = { request_ids: request_ids.join(',') };
+      metadata = { request_ids: idsString };
+    } 
+    else {
+      console.error("[create-stripe-checkout] Missing required parameters", requestData);
+      throw new Error('Invalid request: Either product_id or (request_ids and amount) must be provided.');
     }
 
+    console.log("[create-stripe-checkout] Creating Stripe session...");
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items,
       mode: 'payment',
-      customer_email,
+      customer_email: customer_email || undefined,
       success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/shop`,
+      cancel_url: `${siteUrl}/form-page`,
       metadata,
     });
 
-    return new Response(JSON.stringify({ url: session.url }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    console.log("[create-stripe-checkout] Session created successfully:", session.id);
+
+    return new Response(
+      JSON.stringify({ url: session.url, sessionId: session.id }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    );
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 });
+    console.error("[create-stripe-checkout] Error:", error.message);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    );
   }
 });
