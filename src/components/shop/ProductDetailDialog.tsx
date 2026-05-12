@@ -18,13 +18,15 @@ import {
   Sparkles,
   ShieldCheck,
   Zap,
-  Info
+  Info,
+  Share2
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import VisuallyHidden from '@/components/VisuallyHidden'; // Import VisuallyHidden
+import VisuallyHidden from '@/components/VisuallyHidden';
+import { useToast } from '@/hooks/use-toast';
 
 interface Product {
   id: string;
@@ -60,10 +62,20 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onBuyNow,
   isBuying,
 }) => {
+  const { toast } = useToast();
   const firstTrackUrl = product.track_urls?.[0]?.url || null;
   const { isPlaying, togglePlay, audioRef, handleEnded } = useAudioPreview(firstTrackUrl);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/shop?q=${encodeURIComponent(product.title)}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link Copied!",
+      description: "Product link copied to clipboard.",
+    });
+  };
 
   const getTrackTypeInfo = (type?: string) => {
     switch (type) {
@@ -79,14 +91,12 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[95vw] h-[92vh] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col sm:rounded-2xl">
-        {/* Visually hidden DialogTitle for accessibility */}
         <DialogHeader>
           <DialogTitle>
             <VisuallyHidden>Product Details for {product.title}</VisuallyHidden>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Compact Header - Reduced height to maximize scroll area */}
         <div className="relative flex-shrink-0 h-48 md:h-64 overflow-hidden bg-[#1C0357]">
           {product.image_url ? (
             <>
@@ -124,16 +134,25 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             )}
           </div>
 
+          <div className="absolute top-4 right-14 z-10">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleShare}
+              className="p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all"
+            >
+              <Share2 className="h-5 w-5" />
+            </Button>
+          </div>
+
           <DialogClose className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all z-10">
             <X className="h-5 w-5" />
           </DialogClose>
         </div>
 
-        {/* Maximized Scrollable Body */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 md:px-10">
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8">
             
-            {/* Left/Main Column */}
             <div className="md:col-span-8 space-y-6">
               <section>
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-3 flex items-center gap-2">
@@ -173,7 +192,6 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               </section>
             </div>
 
-            {/* Right/Sidebar Column */}
             <div className="md:col-span-4 space-y-4">
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#1C0357] mb-4">Specifications</h3>
@@ -218,11 +236,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           </div>
         </div>
 
-        {/* Slimmer Footer */}
         <div className="bg-white border-t p-4 md:px-10 flex-shrink-0">
           <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             
-            {/* Audio Preview */}
             {firstTrackUrl && (
               <div className="flex items-center gap-3 w-full md:w-auto bg-gray-50 p-2 rounded-xl border border-gray-100 flex-1 max-w-sm">
                 <Button

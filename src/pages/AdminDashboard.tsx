@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAdmin } from '@/hooks/useAdmin';
 
 import DashboardTabContent from '@/components/admin/DashboardTabContent';
@@ -28,7 +28,9 @@ import {
   PlusCircle, 
   RefreshCw,
   MessageSquare,
-  Activity
+  Activity,
+  RefreshCcw,
+  Loader2
 } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -37,10 +39,12 @@ import { useRequestActions } from '@/hooks/admin/useRequestActions';
 import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
 import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
 import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
+import { Button } from '@/components/ui/button';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
 
@@ -132,6 +136,16 @@ const AdminDashboard = () => {
     setSearchParams({ tab: value });
   };
 
+  const handleManualRefresh = async () => {
+    await fetchRequests();
+    queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
+    queryClient.invalidateQueries({ queryKey: ['totalIssueReports'] });
+    toast({
+      title: "Data Refreshed",
+      description: "The latest requests and reports have been loaded.",
+    });
+  };
+
   const currentRequestForUpload = requests.find(req => req.id === uploadTrackId);
   const existingTrackUrls = currentRequestForUpload?.track_urls || [];
 
@@ -155,11 +169,22 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-[#F8F9FC]">
       <Header />
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
-        <AdminDashboardHeader 
-          title="Admin Dashboard" 
-          description="Manage your studio operations and client requests." 
-          adminEmail={user?.email}
-        />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <AdminDashboardHeader 
+            title="Admin Dashboard" 
+            description="Manage your studio operations and client requests." 
+            adminEmail={user?.email}
+          />
+          <Button 
+            onClick={handleManualRefresh} 
+            variant="outline" 
+            className="bg-white border-gray-200 text-[#1C0357] hover:bg-gray-50 font-bold rounded-xl shadow-sm"
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+            Refresh Data
+          </Button>
+        </div>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-5 bg-white p-1 rounded-2xl shadow-sm border h-14">

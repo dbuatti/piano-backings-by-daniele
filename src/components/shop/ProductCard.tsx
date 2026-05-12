@@ -4,12 +4,13 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key, Theater } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key, Theater, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductCardProps {
   product: any;
@@ -19,9 +20,20 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
+  const { toast } = useToast();
   const firstTrackUrl = product.track_urls?.[0]?.url || null;
   const { isPlaying, togglePlay, audioRef, handleEnded, hasAudio } = useAudioPreview(firstTrackUrl);
   const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/shop?q=${encodeURIComponent(product.title)}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link Copied!",
+      description: "Product link copied to clipboard.",
+    });
+  };
 
   const getQualityBadge = (type?: string) => {
     switch (type) {
@@ -89,6 +101,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuy
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>{quality.desc}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        <div className="absolute top-3 right-3 z-20 flex gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleShare}
+                  className="h-8 w-8 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20"
+                >
+                  <Share2 size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Share Product</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
