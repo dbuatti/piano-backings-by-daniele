@@ -5,23 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  Music, 
   CheckCircle,
-  XCircle,
   Loader2,
   Plus,
-  Mic,
-  Headphones,
-  Sparkles,
-  Package,
   Ticket,
-  User as UserIcon,
   CreditCard,
-  Zap,
-  AlertCircle
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +22,9 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import Seo from "@/components/Seo";
 import AuthOverlay from "@/components/AuthOverlay";
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
+import ContactDetailsForm from '@/components/form/ContactDetailsForm';
+import TierSelection from '@/components/form/TierSelection';
+import AdditionalServices from '@/components/form/AdditionalServices';
 import { calculateRequestCost } from '@/utils/pricing';
 
 const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
@@ -253,58 +246,42 @@ const FormPage = () => {
           </Card>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-8">
-            <Card className="rounded-3xl p-8">
-              <h2 className="text-xl font-bold text-[#1C0357] mb-6 flex items-center gap-2">
-                <UserIcon size={20} /> Contact Details
-              </h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input name="name" value={globalData.name} onChange={handleGlobalInputChange} disabled={!!user} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email Address</Label>
-                  <Input name="email" type="email" value={globalData.email} onChange={handleGlobalInputChange} disabled={!!user} required />
-                </div>
-                {!user && (
-                  <div className="space-y-2">
-                    <Label>Confirm Email</Label>
-                    <Input name="confirmEmail" type="email" value={globalData.confirmEmail} onChange={handleGlobalInputChange} required />
-                  </div>
-                )}
-              </div>
-            </Card>
+            <ContactDetailsForm 
+              name={globalData.name}
+              email={globalData.email}
+              confirmEmail={globalData.confirmEmail}
+              onChange={handleGlobalInputChange}
+              isUserLoggedIn={!!user}
+            />
 
             <div className="space-y-4">
               {songs.map((song, index) => (
-                <SongRequestItem key={song.id} index={index} data={song} onChange={handleSongChange} onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} isOnlySong={songs.length === 1} />
+                <SongRequestItem 
+                  key={song.id} 
+                  index={index} 
+                  data={song} 
+                  onChange={handleSongChange} 
+                  onRemove={(id) => setSongs(s => s.filter(x => x.id !== id))} 
+                  isOnlySong={songs.length === 1} 
+                />
               ))}
-              <Button type="button" onClick={() => setSongs(s => [...s, createNewSong()])} className="w-full h-16 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black">
+              <Button 
+                type="button" 
+                onClick={() => setSongs(s => [...s, createNewSong()])} 
+                className="w-full h-16 rounded-2xl border-2 border-dashed border-[#1C0357]/20 bg-gray-50/50 text-[#1C0357] font-black"
+              >
                 <Plus className="mr-2" /> Add Another Song
               </Button>
             </div>
 
-            <Card className="rounded-3xl p-8">
-              <h2 className="text-xl font-bold text-[#1C0357] mb-6 flex items-center gap-2">
-                <Sparkles size={20} /> Choose Your Tier
-              </h2>
-              <RadioGroup value={globalData.trackType} onValueChange={(v) => setGlobalData(p => ({ ...p, trackType: v }))} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                {[
-                  { id: 'note-bash', icon: Mic, label: 'Note Bash', price: '$15' },
-                  { id: 'audition-ready', icon: Headphones, label: 'Audition Ready', price: '$30' },
-                  { id: 'full-song', icon: Sparkles, label: 'Full Song', price: '$50' }
-                ].map((item) => (
-                  <Label key={item.id} htmlFor={item.id} className={cn("cursor-pointer p-6 rounded-3xl border-2 text-center transition-all", globalData.trackType === item.id ? "border-[#1C0357] bg-[#1C0357]/5" : "border-gray-100")}>
-                    <RadioGroupItem id={item.id} value={item.id} className="sr-only" />
-                    <item.icon className="h-6 w-6 mx-auto mb-2 text-[#F538BC]" />
-                    <span className="font-black block">{item.label}</span>
-                    <span className="text-xs font-bold text-[#F538BC]">{item.price}</span>
-                  </Label>
-                ))}
-              </RadioGroup>
+            <Card className="rounded-3xl p-8 space-y-12">
+              <TierSelection 
+                value={globalData.trackType}
+                onValueChange={(v) => setGlobalData(p => ({ ...p, trackType: v }))}
+              />
 
               {currentTierCredits > 0 && (
-                <div className="bg-[#D1AAF2]/20 p-6 rounded-2xl border-2 border-[#1C0357] flex items-center justify-between mb-8">
+                <div className="bg-[#D1AAF2]/20 p-6 rounded-2xl border-2 border-[#1C0357] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Ticket className="text-[#1C0357]" />
                     <div>
@@ -316,44 +293,22 @@ const FormPage = () => {
                 </div>
               )}
 
-              <div className="space-y-6">
-                <h2 className="text-xl font-bold text-[#1C0357] flex items-center gap-2">
-                  <Zap size={20} /> Additional Services
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15' },
-                    { id: 'complex-songs', label: 'Complex Score', price: '+$10' },
-                    { id: 'additional-edits', label: 'Additional Edits', price: '+$5' },
-                    { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' }
-                  ].map((service) => (
-                    <div 
-                      key={service.id}
-                      onClick={() => handleServiceToggle(service.id)}
-                      className={cn(
-                        "flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                        globalData.additionalServices.includes(service.id) 
-                          ? "border-[#1C0357] bg-[#1C0357]/5" 
-                          : "border-gray-100 hover:border-gray-200"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Checkbox 
-                          checked={globalData.additionalServices.includes(service.id)} 
-                          onCheckedChange={() => handleServiceToggle(service.id)}
-                        />
-                        <span className="font-bold text-sm">{service.label}</span>
-                      </div>
-                      <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <AdditionalServices 
+                selectedServices={globalData.additionalServices}
+                onToggleService={handleServiceToggle}
+              />
 
-              <div className="grid md:grid-cols-2 gap-6 mt-8">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Due Date</Label>
-                  <Input type="date" name="deliveryDate" value={globalData.deliveryDate} onChange={handleGlobalInputChange} min={new Date().toISOString().split('T')[0]} />
+                  <Label htmlFor="deliveryDate">Due Date</Label>
+                  <Input 
+                    id="deliveryDate"
+                    type="date" 
+                    name="deliveryDate" 
+                    value={globalData.deliveryDate} 
+                    onChange={handleGlobalInputChange} 
+                    min={new Date().toISOString().split('T')[0]} 
+                  />
                 </div>
               </div>
             </Card>
