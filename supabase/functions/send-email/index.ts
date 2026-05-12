@@ -1,358 +1,124 @@
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-// Declare Deno namespace for TypeScript
-declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
-};
-
-// Setup CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  // Handle CORS preflight
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Send email function invoked");
-    
-    // Get environment variables
     const GMAIL_CLIENT_ID = Deno.env.get("GMAIL_CLIENT_ID");
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
-    const GMAIL_USER = Deno.env.get("GMAIL_USER"); // This will be used as the sender email
-    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com'; // Use ADMIN_EMAIL secret or default
-    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'].filter((email, i, arr) => arr.indexOf(email) === i); // Ensure unique emails
-
-    console.log('Environment variables status:', {
-      GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? 'SET' : 'NOT SET',
-      GMAIL_CLIENT_SECRET: GMAIL_CLIENT_SECRET ? 'SET' : 'NOT SET',
-      GMAIL_USER: GMAIL_USER ? 'SET' : 'NOT SET',
-    });
+    const GMAIL_USER = Deno.env.get("GMAIL_USER");
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com';
+    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'];
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
-      const missingVars = [];
-      if (!GMAIL_CLIENT_ID) missingVars.push('GMAIL_CLIENT_ID');
-      if (!GMAIL_CLIENT_SECRET) missingVars.push('GMAIL_CLIENT_SECRET');
-      if (!GMAIL_USER) missingVars.push('GMAIL_USER');
-      
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+      throw new Error(`Missing required environment variables.`);
     }
 
-    // Create a Supabase client with service role key (has full permissions)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log("Request body:", requestBody);
-    } catch (parseError) {
-      console.error("Error parsing request body:", parseError);
-      throw new Error('Invalid JSON in request body');
-    }
-    
-    let { to, subject, html, cc, bcc, replyTo, senderEmail } = requestBody;
+    const { to, subject, html, cc, replyTo, senderEmail } = await req.json();
 
-    // --- Authorization Check ---
     const authHeader = req.headers.get('Authorization');
-    let callingUserEmail: string | null = null;
-    let isCallingUserAdmin = false;
-    let isUserTokenValid = false; // Flag to indicate if a valid user token was found
+    let isAuthorized = false;
 
     if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        // Attempt to get user from token. This will fail for service_role_key, which is expected for internal calls.
-        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-        
-        if (!userError && user) {
-          callingUserEmail = user.email;
-          isCallingUserAdmin = adminEmails.includes(user.email!);
-          isUserTokenValid = true; // A valid user token was found
-          console.log("Authenticated Supabase user (for authorization):", callingUserEmail);
-        } else {
-          console.log("No valid user token found, might be a service role call or unauthenticated.");
-        }
-      } catch (authError) {
-        console.warn('Error during user token verification:', authError.message);
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (user && (adminEmails.includes(user.email!) || user.email === senderEmail)) {
+        isAuthorized = true;
       }
+    } else if (adminEmails.includes(senderEmail)) {
+      isAuthorized = true;
     }
 
-    // --- DEBUG LOGGING FOR AUTHORIZATION ---
-    console.log('--- Auth Debug Info ---');
-    console.log(`isUserTokenValid: ${isUserTokenValid}`);
-    console.log(`callingUserEmail: ${callingUserEmail}`);
-    console.log(`isCallingUserAdmin: ${isCallingUserAdmin}`);
-    console.log(`senderEmail (from request body): ${senderEmail}`);
-    console.log(`adminEmails (from env): ${JSON.stringify(adminEmails)}`);
-    console.log(`adminEmails.includes(senderEmail): ${adminEmails.includes(senderEmail)}`);
-    console.log('-----------------------');
-    // --- END DEBUG LOGGING ---
-
-    // CRITICAL SECURITY CHECK: Ensure the calling entity is authorized to send as senderEmail
-    // Allowed if:
-    // 1. A valid user token is present AND (the user is an admin OR the user's email matches senderEmail)
-    // 2. NO valid user token is present (implying an internal service call with service_role_key) AND senderEmail is an admin email.
-    if (
-        (isUserTokenValid && (!isCallingUserAdmin && callingUserEmail !== senderEmail)) ||
-        (!isUserTokenValid && !adminEmails.includes(senderEmail)) 
-    ) {
-        return new Response(JSON.stringify({ 
-            error: `Forbidden: You are not authorized to send emails as ${senderEmail}.` 
-        }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-    // --- End Authorization Check ---
-    
-    if (!to || !subject || !html || !senderEmail) {
-      return new Response(JSON.stringify({ error: "Missing 'to', 'subject', 'html', or 'senderEmail' content" }), { 
-        status: 400,
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Normalize 'to' field: if it's a string, split by comma into an array
-    let recipientList: string[];
-    if (typeof to === 'string') {
-      recipientList = to.split(',').map((email: string) => email.trim()).filter(Boolean);
-    } else if (Array.isArray(to)) {
-      recipientList = to.map((email: string) => email.trim()).filter(Boolean);
-    } else {
-      recipientList = [];
-    }
+    const refreshAccessToken = async (email: string) => {
+      const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+      const userFound = usersData.users.find(u => u.email === email);
+      if (!userFound) throw new Error(`User not found for ${email}`);
 
-    if (recipientList.length === 0) {
-      return new Response(JSON.stringify({ error: "No valid recipient email addresses provided." }), { 
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Function to refresh access token using refresh token
-    const refreshAccessToken = async (emailToFetchTokenFor: string) => {
-      console.log(`Attempting to refresh access token for ${emailToFetchTokenFor}`);
-      
-      // 1. Get the Supabase user ID for the sender email by listing users and filtering
-      const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
-
-      if (listUsersError) {
-        console.error(`Error listing users for email "${emailToFetchTokenFor}":`, listUsersError);
-        throw new Error(`Supabase user lookup failed for sender email "${emailToFetchTokenFor}": ${listUsersError.message}. Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
-      }
-
-      const userFound = usersData.users.find(u => u.email === emailToFetchTokenFor);
-
-      if (!userFound?.id) {
-        console.error(`No user ID found for email "${emailToFetchTokenFor}" after listing users.`);
-        throw new Error(`Supabase user not found for sender email "${emailToFetchTokenFor}". Please ensure this email is registered in Supabase and has completed Gmail OAuth.`);
-      }
-      
-      const userIdToFetchTokenFor = userFound.id;
-      console.log(`Found Supabase user ID for sender email (${emailToFetchTokenFor}):`, userIdToFetchTokenFor);
-
-      // 2. Get the stored refresh token for this user
-      const { data: tokenData, error: tokenError } = await supabaseAdmin
+      const { data: tokenData } = await supabaseAdmin
         .from('gmail_tokens')
-        .select('refresh_token, access_token, expires_at')
-        .eq('user_id', userIdToFetchTokenFor)
+        .select('*')
+        .eq('user_id', userFound.id)
         .single();
       
-      if (tokenError || !tokenData) {
-        console.error(`Error fetching Gmail token for user ${emailToFetchTokenFor} (ID: ${userIdToFetchTokenFor}):`, tokenError?.message || 'No token data');
-        throw new Error(`No Gmail tokens found for user "${emailToFetchTokenFor}" (ID: ${userIdToFetchTokenFor}) in database. Please ensure this user has completed Gmail OAuth.`);
-      }
-      
-      // Check if we have a refresh token
-      if (!tokenData.refresh_token) {
-        // If no refresh token, check if existing access token is still valid
-        if (tokenData.expires_at && new Date(tokenData.expires_at) > new Date()) {
-          console.log("Using existing access token (no refresh token available, but access token is still valid)");
-          return tokenData.access_token;
-        }
-        throw new Error('No refresh token available and access token has expired. Please complete Gmail OAuth again.');
-      }
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for token refresh
+      if (!tokenData?.refresh_token) throw new Error('No refresh token available');
 
-      try {
-        const response = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: new URLSearchParams({
-            client_id: GMAIL_CLIENT_ID!,
-            client_secret: GMAIL_CLIENT_SECRET!,
-            refresh_token: tokenData.refresh_token,
-            grant_type: 'refresh_token'
-          }),
-          signal: controller.signal // Apply the abort signal
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Token refresh error response:', response.status, errorText);
-          throw new Error(`Failed to refresh access token: ${response.status} - ${errorText}`);
-        }
-        
-        const tokenResponse = await response.json();
-        console.log("Access token refreshed successfully");
-        
-        // Update the stored access token
-        const { error: updateError } = await supabaseAdmin
-          .from('gmail_tokens')
-          .update({
-            access_token: tokenResponse.access_token,
-            expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
-          })
-          .eq('user_id', userIdToFetchTokenFor); // Update using the correct user's ID
-        
-        if (updateError) {
-          console.error('Error updating access token in DB:', updateError);
-          // Don't throw here, as we still have the token
-        }
-        
-        return tokenResponse.access_token;
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          throw new Error('Gmail token refresh timed out.');
-        }
-        throw error; // Re-throw other errors
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    // Get or refresh the access token for the specified senderEmail
-    let accessToken;
-    try {
-      accessToken = await refreshAccessToken(senderEmail);
-    } catch (refreshError) {
-      console.error('Error refreshing access token:', refreshError);
-      throw new Error(`Failed to refresh access token: ${refreshError.message}`);
-    }
-    
-    // Create the email message in RFC 2822 format
-    let message = `To: ${recipientList.join(', ')}\r\n`; // Join multiple recipients with comma
-    message += `From: ${GMAIL_USER}\r\n`; // This will be pianobackingsbydaniele@gmail.com
-    message += `Subject: ${subject}\r\n`;
-    
-    if (cc) {
-      message += `Cc: ${Array.isArray(cc) ? cc.join(', ') : cc}\r\n`;
-    }
-    
-    if (replyTo) {
-      message += `Reply-To: ${replyTo}\r\n`;
-    }
-    
-    // Add MIME headers for HTML content
-    message += 'MIME-Version: 1.0\r\n';
-    message += 'Content-Type: text/html; charset=utf-8\r\n';
-    message += '\r\n';
-    message += html;
-    
-    // Base64 encode the message
-    const encodedMessage = btoa(unescape(encodeURIComponent(message)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    
-    console.log("Sending email via Gmail API...");
-    console.log(`Email details: To: ${recipientList.join(', ')}, From: ${GMAIL_USER}, Subject: ${subject}`); // Log actual recipients and sender
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for Gmail API send
-
-    try {
-      // Send email via Gmail API
-      const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          raw: encodedMessage
-        }),
-        signal: controller.signal // Apply the abort signal
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GMAIL_CLIENT_ID,
+          client_secret: GMAIL_CLIENT_SECRET,
+          refresh_token: tokenData.refresh_token,
+          grant_type: 'refresh_token'
+        })
       });
       
-      if (!gmailResponse.ok) {
-        const errorText = await gmailResponse.text();
-        console.error('Gmail API error response:', errorText);
-        
-        // Check if this is a Gmail API not enabled error
-        if (errorText.includes('Gmail API has not been used in project') || 
-            errorText.includes('SERVICE_DISABLED')) {
-          throw new Error(`Gmail API is not enabled for your Google Cloud project. Please visit https://console.developers.google.com/apis/api/gmail.googleapis.com/overview?project=138848645565 to enable it, then wait a few minutes for the changes to propagate.`);
-        }
-        
-        throw new Error(`Failed to send email: ${gmailResponse.status} - ${errorText}`);
-      }
+      const tokenResponse = await response.json();
+      await supabaseAdmin.from('gmail_tokens').update({
+        access_token: tokenResponse.access_token,
+        expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
+      }).eq('user_id', userFound.id);
       
-      const gmailData = await gmailResponse.json();
-      console.log("Email sent successfully via Gmail API", gmailData); // Log Gmail API's success response
-      
-      // Store a record in the notifications table for tracking
-      await supabaseAdmin
-        .from('notifications')
-        .insert([
-          {
-            recipient: recipientList.join(', '), // Store all recipients
-            sender: GMAIL_USER,
-            subject: subject,
-            content: html,
-            status: 'sent',
-            type: 'email'
-          }
-        ]);
+      return tokenResponse.access_token;
+    };
 
-      return new Response(
-        JSON.stringify({ 
-          message: `Email sent successfully to ${recipientList.join(', ')}`,
-          gmailData: gmailData
-        }),
-        { 
-          headers: { 
-            ...corsHeaders,
-            'Content-Type': 'application/json' 
-          },
-          status: 200
-        }
-      );
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Gmail API send timed out.');
-      }
-      throw error; // Re-throw other errors
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  } catch (error) {
-    console.error("Error in email function:", error);
+    const accessToken = await refreshAccessToken(senderEmail);
+    const recipientList = Array.isArray(to) ? to : to.split(',').map((e: string) => e.trim());
+
+    let message = `To: ${recipientList.join(', ')}\r\n`;
+    message += `From: ${GMAIL_USER}\r\n`;
+    message += `Subject: ${subject}\r\n`;
+    if (cc) message += `Cc: ${Array.isArray(cc) ? cc.join(', ') : cc}\r\n`;
+    if (replyTo) message += `Reply-To: ${replyTo}\r\n`;
+    message += 'MIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n' + html;
+    
+    const encodedMessage = btoa(unescape(encodeURIComponent(message)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    
+    const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: encodedMessage })
+    });
+
+    if (!gmailResponse.ok) throw new Error(await gmailResponse.text());
+
+    await supabaseAdmin.from('notifications').insert([{
+      recipient: recipientList.join(', '),
+      sender: GMAIL_USER,
+      subject,
+      content: html,
+      status: 'sent',
+      type: 'email'
+    }]);
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message 
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        },
-        status: 500
-      }
+      JSON.stringify({ message: `Email sent successfully` }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

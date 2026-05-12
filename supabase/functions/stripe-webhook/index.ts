@@ -1,23 +1,13 @@
-// @ts-ignore
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// @ts-ignore
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-// @ts-ignore
-import Stripe from 'https://esm.sh/stripe@16.2.0?target=deno';
-
-// Declare Deno namespace for TypeScript
-declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
-};
+import Stripe from 'npm:stripe@^16.2.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
@@ -26,25 +16,18 @@ serve(async (req) => {
     if (!stripeSecretKey || !stripeWebhookSecret) throw new Error('Stripe keys not configured.');
 
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20', httpClient: Stripe.createFetchHttpClient() });
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' });
 
     const signature = req.headers.get('stripe-signature');
     const body = await req.text();
-    let event: Stripe.Event;
-
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, signature!, stripeWebhookSecret);
-    } catch (err: any) {
-      return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), { status: 400 });
-    }
+    const event = await stripe.webhooks.constructEventAsync(body, signature!, stripeWebhookSecret);
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+      const session = event.data.object;
       const productId = session.metadata?.product_id;
       const requestIds = session.metadata?.request_ids;
       const userId = session.client_reference_id;
 
-      // 1. Handle Shop Products (including Credit Packs)
       if (productId) {
         const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
         if (product) {
@@ -61,12 +44,22 @@ serve(async (req) => {
           if (product.product_type === 'credit_pack' && userId) {
             const { data: existingCredits } = await supabaseAdmin.from('user_credits').select('balance').eq('user_id', userId).eq('credit_type', product.track_type).single();
             const newBalance = (existingCredits?.balance || 0) + (product.credit_amount || 0);
-            await supabaseAdmin.from('user_credits').upsert({ user_id: userId, credit_type: product.track_type, balance: newBalance, updated_at: new Date().toISOString() }, { onConflict: 'user_id,credit_type' });
+            
+            // Calculate expiry: 6 months from now
+            const expiresAt = new Date();
+            expiresAt.setMonth(expiresAt.getMonth() + 6);
+
+            await supabaseAdmin.from('user_credits').upsert({
+              user_id: userId,
+              credit_type: product.track_type,
+              balance: newBalance,
+              expires_at: expiresAt.toISOString(),
+              updated_at: new Date().toISOString()
+            });
           }
         }
       }
 
-      // 2. Handle Custom Requests
       if (requestIds) {
         const ids = requestIds.split(',');
         await supabaseAdmin.from('backing_requests').update({ is_paid: true, stripe_session_id: session.id }).in('id', ids);
@@ -74,8 +67,7 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
-  } catch (error: any) {
-    console.error('Webhook Error:', error.message);
+  } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 });
