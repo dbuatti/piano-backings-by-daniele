@@ -15,7 +15,9 @@ import {
   CreditCard,
   Music,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  UploadCloud,
+  FileJson
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +52,7 @@ const FormPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStep, setSubmissionStep] = useState<string>('');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -87,7 +90,9 @@ const FormPage = () => {
         const { data: credits } = await supabase.from('user_credits').select('*').eq('user_id', session.user.id);
         setUserCredits(credits || []);
       } else {
-        setTimeout(() => setShowAuthOverlay(true), 1500);
+        // Delay overlay to let user see the form first
+        const timer = setTimeout(() => setShowAuthOverlay(true), 1500);
+        return () => clearTimeout(timer);
       }
     };
     checkUser();
@@ -137,37 +142,54 @@ const FormPage = () => {
     }
 
     setIsSubmitting(true);
+    setSubmissionStep('Preparing your request...');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const authHeader = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {};
       const createdRequestIds: string[] = [];
 
-      for (const song of songs) {
-        // 1. Upload Sheet Music
-        const sheetMusicUrls = [];
-        for (const file of song.sheetMusicFiles) {
+      // Process each song
+      for (let i = 0; i < songs.length; i++) {
+        const song = songs[i];
+        const songLabel = songs.length > 1 ? ` (Song ${i + 1})` : '';
+        
+        // 1. Parallel Upload Sheet Music
+        setSubmissionStep(`Uploading sheet music${songLabel}...`);
+        const sheetMusicUploadPromises = song.sheetMusicFiles.map(async (file) => {
           const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
           const { data: uploadData, error: uploadError } = await supabase.storage.from('sheet-music').upload(fileName, file);
           if (uploadError) throw uploadError;
           const { data: { publicUrl } } = supabase.storage.from('sheet-music').getPublicUrl(uploadData!.path);
-          sheetMusicUrls.push({ url: publicUrl, caption: file.name });
-        }
+          return { url: publicUrl, caption: file.name };
+        });
+        const sheetMusicUrls = await Promise.all(sheetMusicUploadPromises);
 
-        // 2. Upload Voice Memos (if any)
-        const voiceMemoUrls = [];
-        for (const file of song.voiceMemoFiles) {
+        // 2. Parallel Upload Voice Memos
+        setSubmissionStep(`Uploading voice memos${songLabel}...`);
+        const voiceMemoUploadPromises = song.voiceMemoFiles.map(async (file) => {
           const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
           const { data: uploadData, error: uploadError } = await supabase.storage.from('voice-memos').upload(fileName, file);
           if (uploadError) throw uploadError;
           const { data: { publicUrl } } = supabase.storage.from('voice-memos').getPublicUrl(uploadData!.path);
-          voiceMemoUrls.push({ url: publicUrl, caption: file.name });
-        }
+          return { url: publicUrl, caption: file.name };
+        });
+        const voiceMemoUrls = await Promise.all(voiceMemoUploadPromises);
+        
+        // 3. Create Request via Edge Function
+        setSubmissionStep(`Saving request details${songLabel}...`);
+        
+        // Clean up song data to remove File objects before sending to JSON
+        const { sheetMusicFiles, voiceMemoFiles, voiceMemoLink, ...songDataToSubmit } = song;
         
         const submissionData = {
           formData: {
             ...globalData,
-            ...song,
+            ...songDataToSubmit,
+            voiceMemo: voiceMemoLink, // Map correctly for backend
             sheetMusicUrls,
             voiceMemoUrls,
+            backingType: [globalData.trackType], // Ensure backingType is sent as array
             is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }
@@ -175,7 +197,10 @@ const FormPage = () => {
         
         const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeader
+          },
           body: JSON.stringify(submissionData),
         });
         
@@ -184,14 +209,19 @@ const FormPage = () => {
         if (result.requestId) createdRequestIds.push(result.requestId);
       }
 
+      // 4. Handle Payment or Completion
       if (useCredit && session) {
+        setSubmissionStep('Applying credits...');
         await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
         setIsSubmittedSuccessfully(true);
       } else if (priceBreakdown.total > 0) {
-        // Redirect to Stripe
+        setSubmissionStep('Redirecting to secure payment...');
         const stripeResponse = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeader
+          },
           body: JSON.stringify({
             request_ids: createdRequestIds,
             amount: priceBreakdown.total,
@@ -199,16 +229,25 @@ const FormPage = () => {
             description: `Custom Backing Tracks: ${songs.map(s => s.songTitle).join(', ')}`
           }),
         });
+        
         const stripeResult = await stripeResponse.json();
+        if (!stripeResponse.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
         if (stripeResult.url) window.location.href = stripeResult.url;
       } else {
         setIsSubmittedSuccessfully(true);
       }
     } catch (error: any) {
       console.error("Submission error:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Submission Failed", 
+        description: error.message === 'Failed to fetch' 
+          ? "Network error. Please check your connection and try again." 
+          : error.message, 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
+      setSubmissionStep('');
     }
   };
 
@@ -368,17 +407,31 @@ const FormPage = () => {
                 />
                 <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">I understand the terms of service. *</Label>
               </div>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || !consentChecked} 
-                className="h-24 rounded-[32px] bg-[#1C0357] hover:bg-[#2D0B8C] px-20 text-2xl font-black w-full md:w-auto shadow-2xl hover:shadow-[#1C0357]/30 transition-all active:scale-95"
-              >
-                {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (
-                  <span className="flex items-center gap-4">
-                    {useCredit ? "Submit Request" : <><CreditCard size={28} /> Pay & Submit</>}
-                  </span>
+              
+              <div className="w-full flex flex-col items-center gap-4">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || !consentChecked} 
+                  className="h-24 rounded-[32px] bg-[#1C0357] hover:bg-[#2D0B8C] px-20 text-2xl font-black w-full md:w-auto shadow-2xl hover:shadow-[#1C0357]/30 transition-all active:scale-95"
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (
+                    <span className="flex items-center gap-4">
+                      {useCredit ? "Submit Request" : <><CreditCard size={28} /> Pay & Submit</>}
+                    </span>
+                  )}
+                </Button>
+                
+                {isSubmitting && (
+                  <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2">
+                    <p className="text-[#1C0357] font-black text-lg flex items-center gap-2">
+                      <UploadCloud className="animate-bounce" /> {submissionStep}
+                    </p>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
+                      Please keep this window open
+                    </p>
+                  </div>
                 )}
-              </Button>
+              </div>
             </div>
           </form>
         )}
@@ -406,12 +459,6 @@ const Switch = ({ checked, onCheckedChange }: { checked: boolean, onCheckedChang
 const XCircle = ({ className, size }: { className?: string, size?: number }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
-  </svg>
-);
-
-const LayoutDashboard = ({ className }: { className?: string }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />
   </svg>
 );
 

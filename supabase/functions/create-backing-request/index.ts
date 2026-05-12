@@ -34,21 +34,41 @@ function calculateRequestCost(request: any): number {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
+    console.log("[create-backing-request] Received request");
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Handle optional authentication
     let userId = null;
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const { data: { user } } = await supabaseAdmin.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (user) userId = user.id;
+    if (authHeader && authHeader !== 'Bearer undefined') {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (userError) {
+          console.warn("[create-backing-request] Auth token provided but invalid:", userError.message);
+        } else if (user) {
+          userId = user.id;
+          console.log("[create-backing-request] Authenticated user:", userId);
+        }
+      } catch (authErr) {
+        console.error("[create-backing-request] Error verifying auth token:", authErr.message);
+      }
     }
     
     const { formData } = await req.json();
+    if (!formData) throw new Error("Missing formData in request body");
+
+    console.log("[create-backing-request] Processing request for:", formData.email, formData.songTitle);
+
     const calculatedCost = calculateRequestCost(formData);
     const guestAccessToken = crypto.randomUUID();
     
@@ -62,6 +82,7 @@ Deno.serve(async (req) => {
         musical_or_artist: formData.musicalOrArtist,
         song_key: formData.songKey,
         track_type: formData.trackType,
+        backing_type: formData.backingType || [formData.trackType], // Ensure backing_type is populated
         additional_services: formData.additionalServices,
         special_requests: formData.specialRequests,
         delivery_date: formData.deliveryDate,
@@ -72,19 +93,30 @@ Deno.serve(async (req) => {
         sheet_music_urls: formData.sheetMusicUrls || [],
         voice_memo_urls: formData.voiceMemoUrls || [],
         youtube_link: formData.youtubeLink || null,
-        voice_memo: formData.voiceMemoLink || null,
+        voice_memo: formData.voiceMemo || null, // Corrected from voiceMemoLink
         different_key: formData.differentKey || 'No',
         key_for_track: formData.keyForTrack || null,
+        internal_notes: formData.internal_notes || null,
       }])
       .select();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error("[create-backing-request] Database insert error:", insertError);
+      throw insertError;
+    }
+
+    console.log("[create-backing-request] Successfully created request:", insertedRecords[0].id);
 
     return new Response(
-      JSON.stringify({ message: 'Success', requestId: insertedRecords[0].id }),
+      JSON.stringify({ 
+        message: 'Success', 
+        requestId: insertedRecords[0].id,
+        guestAccessToken: userId ? null : guestAccessToken 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error) {
+    console.error("[create-backing-request] Critical error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
