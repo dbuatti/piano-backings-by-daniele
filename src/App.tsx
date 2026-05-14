@@ -25,6 +25,7 @@ import TestEmailNotification from './pages/TestEmailNotification';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
+import ReportIssueButton from './components/ReportIssueButton';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BackToTop from './components/BackToTop';
@@ -61,6 +62,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
+        <ReportIssueButton />
         <Footer />
       </div>
       <BackToTop />
