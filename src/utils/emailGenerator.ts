@@ -76,12 +76,6 @@ export const EMAIL_SIGNATURE_HTML = `
 </div>
 `;
 
-export const textToHtml = (text: string) => {
-  return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">` +
-         text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('') +
-         `</div>`;
-};
-
 const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   if (!trackUrls || trackUrls.length === 0) return '';
   
@@ -106,84 +100,16 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   `;
 };
 
-const generateProductTrackListHtml = (trackUrls?: TrackInfo[] | null) => {
-  if (!trackUrls || trackUrls.length === 0) return '';
-  
-  const listItems = trackUrls.map(track => `
-    <li style="margin-bottom: 5px;">
-      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
-        ${track.caption || 'Download Track'}
-      </a>
-    </li>
-  `).join('');
-
-  return `
-    <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
-      <p style="margin-top: 0; font-weight: bold; color: #1C0357;">Your Purchased Track(s):</p>
-      <ul style="list-style: none; padding: 0; margin-top: 10px;">
-        ${listItems}
-      </ul>
-      <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
-        Click on the track name to download.
-      </p>
-    </div>
-  `;
-};
-
-export const generateOrderReceivedEmail = async (request: BackingRequest) => {
-  const firstName = request.name.split(' ')[0];
-  const tierLabel = request.track_type?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
-
-  return {
-    subject: `Request Received: "${request.song_title}"`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
-        <p>Hi ${firstName},</p>
-        <p>Thanks for your custom backing track request! I've received your materials and will begin working on your track soon.</p>
-        
-        <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
-          <p style="margin: 5px 0;"><strong>Song:</strong> ${request.song_title}</p>
-          <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${request.musical_or_artist}</p>
-          <p style="margin: 5px 0;"><strong>Tier:</strong> ${tierLabel}</p>
-          <p style="margin: 5px 0;"><strong>Requested Due Date:</strong> ${request.delivery_date || 'Standard (3-5 days)'}</p>
-        </div>
-
-        <p>You'll receive another email as soon as your track is ready for download. In the meantime, you can track the status of your order on your personal dashboard.</p>
-        
-        <p>Warmly,</p>
-      </div>
-      ${EMAIL_SIGNATURE_HTML}
-    `
-  };
-};
-
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;
   let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}`;
-  } else if (request.guest_access_token) {
+  if (request.guest_access_token && !request.user_id) {
     clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${siteUrl}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
-
-  const trackAccessSection = `
-    <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
-    ${trackListHtml}
-    <p style="margin-top: 20px;">You can view your request and access your track on your dedicated client page:</p>
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="${clientPortalLink}" 
-         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-        View Your Track Details
-      </a>
-    </p>
-  `;
 
   return {
     subject: `Your "${request.song_title}" backing track is ready!`,
@@ -191,8 +117,92 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
         <p>Hi ${firstName},</p>
         <p>I hope this email finds you well!</p>
-        ${trackAccessSection}
-        <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
+        <p>Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
+        
+        ${trackListHtml}
+        
+        <p style="margin-top: 20px;">You can view your request and access your track on your dedicated client page:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${clientPortalLink}" 
+             style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+            View Your Track Details
+          </a>
+        </p>
+
+        <p>I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
+        
+        <p style="margin-top: 20px;">
+          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
+          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
+        </p>
+        <p style="margin-top: 20px;">Warmly,</p>
+      </div>
+      ${EMAIL_SIGNATURE_HTML}
+    `
+  };
+};
+
+export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
+  const firstName = request.name.split(' ')[0];
+  const siteUrl = window.location.origin;
+  let clientPortalLink = `${siteUrl}/track/${request.id}`;
+  if (request.guest_access_token && !request.user_id) {
+    clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
+  }
+
+  const feedbackLink = `${siteUrl}/?openFeedback=true`;
+  const trackListHtml = generateTrackListHtml(request.track_urls);
+
+  const calculatedCost = calculateRequestCost(request).totalCost;
+  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
+  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
+
+  const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
+    ? request.final_price
+    : calculatedCost;
+
+  const estimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
+  const estimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
+
+  return {
+    subject: `Your "${request.song_title}" backing track is ready & Payment Information`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <p>Hi ${firstName},</p>
+        <p>I hope this email finds you well!</p>
+        <p>Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
+        
+        ${trackListHtml}
+        
+        <p style="margin-top: 20px;">You can view all your request details, including payment information, and access your track on your dedicated client page:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${clientPortalLink}" 
+             style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+            View Request & Make Payment
+          </a>
+        </p>
+
+        <p>I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
+        
+        <div style="margin-top: 20px; padding: 15px; background-color: #f0ebfb; border-radius: 8px;">
+          <p style="margin: 0;"><strong>Estimated Range:</strong> $${estimatedLow} - $${estimatedHigh}</p>
+          <p style="margin: 5px 0 0 0;"><strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}</p>
+        </div>
+
+        <p style="margin-top: 20px;">You can make your payment using one of the following methods:</p>
+        <ul style="list-style: none; padding: 0; margin-top: 10px;">
+          <li style="margin-bottom: 10px;">
+            <strong>Buy Me a Coffee (Preferred):</strong> <a href="https://buymeacoffee.com/Danielebuatti" target="_blank" style="color: #007bff; text-decoration: none;">https://buymeacoffee.com/Danielebuatti</a>
+          </li>
+          <li>
+            <strong>Direct Bank Transfer:</strong><br>
+            BSB: 923100<br>
+            Account: 301110875
+          </li>
+        </ul>
+
+        <p style="margin-top: 20px;">Please let me know if you have any questions or if there's anything else I can assist you with.</p>
+        
         <p style="margin-top: 20px;">
           I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
           You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
@@ -208,43 +218,14 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;
   let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}`;
-  } else if (request.guest_access_token) {
+  if (request.guest_access_token && !request.user_id) {
     clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${siteUrl}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
   }
 
-  const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  const trackListHtml = request.status === 'completed' ? generateTrackListHtml(request.track_urls) : '';
-
-  let costDisplayHtml = '';
   const calculatedCost = calculateRequestCost(request).totalCost;
-  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
-  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
-
   const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
     : calculatedCost;
-
-  const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
-                               </p>`;
-
-  let estimatedRangeHtml = '';
-  if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
-      request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
-    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range: </strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
-                          </p>`;
-  } else {
-    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range: </strong> $${calculatedLow} - $${calculatedHigh}
-                          </p>`;
-  }
-
-  costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
 
   return {
     subject: `Payment Reminder: Your Piano Backing Track for "${request.song_title}"`,
@@ -253,8 +234,9 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
         <p>Hi ${firstName},</p>
         <p>I hope you're having a good week!</p>
         <p>This is a friendly reminder regarding your recent piano backing track request for <strong>"${request.song_title}"</strong>.</p>
-        ${trackListHtml}
-        ${costDisplayHtml}
+        
+        <p><strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}</p>
+
         <p>You can view the full details of your request and make your payment via the link below:</p>
         <p style="text-align: center; margin: 30px 0;">
           <a href="${clientPortalLink}" 
@@ -275,104 +257,6 @@ export const generatePaymentReminderEmail = async (request: BackingRequest) => {
             Account: 301110875
           </li>
         </ul>
-        <p style="margin-top: 20px;">
-          Please let me know if you have any questions or if there's anything else I can assist you with.
-        </p>
-        <p style="margin-top: 20px;">
-          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
-          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
-        </p>
-        <p style="margin-top: 20px;">Warmly,</p>
-      </div>
-      ${EMAIL_SIGNATURE_HTML}
-    `
-  };
-};
-
-export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
-  const firstName = request.name.split(' ')[0];
-  const siteUrl = window.location.origin;
-  let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}`;
-  } else if (request.guest_access_token) {
-    clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  } else {
-    clientPortalLink = `${siteUrl}/track/${request.id}?email=${encodeURIComponent(request.email)}`;
-  }
-
-  const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  const trackListHtml = generateTrackListHtml(request.track_urls);
-
-  let costDisplayHtml = '';
-  const calculatedCost = calculateRequestCost(request).totalCost;
-  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
-  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
-
-  const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
-    ? request.final_price
-    : calculatedCost;
-
-  const suggestedCostHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                                 <strong>Suggested Cost: </strong> $${suggestedCostValue.toFixed(2)}
-                               </p>`;
-
-  let estimatedRangeHtml = '';
-  if (request.estimated_cost_low !== null && request.estimated_cost_high !== null &&
-      request.estimated_cost_low !== undefined && request.estimated_cost_high !== undefined) {
-    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range: </strong> $${request.estimated_cost_low.toFixed(2)} - $${request.estimated_cost_high.toFixed(2)}
-                          </p>`;
-  } else {
-    estimatedRangeHtml = `<p style="margin-top: 10px; font-size: 1.0em; color: #555;">
-                            <strong>Estimated Range: </strong> $${calculatedLow} - $${calculatedHigh}
-                          </p>`;
-  }
-
-  costDisplayHtml = `${estimatedRangeHtml}${suggestedCostHtml}`;
-
-  const trackAccessSection = `
-    <p style="margin-top: 20px;">Your custom piano backing track for <strong>"${request.song_title}"</strong> is now complete and ready for you!</p>
-    ${trackListHtml}
-    <p style="margin-top: 20px;">You can view all your request details, including payment information, and access your track on your dedicated client page:</p>
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="${clientPortalLink}" 
-         style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-        View Request & Make Payment
-      </a>
-    </p>
-  `;
-
-  return {
-    subject: `Your "${request.song_title}" backing track is ready & Payment Information`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
-        <p>Hi ${firstName},</p>
-        <p>I hope this email finds you well!</p>
-        ${trackAccessSection}
-        <p style="margin-top: 20px;">I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
-        
-        ${costDisplayHtml}
-        <p style="margin-top: 20px;">
-          You can make your payment using one of the following methods:
-        </p>
-        <ul style="list-style: none; padding: 0; margin-top: 10px;">
-          <li style="margin-bottom: 10px;">
-            <strong>Buy Me a Coffee (Preferred):</strong> <a href="https://buymeacoffee.com/Danielebuatti" target="_blank" style="color: #007bff; text-decoration: none;">https://buymeacoffee.com/Danielebuatti</a>
-          </li>
-          <li>
-            <strong>Direct Bank Transfer:</strong><br>
-            BSB: 923100<br>
-            Account: 301110875
-          </li>
-        </ul>
-        <p style="margin-top: 20px;">
-          Please let me know if you have any questions or if there's anything else I can assist you with.
-        </p>
-        <p style="margin-top: 20px;">
-          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
-          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
-        </p>
         <p style="margin-top: 20px;">Warmly,</p>
       </div>
       ${EMAIL_SIGNATURE_HTML}
@@ -384,12 +268,14 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
   const firstName = customerEmail.split('@')[0];
   const siteUrl = window.location.origin;
   const shopLink = `${siteUrl}/shop`;
-  const feedbackLink = `${siteUrl}/?openFeedback=true`;
-  const productTrackListHtml = generateProductTrackListHtml(product.track_urls);
-
-  if (!product.track_urls || product.track_urls.length === 0) {
-    throw new Error(`Product ${product.title} (ID: ${product.id}) does not have any track_urls for delivery.`);
-  }
+  
+  const listItems = product.track_urls?.map(track => `
+    <li style="margin-bottom: 5px;">
+      <a href="${track.url}" style="color: #007bff; text-decoration: none; font-weight: bold;">
+        ${track.caption || 'Download Track'}
+      </a>
+    </li>
+  `).join('') || '';
 
   return {
     subject: `Your Purchase: "${product.title}" is Ready for Download!`,
@@ -398,10 +284,13 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
         <p>Hi ${firstName},</p>
         <p>Thank you for your recent purchase from Piano Backings by Daniele!</p>
         <p>Your digital product, <strong>"${product.title}"</strong>, is now ready for download.</p>
-        ${productTrackListHtml}
-        <p style="margin-top: 20px;">
-          ${product.description}
-        </p>
+        
+        <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #F538BC; border-radius: 4px;">
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            ${listItems}
+          </ul>
+        </div>
+
         <p style="margin-top: 20px;">
           We hope you enjoy your new track! Feel free to browse our other offerings:
         </p>
@@ -410,10 +299,6 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
              style="background-color: #1C0357; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
             Visit Our Shop
           </a>
-        </p>
-        <p style="margin-top: 20px;">
-          I'm always looking to improve! If you have a moment, I'd love to hear about your experience using the new app. 
-          You can share your feedback or report any issues by clicking <a href="${feedbackLink}" style="color: #007bff; text-decoration: none;">here</a>.
         </p>
         <p style="margin-top: 20px;">Warmly,</p>
       </div>

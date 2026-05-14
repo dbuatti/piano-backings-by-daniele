@@ -57,7 +57,7 @@ const EmailGenerator = () => {
   const [recipientEmails, setRecipientEmails] = useState('');
   const [lastAutoPopulatedEmail, setLastAutoPopulatedEmail] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom'>('completion-payment');
+  const [templateType, setTemplateType] = useState<'completion' | 'payment-reminder' | 'completion-payment' | 'product-delivery' | 'custom'>('completion');
   
   const [allRequests, setAllRequests] = useState<BackingRequest[]>([]);
   const [loadingAllRequests, setLoadingAllRequests] = useState(true);
@@ -292,9 +292,9 @@ const EmailGenerator = () => {
               <SelectValue placeholder="Select an email template" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="completion">Completion Email (for Requests)</SelectItem>
-              <SelectItem value="payment-reminder">Payment Reminder (for Requests)</SelectItem>
-              <SelectItem value="completion-payment">Completion & Payment Reminder (for Requests)</SelectItem>
+              <SelectItem value="completion">Completion Email (Standard / Already Paid)</SelectItem>
+              <SelectItem value="completion-payment">Completion & Payment Reminder (For Adjustments)</SelectItem>
+              <SelectItem value="payment-reminder">Payment Reminder Only</SelectItem>
               <SelectItem value="product-delivery">Product Delivery Email (for Shop Products)</SelectItem>
               <SelectItem value="custom">Custom Email</SelectItem>
             </SelectContent>
@@ -493,7 +493,7 @@ const EmailGenerator = () => {
         </div>
         
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center">
                 <Eye className="mr-2 h-5 w-5" />
