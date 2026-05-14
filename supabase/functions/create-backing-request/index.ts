@@ -243,8 +243,11 @@ Deno.serve(async (req) => {
         if (formData.trackType === 'note-bash') subFolder = '00. NOTE BASH';
         if (formData.trackType === 'quick' || formData.trackType === 'one-take') subFolder = '00. ROUGH CUTS';
 
+        const datePrefix = new Date().toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
         const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
-        const folderName = `${formData.songTitle} - ${formData.musicalOrArtist} (${firstName})`;
+        
+        // New Folder Naming Convention
+        const folderName = `${datePrefix} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}`;
         const fullPath = `${dropboxParentFolder}/${subFolder}/${folderName}`;
 
         // Create Folder
@@ -264,7 +267,7 @@ Deno.serve(async (req) => {
 
           // Copy Logic Template
           const logicFileName = `${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}.logicx`;
-          const copyResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
+          await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -273,7 +276,77 @@ Deno.serve(async (req) => {
               autorename: true
             })
           });
-          templateCopySuccess = copyResponse.ok;
+
+          // Copy Sheet Music (PDFs) to Dropbox
+          if (formData.sheetMusicUrls && formData.sheetMusicUrls.length > 0) {
+            for (const file of formData.sheetMusicUrls) {
+              try {
+                const fileResponse = await fetch(file.url);
+                const fileBlob = await fileResponse.blob();
+                const fileBuffer = await fileBlob.arrayBuffer();
+                
+                await fetch('https://content.dropboxapi.com/2/files/upload', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/octet-stream',
+                    'Dropbox-API-Arg': JSON.stringify({
+                      path: `${actualPath}/${file.caption}`,
+                      mode: 'add',
+                      autorename: true,
+                      mute: false
+                    })
+                  },
+                  body: fileBuffer
+                });
+              } catch (copyErr) {
+                console.error("[create-backing-request] Error copying sheet music to Dropbox:", copyErr.message);
+              }
+            }
+          }
+
+          // Create Order Summary TXT file
+          const summaryContent = `
+ORDER SUMMARY
+-------------
+Request ID: ${requestId}
+Date: ${new Date().toLocaleString()}
+
+CLIENT INFORMATION
+Name: ${formData.name || 'N/A'}
+Email: ${formData.email}
+
+SONG DETAILS
+Title: ${formData.songTitle}
+Musical/Artist: ${formData.musicalOrArtist}
+Tier: ${formData.trackType?.replace('-', ' ').toUpperCase()}
+Key: ${formData.songKey || 'N/A'}
+Transposition: ${formData.differentKey} ${formData.keyForTrack ? `(To: ${formData.keyForTrack})` : ''}
+Due Date: ${formData.deliveryDate || 'Standard'}
+
+REQUIREMENTS & ADD-ONS
+Services: ${formData.additionalServices?.join(', ') || 'None'}
+YouTube: ${formData.youtubeLink || 'None'}
+Additional Links: ${formData.additionalLinks || 'None'}
+
+SPECIAL REQUESTS / NOTES:
+${formData.specialRequests || 'No special requests.'}
+          `.trim();
+
+          await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/octet-stream',
+              'Dropbox-API-Arg': JSON.stringify({
+                path: `${actualPath}/Order Summary.txt`,
+                mode: 'add',
+                autorename: true,
+                mute: false
+              })
+            },
+            body: new TextEncoder().encode(summaryContent)
+          });
         }
       } catch (dbErr) {
         console.error("[create-backing-request] Dropbox error:", dbErr.message);
@@ -285,7 +358,6 @@ Deno.serve(async (req) => {
         message: 'Success', 
         requestId,
         dropboxFolderId,
-        templateCopySuccess,
         guestAccessToken: userId ? null : guestAccessToken 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
