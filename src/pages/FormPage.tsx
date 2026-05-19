@@ -50,7 +50,7 @@ const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
   voiceMemoLink: '',
   sheetMusicFiles: [],
   voiceMemoFiles: [],
-  specialRequests: '', // Added this field
+  specialRequests: '',
   ...initialData
 });
 
@@ -78,7 +78,7 @@ const FormPage = () => {
     trackType: 'audition-ready',
     deliveryDate: '',
     additionalServices: [] as string[],
-    specialRequests: '', // This will now be "General Order Notes"
+    specialRequests: '',
   });
 
   const [consentChecked, setConsentChecked] = useState(false);
@@ -89,11 +89,30 @@ const FormPage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUser(session.user);
+        
+        // Try to get name from metadata first
+        let detectedName = session.user.user_metadata?.full_name || 
+                          session.user.user_metadata?.name || 
+                          '';
+        
+        // If metadata is empty, try fetching from profiles table
+        if (!detectedName) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            detectedName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+          }
+        }
+
         setGlobalData(prev => ({
           ...prev,
           email: session.user.email || '',
           confirmEmail: session.user.email || '',
-          name: session.user.user_metadata?.full_name || ''
+          name: detectedName
         }));
         
         const { data: credits } = await supabase.from('user_credits').select('*').eq('user_id', session.user.id);
@@ -270,7 +289,6 @@ const FormPage = () => {
         
         const { sheetMusicFiles, voiceMemoFiles, voiceMemoLink, specialRequests: songSpecificNotes, ...songDataToSubmit } = song;
         
-        // Combine song-specific notes with global order notes
         const combinedNotes = [
           songSpecificNotes.trim(),
           globalData.specialRequests.trim()
@@ -284,7 +302,7 @@ const FormPage = () => {
             sheetMusicUrls,
             voiceMemoUrls,
             backingType: [globalData.trackType],
-            specialRequests: combinedNotes, // Use the combined notes
+            specialRequests: combinedNotes,
             is_paid: useCredit,
             internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
           }

@@ -34,7 +34,7 @@ const ContactDetailsForm: React.FC<ContactDetailsFormProps> = ({
             name="name" 
             value={name} 
             onChange={onChange} 
-            disabled={isUserLoggedIn} 
+            placeholder="Your Name"
             required 
           />
         </div>
