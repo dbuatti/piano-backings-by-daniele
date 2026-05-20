@@ -104,7 +104,7 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
       
-      <div className="max-w-md mx-auto py-12 px-4 sm:px-6">
+      <div className="max-w-md mx-auto pt-28 pb-12 px-4 sm:px-6">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Login</h1>
           <p className="text-xl font-light text-[#1C0357]/90">Access your account</p>

@@ -291,7 +291,7 @@ const EditRequest: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
       
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto pt-28 pb-8 px-4 sm:px-6">
         <div className="mb-6 flex items-center justify-between">
           <Button 
             onClick={() => navigate(`/admin/request/${id}`)} 

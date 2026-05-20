@@ -196,7 +196,7 @@ const UserDashboard = () => {
       />
       <Header />
       
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 pt-28 pb-8">
         {/* Header Section */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

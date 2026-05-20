@@ -292,7 +292,7 @@ const ClientTrackView = () => {
       />
       <Header />
       
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto pt-28 pb-8 px-4 sm:px-6">
         <div className="mb-6">
           <Button 
             onClick={() => navigate('/user-dashboard')} 

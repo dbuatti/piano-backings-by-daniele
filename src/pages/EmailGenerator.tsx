@@ -276,7 +276,7 @@ const EmailGenerator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
       <Header />
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto pt-28 pb-8 px-4 sm:px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
           <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests and product deliveries</p>

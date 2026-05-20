@@ -26,6 +26,7 @@ import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
 import ReportIssueButton from './components/ReportIssueButton';
+import ImpersonationBanner from './components/ImpersonationBanner';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BackToTop from './components/BackToTop';
@@ -36,6 +37,7 @@ function App() {
     <Router>
       <ScrollToTop />
       <div className="flex flex-col min-h-screen">
+        <ImpersonationBanner />
         <HolidayModeBanner />
         <UnreadIssueReportsNotice />
         <div className="flex-grow">
