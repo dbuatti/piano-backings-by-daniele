@@ -76,7 +76,7 @@ const keyOptions = [
   { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
 ];
 
-const EditRequest = () => {
+const RequestDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -662,4 +662,4 @@ const EditRequest = () => {
   );
 };
 
-export default EditRequest;
+export default RequestDetails;
