@@ -15,6 +15,7 @@ import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import ProductManager from '@/components/admin/ProductManager';
 import { UsersTabContent } from '@/components/admin/UsersTabContent';
+import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
 
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
 import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
@@ -33,7 +34,8 @@ import {
   RefreshCcw,
   Loader2,
   CreditCard,
-  Users
+  Users,
+  ShoppingBag
 } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -191,7 +193,7 @@ const AdminDashboard = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white p-1 rounded-2xl shadow-sm border h-auto md:h-14 gap-1">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 bg-white p-1 rounded-2xl shadow-sm border h-auto md:h-14 gap-1">
             <TabsTrigger value="requests" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <LayoutDashboard className="mr-2 h-4 w-4" /> Requests
             </TabsTrigger>
@@ -200,6 +202,9 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <Users className="mr-2 h-4 w-4" /> Users
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
+              <ShoppingBag className="mr-2 h-4 w-4" /> Orders
             </TabsTrigger>
             <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative py-2 md:py-0">
               <MessageSquare className="mr-2 h-4 w-4" /> Feedback
@@ -270,6 +275,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="users" className="mt-6">
             <UsersTabContent />
+          </TabsContent>
+
+          <TabsContent value="orders" className="mt-6">
+            <OrdersTabContent />
           </TabsContent>
 
           <TabsContent value="feedback" className="mt-6">

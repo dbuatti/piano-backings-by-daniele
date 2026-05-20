@@ -1,0 +1,1 @@
+SELECT id, title, description, price, currency, product_type, credit_amount, is_active FROM public.products;
