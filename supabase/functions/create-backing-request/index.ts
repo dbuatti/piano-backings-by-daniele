@@ -105,6 +105,18 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError;
     const requestId = insertedRecords[0].id;
 
+    // Propagate name to all previous requests with the same email address
+    if (formData.name && formData.email) {
+      const { error: bulkNameError } = await supabaseAdmin
+        .from('backing_requests')
+        .update({ name: formData.name })
+        .eq('email', formData.email);
+      
+      if (bulkNameError) {
+        console.error("[create-backing-request] Error updating bulk names:", bulkNameError.message);
+      }
+    }
+
     // 2. Send "Order Received" Email to Client
     try {
       const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';

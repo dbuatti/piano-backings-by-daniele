@@ -211,6 +211,18 @@ const EditRequest: React.FC = () => {
 
       if (error) throw error;
 
+      // Propagate name changes to all other requests with the same email address
+      if (payload.name && payload.email) {
+        const { error: bulkNameError } = await supabase
+          .from('backing_requests')
+          .update({ name: payload.name })
+          .eq('email', payload.email);
+        
+        if (bulkNameError) {
+          console.error('Error updating bulk names:', bulkNameError);
+        }
+      }
+
       toast({
         title: "Request Updated",
         description: "Backing track request has been updated successfully.",
