@@ -98,15 +98,15 @@ const UserDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Fetch user's backing requests
+  // Fetch user's backing requests (both linked and guest requests matching email)
   const { data: requests, isLoading: isLoadingRequests } = useQuery<BackingRequest[], Error>({
-    queryKey: ['userRequests', user?.id],
+    queryKey: ['userRequests', user?.id, user?.email],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('backing_requests')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},email.eq.${user.email}`)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -116,9 +116,9 @@ const UserDashboard = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch user's orders
+  // Fetch user's orders (both linked and guest orders matching email)
   const { data: orders, isLoading: isLoadingOrders } = useQuery<Order[], Error>({
-    queryKey: ['userOrders', user?.id],
+    queryKey: ['userOrders', user?.id, user?.email],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -132,7 +132,7 @@ const UserDashboard = () => {
             master_download_link
           )
         `)
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},customer_email.eq.${user.email}`)
         .order('created_at', { ascending: false });
       
       if (error) throw error;

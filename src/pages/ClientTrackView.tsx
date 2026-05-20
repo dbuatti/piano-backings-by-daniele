@@ -155,18 +155,12 @@ const ClientTrackView = () => {
 
         if (isAdmin) {
           hasAccess = true;
-        } else if (requestData.user_id) {
-          if (loggedInUserId === requestData.user_id) {
-            hasAccess = true;
-          } else {
-            console.warn('Logged-in user is not the owner of this request.');
-          }
-        } else {
-          if (guestAccessToken && requestData.guest_access_token && guestAccessToken === requestData.guest_access_token) {
-            hasAccess = true;
-          } else {
-            console.warn('Guest access denied: Token mismatch or no token provided for unlinked request.');
-          }
+        } else if (loggedInUserId && requestData.user_id === loggedInUserId) {
+          hasAccess = true;
+        } else if (loggedInUserEmail && requestData.email?.toLowerCase() === loggedInUserEmail.toLowerCase()) {
+          hasAccess = true;
+        } else if (guestAccessToken && requestData.guest_access_token === guestAccessToken) {
+          hasAccess = true;
         }
 
         if (hasAccess) {
