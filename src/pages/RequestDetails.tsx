@@ -36,7 +36,12 @@ import {
   Mic,
   Youtube,
   Zap,
-  StickyNote
+  StickyNote,
+  Trash2,
+  UploadCloud,
+  Play,
+  Pause,
+  FileAudio
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
@@ -51,8 +56,27 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { cn } from '@/lib/utils';
 import { useAdmin } from '@/hooks/useAdmin';
 import { BackingRequest, TrackInfo } from '@/types/backing-request';
+import { uploadFileToSupabase } from '@/utils/supabase-client';
 
-const RequestDetails = () => {
+const keyOptions = [
+  { value: 'C Major (0)', label: 'C Major (0)' },
+  { value: 'G Major (1♯)', label: 'G Major (1♯)' },
+  { value: 'D Major (2♯)', label: 'D Major (2♯)' },
+  { value: 'A Major (3♯)', label: 'A Major (3♯)' },
+  { value: 'E Major (4♯)', label: 'E Major (4♯)' },
+  { value: 'B Major (5♯)', label: 'B Major (5♯)' },
+  { value: 'F♯ Major (6♯)', label: 'F♯ Major (6♯)' },
+  { value: 'C♯ Major (7♯)', label: 'C♯ Major (7♯)' },
+  { value: 'F Major (1♭)', label: 'F Major (1♭)' },
+  { value: 'B♭ Major (2♭)', label: 'B♭ Major (2♭)' },
+  { value: 'E♭ Major (3♭)', label: 'E♭ Major (3♭)' },
+  { value: 'A♭ Major (4♭)', label: 'A♭ Major (4♭)' },
+  { value: 'D♭ Major (5♭)', label: 'D♭ Major (5♭)' },
+  { value: 'G♭ Major (6♭)', label: 'G♭ Major (6♭)' },
+  { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
+];
+
+const EditRequest = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -65,6 +89,16 @@ const RequestDetails = () => {
   const [editableFinalPrice, setEditableFinalPrice] = useState<string>('');
   const [isUpdatingFinalPrice, setIsUpdatingFinalPrice] = useState(false);
 
+  // Track Upload & Management States
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCaption, setUploadCaption] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isEditingCaption, setIsEditingCaption] = useState<string | null>(null);
+  const [currentEditCaption, setCurrentEditCaption] = useState<string>('');
+  const [isUpdatingCaption, setIsUpdatingCaption] = useState(false);
+  const [playingTrackUrl, setPlayingTrackUrl] = useState<string | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+
   useEffect(() => {
     if (!isAuthLoading) {
       if (!isAdmin) {
@@ -75,6 +109,15 @@ const RequestDetails = () => {
       }
     }
   }, [isAdmin, isAuthLoading, navigate, id]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+      }
+    };
+  }, [audioElement]);
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -171,6 +214,118 @@ const RequestDetails = () => {
     toast({ title: "Copied!", description: "Request details copied to clipboard." });
   };
 
+  // Track Management Functions
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    setUploadFile(file);
+    if (file) {
+      setUploadCaption(file.name.replace(/\.[^/.]+$/, "")); // Default caption to filename without extension
+    }
+  };
+
+  const handleUploadTrack = async () => {
+    if (!request || !uploadFile) return;
+    setIsUploading(true);
+    try {
+      const folderPath = `tracks/${request.id}/`;
+      const { data: uploadData, error: uploadError } = await uploadFileToSupabase(uploadFile, folderPath);
+      if (uploadError) throw uploadError;
+
+      const relativePath = uploadData?.path;
+      if (!relativePath) throw new Error("Failed to get uploaded file path.");
+
+      const { data: { publicUrl } } = supabase.storage.from('tracks').getPublicUrl(relativePath);
+
+      const currentTrackUrls = request.track_urls || [];
+      const updatedTrackUrls = [...currentTrackUrls, { url: publicUrl, caption: uploadCaption || uploadFile.name }];
+
+      const { error: updateError } = await supabase
+        .from('backing_requests')
+        .update({ track_urls: updatedTrackUrls })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
+      setUploadFile(null);
+      setUploadCaption('');
+      toast({ title: "Track Uploaded Successfully" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveTrack = async (urlToRemove: string) => {
+    if (!request) return;
+    if (!confirm("Are you sure you want to delete this track?")) return;
+
+    try {
+      const currentTrackUrls = request.track_urls || [];
+      const updatedTrackUrls = currentTrackUrls.filter(track => track.url !== urlToRemove);
+
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ track_urls: updatedTrackUrls })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
+      toast({ title: "Track Deleted Successfully" });
+    } catch (error: any) {
+      toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleEditCaptionClick = (track: TrackInfo) => {
+    setIsEditingCaption(track.url);
+    setCurrentEditCaption(String(track.caption || ''));
+  };
+
+  const handleSaveCaption = async (trackUrl: string) => {
+    if (!request) return;
+    setIsUpdatingCaption(true);
+    try {
+      const currentTrackUrls = request.track_urls || [];
+      const updatedTrackUrls = currentTrackUrls.map(track => 
+        track.url === trackUrl ? { ...track, caption: currentEditCaption } : track
+      );
+
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ track_urls: updatedTrackUrls })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
+      setIsEditingCaption(null);
+      toast({ title: "Caption Updated Successfully" });
+    } catch (error: any) {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdatingCaption(false);
+    }
+  };
+
+  const handlePlayPause = (url: string) => {
+    if (playingTrackUrl === url) {
+      audioElement?.pause();
+      setPlayingTrackUrl(null);
+    } else {
+      if (audioElement) {
+        audioElement.pause();
+      }
+      const audio = new Audio(url);
+      audio.play();
+      setAudioElement(audio);
+      setPlayingTrackUrl(url);
+      audio.onended = () => setPlayingTrackUrl(null);
+    }
+  };
+
   if (isAuthLoading || loading || !request) return <div className="p-8 text-center">Loading...</div>;
 
   const costBreakdown = calculateRequestCost(request);
@@ -235,6 +390,130 @@ const RequestDetails = () => {
                 <div className="relative">
                   <Label className="text-sm mb-1 flex items-center"><DollarSign className="mr-1 h-4 w-4" /> Final Price (AUD)</Label>
                   <Input type="number" step="0.01" value={editableFinalPrice} onChange={(e) => setEditableFinalPrice(e.target.value)} onBlur={handleFinalPriceBlur} className="font-bold" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Completed Tracks & Uploads Section */}
+          <Card className="shadow-lg mb-6 border-2 border-[#1C0357]/20">
+            <CardHeader className="bg-[#1C0357]/5">
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <FileAudio className="mr-2 h-5 w-5 text-[#F538BC]" /> Completed Tracks & Uploads
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {/* Existing Tracks List */}
+              <div>
+                <h3 className="font-semibold text-sm mb-3 text-gray-700">Current Tracks:</h3>
+                {request.track_urls && request.track_urls.length > 0 ? (
+                  <ul className="space-y-3">
+                    {request.track_urls.map((track, index) => (
+                      <li key={track.url} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-xl bg-white shadow-sm gap-3">
+                        <div className="flex-1 flex items-center min-w-0 gap-3">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handlePlayPause(track.url)}
+                            className={cn(
+                              "h-10 w-10 rounded-full flex-shrink-0",
+                              playingTrackUrl === track.url ? "bg-red-50 text-red-600" : "bg-purple-50 text-[#1C0357]"
+                            )}
+                          >
+                            {playingTrackUrl === track.url ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
+                          </Button>
+                          
+                          {isEditingCaption === track.url ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <Input
+                                value={currentEditCaption}
+                                onChange={(e) => setCurrentEditCaption(e.target.value)}
+                                className="h-9"
+                                disabled={isUpdatingCaption}
+                              />
+                              <Button size="sm" onClick={() => handleSaveCaption(track.url)} disabled={isUpdatingCaption}>
+                                {isUpdatingCaption ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setIsEditingCaption(null)} disabled={isUpdatingCaption}>
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-[#1C0357] truncate">{track.caption || `Track ${index + 1}`}</p>
+                              <p className="text-xs text-gray-400 truncate">{track.url}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {isEditingCaption !== track.url && (
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                            <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)}>
+                              <Edit className="h-4 w-4 text-gray-500" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleRemoveTrack(track.url)} className="hover:bg-red-50">
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => downloadTrack(track.url, typeof track.caption === 'string' ? track.caption : 'track.mp3')}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No tracks uploaded yet for this request.</p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Upload New Track Form */}
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-4">
+                <h3 className="font-bold text-sm text-[#1C0357] flex items-center gap-2">
+                  <UploadCloud className="h-4 w-4 text-[#F538BC]" /> Upload New Track
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="track-file" className="text-xs font-bold text-gray-500 uppercase">Select Audio File</Label>
+                    <Input 
+                      id="track-file" 
+                      type="file" 
+                      accept="audio/*" 
+                      onChange={handleFileChange} 
+                      disabled={isUploading}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="track-caption" className="text-xs font-bold text-gray-500 uppercase">Track Caption / Label</Label>
+                    <Input 
+                      id="track-caption" 
+                      value={uploadCaption} 
+                      onChange={(e) => setUploadCaption(e.target.value)} 
+                      placeholder="e.g., Final Mix, Version 2, Melody Guide" 
+                      disabled={isUploading}
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleUploadTrack} 
+                    disabled={!uploadFile || isUploading}
+                    className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="mr-2 h-4 w-4" /> Upload Track
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -383,4 +662,4 @@ const RequestDetails = () => {
   );
 };
 
-export default RequestDetails;
+export default EditRequest;
