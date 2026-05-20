@@ -216,17 +216,18 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
 
   const handleRowClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    // Prevent navigation if clicking interactive elements
-    if (
-      target.closest('button') || 
-      target.closest('input') || 
-      target.closest('select') || 
-      target.closest('[role="combobox"]') ||
-      target.closest('a') ||
-      target.closest('[data-state]')
-    ) {
+    
+    // Check if the click is on an interactive element
+    const interactiveEl = target.closest('button, input, select, textarea, a, [role="menuitem"], [role="combobox"], [role="option"]');
+    if (interactiveEl) {
       return;
     }
+    
+    // Also check if we clicked the first cell (which contains the checkbox)
+    if (target.closest('td')?.cellIndex === 0) {
+      return;
+    }
+
     navigate(`/admin/request/${request.id}`);
   };
 
