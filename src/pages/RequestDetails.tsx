@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils';
 import { useAdmin } from '@/hooks/useAdmin';
 import { BackingRequest, TrackInfo } from '@/types/backing-request';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
+import FileInput from '@/components/FileInput';
 
 const keyOptions = [
   { value: 'C Major (0)', label: 'C Major (0)' },
@@ -93,6 +94,7 @@ const RequestDetails = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadCaption, setUploadCaption] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isEditingCaption, setIsEditingCaption] = useState<string | null>(null);
   const [currentEditCaption, setCurrentEditCaption] = useState<string>('');
   const [isUpdatingCaption, setIsUpdatingCaption] = useState(false);
@@ -214,21 +216,13 @@ const RequestDetails = () => {
     toast({ title: "Copied!", description: "Request details copied to clipboard." });
   };
 
-  // Track Management Functions
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    setUploadFile(file);
-    if (file) {
-      setUploadCaption(file.name.replace(/\.[^/.]+$/, "")); // Default caption to filename without extension
-    }
-  };
-
-  const handleUploadTrack = async () => {
-    if (!request || !uploadFile) return;
+  // Unified Track Upload Function
+  const uploadTrackFile = async (file: File, caption: string) => {
+    if (!request) return;
     setIsUploading(true);
     try {
       const folderPath = `tracks/${request.id}/`;
-      const { data: uploadData, error: uploadError } = await uploadFileToSupabase(uploadFile, folderPath);
+      const { data: uploadData, error: uploadError } = await uploadFileToSupabase(file, folderPath);
       if (uploadError) throw uploadError;
 
       const relativePath = uploadData?.path;
@@ -237,7 +231,7 @@ const RequestDetails = () => {
       const { data: { publicUrl } } = supabase.storage.from('tracks').getPublicUrl(relativePath);
 
       const currentTrackUrls = request.track_urls || [];
-      const updatedTrackUrls = [...currentTrackUrls, { url: publicUrl, caption: uploadCaption || uploadFile.name }];
+      const updatedTrackUrls = [...currentTrackUrls, { url: publicUrl, caption: caption || file.name }];
 
       const { error: updateError } = await supabase
         .from('backing_requests')
@@ -247,13 +241,47 @@ const RequestDetails = () => {
       if (updateError) throw updateError;
 
       setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
-      setUploadFile(null);
-      setUploadCaption('');
       toast({ title: "Track Uploaded Successfully" });
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleUploadTrack = async () => {
+    if (!uploadFile) return;
+    await uploadTrackFile(uploadFile, uploadCaption);
+    setUploadFile(null);
+    setUploadCaption('');
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('audio/')) {
+        const caption = file.name.replace(/\.[^/.]+$/, "");
+        await uploadTrackFile(file, caption);
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Only audio files (e.g., MP3) can be uploaded here.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -396,7 +424,23 @@ const RequestDetails = () => {
           </Card>
 
           {/* Completed Tracks & Uploads Section */}
-          <Card className="shadow-lg mb-6 border-2 border-[#1C0357]/20">
+          <Card 
+            className={cn(
+              "shadow-lg mb-6 border-2 transition-all duration-200 relative overflow-hidden",
+              isDragging ? "border-[#F538BC] bg-[#F538BC]/5" : "border-[#1C0357]/20"
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isDragging && (
+              <div className="absolute inset-0 bg-[#1C0357]/80 backdrop-blur-sm flex flex-col items-center justify-center text-white z-50 pointer-events-none">
+                <UploadCloud className="h-16 w-16 animate-bounce mb-4 text-[#F538BC]" />
+                <p className="text-2xl font-black">Drop to Upload Track</p>
+                <p className="text-sm text-white/70 mt-1">Instantly upload and link this audio file</p>
+              </div>
+            )}
+
             <CardHeader className="bg-[#1C0357]/5">
               <CardTitle className="text-2xl text-[#1C0357] flex items-center">
                 <FileAudio className="mr-2 h-5 w-5 text-[#F538BC]" /> Completed Tracks & Uploads
@@ -476,14 +520,13 @@ const RequestDetails = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="track-file" className="text-xs font-bold text-gray-500 uppercase">Select Audio File</Label>
-                    <Input 
-                      id="track-file" 
-                      type="file" 
-                      accept="audio/*" 
-                      onChange={handleFileChange} 
+                    <FileInput
+                      id="track-file-input"
+                      label="Select Audio File"
+                      icon={FileAudio}
+                      accept="audio/*"
+                      onChange={(files) => setUploadFile(files ? files[0] : null)}
                       disabled={isUploading}
-                      className="bg-white"
                     />
                   </div>
                   <div className="space-y-2">
@@ -494,7 +537,7 @@ const RequestDetails = () => {
                       onChange={(e) => setUploadCaption(e.target.value)} 
                       placeholder="e.g., Final Mix, Version 2, Melody Guide" 
                       disabled={isUploading}
-                      className="bg-white"
+                      className="bg-white h-11 rounded-xl"
                     />
                   </div>
                 </div>
