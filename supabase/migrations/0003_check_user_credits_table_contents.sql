@@ -1,0 +1,1 @@
+SELECT * FROM public.user_credits LIMIT 10;

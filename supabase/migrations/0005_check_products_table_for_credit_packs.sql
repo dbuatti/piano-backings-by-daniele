@@ -1,0 +1,1 @@
+SELECT id, title, product_type, credit_amount, track_type FROM public.products WHERE product_type = 'credit_pack' OR title ILIKE '%credit%' OR title ILIKE '%pack%';
