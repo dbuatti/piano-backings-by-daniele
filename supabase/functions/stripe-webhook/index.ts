@@ -51,25 +51,82 @@ Deno.serve(async (req) => {
       if (productId) {
         const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
         if (product) {
+          // Determine the user ID
+          let finalUserId = userId;
+          if (!finalUserId && customerEmail) {
+            const { data: users } = await supabaseAdmin.rpc('get_users_by_email', { p_email: customerEmail });
+            if (users && users.length > 0) {
+              finalUserId = users[0].id;
+            }
+          }
+
           await supabaseAdmin.from('orders').insert({
             product_id: productId,
             customer_email: customerEmail,
             amount: session.amount_total! / 100,
             currency: session.currency!.toUpperCase(),
             status: 'completed',
-            user_id: userId,
+            user_id: finalUserId,
             checkout_session_id: session.id,
           });
 
+          // If it's a credit pack, update user_credits!
+          if (product.product_type === 'credit_pack' && finalUserId) {
+            const creditType = product.track_type || 'audition-ready';
+            const creditAmount = product.credit_amount || 0;
+
+            // Check if user already has credits of this type
+            const { data: existingCredit } = await supabaseAdmin
+              .from('user_credits')
+              .select('*')
+              .eq('user_id', finalUserId)
+              .eq('credit_type', creditType)
+              .maybeSingle();
+
+            if (existingCredit) {
+              await supabaseAdmin
+                .from('user_credits')
+                .update({
+                  balance: existingCredit.balance + creditAmount,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existingCredit.id);
+            } else {
+              await supabaseAdmin
+                .from('user_credits')
+                .insert({
+                  user_id: finalUserId,
+                  credit_type: creditType,
+                  balance: creditAmount,
+                  updated_at: new Date().toISOString()
+                });
+            }
+          }
+
           // Send Product Delivery Email
           try {
+            const isCreditPack = product.product_type === 'credit_pack';
+            const emailSubject = isCreditPack
+              ? `Your Season Pack Credits are Ready!`
+              : `Your Purchase: "${product.title}" is Ready!`;
+            
+            const emailHtml = isCreditPack
+              ? `<p>Hi there,</p>
+                 <p>Thank you for purchasing the <strong>${product.title}</strong>!</p>
+                 <p>We have added <strong>${product.credit_amount} credits</strong> to your account.</p>
+                 <p>You can redeem them anytime on the request form by toggling "Use Credit".</p>
+                 <p>Enjoy your tracks!</p>`
+              : `<p>Hi there,</p>
+                 <p>Thank you for your purchase of <strong>${product.title}</strong>!</p>
+                 <p>You can download your tracks from your dashboard.</p>`;
+
             await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 to: customerEmail,
-                subject: `Your Purchase: "${product.title}" is Ready!`,
-                html: `<p>Hi there,</p><p>Thank you for your purchase of <strong>${product.title}</strong>!</p><p>You can download your tracks from your dashboard.</p>`,
+                subject: emailSubject,
+                html: emailHtml,
                 senderEmail: 'pianobackingsbydaniele@gmail.com'
               })
             });

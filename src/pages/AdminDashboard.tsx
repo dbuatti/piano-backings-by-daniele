@@ -14,23 +14,25 @@ import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import ProductManager from '@/components/admin/ProductManager';
+import { CreditsTabContent } from '@/components/admin/CreditsTabContent';
 
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
 import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
 import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog';
 import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs';
 
-import { 
-  LayoutDashboard, 
-  Settings, 
-  Wrench, 
-  ShoppingCart, 
-  PlusCircle, 
+import {
+  LayoutDashboard,
+  Settings,
+  Wrench,
+  ShoppingCart,
+  PlusCircle,
   RefreshCw,
   MessageSquare,
   Activity,
   RefreshCcw,
-  Loader2
+  Loader2,
+  CreditCard
 } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -187,14 +189,17 @@ const AdminDashboard = () => {
         </div>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-white p-1 rounded-2xl shadow-sm border h-14">
-            <TabsTrigger value="requests" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 bg-white p-1 rounded-2xl shadow-sm border h-auto md:h-14 gap-1">
+            <TabsTrigger value="requests" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <LayoutDashboard className="mr-2 h-4 w-4" /> Requests
             </TabsTrigger>
-            <TabsTrigger value="shop" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+            <TabsTrigger value="shop" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <ShoppingCart className="mr-2 h-4 w-4" /> Shop
             </TabsTrigger>
-            <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative">
+            <TabsTrigger value="credits" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
+              <CreditCard className="mr-2 h-4 w-4" /> Credits
+            </TabsTrigger>
+            <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative py-2 md:py-0">
               <MessageSquare className="mr-2 h-4 w-4" /> Feedback
               {unreadIssueReports > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
@@ -202,10 +207,10 @@ const AdminDashboard = () => {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="operations" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+            <TabsTrigger value="operations" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <Settings className="mr-2 h-4 w-4" /> Operations
             </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold">
+            <TabsTrigger value="system" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <Activity className="mr-2 h-4 w-4" /> System
             </TabsTrigger>
           </TabsList>
@@ -259,6 +264,10 @@ const AdminDashboard = () => {
               <TabsContent value="repurpose" className="mt-4"><RepurposeTrackToShop /></TabsContent>
             </Tabs>
             <ProductManager />
+          </TabsContent>
+
+          <TabsContent value="credits" className="mt-6">
+            <CreditsTabContent />
           </TabsContent>
 
           <TabsContent value="feedback" className="mt-6">

@@ -324,7 +324,7 @@ const FormPage = () => {
 
       if (useCredit && session) {
         setSubmissionStep('Applying credits...');
-        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('id', session.user.id).eq('credit_type', globalData.trackType);
+        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
         setIsSubmittedSuccessfully(true);
       } else if (priceBreakdown.total > 0) {
         setSubmissionStep('Redirecting to secure payment...');
