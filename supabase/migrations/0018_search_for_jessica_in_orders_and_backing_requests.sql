@@ -1,0 +1,1 @@
+SELECT id, customer_email, amount, status, created_at, metadata FROM public.orders WHERE customer_email ILIKE '%jessica%' OR metadata::text ILIKE '%jessica%';
