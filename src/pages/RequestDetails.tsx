@@ -41,7 +41,11 @@ import {
   UploadCloud,
   Play,
   Pause,
-  FileAudio
+  FileAudio,
+  Phone,
+  Layers,
+  Compass,
+  ExternalLink
 } from 'lucide-react';
 import { getSafeBackingTypes, downloadTrack } from '@/utils/helpers';
 import { Input } from '@/components/ui/input';
@@ -354,9 +358,17 @@ const RequestDetails = () => {
     }
   };
 
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied!", description: `${label} copied to clipboard.` });
+  };
+
   if (isAuthLoading || loading || !request) return <div className="p-8 text-center">Loading...</div>;
 
   const costBreakdown = calculateRequestCost(request);
+  const guestLink = request.guest_access_token 
+    ? `${window.location.origin}/track/${request.id}?token=${request.guest_access_token}`
+    : '';
 
   return (
     <TooltipProvider>
@@ -667,28 +679,176 @@ const RequestDetails = () => {
             </CardContent>
           </Card>
 
-          {/* Basic Info Card */}
+          {/* Request Information Card */}
           <Card className="shadow-lg mb-6">
             <CardHeader className="bg-[#D1AAF2]/20">
-              <CardTitle className="text-2xl text-[#1C0357]">Request Information</CardTitle>
+              <CardTitle className="text-2xl text-[#1C0357] flex items-center">
+                <Music className="mr-2 h-5 w-5" /> Request Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Client Details */}
                 <div className="space-y-4">
-                  <div><p className="text-sm text-gray-500">Client</p><p className="font-medium">{request.name || 'N/A'} ({request.email})</p></div>
-                  <div><p className="text-sm text-gray-500">Song</p><p className="font-medium">{request.song_title} by {request.musical_or_artist}</p></div>
-                  <div><p className="text-sm text-gray-500">Key</p><p className="font-medium">{request.song_key || 'N/A'}{request.different_key === 'Yes' ? ` -> ${request.key_for_track}` : ''}</p></div>
-                </div>
-                <div className="space-y-4">
-                  <div><p className="text-sm text-gray-500">Tier</p><Badge className="capitalize bg-[#1C0357]">{request.track_type?.replace('-', ' ')}</Badge></div>
-                  <div><p className="text-sm text-gray-500">Delivery Date</p><p className="font-medium">{request.delivery_date ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') : 'Not specified'}</p></div>
-                  <div>
-                    <p className="text-sm text-gray-500">Add-ons</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {request.additional_services && request.additional_services.length > 0 ? (
-                        request.additional_services.map((s, i) => <Badge key={i} variant="outline" className="capitalize">{s.replace('-', ' ')}</Badge>)
-                      ) : <span className="text-sm">None</span>}
+                  <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <User size={14} /> Client Details
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Full Name</p>
+                      <p className="font-semibold text-[#1C0357]">{request.name || 'N/A'}</p>
                     </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Email Address</p>
+                      <p className="font-semibold text-[#1C0357]">{request.email}</p>
+                    </div>
+                    {request.phone && (
+                      <div>
+                        <p className="text-xs text-gray-500">Phone Number</p>
+                        <p className="font-semibold text-[#1C0357]">{request.phone}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-gray-500">Linked User ID</p>
+                      <p className="font-mono text-xs text-gray-600">{request.user_id || 'Guest (Not Linked)'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Song Details */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Music size={14} /> Song Details
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Song Title</p>
+                      <p className="font-semibold text-[#1C0357]">{request.song_title}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Musical or Artist</p>
+                      <p className="font-semibold text-[#1C0357]">{request.musical_or_artist}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Key Signature</p>
+                      <p className="font-semibold text-[#1C0357]">{request.song_key || 'N/A'}</p>
+                    </div>
+                    {request.different_key === 'Yes' && (
+                      <div>
+                        <p className="text-xs text-gray-500">Requested Transposition Key</p>
+                        <Badge className="bg-[#F538BC] text-white font-bold mt-0.5">
+                          {request.key_for_track || 'N/A'}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Timeline & Tier */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar size={14} /> Timeline & Tier
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Pricing Tier</p>
+                      <Badge className="capitalize bg-[#1C0357] mt-0.5">{request.track_type?.replace('-', ' ')}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Track Purpose</p>
+                      <p className="font-semibold text-[#1C0357] capitalize">{request.track_purpose?.replace('-', ' ') || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Category</p>
+                      <p className="font-semibold text-[#1C0357]">{request.category || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Delivery Date</p>
+                      <p className="font-semibold text-[#1C0357]">
+                        {request.delivery_date ? format(new Date(request.delivery_date), 'MMMM dd, yyyy') : 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add-ons & Services */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap size={14} /> Add-ons & Services
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Additional Services</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {request.additional_services && request.additional_services.length > 0 ? (
+                          request.additional_services.map((s, i) => (
+                            <Badge key={i} variant="outline" className="capitalize border-purple-200 text-purple-700 bg-purple-50/50">
+                              {s.replace('-', ' ')}
+                            </Badge>
+                          ))
+                        ) : <span className="text-gray-500">None</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Special Requests / Instructions</p>
+                      <p className="text-gray-700 whitespace-pre-wrap text-xs mt-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        {request.special_requests || 'No special requests provided.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System & Payment Metadata */}
+          <Card className="shadow-lg mb-6 border border-gray-200">
+            <CardHeader className="bg-gray-50">
+              <CardTitle className="text-lg text-[#1C0357] flex items-center">
+                <Folder className="mr-2 h-5 w-5 text-gray-500" /> System & Payment Metadata
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-sm space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Dropbox Folder ID</p>
+                    <p className="font-mono text-xs text-gray-700 bg-gray-100 p-2 rounded mt-1 truncate">
+                      {request.dropbox_folder_id || 'Not Created'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Stripe Session ID</p>
+                    <p className="font-mono text-xs text-gray-700 bg-gray-100 p-2 rounded mt-1 truncate">
+                      {request.stripe_session_id || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Guest Access Token</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-mono text-xs text-gray-700 bg-gray-100 p-2 rounded truncate flex-1">
+                        {request.guest_access_token || 'N/A'}
+                      </p>
+                      {request.guest_access_token && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleCopyText(guestLink, "Guest Link")}
+                          className="h-8"
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1" /> Link
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Created At</p>
+                    <p className="font-semibold text-gray-700 mt-1">
+                      {request.created_at ? format(new Date(request.created_at), 'MMMM dd, yyyy HH:mm:ss') : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>

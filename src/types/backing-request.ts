@@ -44,4 +44,5 @@ export interface BackingRequest {
   user_id?: string | null;
   guest_access_token?: string | null;
   stripe_session_id?: string | null;
+  phone?: string | null;
 }
