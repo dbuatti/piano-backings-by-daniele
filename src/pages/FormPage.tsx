@@ -132,16 +132,20 @@ const FormPage = () => {
   }, [userCredits, globalData.trackType]);
 
   const priceBreakdown = useMemo(() => {
-    const mockRequest = { 
-      track_type: globalData.trackType, 
-      additional_services: globalData.additionalServices 
+    const mockRequest = {
+      track_type: globalData.trackType,
+      additional_services: globalData.additionalServices
     };
     const perSong = calculateRequestCost(mockRequest);
-    return { 
-      total: useCredit ? 0 : perSong.totalCost * songs.length,
-      perSong: perSong.totalCost
+    const creditsApplied = useCredit ? Math.min(currentTierCredits, songs.length) : 0;
+    const cashSongs = songs.length - creditsApplied;
+    return {
+      total: cashSongs * perSong.totalCost,
+      perSong: perSong.totalCost,
+      creditsApplied,
+      cashSongs
     };
-  }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit]);
+  }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit, currentTierCredits]);
 
   const handleGlobalInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -257,6 +261,7 @@ const FormPage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const authHeader = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {};
       const createdRequestIds: string[] = [];
+      const creditsApplied = useCredit ? Math.min(currentTierCredits, songs.length) : 0;
 
       for (let i = 0; i < songs.length; i++) {
         const song = songs[i];
@@ -294,6 +299,9 @@ const FormPage = () => {
           globalData.specialRequests.trim()
         ].filter(Boolean).join('\n\n--- GENERAL ORDER NOTES ---\n');
 
+        // Determine if this specific song is paid via credit
+        const isSongPaidViaCredit = useCredit && (i < creditsApplied);
+
         const submissionData = {
           formData: {
             ...globalData,
@@ -303,14 +311,14 @@ const FormPage = () => {
             voiceMemoUrls,
             backingType: [globalData.trackType],
             specialRequests: combinedNotes,
-            is_paid: useCredit,
-            internal_notes: useCredit ? "Paid via Season Pack Credit" : ""
+            is_paid: isSongPaidViaCredit,
+            internal_notes: isSongPaidViaCredit ? "Paid via Season Pack Credit" : ""
           }
         };
         
         const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...authHeader
           },
@@ -319,18 +327,32 @@ const FormPage = () => {
         
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Failed to create request");
-        if (result.requestId) createdRequestIds.push(result.requestId);
+        if (result.requestId) {
+          if (!isSongPaidViaCredit) {
+            createdRequestIds.push(result.requestId);
+          }
+        }
       }
 
-      if (useCredit && session) {
+      if (creditsApplied > 0 && session) {
         setSubmissionStep('Applying credits...');
-        await supabase.from('user_credits').update({ balance: currentTierCredits - songs.length }).eq('user_id', session.user.id).eq('credit_type', globalData.trackType);
-        setIsSubmittedSuccessfully(true);
-      } else if (priceBreakdown.total > 0) {
+        const { error: creditError } = await supabase
+          .from('user_credits')
+          .update({
+            balance: currentTierCredits - creditsApplied,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', session.user.id)
+          .eq('credit_type', globalData.trackType);
+        
+        if (creditError) throw creditError;
+      }
+
+      if (createdRequestIds.length > 0) {
         setSubmissionStep('Redirecting to secure payment...');
         const stripeResponse = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...authHeader
           },
@@ -338,7 +360,7 @@ const FormPage = () => {
             request_ids: createdRequestIds,
             amount: priceBreakdown.total,
             customer_email: globalData.email,
-            description: `Custom Backing Tracks: ${songs.map(s => s.songTitle).join(', ')}`
+            description: `Custom Backing Tracks: ${songs.filter((_, idx) => !useCredit || idx >= creditsApplied).map(s => s.songTitle).join(', ')}`
           }),
         });
         
@@ -350,10 +372,10 @@ const FormPage = () => {
       }
     } catch (error: any) {
       console.error("Submission error:", error);
-      toast({ 
-        title: "Submission Failed", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Submission Failed",
+        description: error.message,
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
@@ -544,7 +566,18 @@ const FormPage = () => {
                 <span className="text-7xl md:text-8xl font-black tracking-tighter">${priceBreakdown.total.toFixed(2)}</span>
                 <span className="text-lg font-bold opacity-40 uppercase tracking-widest">AUD</span>
               </div>
-              {useCredit && <p className="text-green-400 font-black text-lg mt-4 relative z-10">Season Pack Credit Applied!</p>}
+              {useCredit && priceBreakdown.creditsApplied > 0 && (
+                <div className="mt-4 relative z-10 space-y-1">
+                  <p className="text-green-400 font-black text-lg">
+                    Applied {priceBreakdown.creditsApplied} Season Pack {priceBreakdown.creditsApplied === 1 ? 'Credit' : 'Credits'}!
+                  </p>
+                  {priceBreakdown.cashSongs > 0 && (
+                    <p className="text-white/70 text-sm font-bold uppercase tracking-widest">
+                      ({priceBreakdown.cashSongs} remaining {priceBreakdown.cashSongs === 1 ? 'song' : 'songs'} to be paid at ${priceBreakdown.perSong.toFixed(2)} each)
+                    </p>
+                  )}
+                </div>
+              )}
               {!useCredit && songs.length > 1 && (
                 <p className="text-white/50 text-sm mt-6 font-bold uppercase tracking-widest relative z-10">
                   ({songs.length} songs @ ${priceBreakdown.perSong.toFixed(2)} each)

@@ -21,7 +21,9 @@ import {
   ShoppingBag,
   Package,
   Eye,
-  Download
+  Download,
+  Ticket,
+  Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateRequestCost } from '@/utils/pricing';
@@ -165,6 +167,23 @@ const UserDashboard = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch user's credits
+  const { data: credits, isLoading: isLoadingCredits } = useQuery<any[], Error>({
+    queryKey: ['userCredits', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -242,6 +261,93 @@ const UserDashboard = () => {
               </Link>
             </Button>
           </div>
+        </div>
+
+        {/* Credits Section */}
+        <div className="mb-10">
+          <h2 className="text-xl font-black text-[#1C0357] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <Ticket className="text-[#F538BC] h-5 w-5" /> Your Season Pack & Credits
+          </h2>
+          {isLoadingCredits ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse bg-gray-50 border-none h-28" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Audition Ready Credits */}
+              <Card className="bg-gradient-to-br from-[#1C0357] to-[#2D0B8C] text-white border-none shadow-lg relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-10 text-white">
+                  <Ticket size={100} />
+                </div>
+                <CardContent className="p-6 flex flex-col justify-between h-full min-h-[110px]">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-white/60">Audition Ready Credits</p>
+                    <p className="text-3xl font-black mt-1">
+                      {credits?.find(c => c.credit_type === 'audition-ready')?.balance || 0}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-white/40 font-medium mt-2">
+                    Used for 3 Audition Ready Tracks (Season Pack)
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Polished Track Credits */}
+              <Card className="bg-white border-2 border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-5 text-[#1C0357]">
+                  <Music size={100} />
+                </div>
+                <CardContent className="p-6 flex flex-col justify-between h-full min-h-[110px]">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Polished Track Credits</p>
+                    <p className="text-3xl font-black text-[#1C0357] mt-1">
+                      {credits?.find(c => c.credit_type === 'polished')?.balance || 0}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-2">
+                    Used for full-length polished tracks
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Note Bash Credits */}
+              <Card className="bg-white border-2 border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-5 text-[#1C0357]">
+                  <Music size={100} />
+                </div>
+                <CardContent className="p-6 flex flex-col justify-between h-full min-h-[110px]">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Note Bash Credits</p>
+                    <p className="text-3xl font-black text-[#1C0357] mt-1">
+                      {credits?.find(c => c.credit_type === 'note-bash')?.balance || 0}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-medium mt-2">
+                    Used for quick note-bashing tracks
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
+          {/* Call to action if they have no credits */}
+          {!isLoadingCredits && (!credits || credits.every(c => c.balance === 0)) && (
+            <div className="mt-4 bg-[#F538BC]/5 border border-[#F538BC]/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="text-[#F538BC] h-5 w-5 flex-shrink-0" />
+                <p className="text-sm text-[#1C0357] font-medium">
+                  Want to save on audition tracks? Purchase a <strong>Season Pack</strong> to get 3 Audition Ready tracks for a discounted price!
+                </p>
+              </div>
+              <Button asChild size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90 text-white font-bold rounded-xl flex-shrink-0">
+                <Link to="/shop">
+                  Buy Season Pack
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}

@@ -29,6 +29,27 @@ Deno.serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(), // Use fetch-based client for better Deno compatibility
     });
 
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!, 
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Handle optional authentication to get user ID
+    let userId = null;
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && authHeader !== 'Bearer undefined') {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (!userError && user) {
+          userId = user.id;
+          console.log("[create-stripe-checkout] Authenticated user ID:", userId);
+        }
+      } catch (authErr) {
+        console.error("[create-stripe-checkout] Auth error:", authErr.message);
+      }
+    }
+
     const body = await req.json();
     const { product_id, request_ids, amount, description, customer_email } = body;
 
@@ -36,7 +57,8 @@ Deno.serve(async (req) => {
       hasProductId: !!product_id, 
       hasRequestIds: !!request_ids, 
       amount, 
-      customer_email 
+      customer_email,
+      userId
     });
 
     let line_items = [];
@@ -44,10 +66,6 @@ Deno.serve(async (req) => {
 
     if (product_id) {
       console.log("[create-stripe-checkout] Handling Shop Product:", product_id);
-      const supabaseAdmin = createClient(
-        Deno.env.get('SUPABASE_URL')!, 
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
         .select('*')
@@ -98,6 +116,7 @@ Deno.serve(async (req) => {
       line_items,
       mode: 'payment',
       customer_email: customer_email || undefined,
+      client_reference_id: userId || undefined,
       success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/form-page`,
       metadata,
