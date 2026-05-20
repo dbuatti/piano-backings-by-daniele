@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
   openUploadPlatformsDialog,
   onDirectFileUpload,
 }) => {
+  const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [isDirectUploading, setIsDirectUploading] = useState(false);
   const [editingCost, setEditingCost] = useState(false);
@@ -213,11 +214,28 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     toast({ title: "Copied!", description: "Request details copied to clipboard." });
   };
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // Prevent navigation if clicking interactive elements
+    if (
+      target.closest('button') || 
+      target.closest('input') || 
+      target.closest('select') || 
+      target.closest('[role="combobox"]') ||
+      target.closest('a') ||
+      target.closest('[data-state]')
+    ) {
+      return;
+    }
+    navigate(`/admin/request/${request.id}`);
+  };
+
   return (
     <TableRow 
       key={request.id} 
+      onClick={handleRowClick}
       className={cn(
-        `hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
+        `cursor-pointer hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
         isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : "",
         isDirectUploading && "bg-green-50/50 animate-pulse"
       )}
