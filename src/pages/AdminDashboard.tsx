@@ -14,7 +14,7 @@ import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import ProductManager from '@/components/admin/ProductManager';
-import { CreditsTabContent } from '@/components/admin/CreditsTabContent';
+import { UsersTabContent } from '@/components/admin/UsersTabContent';
 
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
 import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
@@ -32,7 +32,8 @@ import {
   Activity,
   RefreshCcw,
   Loader2,
-  CreditCard
+  CreditCard,
+  Users
 } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -50,7 +51,8 @@ const AdminDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
 
-  const activeTab = searchParams.get('tab') || 'requests';
+  const rawTab = searchParams.get('tab') || 'requests';
+  const activeTab = rawTab === 'credits' ? 'users' : rawTab;
   const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
 
   const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
@@ -196,8 +198,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="shop" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
               <ShoppingCart className="mr-2 h-4 w-4" /> Shop
             </TabsTrigger>
-            <TabsTrigger value="credits" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <CreditCard className="mr-2 h-4 w-4" /> Credits
+            <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
+              <Users className="mr-2 h-4 w-4" /> Users
             </TabsTrigger>
             <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative py-2 md:py-0">
               <MessageSquare className="mr-2 h-4 w-4" /> Feedback
@@ -266,8 +268,8 @@ const AdminDashboard = () => {
             <ProductManager />
           </TabsContent>
 
-          <TabsContent value="credits" className="mt-6">
-            <CreditsTabContent />
+          <TabsContent value="users" className="mt-6">
+            <UsersTabContent />
           </TabsContent>
 
           <TabsContent value="feedback" className="mt-6">

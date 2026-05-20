@@ -28,6 +28,7 @@ import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import Seo from '@/components/Seo';
 import { downloadTrack } from '@/utils/helpers';
+import { getImpersonatedUser } from '@/utils/impersonation';
 
 interface TrackInfo {
   url: string;
@@ -75,6 +76,17 @@ const UserDashboard = () => {
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
+      const impersonated = getImpersonatedUser();
+      if (impersonated) {
+        setUser({
+          id: impersonated.id,
+          email: impersonated.email,
+          user_metadata: { full_name: impersonated.name }
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/login');
@@ -87,6 +99,17 @@ const UserDashboard = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const impersonated = getImpersonatedUser();
+      if (impersonated) {
+        setUser({
+          id: impersonated.id,
+          email: impersonated.email,
+          user_metadata: { full_name: impersonated.name }
+        });
+        setLoading(false);
+        return;
+      }
+
       if (!session) {
         navigate('/login');
       } else {
