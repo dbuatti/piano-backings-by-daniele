@@ -327,7 +327,29 @@ const ProductManager: React.FC = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setProductForm(prev => ({ ...prev, [name]: value }));
+    setProductForm(prev => {
+      const updated = { ...prev, [name]: value };
+      
+      // Auto-suggest price based on tier if price is empty or matches a known tier price
+      const currentPrice = prev.price;
+      const isPriceDefaultOrEmpty = currentPrice === '' || ['3.99', '4.99', '6.99', '12.99', '14.99', '29.99', '75.00'].includes(currentPrice);
+      
+      if (isPriceDefaultOrEmpty && updated.product_type === 'track') {
+        if (updated.track_type === 'quick' || updated.category === 'note-bash') {
+          updated.price = '3.99';
+        } else if (updated.track_type === 'one-take') {
+          updated.price = '4.99';
+        } else if (updated.category === 'full-song') {
+          updated.price = '12.99';
+        } else if (updated.category === 'audition-cut') {
+          updated.price = '6.99';
+        }
+      } else if (isPriceDefaultOrEmpty && updated.product_type === 'credit_pack') {
+        updated.price = '75.00';
+      }
+      
+      return updated;
+    });
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 

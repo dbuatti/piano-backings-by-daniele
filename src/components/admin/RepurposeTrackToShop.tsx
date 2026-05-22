@@ -306,6 +306,22 @@ const RepurposeTrackToShop: React.FC = () => {
         autoArtist = firstRequest.musical_or_artist;
       }
     }
+
+    // Calculate default price based on the new tier framework
+    let defaultPrice = '6.99'; // Default to Audition Cut
+    if (isBundle) {
+      defaultPrice = '14.99';
+    } else {
+      if (autoTrackType === 'quick' || autoCategory === 'note-bash') {
+        defaultPrice = '3.99';
+      } else if (autoTrackType === 'one-take') {
+        defaultPrice = '4.99';
+      } else if (autoCategory === 'full-song') {
+        defaultPrice = '12.99';
+      } else if (autoCategory === 'audition-cut') {
+        defaultPrice = '6.99';
+      }
+    }
     
     const descriptionSource = isBundle ? firstRequest : firstRequest;
     const generatedDescription = generateProductDescriptionFromRequest({ ...descriptionSource, track_purpose: descriptionSource.track_purpose || '' });
@@ -314,7 +330,7 @@ const RepurposeTrackToShop: React.FC = () => {
       ...prev,
       title: autoTitle,
       description: generatedDescription,
-      price: isBundle ? '50.00' : '25.00',
+      price: defaultPrice,
       track_urls: aggregatedTrackUrls,
       artist_name: autoArtist,
       category: autoCategory,
@@ -370,7 +386,27 @@ const RepurposeTrackToShop: React.FC = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setProductForm(prev => ({ ...prev, [name]: value }));
+    setProductForm(prev => {
+      const updated = { ...prev, [name]: value };
+      
+      // Auto-suggest price based on tier if price is empty or matches a known tier price
+      const currentPrice = prev.price;
+      const isPriceDefaultOrEmpty = currentPrice === '' || ['3.99', '4.99', '6.99', '12.99', '14.99', '25.00', '50.00'].includes(currentPrice);
+      
+      if (isPriceDefaultOrEmpty) {
+        if (updated.track_type === 'quick' || updated.category === 'note-bash') {
+          updated.price = '3.99';
+        } else if (updated.track_type === 'one-take') {
+          updated.price = '4.99';
+        } else if (updated.category === 'full-song') {
+          updated.price = '12.99';
+        } else if (updated.category === 'audition-cut') {
+          updated.price = '6.99';
+        }
+      }
+      
+      return updated;
+    });
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
