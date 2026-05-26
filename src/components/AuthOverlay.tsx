@@ -119,7 +119,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
             <Auth
               supabaseClient={supabase}
               appearance={{ theme: ThemeSupa }}
-              providers={[]}
+              providers={['google']}
               redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`}
               magicLink={true}
               localization={{
