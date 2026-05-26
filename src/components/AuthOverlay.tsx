@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ShieldCheck, History, ClipboardList, Mail, ArrowLeft } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ShieldCheck, History, ClipboardList, Sparkles, X } from 'lucide-react';
 
 interface AuthOverlayProps {
   isOpen: boolean;
@@ -14,162 +14,160 @@ interface AuthOverlayProps {
 }
 
 const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath }) => {
-  const [showEmailAuth, setShowEmailAuth] = useState(false);
-  
-  const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}${redirectPath || '/user-dashboard'}`,
-      },
-    });
-  };
-
   const handleContinueAnonymously = () => {
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 rounded-[32px] bg-white shadow-2xl border-none overflow-hidden">
-        {/* Consistent Header structure to prevent focus loops during state swaps */}
-        <DialogHeader className={showEmailAuth ? "p-8 pb-4 text-center" : "sr-only"}>
-          <DialogTitle className="text-3xl font-black text-[#1C0357] tracking-tight">
-            {showEmailAuth ? "Sign In" : "Authentication Options"}
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 font-medium text-sm mt-1">
-            {showEmailAuth ? "Enter your details to access your account." : "Choose how you want to sign in or continue."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl p-0 rounded-[32px] bg-white shadow-2xl border-none overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 min-h-[550px]">
+          
+          {/* Left Column: Value Proposition Sidebar (Hidden on mobile) */}
+          <div className="hidden md:flex md:col-span-5 bg-[#1C0357] text-white p-8 flex-col justify-between relative overflow-hidden">
+            {/* Decorative background pattern */}
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff33 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
+            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#F538BC]/10 blur-3xl rounded-full"></div>
+            
+            <div className="relative z-10 space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold border border-white/10">
+                <Sparkles size={12} className="text-[#F1E14F]" />
+                <span>Premium Accompaniment</span>
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black tracking-tight leading-tight">
+                  Track Your <br />
+                  <span className="text-[#F538BC]">Order Securely</span>
+                </h2>
+                <p className="text-sm text-purple-200 font-medium">
+                  Create an account in seconds to unlock full access to your custom tracks.
+                </p>
+              </div>
 
-        {!showEmailAuth ? (
-          <div className="flex flex-col items-center">
-            <div className="w-full bg-[#1C0357] text-white p-8 pb-16 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff33 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
-              <div className="relative z-10 flex flex-col items-center space-y-6">
-                <button
-                  onClick={handleGoogleSignIn}
-                  className="w-full max-w-xs bg-white text-[#1C0357] py-3.5 px-6 rounded-2xl flex items-center justify-center space-x-3 font-black shadow-lg hover:bg-gray-50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-                >
-                  <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google icon" className="w-5 h-5" />
-                  <span>Sign In with Google</span>
-                </button>
-                <h2 className="text-3xl font-black tracking-tight text-center">Track Your Order Securely</h2>
+              <div className="space-y-6 pt-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-[#F538BC]">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Real-time Status</h3>
+                    <p className="text-xs text-purple-200/80 font-medium">Monitor your track's progress from pending to complete.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-[#F538BC]">
+                    <History size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">My Tracks Library</h3>
+                    <p className="text-xs text-purple-200/80 font-medium">Access and download all past and current orders anytime.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-[#F538BC]">
+                    <ClipboardList size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Pre-fill Forms</h3>
+                    <p className="text-xs text-purple-200/80 font-medium">Save your details to speed up future requests.</p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="w-full p-8 pt-12 bg-white -mt-8 relative z-20 rounded-t-[32px]">
-              <p className="text-gray-600 text-center font-medium mb-8">
-                Don't lose track of your request! By signing in or creating an account, you can:
-              </p>
+            <div className="relative z-10 text-xs text-purple-300/60 font-medium">
+              © {new Date().getFullYear()} Piano Backings by Daniele
+            </div>
+          </div>
 
-              <div className="space-y-6 mb-8">
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-[#D1AAF2]/20 rounded-xl flex items-center justify-center">
-                    <ShieldCheck className="text-[#1C0357]" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-base text-[#1C0357]">View Status</h3>
-                    <p className="text-gray-500 text-sm font-medium">Always know if your request went through and its progress.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-[#D1AAF2]/20 rounded-xl flex items-center justify-center">
-                    <History className="text-[#1C0357]" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-base text-[#1C0357]">Manage Orders</h3>
-                    <p className="text-gray-500 text-sm font-medium">View and download all past and current orders in your 'My Tracks'.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-[#D1AAF2]/20 rounded-xl flex items-center justify-center">
-                    <ClipboardList className="text-[#1C0357]" size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-base text-[#1C0357]">Pre-fill Forms</h3>
-                    <p className="text-gray-500 text-sm font-medium">Save your name and email for future quick requests.</p>
-                  </div>
-                </div>
+          {/* Right Column: Unified Authentication Form */}
+          <div className="col-span-1 md:col-span-7 p-8 md:p-12 flex flex-col justify-between relative bg-white">
+            {/* Close button for mobile */}
+            <button 
+              onClick={onClose}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="space-y-6 my-auto">
+              <div className="space-y-1.5">
+                <h3 className="text-2xl md:text-3xl font-black text-[#1C0357] tracking-tight">
+                  Sign In or Sign Up
+                </h3>
+                <p className="text-sm text-gray-500 font-medium">
+                  Use Google for instant access, or enter your email details below.
+                </p>
               </div>
 
-              <button
-                onClick={() => setShowEmailAuth(true)}
-                className="w-full bg-[#1C0357] text-white py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 font-black shadow-lg hover:bg-[#2a067a] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 mb-4"
-              >
-                <Mail className="w-5 h-5" />
-                <span>Sign In with Email</span>
-              </button>
+              <div className="auth-container">
+                <Auth
+                  supabaseClient={supabase}
+                  appearance={{ 
+                    theme: ThemeSupa,
+                    variables: {
+                      default: {
+                        colors: {
+                          brand: '#1C0357',
+                          brandAccent: '#F538BC',
+                          brandButtonText: 'white',
+                          defaultButtonBackground: 'white',
+                          defaultButtonBackgroundHover: '#f9fafb',
+                          defaultButtonBorder: '#e5e7eb',
+                          inputBackground: 'white',
+                          inputBorder: '#e5e7eb',
+                          inputBorderFocus: '#1C0357',
+                          inputBorderHover: '#D1AAF2',
+                        },
+                        radii: {
+                          borderRadiusButton: '16px',
+                          buttonBorderRadius: '16px',
+                          inputBorderRadius: '16px',
+                        }
+                      }
+                    }
+                  }}
+                  providers={['google']}
+                  redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`}
+                  magicLink={true}
+                  localization={{
+                    variables: {
+                      sign_in: {
+                        email_label: 'Email Address',
+                        password_label: 'Password',
+                        email_input_placeholder: 'Your email address',
+                        password_input_placeholder: 'Your password',
+                        button_label: 'Sign In',
+                        social_provider_text: 'Sign In with {{provider}}',
+                        link_text: 'Already have an account? Sign In',
+                      },
+                      sign_up: {
+                        email_label: 'Email Address',
+                        password_label: 'Create a Password',
+                        email_input_placeholder: 'Your email address',
+                        password_input_placeholder: 'Your password',
+                        button_label: 'Sign Up',
+                        social_provider_text: 'Sign Up with {{provider}}',
+                        link_text: 'Don\'t have an account? Sign Up',
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </div>
 
+            <div className="pt-6 text-center border-t border-gray-100 mt-6">
               <button
                 onClick={handleContinueAnonymously}
-                className="w-full text-gray-400 text-sm font-bold hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 text-xs font-bold tracking-wider uppercase transition-colors"
               >
                 Continue Anonymously
               </button>
             </div>
           </div>
-        ) : (
-          <div className="p-8 pt-0">
-            <button 
-              onClick={() => setShowEmailAuth(false)} 
-              className="mb-6 text-gray-500 hover:text-[#1C0357] flex items-center space-x-2 font-bold text-sm transition-colors"
-            >
-              <ArrowLeft size={16} />
-              <span>Back to options</span>
-            </button>
-            <Auth
-              supabaseClient={supabase}
-              appearance={{ 
-                theme: ThemeSupa,
-                variables: {
-                  default: {
-                    colors: {
-                      brand: '#1C0357',
-                      brandAccent: '#F538BC',
-                      brandButtonText: 'white',
-                      defaultButtonBackground: 'white',
-                      defaultButtonBackgroundHover: '#f9fafb',
-                      defaultButtonBorder: '#e5e7eb',
-                      inputBackground: 'white',
-                      inputBorder: '#e5e7eb',
-                      inputBorderFocus: '#1C0357',
-                      inputBorderHover: '#D1AAF2',
-                    },
-                    radii: {
-                      borderRadiusButton: '16px',
-                      buttonBorderRadius: '16px',
-                      inputBorderRadius: '16px',
-                    }
-                  }
-                }
-              }}
-              providers={[]}
-              redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`}
-              magicLink={true}
-              localization={{
-                variables: {
-                  sign_in: {
-                    email_label: 'Email Address',
-                    password_label: 'Password',
-                    email_input_placeholder: 'Your email address',
-                    password_input_placeholder: 'Your password',
-                    button_label: 'Sign In',
-                    link_text: 'Already have an account? Sign In',
-                  },
-                  sign_up: {
-                    email_label: 'Email Address',
-                    password_label: 'Create a Password',
-                    email_input_placeholder: 'Your email address',
-                    password_input_placeholder: 'Your password',
-                    button_label: 'Sign Up',
-                    link_text: 'Don\'t have an account? Sign Up',
-                  },
-                },
-              }}
-            />
-          </div>
-        )}
+
+        </div>
       </DialogContent>
     </Dialog>
   );
