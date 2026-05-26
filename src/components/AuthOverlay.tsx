@@ -6,7 +6,6 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ShieldCheck, History, ClipboardList, Mail, ArrowLeft } from 'lucide-react';
-import VisuallyHidden from '@/components/VisuallyHidden';
 
 interface AuthOverlayProps {
   isOpen: boolean;
@@ -145,7 +144,7 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
                   }
                 }
               }}
-              providers={['google']}
+              providers={[]}
               redirectTo={`${window.location.origin}${redirectPath || '/user-dashboard'}`}
               magicLink={true}
               localization={{
