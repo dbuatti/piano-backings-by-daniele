@@ -1,28 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
 const Login = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
+        // Redirect to user-dashboard or the page they were trying to access
+        const from = (location.state as any)?.from?.pathname || '/user-dashboard';
+        navigate(from, { replace: true });
       } else {
         setIsAuthenticated(false);
       }
@@ -33,6 +28,8 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
+        const from = (location.state as any)?.from?.pathname || '/user-dashboard';
+        navigate(from, { replace: true });
       }
     };
     checkInitialSession();
@@ -40,104 +37,70 @@ const Login = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "You have been logged in successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "Check your email to confirm your account.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [navigate, location]);
 
   if (isAuthenticated) {
     return null; // Will redirect immediately
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex flex-col justify-center">
       <Header />
       
-      <div className="max-w-md mx-auto pt-28 pb-12 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold mb-2 tracking-tight text-[#1C0357]">Login</h1>
-          <p className="text-xl font-light text-[#1C0357]/90">Access your account</p>
-        </div>
-        
-        <Card className="shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-[#1C0357]">Welcome Back</CardTitle>
-            <CardDescription>Sign in to access your backing tracks and requests</CardDescription>
+      <div className="max-w-md w-full mx-auto px-4 sm:px-6 py-12">
+        <Card className="shadow-2xl border-none rounded-[32px] overflow-hidden bg-white">
+          <CardHeader className="text-center pt-10 pb-6 bg-[#1C0357] text-white">
+            <CardTitle className="text-3xl font-black tracking-tight">Welcome Back</CardTitle>
+            <CardDescription className="text-purple-200 font-medium mt-2">
+              Sign in to access your backing tracks, requests, and credits
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-8">
             <Auth
               supabaseClient={supabase}
               providers={['google']}
-              appearance={{ theme: ThemeSupa }}
+              appearance={{ 
+                theme: ThemeSupa,
+                variables: {
+                  default: {
+                    colors: {
+                      brand: '#1C0357',
+                      brandAccent: '#F538BC',
+                      brandButtonText: 'white',
+                      defaultButtonBackground: 'white',
+                      defaultButtonBackgroundHover: '#f9fafb',
+                      defaultButtonBorder: '#e5e7eb',
+                      inputBackground: 'white',
+                      inputBorder: '#e5e7eb',
+                      inputBorderFocus: '#1C0357',
+                      inputBorderHover: '#D1AAF2',
+                    },
+                    radii: {
+                      borderRadiusButton: '16px',
+                      buttonBorderRadius: '16px',
+                      inputBorderRadius: '16px',
+                    }
+                  }
+                }
+              }}
               theme="light"
               redirectTo={`${window.location.origin}/user-dashboard`}
               localization={{
                 variables: {
                   sign_in: {
-                    email_label: 'Email address',
-                    password_label: 'Your password',
-                    email_input_placeholder: 'Enter your email address',
-                    password_input_placeholder: 'Enter your password',
+                    email_label: 'Email Address',
+                    password_label: 'Password',
+                    email_input_placeholder: 'Your email address',
+                    password_input_placeholder: 'Your password',
                     button_label: 'Sign In',
                     social_provider_text: 'Or continue with {{provider}}',
                     link_text: 'Already have an account? Sign In',
                   },
                   sign_up: {
-                    email_label: 'Email address',
-                    password_label: 'Create a password',
-                    email_input_placeholder: 'Enter your email address',
-                    password_input_placeholder: 'Create a password',
+                    email_label: 'Email Address',
+                    password_label: 'Create a Password',
+                    email_input_placeholder: 'Your email address',
+                    password_input_placeholder: 'Your password',
                     button_label: 'Sign Up',
                     social_provider_text: 'Or continue with {{provider}}',
                     link_text: 'Don\'t have an account? Sign Up',
@@ -145,10 +108,6 @@ const Login = () => {
                 },
               }}
             />
-            
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>Don't have an account? Create one to save your requests and access all your tracks in one place.</p>
-            </div>
           </CardContent>
         </Card>
       </div>
