@@ -111,3 +111,42 @@
     @apply bg-gradient-to-r from-[#1C0357] to-[#2D0B8C] text-white shadow-lg hover:shadow-xl transition-all duration-300;
   }
 }
+
+/* Supabase Auth UI Custom Overrides */
+.supabase-auth-ui_ui-container {
+  @apply space-y-5;
+}
+
+.supabase-auth-ui_ui-button {
+  @apply h-12 rounded-2xl font-black text-sm transition-all duration-200 shadow-sm border-2 !important;
+}
+
+/* Primary Button (Sign In / Sign Up) */
+.supabase-auth-ui_ui-button[type="submit"] {
+  @apply bg-[#1C0357] border-[#1C0357] text-white hover:bg-[#2D0B8C] hover:border-[#2D0B8C] hover:-translate-y-0.5 active:translate-y-0 shadow-md !important;
+}
+
+/* Social Provider Button (Google) */
+.supabase-auth-ui_ui-button:not([type="submit"]) {
+  @apply bg-white border-gray-100 text-[#1C0357] hover:bg-gray-50 hover:border-gray-200 hover:-translate-y-0.5 active:translate-y-0 !important;
+}
+
+.supabase-auth-ui_ui-input {
+  @apply h-12 rounded-2xl border-2 border-gray-100 bg-gray-50/50 px-4 text-sm font-medium text-[#1C0357] placeholder-gray-400 transition-all focus:border-[#1C0357] focus:bg-white focus:ring-0 !important;
+}
+
+.supabase-auth-ui_ui-label {
+  @apply text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block !important;
+}
+
+.supabase-auth-ui_ui-anchor {
+  @apply text-xs font-bold text-gray-400 hover:text-[#F538BC] transition-colors no-underline hover:underline block text-center py-1 !important;
+}
+
+.supabase-auth-ui_ui-message {
+  @apply text-xs font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 text-center !important;
+}
+
+.supabase-auth-ui_ui-divider {
+  @apply border-gray-100 my-6 !important;
+}
