@@ -32,7 +32,18 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 rounded-[32px] bg-white shadow-2xl border-none overflow-hidden">
+      <DialogContent className="max-w-lg p-0 rounded-[32px] bg-white shadow-2xl border-none overflow-hidden relative">
+        {/* Absolute positioned Back Button - Only visible when in email auth view */}
+        {showEmailAuth && (
+          <button 
+            onClick={() => setShowEmailAuth(false)} 
+            className="absolute top-6 left-6 text-gray-400 hover:text-[#1C0357] flex items-center space-x-1.5 font-bold text-xs transition-colors z-50"
+          >
+            <ArrowLeft size={14} />
+            <span>Back</span>
+          </button>
+        )}
+
         {/* Consistent Header structure to prevent focus loops during state swaps */}
         <DialogHeader className={showEmailAuth ? "p-8 pb-4 text-center" : "sr-only"}>
           <DialogTitle className="text-3xl font-black text-[#1C0357] tracking-tight">
@@ -112,13 +123,6 @@ const AuthOverlay: React.FC<AuthOverlayProps> = ({ isOpen, onClose, redirectPath
           </div>
         ) : (
           <div className="p-8 pt-0">
-            <button 
-              onClick={() => setShowEmailAuth(false)} 
-              className="mb-6 text-gray-500 hover:text-[#1C0357] flex items-center space-x-2 font-bold text-sm transition-colors"
-            >
-              <ArrowLeft size={16} />
-              <span>Back to options</span>
-            </button>
             <Auth
               supabaseClient={supabase}
               appearance={{ 
