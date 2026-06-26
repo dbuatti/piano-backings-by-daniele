@@ -13,18 +13,18 @@ Deno.serve(async (req) => {
   try {
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
     const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
-    
+
     if (!stripeSecretKey || !stripeWebhookSecret) {
       console.error("[stripe-webhook] Missing Stripe configuration");
       throw new Error('Stripe keys not configured.');
     }
 
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!, 
+      Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
-    
-    const stripe = new Stripe(stripeSecretKey, { 
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2024-06-20',
       httpClient: Stripe.createFetchHttpClient(),
     });
@@ -41,17 +41,22 @@ Deno.serve(async (req) => {
       const requestIds = session.metadata?.request_ids;
       const userId = session.client_reference_id;
       const customerEmail = session.customer_details?.email;
+      const promoCodeId = session.metadata?.promo_code_id;
+      const originalAmount = session.metadata?.original_amount;
+      const discountAmount = session.metadata?.discount_amount;
+      const promoCode = session.metadata?.promo_code;
 
       if (!productId && !requestIds) {
         console.log("[stripe-webhook] Ignoring session: No Piano Backings metadata found.");
         return new Response(JSON.stringify({ ignored: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      let orderId = null;
+
       // 1. Handle Shop Product Purchase
       if (productId) {
         const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
         if (product) {
-          // Determine the user ID
           let finalUserId = userId;
           if (!finalUserId && customerEmail) {
             const { data: users } = await supabaseAdmin.rpc('get_users_by_email', { p_email: customerEmail });
@@ -60,7 +65,7 @@ Deno.serve(async (req) => {
             }
           }
 
-          await supabaseAdmin.from('orders').insert({
+          const { data: order } = await supabaseAdmin.from('orders').insert({
             product_id: productId,
             customer_email: customerEmail,
             amount: session.amount_total! / 100,
@@ -68,14 +73,14 @@ Deno.serve(async (req) => {
             status: 'completed',
             user_id: finalUserId,
             checkout_session_id: session.id,
-          });
+          }).select().single();
 
-          // If it's a credit pack, update user_credits!
+          orderId = order?.id || null;
+
           if (product.product_type === 'credit_pack' && finalUserId) {
             const creditType = product.track_type || 'audition-ready';
             const creditAmount = product.credit_amount || 0;
 
-            // Check if user already has credits of this type
             const { data: existingCredit } = await supabaseAdmin
               .from('user_credits')
               .select('*')
@@ -103,13 +108,12 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Send Product Delivery Email
           try {
             const isCreditPack = product.product_type === 'credit_pack';
             const emailSubject = isCreditPack
               ? `Your Season Pack Credits are Ready!`
               : `Your Purchase: "${product.title}" is Ready!`;
-            
+
             const emailHtml = isCreditPack
               ? `<p>Hi there,</p>
                  <p>Thank you for purchasing the <strong>${product.title}</strong>!</p>
@@ -138,8 +142,7 @@ Deno.serve(async (req) => {
       if (requestIds) {
         const ids = requestIds.split(',');
         await supabaseAdmin.from('backing_requests').update({ is_paid: true, stripe_session_id: session.id }).in('id', ids);
-        
-        // Send Payment Confirmation Email
+
         try {
           await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
             method: 'POST',
@@ -161,6 +164,34 @@ Deno.serve(async (req) => {
             })
           });
         } catch (e) { console.error("Email error:", e); }
+      }
+
+      // 3. Record Promo Code Redemption (if promo was applied)
+      if (promoCodeId && customerEmail && originalAmount && discountAmount) {
+        console.log("[stripe-webhook] Recording promo code redemption:", {
+          promoCodeId,
+          customerEmail,
+          originalAmount,
+          discountAmount,
+        });
+
+        await supabaseAdmin.rpc('increment_promo_code_use', { p_id: promoCodeId });
+
+        // Record the redemption
+        await supabaseAdmin.from('promo_code_redemptions').insert({
+          promo_code_id: promoCodeId,
+          user_id: userId || null,
+          email: customerEmail,
+          order_id: orderId || null,
+          stripe_session_id: session.id,
+          discount_amount: parseFloat(discountAmount),
+          original_amount: parseFloat(originalAmount),
+          final_amount: session.amount_total! / 100,
+          metadata: {
+            promo_code: promoCode || null,
+            product_id: productId || null,
+          },
+        });
       }
     }
 
