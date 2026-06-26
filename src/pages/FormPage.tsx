@@ -262,13 +262,12 @@ const FormPage = () => {
     const amount = priceBreakdown.total;
 
     try {
-      const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/validate-promo-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: promoCode, amount }),
+      const { data: result, error } = await supabase.rpc('validate_promo_code', {
+        p_code: promoCode,
+        p_amount: amount,
       });
 
-      const result = await response.json();
+      if (error) throw error;
 
       if (result.valid) {
         setPromoDiscount(result.discountAmount);

@@ -78,3 +78,66 @@ BEGIN
   WHERE id = p_id;
 END;
 $$;
+
+-- Public-facing function to validate a promo code (bypasses RLS)
+CREATE OR REPLACE FUNCTION public.validate_promo_code(p_code text, p_amount numeric DEFAULT 0)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  v_promo public.promo_codes;
+  v_now timestamptz := now();
+  v_discount numeric;
+  v_final numeric;
+  v_result jsonb;
+BEGIN
+  SELECT * INTO v_promo FROM public.promo_codes WHERE upper(code) = upper(trim(p_code));
+
+  IF v_promo.id IS NULL THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'Invalid promo code.');
+  END IF;
+
+  IF NOT v_promo.is_active THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'This promo code is no longer active.');
+  END IF;
+
+  IF v_promo.max_uses IS NOT NULL AND v_promo.current_uses >= v_promo.max_uses THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'This promo code has reached its maximum number of uses.');
+  END IF;
+
+  IF v_promo.starts_at IS NOT NULL AND v_now < v_promo.starts_at THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'This promo code is not yet available.');
+  END IF;
+
+  IF v_promo.expires_at IS NOT NULL AND v_now > v_promo.expires_at THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'This promo code has expired.');
+  END IF;
+
+  IF v_promo.min_purchase_amount IS NOT NULL AND p_amount < v_promo.min_purchase_amount THEN
+    RETURN jsonb_build_object('valid', false, 'error', 'Minimum purchase amount of $' || v_promo.min_purchase_amount::text || ' is required for this promo code.', 'minPurchaseAmount', v_promo.min_purchase_amount);
+  END IF;
+
+  IF v_promo.discount_type = 'percentage' THEN
+    v_discount := round((p_amount * v_promo.discount_value / 100)::numeric, 2);
+  ELSE
+    v_discount := least(v_promo.discount_value, p_amount);
+  END IF;
+
+  v_final := greatest(0, p_amount - v_discount);
+
+  RETURN jsonb_build_object(
+    'valid', true,
+    'promoCode', jsonb_build_object(
+      'id', v_promo.id,
+      'code', v_promo.code,
+      'discount_type', v_promo.discount_type,
+      'discount_value', v_promo.discount_value,
+      'description', v_promo.description
+    ),
+    'originalAmount', p_amount,
+    'discountAmount', v_discount,
+    'finalAmount', v_final
+  );
+END;
+$$;
