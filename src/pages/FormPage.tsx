@@ -22,7 +22,8 @@ import {
   Trash2,
   Sparkles,
   XCircle,
-  MessageSquare
+  MessageSquare,
+  Tag
 } from 'lucide-react';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +70,10 @@ const FormPage = () => {
 
   const { isHolidayModeActive, isServiceClosed, closureReason } = useAppSettings();
   const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
+
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState<number>(0);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
 
   const [globalData, setGlobalData] = useState({
     email: '',
@@ -242,8 +247,43 @@ const FormPage = () => {
     setSongs([createNewSong()]);
     setConsentChecked(false);
     setUseCredit(false);
+    setPromoCode('');
+    setPromoDiscount(0);
     toast({ title: "Form Cleared" });
   }, [user, toast]);
+
+  const handleValidatePromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoDiscount(0);
+      return;
+    }
+
+    setIsValidatingPromo(true);
+    const amount = priceBreakdown.total;
+
+    try {
+      const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/validate-promo-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode, amount }),
+      });
+
+      const result = await response.json();
+
+      if (result.valid) {
+        setPromoDiscount(result.discountAmount);
+        toast({ title: "Promo Applied!", description: `You save $${result.discountAmount.toFixed(2)}!` });
+      } else {
+        setPromoDiscount(0);
+        toast({ title: "Invalid Code", description: result.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      setPromoDiscount(0);
+      toast({ title: "Validation Error", description: err.message, variant: "destructive" });
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,18 +390,22 @@ const FormPage = () => {
 
       if (createdRequestIds.length > 0) {
         setSubmissionStep('Redirecting to secure payment...');
+        const checkoutBody: Record<string, unknown> = {
+          request_ids: createdRequestIds,
+          amount: priceBreakdown.total,
+          customer_email: globalData.email,
+          description: `Custom Backing Tracks: ${songs.filter((_, idx) => !useCredit || idx >= creditsApplied).map(s => s.songTitle).join(', ')}`
+        };
+        if (promoDiscount > 0 && promoCode.trim()) {
+          checkoutBody.promo_code = promoCode.trim();
+        }
         const stripeResponse = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...authHeader
           },
-          body: JSON.stringify({
-            request_ids: createdRequestIds,
-            amount: priceBreakdown.total,
-            customer_email: globalData.email,
-            description: `Custom Backing Tracks: ${songs.filter((_, idx) => !useCredit || idx >= creditsApplied).map(s => s.songTitle).join(', ')}`
-          }),
+          body: JSON.stringify(checkoutBody),
         });
         
         const stripeResult = await stripeResponse.json();
@@ -563,9 +607,19 @@ const FormPage = () => {
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#F538BC]/10 blur-[80px] rounded-full" />
               <p className="text-xs font-black text-[#F538BC] uppercase tracking-[0.2em] mb-4 relative z-10">Total Amount Due</p>
               <div className="flex items-baseline justify-center gap-2 relative z-10">
-                <span className="text-7xl md:text-8xl font-black tracking-tighter">${priceBreakdown.total.toFixed(2)}</span>
+                {promoDiscount > 0 && (
+                  <span className="text-3xl md:text-4xl text-white/50 line-through font-black">${priceBreakdown.total.toFixed(2)}</span>
+                )}
+                <span className="text-7xl md:text-8xl font-black tracking-tighter">
+                  ${Math.max(0, priceBreakdown.total - promoDiscount).toFixed(2)}
+                </span>
                 <span className="text-lg font-bold opacity-40 uppercase tracking-widest">AUD</span>
               </div>
+              {promoDiscount > 0 && (
+                <p className="text-green-400 font-black text-lg mt-2 relative z-10">
+                  Promo discount: -${promoDiscount.toFixed(2)}
+                </p>
+              )}
               {useCredit && priceBreakdown.creditsApplied > 0 && (
                 <div className="mt-4 relative z-10 space-y-1">
                   <p className="text-green-400 font-black text-lg">
@@ -583,6 +637,28 @@ const FormPage = () => {
                   ({songs.length} songs @ ${priceBreakdown.perSong.toFixed(2)} each)
                 </p>
               )}
+
+              <div className="mt-8 relative z-10 flex items-center justify-center gap-2">
+                <div className="relative">
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoDiscount(0); }}
+                    placeholder="Promo code"
+                    className="pl-9 h-12 w-44 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-sm font-bold uppercase"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleValidatePromo}
+                  disabled={!promoCode.trim() || isValidatingPromo}
+                  className="h-12 rounded-xl border-white/20 text-white hover:bg-white/10 hover:text-white font-bold"
+                >
+                  {isValidatingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                </Button>
+              </div>
             </div>
 
             <div className="flex flex-col items-center gap-8">

@@ -22,7 +22,10 @@ import {
   Star,
   Zap,
   ChevronRight,
-  Package
+  Package,
+  Tag,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import {
   Sheet,
@@ -70,6 +73,15 @@ interface Product {
   master_download_link: string | null;
 }
 
+interface DiscountInfo {
+  valid: boolean;
+  promoCode: string;
+  promoCodeId: string;
+  discountAmount: number;
+  finalAmount: number;
+  originalAmount: number;
+}
+
 const Shop = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,7 +90,10 @@ const Shop = () => {
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [isBuying, setIsBuying] = useState(false);
 
-  // URL-derived filters
+  const [promoCode, setPromoCode] = useState('');
+  const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+
   const currentSearchTerm = searchParams.get('q') || '';
   const currentCategory = searchParams.get('category') || 'all';
   const currentTrackType = searchParams.get('track_type') || 'all';
@@ -124,7 +139,6 @@ const Shop = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  // Separate Season Pack from main list
   const featuredProducts = useMemo(() => {
     return products?.filter(p => p.title.toLowerCase().includes('season pack')) || [];
   }, [products]);
@@ -151,22 +165,70 @@ const Shop = () => {
     }));
   }, [regularProducts]);
 
+  const handleValidatePromo = async () => {
+    if (!promoCode.trim()) {
+      setDiscountInfo(null);
+      return;
+    }
+
+    setIsValidatingPromo(true);
+    setDiscountInfo(null);
+
+    try {
+      const amount = selectedProductForDetail?.price || 0;
+      const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/validate-promo-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode, amount }),
+      });
+
+      const result = await response.json();
+
+      if (result.valid) {
+        setDiscountInfo({
+          valid: true,
+          promoCode: result.promoCode.code,
+          promoCodeId: result.promoCode.id,
+          discountAmount: result.discountAmount,
+          finalAmount: result.finalAmount,
+          originalAmount: result.originalAmount,
+        });
+        toast({ title: "Promo Applied!", description: `You save $${result.discountAmount.toFixed(2)}!` });
+      } else {
+        setDiscountInfo(null);
+        toast({ title: "Invalid Code", description: result.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Validation Error", description: err.message, variant: "destructive" });
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
   const handleViewDetails = useCallback((product: Product) => {
+    setPromoCode('');
+    setDiscountInfo(null);
     setSelectedProductForDetail(product);
     setIsDetailDialogOpen(true);
   }, []);
 
-  const handleBuyNow = useCallback(async (product: Product) => {
+  const handleBuyNow = useCallback(async (product: Product, code?: string) => {
     setIsBuying(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const body: Record<string, unknown> = { product_id: product.id };
+
+      if (code) {
+        body.promo_code = code;
+      }
+
       const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session && { Authorization: `Bearer ${session.access_token}` }),
         },
-        body: JSON.stringify({ product_id: product.id }),
+        body: JSON.stringify(body),
       });
 
       const result = await response.json();
@@ -277,7 +339,6 @@ const Shop = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         
-        {/* Featured Section - Season Pack Prominence */}
         {featuredProducts.length > 0 && !currentSearchTerm && currentCategory === 'all' && (
           <section className="mb-24">
             <div className="flex items-center gap-3 mb-10">
@@ -339,7 +400,6 @@ const Shop = () => {
 
         <div className="flex flex-col lg:flex-row gap-16">
           
-          {/* Desktop Sidebar */}
           <aside className="hidden lg:block w-80 flex-shrink-0">
             <div className="sticky top-32">
               <div className="flex items-center gap-3 mb-8">
@@ -350,10 +410,8 @@ const Shop = () => {
             </div>
           </aside>
 
-          {/* Main Content Area */}
           <div className="flex-1">
             
-            {/* Mobile Filter Trigger */}
             <div className="lg:hidden mb-10 flex gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -381,7 +439,6 @@ const Shop = () => {
               </Sheet>
             </div>
 
-            {/* Results Grid */}
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
                 {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
@@ -433,10 +490,24 @@ const Shop = () => {
       {selectedProductForDetail && (
         <ProductDetailDialog
           isOpen={isDetailDialogOpen}
-          onOpenChange={open => !open && setSelectedProductForDetail(null)}
+          onOpenChange={open => {
+            if (!open) {
+              setSelectedProductForDetail(null);
+              setPromoCode('');
+              setDiscountInfo(null);
+            }
+          }}
           product={selectedProductForDetail}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}
+          promoCode={promoCode}
+          onPromoCodeChange={(code: string) => {
+            setPromoCode(code);
+            if (!code) setDiscountInfo(null);
+          }}
+          discountInfo={discountInfo}
+          isValidatingPromo={isValidatingPromo}
+          onApplyPromo={handleValidatePromo}
         />
       )}
     </div>

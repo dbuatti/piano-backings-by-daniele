@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   ShoppingCart, 
   Link as LinkIcon, 
@@ -19,7 +20,9 @@ import {
   ShieldCheck,
   Zap,
   Info,
-  Share2
+  Share2,
+  Tag,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
@@ -47,12 +50,25 @@ interface Product {
   master_download_link?: string | null;
 }
 
+interface DiscountInfo {
+  valid: boolean;
+  promoCode: string;
+  discountAmount: number;
+  finalAmount: number;
+  originalAmount: number;
+}
+
 interface ProductDetailDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   product: Product;
-  onBuyNow: (product: Product) => Promise<void>;
+  onBuyNow: (product: Product, promoCode?: string) => Promise<void>;
   isBuying: boolean;
+  promoCode: string;
+  onPromoCodeChange: (code: string) => void;
+  discountInfo: DiscountInfo | null;
+  isValidatingPromo: boolean;
+  onApplyPromo: () => Promise<void>;
 }
 
 const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
@@ -61,6 +77,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   product,
   onBuyNow,
   isBuying,
+  promoCode,
+  onPromoCodeChange,
+  discountInfo,
+  isValidatingPromo,
+  onApplyPromo,
 }) => {
   const { toast } = useToast();
   const firstTrackUrl = product.track_urls?.[0]?.url || null;
@@ -87,6 +108,14 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   const typeInfo = getTrackTypeInfo(product.track_type);
+  const displayPrice = discountInfo?.valid ? discountInfo.finalAmount : product.price;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onApplyPromo();
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -260,17 +289,52 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               </div>
             )}
 
+            {/* Promo Code Input */}
+            <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0">
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={promoCode}
+                  onChange={(e) => onPromoCodeChange(e.target.value.toUpperCase())}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Promo code"
+                  className="pl-9 h-10 w-32 md:w-36 rounded-xl border-gray-200 font-mono text-xs font-bold uppercase"
+                  disabled={isBuying}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onApplyPromo}
+                disabled={!promoCode.trim() || isValidatingPromo || isBuying}
+                className="h-10 rounded-xl border-gray-200 text-xs font-bold whitespace-nowrap"
+              >
+                {isValidatingPromo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
+              </Button>
+            </div>
+
             <div className="flex items-center gap-4 w-full md:w-auto">
-              <div className="text-right hidden sm:block">
+              <div className="text-right">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total</p>
-                <div className="text-2xl font-black text-[#1C0357]">
-                  <span className="text-sm mr-0.5 font-bold">{product.currency}</span>
-                  {product.price.toFixed(2)}
+                <div className="flex items-baseline gap-1.5 justify-end">
+                  {discountInfo?.valid && (
+                    <span className="text-sm text-gray-400 line-through">
+                      {product.currency}{product.price.toFixed(2)}
+                    </span>
+                  )}
+                  <div className={cn("text-2xl font-black", discountInfo?.valid ? "text-green-600" : "text-[#1C0357]")}>
+                    <span className="text-sm mr-0.5 font-bold">{product.currency}</span>
+                    {displayPrice.toFixed(2)}
+                  </div>
                 </div>
+                {discountInfo?.valid && (
+                  <p className="text-[10px] text-green-600 font-bold">Save ${discountInfo.discountAmount.toFixed(2)}</p>
+                )}
               </div>
 
               <Button
-                onClick={() => onBuyNow(product)}
+                onClick={() => onBuyNow(product, discountInfo?.valid ? promoCode : undefined)}
                 disabled={isBuying}
                 className="h-12 px-8 text-base font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 flex-1 md:flex-none"
               >
@@ -279,7 +343,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 ) : (
                   <>
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    Buy Now — {product.currency}{product.price.toFixed(2)}
+                    Buy Now — {product.currency}{displayPrice.toFixed(2)}
                   </>
                 )}
               </Button>
