@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
     );
 
     let userId = null;
+    let userEmail = null;
     const authHeader = req.headers.get('Authorization');
     if (authHeader && authHeader !== 'Bearer undefined') {
       try {
@@ -82,6 +83,7 @@ Deno.serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
         if (!userError && user) {
           userId = user.id;
+          userEmail = user.email;
           console.log("[create-stripe-checkout] Authenticated user ID:", userId);
         }
       } catch (authErr) {
@@ -153,23 +155,68 @@ Deno.serve(async (req) => {
     }
 
     // Apply promo code if provided
+    let promoResult = null;
     if (promo_code) {
       console.log("[create-stripe-checkout] Validating promo code:", promo_code);
-      const promoResult = await validatePromoCode(supabaseAdmin, promo_code, paymentAmount);
+      promoResult = await validatePromoCode(supabaseAdmin, promo_code, paymentAmount);
 
       if (promoResult.finalAmount < paymentAmount) {
-        // Enforce minimum charge ($0.50 AUD) — Stripe doesn't allow $0 checkouts
-        const MIN_CHARGE = 0.50;
-        const finalAmount = Math.max(promoResult.finalAmount, MIN_CHARGE);
-        const actualDiscount = promoResult.originalAmount - finalAmount;
-
-        line_items[0].price_data.unit_amount = Math.round(finalAmount * 100);
+        line_items[0].price_data.unit_amount = Math.round(promoResult.finalAmount * 100);
 
         metadata.promo_code_id = promoResult.promoCodeId;
         metadata.original_amount = promoResult.originalAmount.toString();
-        metadata.discount_amount = Math.max(0, actualDiscount).toString();
+        metadata.discount_amount = promoResult.discountAmount.toString();
         metadata.promo_code = promo_code.trim().toUpperCase();
       }
+    }
+
+    // Handle free orders (100% off promo) — skip Stripe entirely
+    const finalTotal = promoResult?.finalAmount ?? paymentAmount;
+    if (finalTotal === 0) {
+      console.log("[create-stripe-checkout] Free order — skipping Stripe");
+
+      const customerEmail = customer_email || userEmail || 'unknown';
+
+      if (product_id) {
+        await supabaseAdmin.from('orders').insert({
+          product_id,
+          customer_email: customerEmail,
+          amount: 0,
+          currency: 'AUD',
+          status: 'completed',
+          user_id: userId,
+          checkout_session_id: null,
+        });
+      }
+      if (request_ids) {
+        const ids = typeof request_ids === 'string' ? request_ids.split(',') : request_ids;
+        await supabaseAdmin.from('backing_requests').update({ is_paid: true }).in('id', ids);
+      }
+
+      // Record promo code redemption
+      if (promoResult) {
+        await supabaseAdmin.rpc('increment_promo_code_use', { p_id: promoResult.promoCodeId });
+        await supabaseAdmin.from('promo_code_redemptions').insert({
+          promo_code_id: promoResult.promoCodeId,
+          user_id: userId || null,
+          email: customerEmail,
+          order_id: null,
+          stripe_session_id: null,
+          discount_amount: promoResult.discountAmount,
+          original_amount: promoResult.originalAmount,
+          final_amount: 0,
+          metadata: { promo_code: promo_code.trim().toUpperCase(), product_id: product_id || null },
+        });
+      }
+
+      const redirectUrl = product_id
+        ? `${siteUrl}/purchase-confirmation?free=true`
+        : `${siteUrl}/user-dashboard`;
+
+      return new Response(
+        JSON.stringify({ url: redirectUrl, free: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
     console.log("[create-stripe-checkout] Creating Stripe session...");
