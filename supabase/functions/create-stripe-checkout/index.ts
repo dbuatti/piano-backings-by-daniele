@@ -229,6 +229,9 @@ Deno.serve(async (req) => {
       success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/form-page`,
       metadata,
+      payment_intent_data: {
+        statement_descriptor: 'PIANO BACKINGS',
+      },
     });
 
     console.log("[create-stripe-checkout] Session created successfully:", session.id);
