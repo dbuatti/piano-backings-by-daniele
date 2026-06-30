@@ -460,85 +460,153 @@ const ClientTrackView = () => {
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-to-br from-[#1C0357] to-[#D1AAF2] text-white mb-8">
-              <CardContent className="p-6">
-                <h3 className="text-xl font-bold mb-4 flex items-center">
-                  <Banknote className="mr-2 h-5 w-5" />
-                  Payment Information
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <div className="text-2xl font-bold mb-2 text-white">
-                      Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
-                    </div>
-                    {request.final_price !== null && (
-                      <div className="text-3xl font-bold mb-2 text-white">
-                        Suggested Cost: ${displayedSuggestedCost}
+            {request.is_paid ? (
+              <Card className="bg-gradient-to-br from-green-700 to-green-500 text-white mb-8">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4 flex items-center">
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Payment Complete — Invoice
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-3xl font-bold mb-1">
+                        ${displayedSuggestedCost}
                       </div>
-                    )}
-                    <p className="text-sm opacity-90">
-                      The final price may vary slightly based on complexity and additional services.
+                      <p className="text-sm opacity-90">Amount Paid</p>
+                      <p className="text-sm opacity-90 mt-2">
+                        Paid on: {format(new Date(request.created_at), 'MMMM dd, yyyy')}
+                      </p>
+                      <p className="text-xs opacity-70 mt-1">
+                        Invoice #PB-{request.id.substring(0, 8).toUpperCase()}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="bg-white/10 p-4 rounded-lg">
+                        <p className="text-sm font-medium mb-1">Tax Invoice</p>
+                        <p className="text-xs opacity-80">
+                          Piano Backings by Daniele<br />
+                          ABN: —<br />
+                          {request.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/20">
+                    <h4 className="font-semibold text-lg mb-3 flex items-center">
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Cost Breakdown
+                    </h4>
+                    <ul className="space-y-2 text-sm">
+                      {costBreakdown.baseCosts.map((item, index) => (
+                        <li key={`base-${index}`} className="flex justify-between items-center">
+                          <span className="capitalize">{item.type.replace('-', ' ')}</span>
+                          <span>${item.cost.toFixed(2)}</span>
+                        </li>
+                      ))}
+                      {costBreakdown.serviceCosts.map((item, index) => (
+                        <li key={`service-${index}`} className="flex justify-between items-center">
+                          <span className="capitalize">{item.service.replace('-', ' ')}</span>
+                          <span>+${item.cost.toFixed(2)}</span>
+                        </li>
+                      ))}
+                      <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
+                        <span>Total Paid</span>
+                        <span>${displayedSuggestedCost}</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-white/20">
+                    <p className="text-sm">
+                      <span className="font-medium">Thank you!</span> A payment confirmation has been sent to {request.email}.
+                      If you need a formal tax invoice with ABN, please contact pianobackingsbydaniele@gmail.com.
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-gradient-to-br from-[#1C0357] to-[#D1AAF2] text-white mb-8">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4 flex items-center">
+                    <Banknote className="mr-2 h-5 w-5" />
+                    Payment Information
+                  </h3>
                   
-                  <div>
-                    <p className="mb-3 font-medium">Payment Methods:</p>
-                    <div className="space-y-3">
-                      <a 
-                        href="https://buymeacoffee.com/Danielebuatti" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <Button className="w-full bg-white text-[#1C0357] hover:bg-gray-100 flex items-center justify-center">
-                          <Coffee className="mr-2 h-5 w-5" />
-                          Buy Me a Coffee (Preferred)
-                        </Button>
-                      </a>
-                      <div className="bg-white/10 p-3 rounded-lg">
-                        <p className="text-sm font-medium mb-1">Direct Bank Transfer</p>
-                        <p className="text-xs">BSB: 923100</p>
-                        <p className="text-xs">Account: 301110875</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-2xl font-bold mb-2 text-white">
+                        Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
+                      </div>
+                      {request.final_price !== null && (
+                        <div className="text-3xl font-bold mb-2 text-white">
+                          Suggested Cost: ${displayedSuggestedCost}
+                        </div>
+                      )}
+                      <p className="text-sm opacity-90">
+                        The final price may vary slightly based on complexity and additional services.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="mb-3 font-medium">Payment Methods:</p>
+                      <div className="space-y-3">
+                        <a 
+                          href="https://buymeacoffee.com/Danielebuatti" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <Button className="w-full bg-white text-[#1C0357] hover:bg-gray-100 flex items-center justify-center">
+                            <Coffee className="mr-2 h-5 w-5" />
+                            Buy Me a Coffee (Preferred)
+                          </Button>
+                        </a>
+                        <div className="bg-white/10 p-3 rounded-lg">
+                          <p className="text-sm font-medium mb-1">Direct Bank Transfer</p>
+                          <p className="text-xs">BSB: 923100</p>
+                          <p className="text-xs">Account: 301110875</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-6 pt-4 border-t border-white/20">
-                  <h4 className="font-semibold text-lg mb-3 flex items-center">
-                    <DollarSign className="mr-2 h-4 w-4" />
-                    Cost Breakdown
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {costBreakdown.baseCosts.map((item, index) => (
-                      <li key={`base-${index}`} className="flex justify-between items-center">
-                        <span className="capitalize">{item.type.replace('-', ' ')}</span>
-                        <span>${item.cost.toFixed(2)}</span>
+                  <div className="mt-6 pt-4 border-t border-white/20">
+                    <h4 className="font-semibold text-lg mb-3 flex items-center">
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Cost Breakdown
+                    </h4>
+                    <ul className="space-y-2 text-sm">
+                      {costBreakdown.baseCosts.map((item, index) => (
+                        <li key={`base-${index}`} className="flex justify-between items-center">
+                          <span className="capitalize">{item.type.replace('-', ' ')}</span>
+                          <span>${item.cost.toFixed(2)}</span>
+                        </li>
+                      ))}
+                      {costBreakdown.serviceCosts.map((item, index) => (
+                        <li key={`service-${index}`} className="flex justify-between items-center">
+                          <span className="capitalize">{item.service.replace('-', ' ')}</span>
+                          <span>+${item.cost.toFixed(2)}</span>
+                        </li>
+                      ))}
+                      <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
+                        <span>Total Estimated Cost (Rounded)</span>
+                        <span>${costBreakdown.totalCost.toFixed(2)}</span>
                       </li>
-                    ))}
-                    {costBreakdown.serviceCosts.map((item, index) => (
-                      <li key={`service-${index}`} className="flex justify-between items-center">
-                        <span className="capitalize">{item.service.replace('-', ' ')}</span>
-                        <span>+${item.cost.toFixed(2)}</span>
-                      </li>
-                    ))}
-                    <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
-                      <span>Total Estimated Cost (Rounded)</span>
-                      <span>${costBreakdown.totalCost.toFixed(2)}</span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="mt-6 pt-4 border-t border-white/20">
-                  <p className="text-sm">
-                    <span className="font-medium">Note:</span> I encourage using Buy Me a Coffee as it helps support my work 
-                    and makes it easier for others to discover this service. Payment can be made before or after 
-                    track delivery.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                    </ul>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/20">
+                    <p className="text-sm">
+                      <span className="font-medium">Note:</span> I encourage using Buy Me a Coffee as it helps support my work 
+                      and makes it easier for others to discover this service. Payment can be made before or after 
+                      track delivery.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
