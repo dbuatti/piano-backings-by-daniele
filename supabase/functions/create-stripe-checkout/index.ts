@@ -158,12 +158,16 @@ Deno.serve(async (req) => {
       const promoResult = await validatePromoCode(supabaseAdmin, promo_code, paymentAmount);
 
       if (promoResult.finalAmount < paymentAmount) {
-        // Update the line item to reflect the discounted price
-        line_items[0].price_data.unit_amount = Math.round(promoResult.finalAmount * 100);
+        // Enforce minimum charge ($0.50 AUD) — Stripe doesn't allow $0 checkouts
+        const MIN_CHARGE = 0.50;
+        const finalAmount = Math.max(promoResult.finalAmount, MIN_CHARGE);
+        const actualDiscount = promoResult.originalAmount - finalAmount;
+
+        line_items[0].price_data.unit_amount = Math.round(finalAmount * 100);
 
         metadata.promo_code_id = promoResult.promoCodeId;
         metadata.original_amount = promoResult.originalAmount.toString();
-        metadata.discount_amount = promoResult.discountAmount.toString();
+        metadata.discount_amount = Math.max(0, actualDiscount).toString();
         metadata.promo_code = promo_code.trim().toUpperCase();
       }
     }

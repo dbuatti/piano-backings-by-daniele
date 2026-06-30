@@ -643,6 +643,7 @@ const FormPage = () => {
                   <Input
                     value={promoCode}
                     onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoDiscount(0); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleValidatePromo(); } }}
                     placeholder="Promo code"
                     className="pl-9 h-12 w-44 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 font-mono text-sm font-bold uppercase"
                   />
