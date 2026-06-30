@@ -434,10 +434,17 @@ const UserDashboard = () => {
                                   <span>Due: {format(new Date(request.delivery_date), 'MMM dd, yyyy')}</span>
                                 </div>
                               )}
-                              <div className="flex items-center gap-1 font-semibold text-[#1C0357]">
-                                <DollarSign className="h-4 w-4" />
-                                <span>${displayedCost.toFixed(2)}</span>
-                              </div>
+                              {request.is_paid ? (
+                                <div className="flex items-center gap-1 font-semibold text-green-600">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Paid ${displayedCost.toFixed(2)}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 font-semibold text-[#1C0357]">
+                                  <DollarSign className="h-4 w-4" />
+                                  <span>${displayedCost.toFixed(2)}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
