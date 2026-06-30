@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { request_id, email_type } = await req.json();
+    const { request_id, email_type, test_email } = await req.json();
     if (!request_id) throw new Error('Missing request_id');
 
     const { data: request, error } = await supabaseAdmin
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
     if ((!email_type || email_type === 'invoice') && request.is_paid) {
       await sendEmail(
         request.email,
-        `Tax Invoice #PB-${request.id.substring(0, 8).toUpperCase()} — Piano Backings by Daniele`,
+        `Tax Invoice #PB-${request.id.substring(0, 8).toUpperCase()} - Piano Backings by Daniele`,
         buildInvoiceHtml(request)
       );
       results.push('invoice');

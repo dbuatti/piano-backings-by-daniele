@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               to: customerEmail,
-              subject: `Tax Invoice #${invoiceNumber} — Piano Backings by Daniele`,
+              subject: `Tax Invoice #${invoiceNumber} - Piano Backings by Daniele`,
               html: `
                 <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; color: #333;">
                   <div style="background: linear-gradient(135deg, #1C0357, #D1AAF2); padding: 32px 24px; border-radius: 8px 8px 0 0;">
