@@ -31,7 +31,8 @@ import {
   Chrome,
   Loader2,
   MessageSquare,
-  Zap
+  Zap,
+  Mail
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
@@ -85,6 +86,37 @@ const ClientTrackView = () => {
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isSendingOrderEmail, setIsSendingOrderEmail] = useState(false);
+  const [isSendingInvoiceEmail, setIsSendingInvoiceEmail] = useState(false);
+
+  const resendEmail = async (type: 'order_confirmation' | 'invoice') => {
+    if (!request?.id) return;
+    const setLoading = type === 'order_confirmation' ? setIsSendingOrderEmail : setIsSendingInvoiceEmail;
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/resend-request-emails`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({ request_id: request.id, email_type: type }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to send email');
+      }
+      toast({ title: "Email Sent", description: `The ${type === 'order_confirmation' ? 'order confirmation' : 'invoice'} has been sent.` });
+    } catch (err: any) {
+      toast({ title: "Email Error", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownloadInvoice = async () => {
     if (!request?.id) return;
@@ -839,14 +871,38 @@ const ClientTrackView = () => {
           >
             Back to Dashboard
           </Button>
-          {/* Only show edit button if user is admin */}
+          {/* Admin actions */}
           {isAdmin && (
-            <Button 
-              onClick={() => navigate(`/admin/request/${id}/edit`)}
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-            >
-              Edit Request
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={() => navigate(`/admin/request/${id}/edit`)}
+                className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+              >
+                Edit Request
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => resendEmail('order_confirmation')}
+                disabled={isSendingOrderEmail}
+                className="border-gray-300"
+                size="sm"
+              >
+                {isSendingOrderEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+                Resend Confirmation
+              </Button>
+              {request.is_paid && (
+                <Button
+                  variant="outline"
+                  onClick={() => resendEmail('invoice')}
+                  disabled={isSendingInvoiceEmail}
+                  className="border-gray-300"
+                  size="sm"
+                >
+                  {isSendingInvoiceEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+                  Resend Invoice
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
