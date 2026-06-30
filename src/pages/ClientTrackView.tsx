@@ -31,8 +31,7 @@ import {
   Chrome,
   Loader2,
   MessageSquare,
-  Zap,
-  Mail
+  Zap
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
