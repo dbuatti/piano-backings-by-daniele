@@ -84,6 +84,41 @@ const ClientTrackView = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    if (!request?.id) return;
+    setIsDownloadingInvoice(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(
+        `https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/generate-invoice?request_id=${request.id}`,
+        {
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to generate invoice');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-PB-${request.id.substring(0, 8).toUpperCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Invoice Downloaded" });
+    } catch (err: any) {
+      toast({ title: "Download Error", description: err.message, variant: "destructive" });
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
 
   useEffect(() => {
     const fetchRequest = async () => {
@@ -518,11 +553,23 @@ const ClientTrackView = () => {
                     </ul>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-white/20">
+                  <div className="mt-6 pt-4 border-t border-white/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <p className="text-sm">
-                      <span className="font-medium">Thank you!</span> A payment confirmation has been sent to {request.email}.
-                      If you need a formal tax invoice with ABN, please contact pianobackingsbydaniele@gmail.com.
+                      <span className="font-medium">Thank you!</span> A receipt has been sent to {request.email}.
                     </p>
+                    <Button
+                      onClick={handleDownloadInvoice}
+                      disabled={isDownloadingInvoice}
+                      className="bg-white text-green-700 hover:bg-green-50 font-bold rounded-xl flex items-center gap-2"
+                      size="sm"
+                    >
+                      {isDownloadingInvoice ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      Download PDF Invoice
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
