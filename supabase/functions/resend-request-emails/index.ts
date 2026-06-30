@@ -64,7 +64,7 @@ function buildInvoiceHtml(request) {
             <td style="vertical-align: top; width: 50%;">
               <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">FROM</h3>
               <p style="margin: 0; font-weight: bold;">Piano Backings by Daniele</p>
-              <p style="margin: 2px 0; font-size: 13px;">ABN: —</p>
+              <p style="margin: 2px 0; font-size: 13px;">ABN: 49 833 619 500</p>
               <p style="margin: 2px 0; font-size: 13px;">pianobackingsbydaniele@gmail.com</p>
             </td>
             <td style="vertical-align: top;">

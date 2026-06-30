@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     y -= 16;
     page.drawText('Piano Backings by Daniele', { x: 40, y, font: bold, size: 11 });
     y -= 14;
-    page.drawText('ABN: —', { x: 40, y, font, size: 10, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText('ABN: 49 833 619 500', { x: 40, y, font, size: 10, color: rgb(0.4, 0.4, 0.4) });
     y -= 14;
     page.drawText('pianobackingsbydaniele@gmail.com', { x: 40, y, font, size: 10, color: rgb(0.4, 0.4, 0.4) });
 
