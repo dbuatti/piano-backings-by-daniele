@@ -108,7 +108,7 @@ function buildInvoiceHtml(request) {
         </table>
 
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
-          <p style="margin: 0 0 4px 0;">View your order: <a href="https://pianobackingsbydaniele.com/track/${request.id}" style="color: #1C0357;">pianobackingsbydaniele.com/track/${request.id}</a></p>
+          <p style="margin: 0 0 4px 0;">View your order: <a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}" style="color: #1C0357;">pianobackingsbydaniele.vercel.app/track/${request.id}</a></p>
         </div>
 
         <div style="margin-top: 24px; padding: 16px; background-color: #f3e8ff; border-radius: 6px; font-size: 12px; color: #1C0357;">
