@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { product_id, request_ids, amount, description, customer_email, promo_code } = body;
+    const { product_id, request_ids, amount, description, customer_email, promo_code, test_mode } = body;
 
     console.log("[create-stripe-checkout] Received data:", {
       hasProductId: !!product_id,
@@ -152,6 +152,13 @@ Deno.serve(async (req) => {
     } else {
       console.error("[create-stripe-checkout] Invalid parameters provided");
       throw new Error('Invalid request parameters.');
+    }
+
+    // Admin test mode — override amount to $0.50
+    if (test_mode && userId) {
+      console.log("[create-stripe-checkout] Test mode enabled — overriding amount to $0.50");
+      paymentAmount = 0.50;
+      line_items[0].price_data.unit_amount = 50;
     }
 
     // Apply promo code if provided

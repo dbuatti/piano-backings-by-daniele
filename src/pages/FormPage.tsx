@@ -67,6 +67,7 @@ const FormPage = () => {
   const [user, setUser] = useState<any>(null);
   const [userCredits, setUserCredits] = useState<any[]>([]);
   const [useCredit, setUseCredit] = useState(false);
+  const [testMode, setTestMode] = useState(false);
 
   const { isHolidayModeActive, isServiceClosed, closureReason } = useAppSettings();
   const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
@@ -398,6 +399,9 @@ const FormPage = () => {
         if (promoDiscount > 0 && promoCode.trim()) {
           checkoutBody.promo_code = promoCode.trim();
         }
+        if (testMode) {
+          checkoutBody.test_mode = true;
+        }
         const stripeResponse = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
           method: 'POST',
           headers: {
@@ -488,6 +492,12 @@ const FormPage = () => {
                 >
                   <Plus size={16} className="mr-2" /> Prefill Multiple Songs
                 </Button>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <Switch checked={testMode} onCheckedChange={setTestMode} />
+                <span className="text-sm font-bold text-orange-700">
+                  {testMode ? 'Test Mode — will charge $0.50' : 'Test Mode (50¢ charge)'}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -583,7 +593,11 @@ const FormPage = () => {
                     min={new Date().toISOString().split('T')[0]} 
                     className="h-14 rounded-2xl border-gray-200 font-bold"
                   />
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Standard delivery is 3-5 business days.</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    {globalData.additionalServices.includes('asap')
+                      ? 'You selected ASAP — I\'ll prioritise this as much as possible.'
+                      : 'Standard delivery is 3-5 business days. Select "As soon as humanly possible" above for free priority scheduling.'}
+                  </p>
                 </div>
                 
                 <div className="space-y-3">
@@ -595,7 +609,7 @@ const FormPage = () => {
                     name="specialRequests"
                     value={globalData.specialRequests} 
                     onChange={handleGlobalInputChange} 
-                    placeholder="Any general notes for the entire order? (e.g. 'I'm in a rush for all of these', 'Please use my Season Pack credits')"
+                    placeholder="Any general notes for the entire order? (e.g. 'Please use my Season Pack credits', specific tempo or cut preferences)"
                     className="min-h-[120px] rounded-2xl border-gray-200 font-medium"
                   />
                 </div>
