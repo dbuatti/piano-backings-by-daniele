@@ -18,7 +18,7 @@ async function sendEmail(to, subject, html) {
 
 function buildInvoiceHtml(request) {
   const TIER_PRICES = { 'note-bash': 15.00, 'audition-ready': 30.00, 'full-song': 50.00 };
-  const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00 };
+  const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00, 'asap': 0 };
 
   const tier = request.track_type || 'audition-ready';
   const baseCost = TIER_PRICES[tier] || 30.00;

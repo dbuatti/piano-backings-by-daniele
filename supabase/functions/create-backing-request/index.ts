@@ -17,6 +17,7 @@ const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
   'complex-songs': 10.00,
   'additional-edits': 5.00,
   'exclusive-ownership': 40.00,
+  'asap': 0,
 };
 
 function calculateRequestCost(request: any): number {

@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
 
         if (paidRequests && paidRequests.length > 0) {
           const TIER_PRICES = { 'note-bash': 15.00, 'audition-ready': 30.00, 'full-song': 50.00 };
-          const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00 };
+          const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00, 'asap': 0 };
 
           paidRequests.forEach((req, i) => {
             const tier = req.track_type || 'audition-ready';

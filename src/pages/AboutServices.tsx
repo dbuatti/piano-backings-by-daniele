@@ -244,7 +244,7 @@ const AboutServices = () => {
             {[
               {
                 q: "How long does it take to receive my track?",
-                a: "Standard delivery is typically within 3-5 business days. If you're in a hurry, you can select the 'Rush Order' add-on for guaranteed 24-hour delivery."
+                a: "Standard delivery is typically within 3-5 business days. If you need it faster, select 'As soon as humanly possible' (free) to request priority scheduling, or choose the 'Rush Order' add-on for guaranteed 24-hour delivery."
               },
               {
                 q: "Can I request a transposition (different key)?",

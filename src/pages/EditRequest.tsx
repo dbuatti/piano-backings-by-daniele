@@ -56,9 +56,10 @@ const tierOptions = [
 
 const additionalServiceOptions = [
   { value: 'rush-order', label: 'Rush Order (+$15)' },
-  { value: 'complex-songs', label: 'Complex Score (+$10)' },
+  { value: 'complex-songs', label: 'Complex Score (Sondheim, JRB, Guettel) (+$10)' },
   { value: 'additional-edits', label: 'Additional Edits (+$5)' },
-  { value: 'exclusive-ownership', label: 'Exclusive Ownership (+$40)' }
+  { value: 'exclusive-ownership', label: 'Exclusive Ownership (+$40)' },
+  { value: 'asap', label: 'As soon as humanly possible (Free)' }
 ];
 
 const EditRequest: React.FC = () => {
