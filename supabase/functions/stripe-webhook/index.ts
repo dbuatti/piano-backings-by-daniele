@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     const signature = req.headers.get('stripe-signature');
     const body = await req.text();
-    const event = stripe.webhooks.constructEvent(body, signature!, stripeWebhookSecret);
+    const event = await stripe.webhooks.constructEventAsync(body, signature!, stripeWebhookSecret);
 
     console.log(`[stripe-webhook] Processing event: ${event.type}`);
 
