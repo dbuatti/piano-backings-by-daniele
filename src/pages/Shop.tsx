@@ -231,7 +231,7 @@ const Shop = () => {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) throw new Error(result.error || `Checkout failed (${response.status})`);
       if (result.url) window.location.href = result.url;
     } catch (err: any) {
       toast({ title: "Checkout Error", description: err.message, variant: "destructive" });
