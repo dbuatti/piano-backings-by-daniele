@@ -247,6 +247,8 @@ const Shop = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
+            type="search"
+            aria-label="Search library"
             placeholder="Song, artist, or show..."
             value={currentSearchTerm}
             onChange={(e) => updateSearchParam('q', e.target.value)}
@@ -415,6 +417,8 @@ const Shop = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
+                  type="search"
+                  aria-label="Search library"
                   placeholder="Search library..."
                   value={currentSearchTerm}
                   onChange={(e) => updateSearchParam('q', e.target.value)}
@@ -423,7 +427,7 @@ const Shop = () => {
               </div>
               <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="h-14 w-14 p-0 rounded-2xl border-gray-200 bg-white shadow-sm">
+                  <Button variant="outline" aria-label="Open filters" className="h-14 w-14 p-0 rounded-2xl border-gray-200 bg-white shadow-sm">
                     <Filter size={24} className="text-[#1C0357]" />
                   </Button>
                 </SheetTrigger>

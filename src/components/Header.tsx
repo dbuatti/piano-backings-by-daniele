@@ -178,15 +178,16 @@ const Header = () => {
             
             <div className="pl-2 border-l border-white/20 ml-2">
               {user ? (
-                <Button 
+                <Button
                   onClick={handleLogout}
-                  variant="ghost" 
+                  variant="ghost"
                   size="icon"
                   className={cn(
                     "rounded-full transition-colors",
                     isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"
                   )}
                   title="Logout"
+                  aria-label="Logout"
                 >
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -209,14 +210,15 @@ const Header = () => {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className={cn(
                 "rounded-full transition-colors",
                 isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"
               )}
               onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
             >
               <Menu className="h-6 w-6" />
             </Button>
@@ -236,11 +238,12 @@ const Header = () => {
             <div className="h-full flex flex-col bg-[#1C0357] text-white shadow-2xl">
               <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
                 <img className="h-10 w-auto rounded-xl" src="/pasted-image-2025-09-19T05-15-20-729Z.png" alt="Logo" />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="text-white hover:bg-white/10 rounded-full"
                   onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close menu"
                 >
                   <X className="h-6 w-6" />
                 </Button>
