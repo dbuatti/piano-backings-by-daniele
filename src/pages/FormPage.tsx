@@ -496,7 +496,7 @@ const FormPage = () => {
               <div className="mt-4 flex items-center gap-3">
                 <Switch checked={testMode} onCheckedChange={setTestMode} />
                 <span className="text-sm font-bold text-orange-700">
-                  {testMode ? 'Test Mode — will charge $0.50' : 'Test Mode (50¢ charge)'}
+                  {testMode ? 'Test Mode — will charge $0.50' : 'Test Mode OFF — real charges apply'}
                 </span>
               </div>
             </CardContent>
