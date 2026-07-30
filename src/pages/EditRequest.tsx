@@ -117,14 +117,12 @@ const EditRequest: React.FC = () => {
       setSheetMusicFile(null);
       setVoiceMemoFile(null);
     } catch (err: any) {
-      console.error('Error fetching request:', err);
       setError(err);
       toast({
         title: "Error",
         description: `Failed to fetch request: ${err.message}`,
         variant: "destructive",
       });
-      navigate('/admin');
     } finally {
       setLoading(false);
     }
