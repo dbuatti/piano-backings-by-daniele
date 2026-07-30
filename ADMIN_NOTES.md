@@ -55,8 +55,40 @@ Required Secrets include:
 *   `DROPBOX_APP_KEY`
 *   `DROPBOX_APP_SECRET`
 *   `DROPBOX_REFRESH_TOKEN`
+*   `NOTION_TOKEN` (secret_xxx — from an internal integration at https://www.notion.so/my-integrations)
+*   `NOTION_REQUESTS_DATABASE_ID` (the Notion DB for backing requests — e.g. `11caad21cd0980d8a3eeeffb27fc43c0`)
+*   `NOTION_PRODUCTS_DATABASE_ID` (optional — Notion DB for catalog/backing tracks. If unset, product sync is skipped.)
 
 ---
+
+## Notion Sync
+
+The `sync-to-notion` Edge Function upserts rows from Supabase into Notion for cost/tracking visibility.
+
+**Setup:**
+1. Create an internal integration at https://www.notion.so/my-integrations and copy the token.
+2. Open your Notion request database → `…` → `Connections` → add the integration. (Repeat for the products DB if used.)
+3. Set the secrets above via `supabase secrets set NOTION_TOKEN=...` (or Dashboard → Settings → API → Secrets).
+4. Add the tracking columns by applying the migration `0026_add_notion_sync_tracking_columns.sql` (Supabase SQL editor).
+5. Deploy: `supabase functions deploy sync-to-notion` and `supabase functions deploy create-backing-request`.
+
+**How it stays in sync:**
+- On every new request, `create-backing-request` fires-and-forgets a call to `sync-to-notion` with the new row id.
+- The function looks up the Notion DB schema and only writes properties that exist there, so it tolerates column renames.
+- It dedupes via the `Request ID` (rich_text) property and the stored `notion_page_id` column — re-running it safely updates existing pages.
+- Each sync writes the page id back to `backing_requests.notion_page_id` and updates `notion_synced_at`; errors land in `notion_sync_error`.
+
+**Backfilling existing rows:** run a one-off script that calls the function for each id, e.g.:
+```bash
+# requests backfill
+for id in $(psql "$SUPABASE_DB_URL" -tAc 'select id from backing_requests order by created_at'); do
+  curl -s -X POST "$SUPABASE_URL/functions/v1/sync-to-notion" \
+    -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: application/json" \
+    -d "{\"type\":\"request\",\"id\":\"$id\"}"
+done
+```
+
+**Notion DB columns recommended:** `Request ID` (text), `Song` (text), `Artist / Musical` (text), `Tier` (select), `Email` (text), `Client Name` (text), `Key` (text), `Due Date` (date), `Cost` (number), `Final Price` (number), `Paid` (checkbox), `Additional Services` (multi-select), `Status` (select), `YouTube` (url). The function gracefully skips any column not present.
 
 **Important Considerations:**
 

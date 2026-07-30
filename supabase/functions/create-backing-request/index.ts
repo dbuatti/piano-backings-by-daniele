@@ -106,6 +106,21 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError;
     const requestId = insertedRecords[0].id;
 
+    // Sync to Notion (fire-and-forget). Failures are logged inside sync-to-notion, not fatal.
+    try {
+      const supabaseUrlEnv = Deno.env.get('SUPABASE_URL') || supabaseUrl;
+      fetch(`${supabaseUrlEnv}/functions/v1/sync-to-notion`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
+        },
+        body: JSON.stringify({ type: 'request', id: requestId }),
+      }).catch((e) => console.error('[create-backing-request] Notion sync trigger failed:', e.message));
+    } catch (syncErr) {
+      console.error('[create-backing-request] Notion sync dispatch error:', syncErr.message);
+    }
+
     // Propagate name to all previous requests with the same email address
     if (formData.name && formData.email) {
       const { error: bulkNameError } = await supabaseAdmin
