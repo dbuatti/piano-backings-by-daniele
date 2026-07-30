@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Loader2, Download, Music, Package, ArrowRight } from 'lucide-react';
+import { CheckCircle, Loader2, Download, Music, Package, ArrowRight, AlertCircle } from 'lucide-react';
 import Seo from '@/components/Seo';
 import { downloadTrack } from '@/utils/helpers';
 
@@ -47,6 +47,7 @@ const PurchaseConfirmation = () => {
         }
       } catch (err) {
         console.error("Verification error:", err);
+        setOrderData(null);
       } finally {
         setLoading(false);
       }
@@ -63,6 +64,39 @@ const PurchaseConfirmation = () => {
           <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
           <p className="mt-4 font-bold text-[#1C0357]">Verifying your purchase...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!orderData) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF7]">
+        <Header />
+        <main className="max-w-3xl mx-auto py-16 px-4">
+          <Card className="rounded-[40px] border-none shadow-2xl overflow-hidden bg-white">
+            <CardContent className="p-12 text-center space-y-6">
+              <div className="h-20 w-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle size={40} className="text-orange-500" />
+              </div>
+              <h1 className="text-3xl font-black text-[#1C0357]">Couldn't verify your purchase</h1>
+              <p className="text-gray-500 font-medium">
+                We couldn't find a matching order for this session. If you completed a payment,
+                your order is still being processed — check your dashboard shortly or contact us if
+                it doesn't appear.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Button asChild className="flex-1 h-14 rounded-2xl bg-[#1C0357] font-black">
+                  <Link to="/user-dashboard">
+                    Go to My Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="flex-1 h-14 rounded-2xl border-2 font-black">
+                  <Link to="/shop">Continue Shopping</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
