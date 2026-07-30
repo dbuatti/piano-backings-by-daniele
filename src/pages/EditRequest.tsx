@@ -220,7 +220,11 @@ const EditRequest: React.FC = () => {
           .eq('email', payload.email);
         
         if (bulkNameError) {
-          console.error('Error updating bulk names:', bulkNameError);
+          toast({
+            title: "Name propagation failed",
+            description: `This request was saved, but the client name could not be updated on their other requests: ${bulkNameError.message}`,
+            variant: "destructive",
+          });
         }
       }
 
