@@ -40,3 +40,14 @@ Starting at priority 4:
 8. Reserve
 
 Each commit on this branch; `main` untouched.
+
+### 4. Footer Terms / Privacy placeholder links — JUDGEMENT CALL (not actioned)
+
+`src/components/Footer.tsx:181-182` — "Terms of Service" and "Privacy Policy" both link to `/shop` (broken placeholders). The site has no real legal pages and no `auth/migrations/env` to repurpose. Options:
+
+a) Delete both links — visible change, leaves no legal affordance.
+b) Point Terms → `/about` (describes the service) and remove Privacy — partial fix.
+c) Create stub `/terms` and `/privacy` pages — adds content the owner never wrote; fabricating legal text.
+d) Link both to a `mailto:` so users can request terms — unusual UX.
+
+This needs the owner's call. Flagging here rather than guessing.
