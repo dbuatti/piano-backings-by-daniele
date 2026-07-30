@@ -240,7 +240,7 @@ const Shop = () => {
     }
   }, [toast]);
 
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-8">
       <div className="space-y-4">
         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Search Library</Label>
@@ -263,7 +263,7 @@ const Shop = () => {
         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Backing Type</Label>
         <div className="flex flex-col gap-2">
           {['all', 'full-song', 'audition-cut', 'note-bash'].map(cat => (
-            <Button 
+            <Button
               key={cat}
               variant="ghost"
               onClick={() => updateSearchParam('category', cat)}
@@ -285,7 +285,7 @@ const Shop = () => {
         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Track Quality</Label>
         <div className="flex flex-col gap-2">
           {['all', 'polished', 'one-take', 'quick'].map(type => (
-            <Button 
+            <Button
               key={type}
               variant="ghost"
               onClick={() => updateSearchParam('track_type', type)}
@@ -319,8 +319,8 @@ const Shop = () => {
       </div>
 
       {(currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all') && (
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 font-black text-xs uppercase tracking-widest"
           onClick={() => setSearchParams(new URLSearchParams())}
         >
@@ -407,7 +407,7 @@ const Shop = () => {
                 <SlidersHorizontal size={20} className="text-[#1C0357]" />
                 <h3 className="font-black text-[#1C0357] uppercase tracking-[0.2em] text-xs">Library Filters</h3>
               </div>
-              <FilterContent />
+              {filterContent}
             </div>
           </aside>
 
@@ -436,7 +436,7 @@ const Shop = () => {
                     <SheetTitle className="text-3xl font-black text-[#1C0357] tracking-tighter">Filters</SheetTitle>
                   </SheetHeader>
                   <ScrollArea className="h-[calc(100vh-140px)] pr-4">
-                    <FilterContent />
+                    {filterContent}
                   </ScrollArea>
                 </SheetContent>
               </Sheet>
