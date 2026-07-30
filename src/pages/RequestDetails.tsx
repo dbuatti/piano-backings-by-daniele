@@ -351,7 +351,9 @@ const RequestDetails = () => {
         audioElement.pause();
       }
       const audio = new Audio(url);
-      audio.play();
+      audio.play().catch(() => {
+        setPlayingTrackUrl(null);
+      });
       setAudioElement(audio);
       setPlayingTrackUrl(url);
       audio.onended = () => setPlayingTrackUrl(null);
