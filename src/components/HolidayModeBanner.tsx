@@ -1,32 +1,44 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useAppSettings } from '@/hooks/useAppSettings'; // Updated import
-import { Plane, Loader2, X } from 'lucide-react';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { Plane, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+const DISMISS_KEY = 'holidayBannerDismissed';
+
 const HolidayModeBanner: React.FC = () => {
-  const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useAppSettings(); // Use the new hook
+  const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useAppSettings();
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Reset dismissal state if holiday mode changes (e.g., turns off and then back on)
+  // On mount, check if user dismissed the banner this browser session
   useEffect(() => {
-    if (isHolidayModeActive) {
+    if (sessionStorage.getItem(DISMISS_KEY) === 'true') {
+      setIsDismissed(true);
+    }
+  }, []);
+
+  // Reset dismissal if holiday mode was turned off and then back on (new holiday)
+  useEffect(() => {
+    if (!isHolidayModeActive) {
+      sessionStorage.removeItem(DISMISS_KEY);
       setIsDismissed(false);
     }
   }, [isHolidayModeActive]);
 
-  // Render nothing while loading, or if not active/dismissed
+  const handleDismiss = () => {
+    sessionStorage.setItem(DISMISS_KEY, 'true');
+    setIsDismissed(true);
+  };
+
   if (isLoading || !isHolidayModeActive || isDismissed) {
     return null;
   }
 
   if (error) {
-    console.error("Failed to load holiday mode settings for banner:", error);
-    return null; // Or a subtle error message if preferred
+    return null;
   }
 
   const returnDateMessage = holidayReturnDate
@@ -36,11 +48,12 @@ const HolidayModeBanner: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4">
       <Card className="bg-white p-8 rounded-lg shadow-xl text-center max-w-2xl w-full relative">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="absolute top-2 right-2 text-gray-500 hover:bg-gray-100"
-          onClick={() => setIsDismissed(true)}
+          onClick={handleDismiss}
+          aria-label="Dismiss"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">Dismiss</span>
@@ -54,8 +67,8 @@ const HolidayModeBanner: React.FC = () => {
           </p>
         </div>
         <CardContent className="mt-6 p-0">
-          <Button 
-            onClick={() => setIsDismissed(true)}
+          <Button
+            onClick={handleDismiss}
             className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
           >
             Got It!

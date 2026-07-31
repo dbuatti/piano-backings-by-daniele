@@ -116,6 +116,8 @@ const ReportIssueButton: React.FC = () => {
     submitIssueMutation.mutate(values);
   };
 
+  if (location.pathname.startsWith('/admin')) return null;
+
   return (
     <>
       <Button

@@ -351,7 +351,9 @@ const RequestDetails = () => {
         audioElement.pause();
       }
       const audio = new Audio(url);
-      audio.play();
+      audio.play().catch(() => {
+        setPlayingTrackUrl(null);
+      });
       setAudioElement(audio);
       setPlayingTrackUrl(url);
       audio.onended = () => setPlayingTrackUrl(null);
@@ -471,6 +473,7 @@ const RequestDetails = () => {
                             size="icon"
                             variant="ghost"
                             onClick={() => handlePlayPause(track.url)}
+                            aria-label={playingTrackUrl === track.url ? `Pause ${track.caption || 'track'}` : `Play ${track.caption || 'track'}`}
                             className={cn(
                               "h-10 w-10 rounded-full flex-shrink-0",
                               playingTrackUrl === track.url ? "bg-red-50 text-red-600" : "bg-purple-50 text-[#1C0357]"
@@ -504,13 +507,13 @@ const RequestDetails = () => {
 
                         {isEditingCaption !== track.url && (
                           <div className="flex items-center gap-2 self-end sm:self-auto">
-                            <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)}>
+                            <Button size="sm" variant="ghost" onClick={() => handleEditCaptionClick(track)} aria-label={`Rename ${track.caption || 'track'}`}>
                               <Edit className="h-4 w-4 text-gray-500" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleRemoveTrack(track.url)} className="hover:bg-red-50">
+                            <Button size="sm" variant="ghost" onClick={() => handleRemoveTrack(track.url)} aria-label={`Remove ${track.caption || 'track'}`} className="hover:bg-red-50">
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => downloadTrack(track.url, typeof track.caption === 'string' ? track.caption : 'track.mp3')}>
+                            <Button size="sm" variant="outline" onClick={() => downloadTrack(track.url, typeof track.caption === 'string' ? track.caption : 'track.mp3')} aria-label={`Download ${track.caption || 'track'}`}>
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>

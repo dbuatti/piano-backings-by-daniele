@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, LogIn, Music, Shield, User, X, Home, Info, Phone, Mail, TestTube, Upload, Settings, AlertCircle, Plane, ShoppingCart, HelpCircle, LogOut } from "lucide-react";
+import { Menu, LogIn, Music, Shield, User, X, Settings, AlertCircle, ShoppingCart, HelpCircle, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,7 +60,7 @@ const Header = () => {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out",
         isScrolled 
           ? "bg-white/80 backdrop-blur-lg shadow-md py-2" 
-          : "bg-[#FF00B3] py-4"
+          : "bg-[#F538BC] py-4"
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -82,12 +82,13 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <Link to="/form-page">
-              <Button 
+              <Button
                 className={cn(
                   "px-6 py-2.5 rounded-full text-sm font-black transition-all duration-300 shadow-lg hover:-translate-y-0.5 active:translate-y-0",
-                  isScrolled 
-                    ? "bg-[#1C0357] text-white hover:bg-[#2D0B8C]" 
-                    : "bg-white text-[#FF00B3] hover:bg-gray-100"
+                  isScrolled
+                    ? "bg-[#1C0357] text-white hover:bg-[#2D0B8C]"
+                    : "bg-white text-[#F538BC] hover:bg-gray-100",
+                  isActive('/form-page') && "ring-2 ring-white ring-offset-2 ring-offset-[#F538BC]"
                 )}
               >
                 <Music className="mr-2 h-4 w-4" />
@@ -178,15 +179,16 @@ const Header = () => {
             
             <div className="pl-2 border-l border-white/20 ml-2">
               {user ? (
-                <Button 
+                <Button
                   onClick={handleLogout}
-                  variant="ghost" 
+                  variant="ghost"
                   size="icon"
                   className={cn(
                     "rounded-full transition-colors",
                     isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"
                   )}
                   title="Logout"
+                  aria-label="Logout"
                 >
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -209,14 +211,15 @@ const Header = () => {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className={cn(
                 "rounded-full transition-colors",
                 isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"
               )}
               onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
             >
               <Menu className="h-6 w-6" />
             </Button>
@@ -236,11 +239,12 @@ const Header = () => {
             <div className="h-full flex flex-col bg-[#1C0357] text-white shadow-2xl">
               <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
                 <img className="h-10 w-auto rounded-xl" src="/pasted-image-2025-09-19T05-15-20-729Z.png" alt="Logo" />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="text-white hover:bg-white/10 rounded-full"
                   onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close menu"
                 >
                   <X className="h-6 w-6" />
                 </Button>
@@ -248,9 +252,12 @@ const Header = () => {
               
               <div className="flex-1 overflow-y-auto py-8 px-6">
                 <nav className="space-y-4">
-                  <Link 
+                  <Link
                     to="/form-page"
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-[#FF00B3] text-white font-black text-lg shadow-xl active:scale-95 transition-all"
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-2xl bg-[#F538BC] text-white font-black text-lg shadow-xl active:scale-95 transition-all",
+                      isActive('/form-page') && "ring-2 ring-white ring-offset-2 ring-offset-[#1C0357]"
+                    )}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <Music className="h-6 w-6" /> Order Track
@@ -327,11 +334,5 @@ const Header = () => {
     </header>
   );
 };
-
-const LayoutDashboard = ({ className }: { className?: string }) => (
-  <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" />
-  </svg>
-);
 
 export default Header;

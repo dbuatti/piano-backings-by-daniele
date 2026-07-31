@@ -521,9 +521,7 @@ const UserDashboard = () => {
                           </div>
                           
                           <div className="flex flex-wrap gap-2 mb-3">
-                            <Badge variant="default" className="bg-green-500">
-                              <CheckCircle className="w-3 h-3 mr-1" /> Completed
-                            </Badge>
+                            {getStatusBadge(order.status)}
                             <Badge variant="secondary" className="bg-[#D1AAF2] text-[#1C0357]">
                               Shop Order
                             </Badge>
