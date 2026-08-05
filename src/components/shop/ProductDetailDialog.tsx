@@ -22,6 +22,8 @@ import {
   Share2,
   Tag,
   Music,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
@@ -74,6 +76,9 @@ interface ProductDetailDialogProps {
   discountInfo: DiscountInfo | null;
   isValidatingPromo: boolean;
   onApplyPromo: () => Promise<void>;
+  navIndex?: number;
+  navTotal?: number;
+  onNavigate?: (direction: 'prev' | 'next') => void;
 }
 
 const variantLabel = (v: { vocal_ranges?: string[]; key_signature?: string | null; track_type?: string }) =>
@@ -119,6 +124,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   discountInfo,
   isValidatingPromo,
   onApplyPromo,
+  navIndex,
+  navTotal,
+  onNavigate,
 }) => {
   const { toast } = useToast();
 
@@ -138,6 +146,27 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [product.id]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        onNavigate?.('prev');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        onNavigate?.('next');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onNavigate]);
 
   const handleShare = () => {
     const url = `${window.location.origin}/shop/${selected.id}`;
@@ -218,6 +247,34 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <Share2 className="h-5 w-5" />
             </Button>
           </div>
+
+          {typeof navTotal === 'number' && navTotal > 1 && (
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-black/25 backdrop-blur-md rounded-full p-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => onNavigate?.('prev')}
+                disabled={typeof navIndex !== 'number' || navIndex <= 0}
+                className="h-8 w-8 rounded-full text-white hover:bg-white/20 disabled:opacity-40"
+                aria-label="Previous song"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-[10px] font-black text-white/80 tabular-nums px-1">
+                {typeof navIndex === 'number' && navIndex >= 0 ? navIndex + 1 : '-'}/{navTotal}
+              </span>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => onNavigate?.('next')}
+                disabled={typeof navIndex !== 'number' || navIndex >= navTotal - 1}
+                className="h-8 w-8 rounded-full text-white hover:bg-white/20 disabled:opacity-40"
+                aria-label="Next song"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           <DialogClose className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all z-10">
             <X className="h-5 w-5" />

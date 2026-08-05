@@ -408,6 +408,20 @@ const Shop = () => {
     navigate(`/shop/${product.id}`, { replace: true });
   }, [navigate]);
 
+  const handleNavigate = useCallback((dir: 'prev' | 'next') => {
+    if (!selectedProductForDetail) return;
+    const idx = tableRows.findIndex(r => r.product.id === selectedProductForDetail.id);
+    if (idx < 0) return;
+    const target = dir === 'next' ? tableRows[idx + 1] : tableRows[idx - 1];
+    if (!target) return;
+    handleViewDetails(target.product, target.variants);
+  }, [selectedProductForDetail, tableRows, handleViewDetails]);
+
+  const navIndex = useMemo(() => {
+    if (!selectedProductForDetail) return -1;
+    return tableRows.findIndex(r => r.product.id === selectedProductForDetail.id);
+  }, [selectedProductForDetail, tableRows]);
+
   const handleBuyNow = useCallback(async (product: Product, code?: string) => {
     setIsBuying(true);
     try {
@@ -916,6 +930,9 @@ const Shop = () => {
           discountInfo={discountInfo}
           isValidatingPromo={isValidatingPromo}
           onApplyPromo={handleValidatePromo}
+          navIndex={navIndex}
+          navTotal={tableRows.length}
+          onNavigate={handleNavigate}
         />
       )}
 
