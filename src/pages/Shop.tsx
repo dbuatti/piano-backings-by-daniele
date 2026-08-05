@@ -214,7 +214,7 @@ const Shop = () => {
     const match = currentSort.match(/^(\w+)_(asc|desc)$/);
     if (!match) return 'Title: A-Z';
     const names: Record<string, string> = {
-      title: 'Title', artist_name: 'Show', key_signature: 'Key', voice: 'Voice',
+      title: 'Title', artist_name: 'Show', category: 'Type', key_signature: 'Key', voice: 'Voice',
       track_type: 'Quality', duration_seconds: 'Duration', price: 'Price', created_at: 'Newest',
     };
     const name = names[match[1]];
@@ -284,6 +284,7 @@ const Shop = () => {
     const cmp = (a: Product, b: Product): number => {
       switch (col) {
         case 'artist_name': return (a.artist_name || '').localeCompare(b.artist_name || '');
+        case 'category': return (a.category || '').localeCompare(b.category || '');
         case 'key_signature': return (a.key_signature || '').localeCompare(b.key_signature || '');
         case 'track_type': return (a.track_type || '').localeCompare(b.track_type || '');
         case 'voice': return (a.vocal_ranges?.[0] || '').localeCompare(b.vocal_ranges?.[0] || '');

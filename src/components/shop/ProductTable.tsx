@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Loader2, Key, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWithinInterval, subDays } from 'date-fns';
-import { getTrackTypeInfo } from '@/utils/trackTypes';
+import { getTrackTypeInfo, getCategoryInfo } from '@/utils/trackTypes';
 import { formatDuration } from '@/utils/helpers';
 import { PreviewButton } from './ProductCard';
 
@@ -40,11 +40,12 @@ interface ProductTableProps {
   isBuying: boolean;
 }
 
-const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_130px_120px_90px_100px_150px]";
+const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_110px_100px_130px_120px_90px_100px_150px]";
 
 const COLUMNS: { key: string; label: string; right?: boolean }[] = [
   { key: 'title', label: 'Title' },
   { key: 'artist_name', label: 'Show' },
+  { key: 'category', label: 'Type' },
   { key: 'key_signature', label: 'Key' },
   { key: 'voice', label: 'Voice' },
   { key: 'track_type', label: 'Quality' },
@@ -79,6 +80,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
   const { product, variants } = row;
   const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
   const quality = getTrackTypeInfo(product.track_type);
+  const cat = getCategoryInfo(product.category);
   const isMulti = variants.length > 1;
   const prices = variants.map(v => v.price);
   const minPrice = Math.min(...prices);
@@ -105,6 +107,10 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
           </div>
         </div>
         <p className="text-sm text-gray-500 font-medium truncate">{product.artist_name || '—'}</p>
+        <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase w-fit", cat.badgeClass)}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
+          {cat.label}
+        </span>
         <p className="text-sm text-gray-600 font-semibold">{product.key_signature || '—'}</p>
         <p className="text-sm text-gray-600 font-semibold truncate">{voiceLabel}</p>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase w-fit", quality.badgeClass)}>
@@ -141,6 +147,10 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
               {variants.length} versions
             </span>
           )}
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase", cat.badgeClass)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
+            {cat.label}
+          </span>
           {product.key_signature && (
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
               <Key size={10} className="mr-1.5 text-gray-400" /> {product.key_signature}

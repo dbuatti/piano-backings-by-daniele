@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
-import { getTrackTypeInfo } from '@/utils/trackTypes';
+import { getTrackTypeInfo, getCategoryInfo } from '@/utils/trackTypes';
 import { formatDuration } from '@/utils/helpers';
 
 interface ShopProduct {
@@ -78,6 +78,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
   const isNew = isWithinInterval(new Date(selected.created_at), { start: subDays(new Date(), 14), end: new Date() });
 
   const quality = getTrackTypeInfo(selected.track_type);
+  const cat = getCategoryInfo(selected.category);
   const vocalRanges = selected.vocal_ranges || [];
   const visibleVoices = vocalRanges.slice(0, MAX_VISIBLE_VOICES);
   const hiddenVoices = vocalRanges.length - visibleVoices.length;
@@ -135,6 +136,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
               NEW
             </Badge>
           )}
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase h-6", cat.badgeClass)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
+            {cat.label}
+          </span>
           {quality.showBadge && (
             <TooltipProvider>
               <Tooltip>

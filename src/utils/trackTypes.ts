@@ -110,3 +110,29 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   'note-bash': 'Fast reference recordings for quick practice and last-minute prep.',
   general: 'Bundles and special offers.',
 };
+
+export const CATEGORY_META: Record<string, { label: string; badgeClass: string; dotClass: string }> = {
+  'full-song': {
+    label: 'Full Song',
+    badgeClass: 'bg-emerald-500/10 text-emerald-700 border-emerald-200/50',
+    dotClass: 'bg-emerald-500',
+  },
+  'audition-cut': {
+    label: 'Audition Cut',
+    badgeClass: 'bg-cyan-500/10 text-cyan-700 border-cyan-200/50',
+    dotClass: 'bg-cyan-500',
+  },
+  'note-bash': {
+    label: 'Note Bash',
+    badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-200/50',
+    dotClass: 'bg-blue-500',
+  },
+  general: {
+    label: 'Other',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-200/50',
+    dotClass: 'bg-gray-400',
+  },
+};
+
+export const getCategoryInfo = (category?: string | null): { label: string; badgeClass: string; dotClass: string } =>
+  CATEGORY_META[category || ''] || CATEGORY_META.general;
