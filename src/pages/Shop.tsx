@@ -842,7 +842,7 @@ const Shop = () => {
                 </div>
               </div>
             ) : currentView === 'list' ? (
-              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} />
+              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} searchTerm={currentSearchTerm} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (

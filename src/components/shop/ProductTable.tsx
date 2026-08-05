@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,9 +38,32 @@ interface ProductTableProps {
   onViewDetails: (product: TableProduct, variants?: TableProduct[]) => void;
   onBuyNow: (product: TableProduct) => Promise<void>;
   isBuying: boolean;
+  searchTerm?: string;
 }
 
 const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_110px_100px_130px_120px_90px_100px_150px]";
+
+const Highlight: React.FC<{ text: string; query?: string }> = ({ text, query }) => {
+  const q = (query || '').trim();
+  if (!q) return <>{text}</>;
+  const lower = text.toLowerCase();
+  const ql = q.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  let idx = lower.indexOf(ql);
+  while (idx !== -1) {
+    if (idx > i) parts.push(text.slice(i, idx));
+    parts.push(
+      <mark key={idx} className="bg-[#F538BC]/15 text-[#1C0357] rounded-sm px-0.5">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+    );
+    i = idx + q.length;
+    idx = lower.indexOf(ql, i);
+  }
+  if (i < text.length) parts.push(text.slice(i));
+  return <>{parts}</>;
+};
 
 const COLUMNS: { key: string; label: string; right?: boolean }[] = [
   { key: 'title', label: 'Title' },
@@ -76,7 +99,7 @@ const SortableHeader: React.FC<{ col: string; label: string; right?: boolean; cu
   );
 };
 
-const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onBuyNow: ProductTableProps['onBuyNow']; isBuying: boolean }> = ({ row, onViewDetails, onBuyNow, isBuying }) => {
+const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onBuyNow: ProductTableProps['onBuyNow']; isBuying: boolean; searchTerm?: string }> = ({ row, onViewDetails, onBuyNow, isBuying, searchTerm }) => {
   const { product, variants } = row;
   const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
   const quality = getTrackTypeInfo(product.track_type);
@@ -96,7 +119,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
       {/* Desktop row */}
       <div className={cn("hidden lg:grid gap-4 px-6 py-4 items-center transition-colors hover:bg-gray-50/80", GRID_COLS)}>
         <div className="min-w-0">
-          <p className="font-black text-[#1C0357] text-sm truncate group-hover:text-[#F538BC] transition-colors">{product.title}</p>
+          <p className="font-black text-[#1C0357] text-sm truncate group-hover:text-[#F538BC] transition-colors"><Highlight text={product.title} query={searchTerm} /></p>
           <div className="flex items-center gap-1.5 mt-1">
             {isNew && <Badge className="bg-[#F538BC] text-white border-none text-[9px] font-black h-4 px-1.5">NEW</Badge>}
             {isMulti && (
@@ -106,7 +129,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
             )}
           </div>
         </div>
-        <p className="text-sm text-gray-500 font-medium truncate">{product.artist_name || '—'}</p>
+        <p className="text-sm text-gray-500 font-medium truncate"><Highlight text={product.artist_name || '—'} query={searchTerm} /></p>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase w-fit", cat.badgeClass)}>
           <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
           {cat.label}
@@ -135,8 +158,8 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
       <div className="lg:hidden p-4 transition-colors hover:bg-gray-50/80">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-black text-[#1C0357] text-base leading-snug">{product.title}</p>
-            <p className="text-xs font-bold text-gray-500 mt-0.5 truncate">{product.artist_name || 'Various Artists'}</p>
+            <p className="font-black text-[#1C0357] text-base leading-snug"><Highlight text={product.title} query={searchTerm} /></p>
+            <p className="text-xs font-bold text-gray-500 mt-0.5 truncate"><Highlight text={product.artist_name || 'Various Artists'} query={searchTerm} /></p>
           </div>
           <PreviewButton variant={product} />
         </div>
@@ -186,21 +209,76 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
   );
 };
 
-const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onBuyNow, isBuying }) => {
+const firstLetter = (title: string) => {
+  const ch = title.trim().charAt(0).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '#';
+};
+
+const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onBuyNow, isBuying, searchTerm }) => {
+  const titleDir = currentSort === 'title_asc' ? 'asc' : currentSort === 'title_desc' ? 'desc' : null;
+  const letterGroups = useMemo(() => {
+    if (!titleDir) return null;
+    const map = new Map<string, TableRow[]>();
+    rows.forEach(r => {
+      const letter = firstLetter(r.product.title);
+      if (!map.has(letter)) map.set(letter, []);
+      map.get(letter)!.push(r);
+    });
+    const letters = Array.from(map.keys()).sort((a, b) => (titleDir === 'asc' ? a.localeCompare(b) : b.localeCompare(a)));
+    return letters.map(letter => ({ letter, rows: map.get(letter)! }));
+  }, [rows, titleDir]);
+
+  const scrollToLetter = (letter: string) => {
+    document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-      <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/95 backdrop-blur rounded-t-2xl sticky top-32 z-10", GRID_COLS)}>
-        {COLUMNS.map(c => (
-          <SortableHeader key={c.key} col={c.key} label={c.label} right={c.right} currentSort={currentSort} onSort={onSort} />
-        ))}
-        <span className="text-right" />
+    <>
+      {letterGroups && letterGroups.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {letterGroups.map(g => (
+            <button
+              key={g.letter}
+              type="button"
+              onClick={() => scrollToLetter(g.letter)}
+              className="h-7 w-7 rounded-lg bg-white border border-gray-200 text-xs font-black text-[#1C0357] hover:bg-[#1C0357] hover:text-white hover:border-[#1C0357] transition-colors"
+              aria-label={`Jump to songs starting with ${g.letter}`}
+            >
+              {g.letter}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/95 backdrop-blur rounded-t-2xl sticky top-32 z-10", GRID_COLS)}>
+          {COLUMNS.map(c => (
+            <SortableHeader key={c.key} col={c.key} label={c.label} right={c.right} currentSort={currentSort} onSort={onSort} />
+          ))}
+          <span className="text-right" />
+        </div>
+        <div className="divide-y divide-gray-100 [&>div:last-child]:rounded-b-2xl">
+          {letterGroups ? (
+            letterGroups.map(g => (
+              <React.Fragment key={g.letter}>
+                <div id={`letter-${g.letter}`} className="scroll-mt-40 px-6 py-1.5 bg-[#1C0357]/[0.04] flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-lg bg-[#1C0357] text-white flex items-center justify-center text-sm font-black">{g.letter}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    {g.rows.length} Song{g.rows.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                {g.rows.map(row => (
+                  <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} searchTerm={searchTerm} />
+                ))}
+              </React.Fragment>
+            ))
+          ) : (
+            rows.map(row => (
+              <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} searchTerm={searchTerm} />
+            ))
+          )}
+        </div>
       </div>
-      <div className="divide-y divide-gray-100 [&>div:last-child]:rounded-b-2xl">
-        {rows.map(row => (
-          <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} />
-        ))}
-      </div>
-    </div>
+    </>
   );
 };
 
