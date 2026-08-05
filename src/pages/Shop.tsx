@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ProductCard from '@/components/shop/ProductCard';
-import ProductTable from '@/components/shop/ProductTable';
+import ProductTable, { ProductTableSkeleton } from '@/components/shop/ProductTable';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { TrackInfo } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
@@ -811,9 +811,13 @@ const Shop = () => {
             </div>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
-                {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-              </div>
+              currentView === 'list' ? (
+                <ProductTableSkeleton />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
+                  {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+                </div>
+              )
             ) : regularProducts.length === 0 ? (
               <div className="text-center py-40 bg-white rounded-[64px] border-2 border-dashed border-gray-100 shadow-inner">
                 <div className="h-24 w-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Loader2, Key, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWithinInterval, subDays } from 'date-fns';
@@ -177,14 +178,14 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
 
 const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onBuyNow, isBuying }) => {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/60", GRID_COLS)}>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/95 backdrop-blur rounded-t-2xl sticky top-32 z-10", GRID_COLS)}>
         {COLUMNS.map(c => (
           <SortableHeader key={c.key} col={c.key} label={c.label} right={c.right} currentSort={currentSort} onSort={onSort} />
         ))}
         <span className="text-right" />
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-gray-100 [&>div:last-child]:rounded-b-2xl">
         {rows.map(row => (
           <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} />
         ))}
@@ -192,5 +193,21 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
     </div>
   );
 };
+
+export const ProductTableSkeleton: React.FC = () => (
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+    <div className="hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/60">
+      {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-3 w-12 rounded" />)}
+    </div>
+    <div className="divide-y divide-gray-100">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="px-6 py-4">
+          <Skeleton className="h-4 w-1/4 mb-2 rounded" />
+          <Skeleton className="h-3 w-1/3 rounded" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export default ProductTable;
