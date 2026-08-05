@@ -18,7 +18,11 @@ import {
   SlidersHorizontal, 
   ChevronRight,
   Mic2,
-  HelpCircle
+  HelpCircle,
+  ArrowUpDown,
+  ArrowUp,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import {
   Sheet,
@@ -35,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ProductCard from '@/components/shop/ProductCard';
+import ProductTable from '@/components/shop/ProductTable';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { TrackInfo } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
@@ -118,6 +123,7 @@ const Shop = () => {
   const [promoCode, setPromoCode] = useState('');
   const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const currentSearchTerm = searchParams.get('q') || '';
   const currentCategory = searchParams.get('category') || 'all';
@@ -127,6 +133,7 @@ const Shop = () => {
   const currentMinPrice = searchParams.get('min_price') || '';
   const currentMaxPrice = searchParams.get('max_price') || '';
   const currentSort = searchParams.get('sort') || 'title_asc';
+  const currentView = searchParams.get('view') || 'grid';
 
   const updateSearchParam = useCallback((key: string, value: string | null) => {
     setSearchParams(prev => {
@@ -237,6 +244,19 @@ const Shop = () => {
     });
   }, [regularProducts]);
 
+  const tableRows = useMemo(() => {
+    const byTitle = new Map<string, Product[]>();
+    regularProducts.forEach(p => {
+      const key = normalizeTitle(p.title);
+      if (!byTitle.has(key)) byTitle.set(key, []);
+      byTitle.get(key)!.push(p);
+    });
+    return Array.from(byTitle.entries()).map(([, variants]) => ({
+      product: [...variants].sort((a, b) => a.price - b.price)[0],
+      variants: [...variants].sort((a, b) => a.price - b.price),
+    }));
+  }, [regularProducts]);
+
   const showOptions = useMemo(() => {
     const shows = new Set<string>();
     (products || []).forEach(p => {
@@ -245,6 +265,35 @@ const Shop = () => {
     });
     return Array.from(shows).sort((a, b) => a.localeCompare(b));
   }, [products]);
+
+  const allVariantsById = useMemo(() => {
+    const byTitle = new Map<string, Product[]>();
+    (products || []).forEach(p => {
+      const key = normalizeTitle(p.title);
+      if (!byTitle.has(key)) byTitle.set(key, []);
+      byTitle.get(key)!.push(p);
+    });
+    const lookup = new Map<string, Product[]>();
+    for (const [, variants] of byTitle) {
+      for (const v of variants) lookup.set(v.id, variants);
+    }
+    return lookup;
+  }, [products]);
+
+  const relatedProducts = useMemo(() => {
+    if (!selectedProductForDetail || !products) return [];
+    const current = selectedProductForDetail;
+    const sameShow = (products || []).filter(p => p.id !== current.id && (p.artist_name || '').trim() === (current.artist_name || '').trim());
+    const pool = sameShow.length > 0 ? sameShow : (products || []).filter(p => p.id !== current.id && p.category === current.category);
+    return pool.slice(0, 4);
+  }, [selectedProductForDetail, products]);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 700);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -506,21 +555,6 @@ const Shop = () => {
 
       <Separator className="bg-gray-100" />
 
-      <div className="space-y-4">
-        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Sort By</Label>
-        <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
-          <SelectTrigger className="h-11 bg-gray-50 border-none rounded-xl font-bold text-sm">
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="title_asc">Title: A-Z</SelectItem>
-            <SelectItem value="price_asc">Price: Low to High</SelectItem>
-            <SelectItem value="price_desc">Price: High to Low</SelectItem>
-            <SelectItem value="created_at_desc">Newest First</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {hasActiveFilters && (
         <Button
           variant="outline"
@@ -663,34 +697,74 @@ const Shop = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-8">
-              {hasActiveFilters ? (
-                <>
-                  <p className="text-xs font-bold text-[#1C0357] uppercase tracking-[0.2em] mr-auto">
-                    {clientFilteredProducts.length} Track{clientFilteredProducts.length === 1 ? '' : 's'} Found
-                  </p>
-                  {activeFilters.map(f => (
+              <div className="flex flex-wrap items-center gap-2 mr-auto">
+                {hasActiveFilters ? (
+                  <>
+                    <p className="text-xs font-bold text-[#1C0357] uppercase tracking-[0.2em] mr-2">
+                      {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} Found
+                    </p>
+                    {activeFilters.map(f => (
+                      <button
+                        key={f.key}
+                        onClick={() => updateSearchParam(f.param, null)}
+                        aria-label={`Remove filter ${f.label}`}
+                        className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-[#1C0357] text-white text-[11px] font-bold hover:bg-[#2D0B8C] transition-colors"
+                      >
+                        {f.label}
+                        <X className="h-3 w-3" />
+                      </button>
+                    ))}
                     <button
-                      key={f.key}
-                      onClick={() => updateSearchParam(f.param, null)}
-                      aria-label={`Remove filter ${f.label}`}
-                      className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-[#1C0357] text-white text-[11px] font-bold hover:bg-[#2D0B8C] transition-colors"
+                      onClick={() => setSearchParams(new URLSearchParams())}
+                      className="text-[11px] font-black uppercase tracking-wider text-[#F538BC] hover:text-[#F538BC]/70 transition-colors"
                     >
-                      {f.label}
-                      <X className="h-3 w-3" />
+                      Clear all
                     </button>
-                  ))}
+                  </>
+                ) : (
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
+                    {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} in the Library
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5 p-1 bg-gray-100 rounded-xl">
                   <button
-                    onClick={() => setSearchParams(new URLSearchParams())}
-                    className="text-[11px] font-black uppercase tracking-wider text-[#F538BC] hover:text-[#F538BC]/70 transition-colors"
+                    onClick={() => updateSearchParam('view', 'grid')}
+                    aria-label="Grid view"
+                    title="Grid view"
+                    className={cn(
+                      "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
+                      currentView === 'grid' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
+                    )}
                   >
-                    Clear all
+                    <LayoutGrid className="h-4 w-4" />
                   </button>
-                </>
-              ) : (
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
-                  {clientFilteredProducts.length} Track{clientFilteredProducts.length === 1 ? '' : 's'} in the Library
-                </p>
-              )}
+                  <button
+                    onClick={() => updateSearchParam('view', 'list')}
+                    aria-label="List view"
+                    title="List view"
+                    className={cn(
+                      "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
+                      currentView === 'list' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
+                    )}
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+                <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
+                  <SelectTrigger className="h-9 w-[190px] bg-white border-gray-200 rounded-xl font-bold text-xs" aria-label="Sort products">
+                    <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 mr-1" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                    <SelectItem value="created_at_desc">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {isLoading ? (
@@ -721,6 +795,8 @@ const Shop = () => {
                   </Link>
                 </div>
               </div>
+            ) : currentView === 'list' ? (
+              <ProductTable rows={tableRows} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (
@@ -781,6 +857,8 @@ const Shop = () => {
           }}
           product={selectedProductForDetail}
           variants={selectedVariantsForDetail || undefined}
+          related={relatedProducts}
+          onOpenProduct={(p, v) => handleViewDetails(p, v)}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}
           promoCode={promoCode}
@@ -792,6 +870,16 @@ const Shop = () => {
           isValidatingPromo={isValidatingPromo}
           onApplyPromo={handleValidatePromo}
         />
+      )}
+
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Back to top"
+          className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-[#1C0357] text-white shadow-xl hover:bg-[#2D0B8C] flex items-center justify-center transition-all active:scale-95"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
       )}
     </div>
   );

@@ -65,6 +65,8 @@ interface ProductDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   product: Product;
   variants?: Product[];
+  related?: Product[];
+  onOpenProduct?: (product: Product, variants?: Product[]) => void;
   onBuyNow: (product: Product, promoCode?: string) => Promise<void>;
   isBuying: boolean;
   promoCode: string;
@@ -108,6 +110,8 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   onOpenChange,
   product,
   variants,
+  related,
+  onOpenProduct,
   onBuyNow,
   isBuying,
   promoCode,
@@ -157,7 +161,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[92vh] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col sm:rounded-2xl">
+      <DialogContent hideCloseButton className="max-w-4xl w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col sm:rounded-2xl">
         <DialogHeader>
           <DialogTitle>
             <VisuallyHidden>Product Details for {product.title}</VisuallyHidden>
@@ -344,6 +348,31 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             </div>
 
           </div>
+
+          {related && related.length > 0 && onOpenProduct && (
+            <section className="mt-10 pt-6 border-t border-gray-100">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
+                <Music size={14} /> More from {selected.artist_name || 'the Library'}
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {related.map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => onOpenProduct(r)}
+                    className="group text-left rounded-xl border border-gray-100 bg-gray-50/50 p-3 transition-all hover:border-[#F538BC]/40 hover:bg-white hover:shadow-md"
+                  >
+                    <p className="text-sm font-black text-[#1C0357] leading-snug line-clamp-2 group-hover:text-[#F538BC] transition-colors">
+                      {r.title}
+                    </p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1.5 truncate">
+                      {getTrackTypeInfo(r.track_type).label} · ${r.price.toFixed(2)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="bg-white border-t p-4 md:px-10 flex-shrink-0">

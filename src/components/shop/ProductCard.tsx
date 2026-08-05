@@ -24,7 +24,7 @@ interface ShopProduct {
   key_signature: string | null;
   track_type: string;
   duration_seconds?: number | null;
-  track_urls?: { url: string }[];
+  track_urls?: { url: string | null }[];
 }
 
 interface ProductCardProps {
@@ -36,7 +36,7 @@ interface ProductCardProps {
 
 const MAX_VISIBLE_VOICES = 2;
 
-const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) => {
+export const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) => {
   const firstTrackUrl = variant.track_urls?.[0]?.url || null;
   const { isPlaying, togglePlay, audioRef, handleEnded, hasAudio } = useAudioPreview(firstTrackUrl);
 
