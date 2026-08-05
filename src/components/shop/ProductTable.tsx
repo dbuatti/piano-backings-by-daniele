@@ -228,6 +228,12 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
     return letters.map(letter => ({ letter, rows: map.get(letter)! }));
   }, [rows, titleDir]);
 
+  const letterSet = useMemo(() => new Set((letterGroups || []).map(g => g.letter)), [letterGroups]);
+  const navLetters = useMemo(() => {
+    const alpha = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
+    return letterSet.has('#') ? [...alpha, '#'] : alpha;
+  }, [letterSet]);
+
   const scrollToLetter = (letter: string) => {
     document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -235,18 +241,25 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
   return (
     <>
       {letterGroups && letterGroups.length > 1 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {letterGroups.map(g => (
-            <button
-              key={g.letter}
-              type="button"
-              onClick={() => scrollToLetter(g.letter)}
-              className="h-7 w-7 rounded-lg bg-white border border-gray-200 text-xs font-black text-[#1C0357] hover:bg-[#1C0357] hover:text-white hover:border-[#1C0357] transition-colors"
-              aria-label={`Jump to songs starting with ${g.letter}`}
-            >
-              {g.letter}
-            </button>
-          ))}
+        <div className="flex items-center gap-0.5 p-1 bg-gray-100 rounded-xl mb-4 overflow-x-auto max-w-full w-fit">
+          {navLetters.map(letter => {
+            const present = letterSet.has(letter);
+            return (
+              <button
+                key={letter}
+                type="button"
+                disabled={!present}
+                onClick={() => scrollToLetter(letter)}
+                title={present ? `Jump to ${letter}` : `No songs start with ${letter}`}
+                className={cn(
+                  "h-7 w-7 flex-shrink-0 flex items-center justify-center rounded-lg text-[11px] font-black transition-colors",
+                  present ? "bg-white text-[#1C0357] shadow-sm hover:text-[#F538BC]" : "text-gray-300 cursor-not-allowed"
+                )}
+              >
+                {letter}
+              </button>
+            );
+          })}
         </div>
       )}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -256,15 +269,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
           ))}
           <span className="text-right" />
         </div>
-        <div className="divide-y divide-gray-100 [&>div:last-child]:rounded-b-2xl">
+        <div className="[&>div:last-child]:rounded-b-2xl">
           {letterGroups ? (
             letterGroups.map(g => (
               <React.Fragment key={g.letter}>
-                <div id={`letter-${g.letter}`} className="scroll-mt-40 px-6 py-1.5 bg-[#1C0357]/[0.04] flex items-center gap-3">
-                  <span className="w-7 h-7 rounded-lg bg-[#1C0357] text-white flex items-center justify-center text-sm font-black">{g.letter}</span>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-                    {g.rows.length} Song{g.rows.length === 1 ? '' : 's'}
-                  </span>
+                <div id={`letter-${g.letter}`} className="scroll-mt-40 px-4 lg:px-6 py-1.5 flex items-center gap-3 border-y border-gray-100 bg-gray-50/60">
+                  <span className="text-sm font-black text-[#1C0357] tracking-tight w-5 flex-shrink-0">{g.letter}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">{g.rows.length}</span>
                 </div>
                 {g.rows.map(row => (
                   <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} searchTerm={searchTerm} />
