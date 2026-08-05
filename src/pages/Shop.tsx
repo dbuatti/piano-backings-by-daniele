@@ -133,7 +133,7 @@ const Shop = () => {
   const currentMinPrice = searchParams.get('min_price') || '';
   const currentMaxPrice = searchParams.get('max_price') || '';
   const currentSort = searchParams.get('sort') || 'title_asc';
-  const currentView = searchParams.get('view') || 'grid';
+  const currentView = searchParams.get('view') || 'list';
 
   const updateSearchParam = useCallback((key: string, value: string | null) => {
     setSearchParams(prev => {

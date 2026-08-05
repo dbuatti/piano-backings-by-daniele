@@ -228,40 +228,8 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
     return letters.map(letter => ({ letter, rows: map.get(letter)! }));
   }, [rows, titleDir]);
 
-  const letterSet = useMemo(() => new Set((letterGroups || []).map(g => g.letter)), [letterGroups]);
-  const navLetters = useMemo(() => {
-    const alpha = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
-    return letterSet.has('#') ? [...alpha, '#'] : alpha;
-  }, [letterSet]);
-
-  const scrollToLetter = (letter: string) => {
-    document.getElementById(`letter-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   return (
     <>
-      {letterGroups && letterGroups.length > 1 && (
-        <div className="flex items-center gap-0.5 p-1 bg-gray-100 rounded-xl mb-4 overflow-x-auto max-w-full w-fit">
-          {navLetters.map(letter => {
-            const present = letterSet.has(letter);
-            return (
-              <button
-                key={letter}
-                type="button"
-                disabled={!present}
-                onClick={() => scrollToLetter(letter)}
-                title={present ? `Jump to ${letter}` : `No songs start with ${letter}`}
-                className={cn(
-                  "h-7 w-7 flex-shrink-0 flex items-center justify-center rounded-lg text-[11px] font-black transition-colors",
-                  present ? "bg-white text-[#1C0357] shadow-sm hover:text-[#F538BC]" : "text-gray-300 cursor-not-allowed"
-                )}
-              >
-                {letter}
-              </button>
-            );
-          })}
-        </div>
-      )}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/95 backdrop-blur rounded-t-2xl sticky top-32 z-10", GRID_COLS)}>
           {COLUMNS.map(c => (
