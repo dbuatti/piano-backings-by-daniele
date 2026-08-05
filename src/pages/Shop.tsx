@@ -158,14 +158,21 @@ const Shop = () => {
       if (currentCategory !== 'all') query = query.eq('category', currentCategory);
       if (currentTrackType !== 'all') query = query.eq('track_type', currentTrackType);
 
-      switch (currentSort) {
-        case 'price_asc': query = query.order('price', { ascending: true }); break;
-        case 'price_desc': query = query.order('price', { ascending: false }); break;
-        case 'created_at_desc': query = query.order('created_at', { ascending: false }); break;
-        case 'title_asc':
-        default:
-          query = query.order('title', { ascending: true });
-          break;
+      const sortableColumns: Record<string, string> = {
+        title: 'title',
+        artist_name: 'artist_name',
+        key_signature: 'key_signature',
+        track_type: 'track_type',
+        duration_seconds: 'duration_seconds',
+        price: 'price',
+        created_at: 'created_at',
+      };
+      const sortMatch = currentSort.match(/^(\w+)_(asc|desc)$/);
+      const sortColumn = sortMatch ? sortableColumns[sortMatch[1]] : undefined;
+      if (sortColumn) {
+        query = query.order(sortColumn, { ascending: sortMatch![2] === 'asc' });
+      } else {
+        query = query.order('title', { ascending: true });
       }
 
       const { data, error } = await query;
@@ -202,6 +209,21 @@ const Shop = () => {
     if (currentMaxPrice) f.push({ key: 'max_price', label: `Max $${Number(currentMaxPrice).toFixed(2)}`, param: 'max_price' });
     return f;
   }, [currentSearchTerm, currentCategory, currentTrackType, currentVoice, currentShow, currentMinPrice, currentMaxPrice]);
+
+  const sortLabel = useMemo(() => {
+    const match = currentSort.match(/^(\w+)_(asc|desc)$/);
+    if (!match) return 'Title: A-Z';
+    const names: Record<string, string> = {
+      title: 'Title', artist_name: 'Show', key_signature: 'Key', voice: 'Voice',
+      track_type: 'Quality', duration_seconds: 'Duration', price: 'Price', created_at: 'Newest',
+    };
+    const name = names[match[1]];
+    if (!name) return 'Title: A-Z';
+    if (match[1] === 'duration_seconds') return match[2] === 'asc' ? 'Duration: Shortest' : 'Duration: Longest';
+    if (match[1] === 'created_at') return 'Newest First';
+    if (match[1] === 'price') return match[2] === 'asc' ? 'Price: Low to High' : 'Price: High to Low';
+    return `${name}: ${match[2] === 'asc' ? 'A-Z' : 'Z-A'}`;
+  }, [currentSort]);
 
   const featuredProducts = useMemo(() => {
     return products?.filter(p => p.title.toLowerCase().includes('season pack')) || [];
@@ -251,11 +273,30 @@ const Shop = () => {
       if (!byTitle.has(key)) byTitle.set(key, []);
       byTitle.get(key)!.push(p);
     });
-    return Array.from(byTitle.entries()).map(([, variants]) => ({
-      product: [...variants].sort((a, b) => a.price - b.price)[0],
-      variants: [...variants].sort((a, b) => a.price - b.price),
-    }));
-  }, [regularProducts]);
+    const rows = Array.from(byTitle.entries()).map(([, variants]) => {
+      const sorted = [...variants].sort((a, b) => a.price - b.price);
+      return { product: sorted[0], variants: sorted };
+    });
+
+    const sortMatch = currentSort.match(/^(\w+)_(asc|desc)$/);
+    const dir = sortMatch && sortMatch[2] === 'desc' ? -1 : 1;
+    const col = sortMatch ? sortMatch[1] : 'title';
+    const cmp = (a: Product, b: Product): number => {
+      switch (col) {
+        case 'artist_name': return (a.artist_name || '').localeCompare(b.artist_name || '');
+        case 'key_signature': return (a.key_signature || '').localeCompare(b.key_signature || '');
+        case 'track_type': return (a.track_type || '').localeCompare(b.track_type || '');
+        case 'voice': return (a.vocal_ranges?.[0] || '').localeCompare(b.vocal_ranges?.[0] || '');
+        case 'duration_seconds': return (a.duration_seconds ?? 0) - (b.duration_seconds ?? 0);
+        case 'price': return a.price - b.price;
+        case 'created_at': return a.created_at.localeCompare(b.created_at);
+        case 'title':
+        default: return a.title.trim().localeCompare(b.title.trim());
+      }
+    };
+    rows.sort((x, y) => cmp(x.product, y.product) * dir);
+    return rows;
+  }, [regularProducts, currentSort]);
 
   const showOptions = useMemo(() => {
     const shows = new Set<string>();
@@ -655,20 +696,22 @@ const Shop = () => {
 
         <div className="flex flex-col lg:flex-row gap-16">
           
-          <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-32">
-              <div className="flex items-center gap-3 mb-8">
-                <SlidersHorizontal size={20} className="text-[#1C0357]" />
-                <h3 className="font-black text-[#1C0357] uppercase tracking-[0.2em] text-xs">Library Filters</h3>
+          {currentView !== 'list' && (
+            <aside className="hidden lg:block w-64 flex-shrink-0">
+              <div className="sticky top-32">
+                <div className="flex items-center gap-3 mb-8">
+                  <SlidersHorizontal size={20} className="text-[#1C0357]" />
+                  <h3 className="font-black text-[#1C0357] uppercase tracking-[0.2em] text-xs">Library Filters</h3>
+                </div>
+                {filterContent}
               </div>
-              {filterContent}
-            </div>
-          </aside>
+            </aside>
+          )}
 
           <div className="flex-1">
             
-            <div className="lg:hidden mb-10 flex gap-4">
-              <div className="relative flex-1">
+            <div className={cn("mb-10 flex gap-4", currentView !== 'list' && "lg:hidden")}>
+              <div className="relative flex-1 max-w-2xl">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
                   type="search"
@@ -755,7 +798,7 @@ const Shop = () => {
                 <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
                   <SelectTrigger className="h-9 w-[190px] bg-white border-gray-200 rounded-xl font-bold text-xs" aria-label="Sort products">
                     <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 mr-1" />
-                    <SelectValue />
+                    <SelectValue>{sortLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="title_asc">Title: A-Z</SelectItem>
@@ -796,7 +839,7 @@ const Shop = () => {
                 </div>
               </div>
             ) : currentView === 'list' ? (
-              <ProductTable rows={tableRows} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} />
+              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (

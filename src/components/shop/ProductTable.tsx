@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Loader2, Key, Clock } from 'lucide-react';
+import { ShoppingCart, Loader2, Key, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWithinInterval, subDays } from 'date-fns';
 import { getTrackTypeInfo } from '@/utils/trackTypes';
@@ -32,12 +32,47 @@ interface TableRow {
 
 interface ProductTableProps {
   rows: TableRow[];
+  currentSort: string;
+  onSort: (value: string) => void;
   onViewDetails: (product: TableProduct, variants?: TableProduct[]) => void;
   onBuyNow: (product: TableProduct) => Promise<void>;
   isBuying: boolean;
 }
 
 const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_130px_120px_90px_100px_auto]";
+
+const COLUMNS: { key: string; label: string; right?: boolean }[] = [
+  { key: 'title', label: 'Title' },
+  { key: 'artist_name', label: 'Show' },
+  { key: 'key_signature', label: 'Key' },
+  { key: 'voice', label: 'Voice' },
+  { key: 'track_type', label: 'Quality' },
+  { key: 'duration_seconds', label: 'Duration' },
+  { key: 'price', label: 'Price', right: true },
+];
+
+const SortableHeader: React.FC<{ col: string; label: string; right?: boolean; currentSort: string; onSort: (v: string) => void }> = ({ col, label, right, currentSort, onSort }) => {
+  const active = currentSort === `${col}_asc` || currentSort === `${col}_desc`;
+  const dir = currentSort === `${col}_desc` ? 'desc' : 'asc';
+  const next = `${col}_${dir === 'asc' ? 'desc' : 'asc'}`;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(next)}
+      aria-label={`Sort by ${label} ${dir === 'asc' ? 'descending' : 'ascending'}`}
+      className={cn("inline-flex items-center gap-1 group", right && "justify-end w-full")}
+    >
+      <span className={cn("text-[10px] font-black uppercase tracking-[0.2em] transition-colors", active ? "text-[#1C0357]" : "text-gray-400 group-hover:text-[#1C0357]")}>
+        {label}
+      </span>
+      {active ? (
+        dir === 'asc' ? <ArrowUp className="h-3 w-3 text-[#F538BC]" /> : <ArrowDown className="h-3 w-3 text-[#F538BC]" />
+      ) : (
+        <ArrowUpDown className="h-3 w-3 text-gray-300 group-hover:text-[#F538BC] transition-colors" />
+      )}
+    </button>
+  );
+};
 
 const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onBuyNow: ProductTableProps['onBuyNow']; isBuying: boolean }> = ({ row, onViewDetails, onBuyNow, isBuying }) => {
   const { product, variants } = row;
@@ -140,17 +175,13 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
   );
 };
 
-const ProductTable: React.FC<ProductTableProps> = ({ rows, onViewDetails, onBuyNow, isBuying }) => {
+const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onBuyNow, isBuying }) => {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className={cn("hidden lg:grid gap-4 px-6 py-3 border-b border-gray-100 bg-gray-50/60", GRID_COLS)}>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Title</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Show</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Key</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Voice</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Quality</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Duration</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right">Price</span>
+        {COLUMNS.map(c => (
+          <SortableHeader key={c.key} col={c.key} label={c.label} right={c.right} currentSort={currentSort} onSort={onSort} />
+        ))}
         <span className="text-right" />
       </div>
       <div className="divide-y divide-gray-100">
