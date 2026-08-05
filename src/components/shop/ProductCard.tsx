@@ -51,8 +51,8 @@ const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) => {
         className={cn(
           "rounded-full shadow-sm transition-all shrink-0 h-10 w-10 border-2",
           isPlaying
-            ? "bg-red-500 border-red-400 text-white animate-pulse"
-            : "bg-[#F538BC] border-[#F538BC]/30 text-white hover:scale-105 hover:bg-[#F538BC]/90"
+            ? "bg-[#F538BC] border-[#F538BC] text-white animate-pulse"
+            : "bg-white border-[#F538BC]/40 text-[#F538BC] hover:bg-[#F538BC] hover:text-white hover:scale-105"
         )}
       >
         {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
@@ -94,35 +94,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
       className="group flex flex-col overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl cursor-pointer h-full"
     >
       <CardContent className="flex-1 p-5 flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-lg font-black text-[#1C0357] leading-snug line-clamp-2 group-hover:text-[#F538BC] transition-colors duration-300">
-              {selected.title}
-            </h3>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Theater size={13} className="text-[#F538BC] flex-shrink-0" />
-              <p className="text-xs font-bold text-gray-500 truncate">
-                {selected.artist_name || 'Various Artists'}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            {isNew && (
-              <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-black h-5 px-2 shadow-sm">
-                NEW
-              </Badge>
-            )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase h-6", quality.badgeClass)}>
-                    <span className={cn("h-1.5 w-1.5 rounded-full", quality.dotClass)} />
-                    {quality.label}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{quality.desc || quality.label}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        <div className="min-w-0">
+          <h3 className="text-lg font-black text-[#1C0357] leading-snug line-clamp-2 group-hover:text-[#F538BC] transition-colors duration-300">
+            {selected.title}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <Theater size={13} className="text-[#F538BC] flex-shrink-0" />
+            <p className="text-xs font-bold text-gray-500 truncate">
+              {selected.artist_name || 'Various Artists'}
+            </p>
           </div>
         </div>
 
@@ -136,7 +116,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setSelectedId(v.id); }}
                   className={cn(
-                    "px-2.5 h-7 rounded-full text-[10px] font-black uppercase border transition-colors",
+                    "px-2.5 h-6 rounded-full text-[10px] font-black uppercase border transition-colors",
                     active
                       ? "bg-[#1C0357] text-white border-[#1C0357] shadow-sm"
                       : "bg-white text-gray-600 border-gray-200 hover:border-[#1C0357]/40 hover:text-[#1C0357]"
@@ -150,17 +130,35 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
         )}
 
         <div className="flex flex-wrap gap-1.5">
+          {isNew && (
+            <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-black h-5 px-2 shadow-sm">
+              NEW
+            </Badge>
+          )}
+          {quality.showBadge && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase h-6", quality.badgeClass)}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", quality.dotClass)} />
+                    {quality.label}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{quality.desc || quality.label}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {selected.key_signature && (
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
               <Key size={10} className="mr-1.5 text-gray-400" /> {selected.key_signature}
             </Badge>
           )}
-          {visibleVoices.map((range: string) => (
+          {!isMulti && visibleVoices.map((range: string) => (
             <Badge key={range} variant="secondary" className="bg-[#D1AAF2]/10 text-[#1C0357] text-[10px] px-2 py-0.5 border-none font-bold">
               {range}
             </Badge>
           ))}
-          {hiddenVoices > 0 && (
+          {!isMulti && hiddenVoices > 0 && (
             <Badge variant="secondary" className="bg-[#D1AAF2]/10 text-[#1C0357] text-[10px] px-2 py-0.5 border-none font-bold">
               +{hiddenVoices}
             </Badge>

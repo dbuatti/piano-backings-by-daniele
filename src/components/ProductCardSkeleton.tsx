@@ -6,12 +6,9 @@ const ProductCardSkeleton: React.FC = () => {
   return (
     <Card className="flex flex-col overflow-hidden shadow-sm border border-gray-100 h-full bg-white rounded-2xl">
       <CardContent className="flex-1 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <Skeleton className="h-5 w-3/4 mb-2" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-          <Skeleton className="h-5 w-16 rounded-full" />
+        <div className="flex-1">
+          <Skeleton className="h-5 w-3/4 mb-2" />
+          <Skeleton className="h-3 w-1/2" />
         </div>
         <div className="flex flex-wrap gap-1.5 mt-4">
           <Skeleton className="h-5 w-20 rounded-full" />

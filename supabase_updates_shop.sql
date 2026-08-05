@@ -46,3 +46,20 @@ UPDATE products SET duration_seconds = 212.6 WHERE id = 'e066b846-544f-420f-8a07
 UPDATE products SET duration_seconds = 221.8 WHERE id = 'da66c139-1660-4823-9394-3de1b01505fd'; -- Bundle: COME ALIVE, TIGHTROPE, FROM NOW ON...
 UPDATE products SET duration_seconds = 267.9 WHERE id = '4be273d9-fd97-49b8-bee9-e353a5b23345'; -- I Need More
 UPDATE products SET duration_seconds = 237.8 WHERE id = '99b4df49-dd76-4773-8991-89044019171c'; -- Through The Mountain
+
+-- 5) Voice-type backfill for tracks silently excluded from the Voice filter.
+--    Review the values below before running and adjust if any are wrong:
+--      * Lin Marsh pieces are unison children's choir songs  -> Soprano
+--      * Naughty (Matilda Jr) is sung by a child lead       -> Soprano
+--      * She Loves Me (polished) matches its sibling variant -> Tenor/Bass
+--      * Season Pack is a bundle, not a song -> intentionally left unset
+UPDATE products SET vocal_ranges = ARRAY['Soprano'] WHERE id IN (
+  '64c0520a-d80c-4320-b87c-1d3d3fbc5c72', -- Silver Moon
+  '0080cf41-6797-4a5e-b73c-e06613eed4b8', -- Stars
+  '56e9b8f9-7896-4407-ab62-ef941e81c282', -- Listen to the Rain
+  'fbd41891-39dd-4add-bea4-b3d87990ac97', -- Summer
+  'b6ecec45-d184-401f-96ad-0bb2c7427c20', -- Earth, Sea, Sky
+  'f5705cb6-cbb8-4702-80b3-912e9681f466'  -- Naughty
+);
+UPDATE products SET vocal_ranges = ARRAY['Tenor','Bass']
+WHERE id = '03165ce0-4654-4a2d-b2dd-a89b26b86072'; -- She Loves Me (polished)

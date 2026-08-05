@@ -17,7 +17,6 @@ import {
   Star, 
   SlidersHorizontal, 
   ChevronRight,
-  Package,
   Mic2,
   HelpCircle
 } from 'lucide-react';
@@ -50,7 +49,7 @@ import { formatDurationIso } from '@/utils/helpers';
 import {
   CATEGORY_OPTIONS,
   CATEGORY_PLURALS,
-  TRACK_TYPE_FILTER_OPTIONS,
+  QUALITY_FILTER_OPTIONS,
   VOICE_TYPE_OPTIONS,
   TRACK_TYPES,
 } from '@/utils/trackTypes';
@@ -212,7 +211,7 @@ const Shop = () => {
       return {
         id: cat,
         label: CATEGORY_PLURALS[cat] || cat,
-        totalCount: groups.reduce((sum, g) => sum + g.variants.length, 0),
+        totalCount: groups.length,
         groups,
       } as GroupedSection;
     });
@@ -407,13 +406,16 @@ const Shop = () => {
 
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Track Type</Label>
+          <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Production Quality</Label>
           <details className="relative">
             <summary className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 cursor-pointer hover:text-[#F538BC] list-none flex items-center gap-1">
               <HelpCircle size={12} />
             </summary>
-            <div className="absolute z-30 top-6 left-0 w-64 bg-white rounded-xl border border-gray-100 shadow-xl p-4 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Track Type Guide</p>
+            <div className="absolute z-30 top-6 left-0 w-72 bg-white rounded-xl border border-gray-100 shadow-xl p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Production Quality Guide</p>
+              <p className="text-[11px] text-gray-500 leading-snug pb-1 border-b border-gray-100">
+                Prices reflect production quality and track length. Full Song &amp; Audition Ready are backing types, shown by section — not quality tiers.
+              </p>
               {Object.values(TRACK_TYPES).filter(t => t.desc).map(t => (
                 <div key={t.value} className="flex items-start gap-2">
                   <span className={cn("h-2 w-2 rounded-full mt-1 flex-shrink-0", t.dotClass)} />
@@ -427,7 +429,7 @@ const Shop = () => {
           </details>
         </div>
         <div className="flex flex-col gap-2">
-          {TRACK_TYPE_FILTER_OPTIONS.map(type => (
+          {QUALITY_FILTER_OPTIONS.map(type => (
             <Button
               key={type.value}
               variant="ghost"
@@ -503,69 +505,56 @@ const Shop = () => {
       )}
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         
         {featuredProducts.length > 0 && !hasActiveFilters && (
-          <section className="mb-24">
-            <div className="flex items-center gap-3 mb-10">
-              <div className="h-12 w-12 rounded-2xl bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
-                <Star size={28} fill="currentColor" />
+          <section className="mb-12">
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="h-8 w-8 rounded-lg bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
+                <Star size={16} fill="currentColor" />
               </div>
-              <h2 className="text-4xl font-black text-[#1C0357] tracking-tighter uppercase">
+              <h2 className="text-xl font-black text-[#1C0357] tracking-tighter uppercase">
                 {featuredProducts.length === 1 ? 'Featured Offer' : 'Featured Offers'}
               </h2>
             </div>
-            
-            <div className="grid grid-cols-1 gap-10">
+
+            <div className="grid grid-cols-1 gap-6">
               {featuredProducts.map(product => {
                 const quality = TRACK_TYPES[product.track_type] || TRACK_TYPES.standard;
                 const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
                 return (
-                  <div key={product.id} className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[48px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                    <Card className="relative bg-[#1C0357] text-white rounded-[48px] overflow-hidden border-none shadow-2xl">
-                      <div className="grid md:grid-cols-2 items-center">
-                        <div className="p-12 md:p-20 space-y-8 relative z-20">
-                          <div className="flex items-center gap-3">
-                            {isNew && (
-                              <Badge className="bg-[#F538BC] text-white border-none font-black px-4 py-1.5 text-xs tracking-widest">NEW</Badge>
-                            )}
-                            <Badge variant="outline" className="text-white border-white/30 font-bold px-4 py-1.5 text-xs tracking-widest">{quality.label}</Badge>
-                          </div>
-                          <h3 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
-                            {product.title}
-                          </h3>
-                          <p className="text-xl text-white/70 font-medium leading-relaxed max-w-md line-clamp-3">
-                            {product.description}
-                          </p>
-                          <div className="pt-6 flex flex-col sm:flex-row items-center gap-8">
-                            <div className="flex items-baseline">
-                              <span className="text-3xl font-bold mr-1">$</span>
-                              <span className="text-7xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
-                              <span className="ml-3 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
-                            </div>
-                            <Button 
-                              onClick={() => handleBuyNow(product)}
-                              disabled={isBuying}
-                              className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-12 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all w-full sm:w-auto"
-                            >
-                              {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-3" /> Instant Purchase</>}
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="hidden md:block relative h-full min-h-[500px]">
-                          <div className="absolute inset-0 bg-gradient-to-r from-[#1C0357] via-transparent to-transparent z-10" />
-                          {product.image_url ? (
-                            <img src={product.image_url} alt={product.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-[#F538BC]/20 to-[#D1AAF2]/20 flex items-center justify-center">
-                              <Package size={160} className="text-white/10" />
-                            </div>
+                  <Card key={product.id} className="relative bg-[#1C0357] text-white rounded-2xl overflow-hidden border-none shadow-lg">
+                    <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div className="flex items-center gap-2">
+                          {isNew && (
+                            <Badge className="bg-[#F538BC] text-white border-none font-black px-2.5 py-0.5 text-[10px] tracking-widest">NEW</Badge>
                           )}
+                          <Badge variant="outline" className="text-white border-white/30 font-bold px-2.5 py-0.5 text-[10px] tracking-widest">{quality.label}</Badge>
                         </div>
+                        <h3 className="text-2xl md:text-3xl font-black tracking-tighter leading-tight line-clamp-2">
+                          {product.title}
+                        </h3>
+                        <p className="text-sm md:text-base text-white/70 font-medium leading-relaxed line-clamp-2 max-w-xl">
+                          {product.description}
+                        </p>
                       </div>
-                    </Card>
-                  </div>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
+                        <div className="flex items-baseline">
+                          <span className="text-2xl font-bold mr-1">$</span>
+                          <span className="text-5xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
+                          <span className="ml-2.5 text-xs font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
+                        </div>
+                        <Button 
+                          onClick={() => handleBuyNow(product)}
+                          disabled={isBuying}
+                          className="bg-white text-[#1C0357] hover:bg-gray-100 h-12 px-8 rounded-xl font-black text-base shadow-xl active:scale-95 transition-all w-full sm:w-auto"
+                        >
+                          {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-2.5" /> Instant Purchase</>}
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
                 );
               })}
             </div>
@@ -574,7 +563,7 @@ const Shop = () => {
 
         <div className="flex flex-col lg:flex-row gap-16">
           
-          <aside className="hidden lg:block w-80 flex-shrink-0">
+          <aside className="hidden lg:block w-64 flex-shrink-0">
             <div className="sticky top-32">
               <div className="flex items-center gap-3 mb-8">
                 <SlidersHorizontal size={20} className="text-[#1C0357]" />
@@ -646,7 +635,7 @@ const Shop = () => {
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="sticky top-32 z-30 flex flex-wrap gap-2 bg-white/95 backdrop-blur py-3 -mx-2 px-2 rounded-xl">
                     {groupedProducts.map(section => (
                       <a
                         key={section.id}
