@@ -63,3 +63,16 @@ UPDATE products SET vocal_ranges = ARRAY['Soprano'] WHERE id IN (
 );
 UPDATE products SET vocal_ranges = ARRAY['Tenor','Bass']
 WHERE id = '03165ce0-4654-4a2d-b2dd-a89b26b86072'; -- She Loves Me (polished)
+
+-- 6) Fix show-name (artist_name) data entry errors.
+--    "Reprise" is the record label, not the show: "At the Fountain" is from
+--    Sweet Smell of Success (already fixed in the dashboard). Kept here so a
+--    fresh run lands on the correct value. Review before running:
+UPDATE products SET artist_name = 'Sweet Smell of Success'
+WHERE id = 'a5125920-1524-45c9-b4d1-ea596d4477d4'; -- At The Fountain
+
+UPDATE products SET artist_name = 'Floyd Collins'
+WHERE id = '99b4df49-dd76-4773-8991-89044019171c'; -- Through The Mountain (was "Flloyd Collins")
+
+UPDATE products SET artist_name = 'A Man of No Importance'
+WHERE id = '93afc4fe-4013-4281-8448-0458679870de'; -- Streets of Dublin (was "Man of no importance")

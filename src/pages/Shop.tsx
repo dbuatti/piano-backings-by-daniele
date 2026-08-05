@@ -325,9 +325,16 @@ const Shop = () => {
   const relatedProducts = useMemo(() => {
     if (!selectedProductForDetail || !products) return [];
     const current = selectedProductForDetail;
-    const sameShow = (products || []).filter(p => p.id !== current.id && (p.artist_name || '').trim() === (current.artist_name || '').trim());
-    const pool = sameShow.length > 0 ? sameShow : (products || []).filter(p => p.id !== current.id && p.category === current.category);
-    return pool.slice(0, 4);
+    return (products || [])
+      .filter(p => p.id !== current.id && (p.artist_name || '').trim() === (current.artist_name || '').trim())
+      .slice(0, 4);
+  }, [selectedProductForDetail, products]);
+
+  const relatedShowName = useMemo(() => {
+    if (!selectedProductForDetail || !products) return null;
+    const current = selectedProductForDetail;
+    const sameShow = (products || []).some(p => p.id !== current.id && (p.artist_name || '').trim() === (current.artist_name || '').trim());
+    return sameShow ? (current.artist_name || '').trim() || null : null;
   }, [selectedProductForDetail, products]);
 
   useEffect(() => {
@@ -904,6 +911,7 @@ const Shop = () => {
           product={selectedProductForDetail}
           variants={selectedVariantsForDetail || undefined}
           related={relatedProducts}
+          relatedShow={relatedShowName}
           onOpenProduct={(p, v) => handleViewDetails(p, v)}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}

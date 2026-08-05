@@ -68,6 +68,7 @@ interface ProductDetailDialogProps {
   product: Product;
   variants?: Product[];
   related?: Product[];
+  relatedShow?: string | null;
   onOpenProduct?: (product: Product, variants?: Product[]) => void;
   onBuyNow: (product: Product, promoCode?: string) => Promise<void>;
   isBuying: boolean;
@@ -116,6 +117,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   product,
   variants,
   related,
+  relatedShow,
   onOpenProduct,
   onBuyNow,
   isBuying,
@@ -409,7 +411,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
           {related && related.length > 0 && onOpenProduct && (
             <section className="mt-10 pt-6 border-t border-gray-100">
               <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
-                <Music size={14} /> More from {selected.artist_name || 'the Library'}
+                <Music size={14} /> More from {relatedShow || 'the Library'}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {related.map(r => (
