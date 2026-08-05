@@ -29,7 +29,7 @@ interface ShopProduct {
 
 interface ProductCardProps {
   variants: ShopProduct[];
-  onViewDetails: (product: ShopProduct) => void;
+  onViewDetails: (product: ShopProduct, variants?: ShopProduct[]) => void;
   onBuyNow: (product: ShopProduct) => Promise<void>;
   isBuying: boolean;
 }
@@ -83,7 +83,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
   const hiddenVoices = vocalRanges.length - visibleVoices.length;
   const duration = formatDuration(selected.duration_seconds);
 
-  const handleCardClick = () => onViewDetails(selected);
+  const handleCardClick = () => onViewDetails(selected, variants);
 
   const variantLabel = (v: ShopProduct) =>
     (v.vocal_ranges || []).join('/') || v.key_signature || getTrackTypeInfo(v.track_type).label;

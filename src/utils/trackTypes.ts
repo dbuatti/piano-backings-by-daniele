@@ -103,3 +103,10 @@ export const CATEGORY_PLURALS: Record<string, string> = {
   'note-bash': 'Note Bashes',
   general: 'Other Tracks',
 };
+
+export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  'full-song': 'Complete songs, arranged and produced end to end.',
+  'audition-cut': 'Short, show-stopping cuts built for auditions and competitions.',
+  'note-bash': 'Fast reference recordings for quick practice and last-minute prep.',
+  general: 'Bundles and special offers.',
+};

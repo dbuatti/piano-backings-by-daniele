@@ -49,6 +49,7 @@ import { formatDurationIso } from '@/utils/helpers';
 import {
   CATEGORY_OPTIONS,
   CATEGORY_PLURALS,
+  CATEGORY_DESCRIPTIONS,
   QUALITY_FILTER_OPTIONS,
   VOICE_TYPE_OPTIONS,
   TRACK_TYPES,
@@ -110,6 +111,7 @@ const Shop = () => {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
+  const [selectedVariantsForDetail, setSelectedVariantsForDetail] = useState<Product[] | null>(null);
   const [isBuying, setIsBuying] = useState(false);
   const [urlProduct, setUrlProduct] = useState<Product | null>(null);
 
@@ -122,6 +124,8 @@ const Shop = () => {
   const currentTrackType = searchParams.get('track_type') || 'all';
   const currentVoice = searchParams.get('voice') || 'all';
   const currentShow = searchParams.get('show') || 'all';
+  const currentMinPrice = searchParams.get('min_price') || '';
+  const currentMaxPrice = searchParams.get('max_price') || '';
   const currentSort = searchParams.get('sort') || 'title_asc';
 
   const updateSearchParam = useCallback((key: string, value: string | null) => {
@@ -165,16 +169,32 @@ const Shop = () => {
   });
 
   const hasActiveFilters = Boolean(
-    currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all'
+    currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all' || currentMinPrice || currentMaxPrice
   );
 
   const clientFilteredProducts = useMemo(() => {
+    const min = currentMinPrice ? Number(currentMinPrice) : null;
+    const max = currentMaxPrice ? Number(currentMaxPrice) : null;
     return (products || []).filter(p => {
       if (currentVoice !== 'all' && !(p.vocal_ranges || []).includes(currentVoice)) return false;
       if (currentShow !== 'all' && p.artist_name !== currentShow) return false;
+      if (min !== null && p.price < min) return false;
+      if (max !== null && p.price > max) return false;
       return true;
     });
-  }, [products, currentVoice, currentShow]);
+  }, [products, currentVoice, currentShow, currentMinPrice, currentMaxPrice]);
+
+  const activeFilters = useMemo(() => {
+    const f: { key: string; label: string; param: string }[] = [];
+    if (currentSearchTerm) f.push({ key: 'q', label: `"${currentSearchTerm}"`, param: 'q' });
+    if (currentCategory !== 'all') f.push({ key: 'category', label: CATEGORY_OPTIONS.find(c => c.value === currentCategory)?.label || currentCategory, param: 'category' });
+    if (currentTrackType !== 'all') f.push({ key: 'track_type', label: QUALITY_FILTER_OPTIONS.find(t => t.value === currentTrackType)?.label || currentTrackType, param: 'track_type' });
+    if (currentVoice !== 'all') f.push({ key: 'voice', label: currentVoice, param: 'voice' });
+    if (currentShow !== 'all') f.push({ key: 'show', label: currentShow, param: 'show' });
+    if (currentMinPrice) f.push({ key: 'min_price', label: `Min $${Number(currentMinPrice).toFixed(2)}`, param: 'min_price' });
+    if (currentMaxPrice) f.push({ key: 'max_price', label: `Max $${Number(currentMaxPrice).toFixed(2)}`, param: 'max_price' });
+    return f;
+  }, [currentSearchTerm, currentCategory, currentTrackType, currentVoice, currentShow, currentMinPrice, currentMaxPrice]);
 
   const featuredProducts = useMemo(() => {
     return products?.filter(p => p.title.toLowerCase().includes('season pack')) || [];
@@ -239,8 +259,10 @@ const Shop = () => {
         .eq('id', urlProductId)
         .maybeSingle();
       if (!cancelled && !error && data) {
-        setUrlProduct(data as Product);
-        setSelectedProductForDetail(data as Product);
+        const record = data as Product;
+        setUrlProduct(record);
+        setSelectedProductForDetail(record);
+        setSelectedVariantsForDetail([record]);
         setIsDetailDialogOpen(true);
       }
     };
@@ -287,10 +309,11 @@ const Shop = () => {
     }
   };
 
-  const handleViewDetails = useCallback((product: Product) => {
+  const handleViewDetails = useCallback(<T extends { id: string }>(product: T, variants?: T[]) => {
     setPromoCode('');
     setDiscountInfo(null);
-    setSelectedProductForDetail(product);
+    setSelectedProductForDetail(product as unknown as Product);
+    setSelectedVariantsForDetail((variants && variants.length > 0 ? variants : [product]) as unknown as Product[]);
     setIsDetailDialogOpen(true);
     navigate(`/shop/${product.id}`, { replace: true });
   }, [navigate]);
@@ -400,6 +423,41 @@ const Shop = () => {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Price Range</Label>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              placeholder="Min"
+              aria-label="Minimum price"
+              value={currentMinPrice}
+              onChange={(e) => updateSearchParam('min_price', e.target.value)}
+              className="pl-7 h-11 bg-gray-50 border-none rounded-xl font-bold text-sm focus-visible:ring-[#1C0357]"
+            />
+          </div>
+          <span className="text-gray-300 font-bold flex-shrink-0">—</span>
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              placeholder="Max"
+              aria-label="Maximum price"
+              value={currentMaxPrice}
+              onChange={(e) => updateSearchParam('max_price', e.target.value)}
+              className="pl-7 h-11 bg-gray-50 border-none rounded-xl font-bold text-sm focus-visible:ring-[#1C0357]"
+            />
+          </div>
+        </div>
       </div>
 
       <Separator className="bg-gray-100" />
@@ -604,6 +662,37 @@ const Shop = () => {
               </Sheet>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2 mb-8">
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-xs font-bold text-[#1C0357] uppercase tracking-[0.2em] mr-auto">
+                    {clientFilteredProducts.length} Track{clientFilteredProducts.length === 1 ? '' : 's'} Found
+                  </p>
+                  {activeFilters.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => updateSearchParam(f.param, null)}
+                      aria-label={`Remove filter ${f.label}`}
+                      className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-[#1C0357] text-white text-[11px] font-bold hover:bg-[#2D0B8C] transition-colors"
+                    >
+                      {f.label}
+                      <X className="h-3 w-3" />
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSearchParams(new URLSearchParams())}
+                    className="text-[11px] font-black uppercase tracking-wider text-[#F538BC] hover:text-[#F538BC]/70 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </>
+              ) : (
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
+                  {clientFilteredProducts.length} Track{clientFilteredProducts.length === 1 ? '' : 's'} in the Library
+                </p>
+              )}
+            </div>
+
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
                 {Array.from({ length: 6 }).map((_, i) => <ProductCardSkeleton key={i} />)}
@@ -653,6 +742,9 @@ const Shop = () => {
                       <div className="space-y-2">
                         <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">{section.label}</h2>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">{section.totalCount} Track{section.totalCount === 1 ? '' : 's'} Available</p>
+                        {CATEGORY_DESCRIPTIONS[section.id] && (
+                          <p className="text-sm text-gray-500 font-medium">{CATEGORY_DESCRIPTIONS[section.id]}</p>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
@@ -680,6 +772,7 @@ const Shop = () => {
           onOpenChange={open => {
             if (!open) {
               setSelectedProductForDetail(null);
+              setSelectedVariantsForDetail(null);
               setUrlProduct(null);
               setPromoCode('');
               setDiscountInfo(null);
@@ -687,6 +780,7 @@ const Shop = () => {
             }
           }}
           product={selectedProductForDetail}
+          variants={selectedVariantsForDetail || undefined}
           onBuyNow={handleBuyNow}
           isBuying={isBuying}
           promoCode={promoCode}
