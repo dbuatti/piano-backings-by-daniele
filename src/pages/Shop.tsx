@@ -456,23 +456,6 @@ const Shop = () => {
   const filterContent = (
     <div className="space-y-8">
       <div className="space-y-4">
-        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Search Library</Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            type="search"
-            aria-label="Search library"
-            placeholder="Song, artist, or show..."
-            value={currentSearchTerm}
-            onChange={(e) => updateSearchParam('q', e.target.value)}
-            className="pl-10 h-11 bg-gray-50 border-none rounded-xl focus-visible:ring-[#1C0357]"
-          />
-        </div>
-      </div>
-
-      <Separator className="bg-gray-100" />
-
-      <div className="space-y-4">
         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Backing Type</Label>
         <div className="flex flex-col gap-2">
           {CATEGORY_OPTIONS.map(cat => (
@@ -710,6 +693,106 @@ const Shop = () => {
           </section>
         )}
 
+        <div className="mb-10 flex gap-4">
+          <div className="relative flex-1 max-w-2xl">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              type="search"
+              aria-label="Search library"
+              placeholder="Search library..."
+              value={currentSearchTerm}
+              onChange={(e) => updateSearchParam('q', e.target.value)}
+              className="pl-12 h-14 bg-white border-gray-200 rounded-2xl text-lg"
+            />
+          </div>
+          <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" aria-label="Open filters" className="h-14 w-14 p-0 rounded-2xl border-gray-200 bg-white shadow-sm">
+                <Filter size={24} className="text-[#1C0357]" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[320px] sm:w-[400px] rounded-r-[40px] border-none">
+              <SheetHeader className="text-left mb-10">
+                <SheetTitle className="text-3xl font-black text-[#1C0357] tracking-tighter">Filters</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-140px)] pr-4">
+                {filterContent}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-10">
+          <div className="flex flex-wrap items-center gap-2 mr-auto">
+            {hasActiveFilters ? (
+              <>
+                <p className="text-xs font-bold text-[#1C0357] uppercase tracking-[0.2em] mr-2">
+                  {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} Found
+                </p>
+                {activeFilters.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => updateSearchParam(f.param, null)}
+                    aria-label={`Remove filter ${f.label}`}
+                    className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-[#1C0357] text-white text-[11px] font-bold hover:bg-[#2D0B8C] transition-colors"
+                  >
+                    {f.label}
+                    <X className="h-3 w-3" />
+                  </button>
+                ))}
+                <button
+                  onClick={() => setSearchParams(new URLSearchParams())}
+                  className="text-[11px] font-black uppercase tracking-wider text-[#F538BC] hover:text-[#F538BC]/70 transition-colors"
+                >
+                  Clear all
+                </button>
+              </>
+            ) : (
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
+                {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} in the Library
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 p-1 bg-gray-100 rounded-xl">
+              <button
+                onClick={() => updateSearchParam('view', 'grid')}
+                aria-label="Grid view"
+                title="Grid view"
+                className={cn(
+                  "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
+                  currentView === 'grid' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => updateSearchParam('view', 'list')}
+                aria-label="List view"
+                title="List view"
+                className={cn(
+                  "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
+                  currentView === 'list' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
+                )}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+            <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
+              <SelectTrigger className="h-9 w-[190px] bg-white border-gray-200 rounded-xl font-bold text-xs" aria-label="Sort products">
+                <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 mr-1" />
+                <SelectValue>{sortLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="title_asc">Title: A-Z</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-16">
           
           {currentView !== 'list' && (
@@ -725,106 +808,6 @@ const Shop = () => {
           )}
 
           <div className="flex-1">
-            
-            <div className={cn("mb-10 flex gap-4", currentView !== 'list' && "lg:hidden")}>
-              <div className="relative flex-1 max-w-2xl">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <Input
-                  type="search"
-                  aria-label="Search library"
-                  placeholder="Search library..."
-                  value={currentSearchTerm}
-                  onChange={(e) => updateSearchParam('q', e.target.value)}
-                  className="pl-12 h-14 bg-white border-gray-200 rounded-2xl text-lg"
-                />
-              </div>
-              <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" aria-label="Open filters" className="h-14 w-14 p-0 rounded-2xl border-gray-200 bg-white shadow-sm">
-                    <Filter size={24} className="text-[#1C0357]" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[320px] sm:w-[400px] rounded-r-[40px] border-none">
-                  <SheetHeader className="text-left mb-10">
-                    <SheetTitle className="text-3xl font-black text-[#1C0357] tracking-tighter">Filters</SheetTitle>
-                  </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-140px)] pr-4">
-                    {filterContent}
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 mb-8">
-              <div className="flex flex-wrap items-center gap-2 mr-auto">
-                {hasActiveFilters ? (
-                  <>
-                    <p className="text-xs font-bold text-[#1C0357] uppercase tracking-[0.2em] mr-2">
-                      {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} Found
-                    </p>
-                    {activeFilters.map(f => (
-                      <button
-                        key={f.key}
-                        onClick={() => updateSearchParam(f.param, null)}
-                        aria-label={`Remove filter ${f.label}`}
-                        className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full bg-[#1C0357] text-white text-[11px] font-bold hover:bg-[#2D0B8C] transition-colors"
-                      >
-                        {f.label}
-                        <X className="h-3 w-3" />
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setSearchParams(new URLSearchParams())}
-                      className="text-[11px] font-black uppercase tracking-wider text-[#F538BC] hover:text-[#F538BC]/70 transition-colors"
-                    >
-                      Clear all
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
-                    {currentView === 'list' ? tableRows.length : clientFilteredProducts.length} {currentView === 'list' ? 'Song' : 'Track'}{(currentView === 'list' ? tableRows.length : clientFilteredProducts.length) === 1 ? '' : 's'} in the Library
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5 p-1 bg-gray-100 rounded-xl">
-                  <button
-                    onClick={() => updateSearchParam('view', 'grid')}
-                    aria-label="Grid view"
-                    title="Grid view"
-                    className={cn(
-                      "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
-                      currentView === 'grid' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
-                    )}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => updateSearchParam('view', 'list')}
-                    aria-label="List view"
-                    title="List view"
-                    className={cn(
-                      "h-7 w-8 flex items-center justify-center rounded-lg transition-colors",
-                      currentView === 'list' ? "bg-white text-[#1C0357] shadow-sm" : "text-gray-400 hover:text-[#1C0357]"
-                    )}
-                  >
-                    <List className="h-4 w-4" />
-                  </button>
-                </div>
-                <Select value={currentSort} onValueChange={(v) => updateSearchParam('sort', v)}>
-                  <SelectTrigger className="h-9 w-[190px] bg-white border-gray-200 rounded-xl font-bold text-xs" aria-label="Sort products">
-                    <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 mr-1" />
-                    <SelectValue>{sortLabel}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="title_asc">Title: A-Z</SelectItem>
-                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                    <SelectItem value="created_at_desc">Newest First</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             {isLoading ? (
               currentView === 'list' ? (
