@@ -342,6 +342,7 @@ const Shop = () => {
       setUrlProduct(null);
       return;
     }
+    if (selectedProductForDetail?.id === urlProductId) return;
     const loadUrlProduct = async () => {
       const { data, error } = await supabase
         .from('products')
@@ -358,7 +359,7 @@ const Shop = () => {
     };
     loadUrlProduct();
     return () => { cancelled = true; };
-  }, [urlProductId]);
+  }, [urlProductId, selectedProductForDetail]);
 
   const handleValidatePromo = async () => {
     if (!promoCode.trim()) {
@@ -405,7 +406,7 @@ const Shop = () => {
     setSelectedProductForDetail(product as unknown as Product);
     setSelectedVariantsForDetail((variants && variants.length > 0 ? variants : [product]) as unknown as Product[]);
     setIsDetailDialogOpen(true);
-    navigate(`/shop/${product.id}`, { replace: true });
+    navigate(`/shop/${product.id}${window.location.search}`, { replace: true });
   }, [navigate]);
 
   const handleNavigate = useCallback((dir: 'prev' | 'next') => {
@@ -913,7 +914,7 @@ const Shop = () => {
               setUrlProduct(null);
               setPromoCode('');
               setDiscountInfo(null);
-              if (urlProductId) navigate('/shop');
+              if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             }
           }}
           product={selectedProductForDetail}
