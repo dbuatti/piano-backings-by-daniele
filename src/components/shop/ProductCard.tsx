@@ -1,205 +1,205 @@
 "use client";
 
-import React from 'react';
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Play, Pause, ShoppingCart, Loader2, Music, Sparkles, Headphones, Mic2, Key, Theater, Share2 } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Loader2, Theater, Key, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
-import { useToast } from '@/hooks/use-toast';
+import { getTrackTypeInfo } from '@/utils/trackTypes';
+import { formatDuration } from '@/utils/helpers';
+
+interface ShopProduct {
+  id: string;
+  created_at: string;
+  title: string;
+  price: number;
+  currency: string;
+  artist_name: string;
+  category: string;
+  vocal_ranges: string[];
+  key_signature: string | null;
+  track_type: string;
+  duration_seconds?: number | null;
+  track_urls?: { url: string }[];
+}
 
 interface ProductCardProps {
-  product: any;
-  onViewDetails: (product: any) => void;
-  onBuyNow: (product: any) => Promise<void>;
+  variants: ShopProduct[];
+  onViewDetails: (product: ShopProduct) => void;
+  onBuyNow: (product: ShopProduct) => Promise<void>;
   isBuying: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onViewDetails, onBuyNow, isBuying }) => {
-  const { toast } = useToast();
-  const firstTrackUrl = product.track_urls?.[0]?.url || null;
+const MAX_VISIBLE_VOICES = 2;
+
+const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) => {
+  const firstTrackUrl = variant.track_urls?.[0]?.url || null;
   const { isPlaying, togglePlay, audioRef, handleEnded, hasAudio } = useAudioPreview(firstTrackUrl);
-  const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/shop?q=${encodeURIComponent(product.title)}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Link Copied!",
-      description: "Product link copied to clipboard.",
-    });
-  };
-
-  const getQualityBadge = (type?: string) => {
-    switch (type) {
-      case 'quick': 
-        return { 
-          label: 'Quick Ref', 
-          icon: Mic2, 
-          class: 'bg-blue-500/10 text-blue-600 border-blue-200/50 backdrop-blur-md',
-          desc: 'Fast reference voice memo'
-        };
-      case 'one-take': 
-        return { 
-          label: 'One-Take', 
-          icon: Headphones, 
-          class: 'bg-amber-500/10 text-amber-700 border-amber-200/50 backdrop-blur-md',
-          desc: 'Single-pass authentic recording'
-        };
-      case 'polished': 
-        return { 
-          label: 'Polished', 
-          icon: Sparkles, 
-          class: 'bg-[#F538BC]/10 text-[#F538BC] border-[#F538BC]/20 backdrop-blur-md',
-          desc: 'Studio-grade multi-layer mix'
-        };
-      default: 
-        return { label: 'Standard', icon: Music, class: 'bg-gray-100 text-gray-700', desc: '' };
-    }
-  };
-
-  const quality = getQualityBadge(product.track_type);
+  if (!hasAudio) return null;
 
   return (
-    <Card className="group flex flex-col overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 h-full bg-white rounded-2xl">
-      <CardHeader className="p-0 relative overflow-hidden bg-[#1C0357]">
-        <AspectRatio ratio={2.2 / 1}>
-          {product.image_url ? (
-            <>
-              <img 
-                src={product.image_url} 
-                alt={product.title} 
-                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700 ease-out" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full bg-gradient-to-br from-[#1C0357] via-[#2D0B8C] to-[#D1AAF2]/40 text-white p-6">
-              {/* Replaced external texture with a CSS-based pattern */}
-              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-              <Music size={40} className="opacity-20 relative z-10" />
+    <>
+      <Button
+        size="icon"
+        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+        aria-label={`${isPlaying ? 'Pause' : 'Play'} preview of ${variant.title}`}
+        className={cn(
+          "rounded-full shadow-sm transition-all shrink-0 h-10 w-10 border-2",
+          isPlaying
+            ? "bg-red-500 border-red-400 text-white animate-pulse"
+            : "bg-[#F538BC] border-[#F538BC]/30 text-white hover:scale-105 hover:bg-[#F538BC]/90"
+        )}
+      >
+        {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
+      </Button>
+      <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />
+    </>
+  );
+};
+
+const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBuyNow, isBuying }) => {
+  const [selectedId, setSelectedId] = useState<string | undefined>(variants[0]?.id);
+
+  useEffect(() => {
+    if (selectedId && !variants.some(v => v.id === selectedId)) {
+      setSelectedId(variants[0]?.id);
+    }
+  }, [variants, selectedId]);
+
+  const selected = variants.find(v => v.id === selectedId) || variants[0];
+  if (!selected) return null;
+
+  const isMulti = variants.length > 1;
+  const isNew = isWithinInterval(new Date(selected.created_at), { start: subDays(new Date(), 14), end: new Date() });
+
+  const quality = getTrackTypeInfo(selected.track_type);
+  const vocalRanges = selected.vocal_ranges || [];
+  const visibleVoices = vocalRanges.slice(0, MAX_VISIBLE_VOICES);
+  const hiddenVoices = vocalRanges.length - visibleVoices.length;
+  const duration = formatDuration(selected.duration_seconds);
+
+  const handleCardClick = () => onViewDetails(selected);
+
+  const variantLabel = (v: ShopProduct) =>
+    (v.vocal_ranges || []).join('/') || v.key_signature || getTrackTypeInfo(v.track_type).label;
+
+  return (
+    <Card
+      onClick={handleCardClick}
+      className="group flex flex-col overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 bg-white rounded-2xl cursor-pointer h-full"
+    >
+      <CardContent className="flex-1 p-5 flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-lg font-black text-[#1C0357] leading-snug line-clamp-2 group-hover:text-[#F538BC] transition-colors duration-300">
+              {selected.title}
+            </h3>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Theater size={13} className="text-[#F538BC] flex-shrink-0" />
+              <p className="text-xs font-bold text-gray-500 truncate">
+                {selected.artist_name || 'Various Artists'}
+              </p>
             </div>
-          )}
-        </AspectRatio>
-
-        <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-20">
-          {isNew && (
-            <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-black h-6 px-2 shadow-lg">
-              NEW
-            </Badge>
-          )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge variant="outline" className={cn("border px-2 py-0.5 text-[10px] font-bold uppercase h-6 shadow-sm", quality.class)}>
-                  <quality.icon size={12} className="mr-1.5" />
-                  {quality.label}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>{quality.desc}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          </div>
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            {isNew && (
+              <Badge className="bg-[#F538BC] text-white border-none text-[10px] font-black h-5 px-2 shadow-sm">
+                NEW
+              </Badge>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase h-6", quality.badgeClass)}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", quality.dotClass)} />
+                    {quality.label}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{quality.desc || quality.label}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
 
-        <div className="absolute top-3 right-3 z-20 flex gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleShare}
-                  className="h-8 w-8 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/20"
+        {isMulti && (
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Choose a version">
+            {variants.map(v => {
+              const active = v.id === selected.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setSelectedId(v.id); }}
+                  className={cn(
+                    "px-2.5 h-7 rounded-full text-[10px] font-black uppercase border transition-colors",
+                    active
+                      ? "bg-[#1C0357] text-white border-[#1C0357] shadow-sm"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-[#1C0357]/40 hover:text-[#1C0357]"
+                  )}
                 >
-                  <Share2 size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Share Product</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {hasAudio && (
-          <div className="absolute bottom-3 right-3 z-30">
-            <Button
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-              className={cn(
-                "rounded-full shadow-2xl transition-all transform hover:scale-110 h-10 w-10 border-2",
-                isPlaying 
-                  ? "bg-red-500 border-red-400 text-white animate-pulse" 
-                  : "bg-white/95 border-white text-[#1C0357] hover:bg-white"
-              )}
-            >
-              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} className="ml-1" fill="currentColor" />}
-            </Button>
+                  {variantLabel(v)}
+                </button>
+              );
+            })}
           </div>
         )}
-      </CardHeader>
 
-      <CardContent className="flex-1 p-5 space-y-4 cursor-pointer" onClick={() => onViewDetails(product)}>
-        <div className="space-y-1.5">
-          <h3 className="text-lg font-black text-[#1C0357] leading-tight line-clamp-2 group-hover:text-[#F538BC] transition-colors duration-300">
-            {product.title}
-          </h3>
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-md bg-[#F538BC]/10">
-              <Theater size={12} className="text-[#F538BC]" />
-            </div>
-            <p className="text-xs font-bold text-gray-500 truncate">
-              {product.artist_name || 'Various Artists'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {product.key_signature && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.key_signature && (
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
-              <Key size={10} className="mr-1.5 text-gray-400" /> {product.key_signature}
+              <Key size={10} className="mr-1.5 text-gray-400" /> {selected.key_signature}
             </Badge>
           )}
-          {product.vocal_ranges?.slice(0, 2).map((range: string) => (
+          {visibleVoices.map((range: string) => (
             <Badge key={range} variant="secondary" className="bg-[#D1AAF2]/10 text-[#1C0357] text-[10px] px-2 py-0.5 border-none font-bold">
               {range}
             </Badge>
           ))}
-        </div>
-
-        <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed h-10 italic">
-          {product.description}
-        </p>
-
-        <div className="pt-2 flex items-center justify-between">
-          <div className="flex items-baseline text-[#1C0357]">
-            <span className="text-sm font-black mr-0.5">$</span>
-            <span className="text-2xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
-            <span className="ml-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">{product.currency}</span>
-          </div>
+          {hiddenVoices > 0 && (
+            <Badge variant="secondary" className="bg-[#D1AAF2]/10 text-[#1C0357] text-[10px] px-2 py-0.5 border-none font-bold">
+              +{hiddenVoices}
+            </Badge>
+          )}
+          {duration && (
+            <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
+              <Clock size={10} className="mr-1.5 text-gray-400" /> {duration}
+            </Badge>
+          )}
         </div>
       </CardContent>
 
-      {hasAudio && <audio ref={audioRef} src={firstTrackUrl!} onEnded={handleEnded} preload="none" />}
+      <CardFooter className="px-5 pb-5 pt-0 mt-auto">
+        <div className="flex items-center gap-3 w-full">
+          <PreviewButton key={selected.id} variant={selected} />
 
-      <CardFooter className="px-5 pb-5 pt-0">
-        <Button
-          onClick={() => onBuyNow(product)}
-          disabled={isBuying}
-          className="w-full h-11 text-sm font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl group/btn shadow-xl shadow-[#1C0357]/10 active:scale-[0.98] transition-all"
-        >
-          {isBuying ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <span className="flex items-center gap-2">
-              <ShoppingCart size={18} className="group-hover/btn:translate-x-1 transition-transform" />
-              Instant Purchase
-            </span>
-          )}
-        </Button>
+          <div className="flex items-baseline text-[#1C0357]">
+            <span className="text-sm font-black mr-0.5">$</span>
+            <span className="text-xl font-black tracking-tighter">{selected.price.toFixed(2)}</span>
+            <span className="ml-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">{selected.currency}</span>
+          </div>
+
+          <div className="ml-auto">
+            <Button
+              onClick={(e) => { e.stopPropagation(); onBuyNow(selected); }}
+              disabled={isBuying}
+              className="h-10 px-4 text-xs font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 active:scale-[0.98] transition-all"
+            >
+              {isBuying ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <ShoppingCart size={15} />
+                  Buy
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
       </CardFooter>
     </Card>
   );

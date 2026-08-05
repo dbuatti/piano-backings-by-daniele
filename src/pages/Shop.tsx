@@ -14,18 +14,12 @@ import {
   X, 
   ShoppingCart, 
   Music, 
-  Sparkles, 
-  Headphones, 
-  Mic2, 
+  Star, 
   SlidersHorizontal, 
-  ArrowUpDown,
-  Star,
-  Zap,
   ChevronRight,
   Package,
-  Tag,
-  CheckCircle2,
-  AlertCircle
+  Mic2,
+  HelpCircle
 } from 'lucide-react';
 import {
   Sheet,
@@ -45,12 +39,21 @@ import ProductCard from '@/components/shop/ProductCard';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { TrackInfo } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
 import Seo from "@/components/Seo";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { isWithinInterval, subDays } from 'date-fns';
+import { formatDurationIso } from '@/utils/helpers';
+import {
+  CATEGORY_OPTIONS,
+  CATEGORY_PLURALS,
+  TRACK_TYPE_FILTER_OPTIONS,
+  VOICE_TYPE_OPTIONS,
+  TRACK_TYPES,
+} from '@/utils/trackTypes';
 
 interface Product {
   id: string;
@@ -70,7 +73,21 @@ interface Product {
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
   track_type: string;
+  duration_seconds?: number | null;
   master_download_link: string | null;
+}
+
+interface ProductVariantGroup {
+  key: string;
+  title: string;
+  variants: Product[];
+}
+
+interface GroupedSection {
+  id: string;
+  label: string;
+  totalCount: number;
+  groups: ProductVariantGroup[];
 }
 
 interface DiscountInfo {
@@ -82,13 +99,20 @@ interface DiscountInfo {
   originalAmount: number;
 }
 
+const GROUP_ORDER = ['full-song', 'audition-cut', 'note-bash', 'general'];
+
+const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
+
 const Shop = () => {
   const { toast } = useToast();
+  const { id: urlProductId } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [isBuying, setIsBuying] = useState(false);
+  const [urlProduct, setUrlProduct] = useState<Product | null>(null);
 
   const [promoCode, setPromoCode] = useState('');
   const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
@@ -97,6 +121,8 @@ const Shop = () => {
   const currentSearchTerm = searchParams.get('q') || '';
   const currentCategory = searchParams.get('category') || 'all';
   const currentTrackType = searchParams.get('track_type') || 'all';
+  const currentVoice = searchParams.get('voice') || 'all';
+  const currentShow = searchParams.get('show') || 'all';
   const currentSort = searchParams.get('sort') || 'title_asc';
 
   const updateSearchParam = useCallback((key: string, value: string | null) => {
@@ -139,31 +165,89 @@ const Shop = () => {
     staleTime: 2 * 60 * 1000,
   });
 
+  const hasActiveFilters = Boolean(
+    currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all'
+  );
+
+  const clientFilteredProducts = useMemo(() => {
+    return (products || []).filter(p => {
+      if (currentVoice !== 'all' && !(p.vocal_ranges || []).includes(currentVoice)) return false;
+      if (currentShow !== 'all' && p.artist_name !== currentShow) return false;
+      return true;
+    });
+  }, [products, currentVoice, currentShow]);
+
   const featuredProducts = useMemo(() => {
     return products?.filter(p => p.title.toLowerCase().includes('season pack')) || [];
   }, [products]);
 
   const regularProducts = useMemo(() => {
-    return products?.filter(p => !p.title.toLowerCase().includes('season pack')) || [];
-  }, [products]);
+    return clientFilteredProducts.filter(p => !p.title.toLowerCase().includes('season pack'));
+  }, [clientFilteredProducts]);
 
   const groupedProducts = useMemo(() => {
-    if (!regularProducts) return [];
-    const groups: { [key: string]: Product[] } = {};
-    const order = ['full-song', 'audition-cut', 'note-bash', 'general'];
-    
+    if (!regularProducts.length) return [];
+    const sections: { [key: string]: Product[] } = {};
+
     regularProducts.forEach(p => {
       const cat = p.category || 'general';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(p);
+      if (!sections[cat]) sections[cat] = [];
+      sections[cat].push(p);
     });
 
-    return order.filter(key => groups[key]).map(key => ({
-      id: key,
-      label: key.replace('-', ' ').toUpperCase(),
-      products: groups[key]
-    }));
+    return GROUP_ORDER.filter(key => sections[key]).map(cat => {
+      const byTitle = new Map<string, Product[]>();
+      for (const p of sections[cat]) {
+        const key = normalizeTitle(p.title);
+        if (!byTitle.has(key)) byTitle.set(key, []);
+        byTitle.get(key)!.push(p);
+      }
+
+      const groups: ProductVariantGroup[] = Array.from(byTitle.entries()).map(([key, variants]) => ({
+        key,
+        title: variants[0].title.trim(),
+        variants: [...variants].sort((a, b) => a.price - b.price || a.track_type.localeCompare(b.track_type)),
+      }));
+
+      return {
+        id: cat,
+        label: CATEGORY_PLURALS[cat] || cat,
+        totalCount: groups.reduce((sum, g) => sum + g.variants.length, 0),
+        groups,
+      } as GroupedSection;
+    });
   }, [regularProducts]);
+
+  const showOptions = useMemo(() => {
+    const shows = new Set<string>();
+    (products || []).forEach(p => {
+      const show = (p.artist_name || '').trim();
+      if (show) shows.add(show);
+    });
+    return Array.from(shows).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!urlProductId) {
+      setUrlProduct(null);
+      return;
+    }
+    const loadUrlProduct = async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', urlProductId)
+        .maybeSingle();
+      if (!cancelled && !error && data) {
+        setUrlProduct(data as Product);
+        setSelectedProductForDetail(data as Product);
+        setIsDetailDialogOpen(true);
+      }
+    };
+    loadUrlProduct();
+    return () => { cancelled = true; };
+  }, [urlProductId]);
 
   const handleValidatePromo = async () => {
     if (!promoCode.trim()) {
@@ -197,8 +281,8 @@ const Shop = () => {
         setDiscountInfo(null);
         toast({ title: "Invalid Code", description: result.error, variant: "destructive" });
       }
-    } catch (err: any) {
-      toast({ title: "Validation Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Validation Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
       setIsValidatingPromo(false);
     }
@@ -209,7 +293,8 @@ const Shop = () => {
     setDiscountInfo(null);
     setSelectedProductForDetail(product);
     setIsDetailDialogOpen(true);
-  }, []);
+    navigate(`/shop/${product.id}`, { replace: true });
+  }, [navigate]);
 
   const handleBuyNow = useCallback(async (product: Product, code?: string) => {
     setIsBuying(true);
@@ -233,8 +318,8 @@ const Shop = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `Checkout failed (${response.status})`);
       if (result.url) window.location.href = result.url;
-    } catch (err: any) {
-      toast({ title: "Checkout Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Checkout Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
       setIsBuying(false);
     }
@@ -262,18 +347,18 @@ const Shop = () => {
       <div className="space-y-4">
         <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Backing Type</Label>
         <div className="flex flex-col gap-2">
-          {['all', 'full-song', 'audition-cut', 'note-bash'].map(cat => (
+          {CATEGORY_OPTIONS.map(cat => (
             <Button
-              key={cat}
+              key={cat.value}
               variant="ghost"
-              onClick={() => updateSearchParam('category', cat)}
+              onClick={() => updateSearchParam('category', cat.value)}
               className={cn(
                 "justify-start h-10 px-3 rounded-lg font-bold text-sm transition-all",
-                currentCategory === cat ? "bg-[#1C0357] text-white hover:bg-[#1C0357]" : "text-gray-600 hover:bg-gray-100"
+                currentCategory === cat.value ? "bg-[#1C0357] text-white hover:bg-[#1C0357]" : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              {cat === 'all' ? 'All Tracks' : cat.replace('-', ' ')}
-              {currentCategory === cat && <ChevronRight className="ml-auto h-4 w-4" />}
+              {cat.label}
+              {currentCategory === cat.value && <ChevronRight className="ml-auto h-4 w-4" />}
             </Button>
           ))}
         </div>
@@ -282,20 +367,78 @@ const Shop = () => {
       <Separator className="bg-gray-100" />
 
       <div className="space-y-4">
-        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Track Quality</Label>
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Voice Type</Label>
         <div className="flex flex-col gap-2">
-          {['all', 'polished', 'one-take', 'quick'].map(type => (
+          {[{ value: 'all', label: 'Any Voice' }, ...VOICE_TYPE_OPTIONS.map(v => ({ value: v, label: v }))].map(voice => (
             <Button
-              key={type}
+              key={voice.value}
               variant="ghost"
-              onClick={() => updateSearchParam('track_type', type)}
+              onClick={() => updateSearchParam('voice', voice.value)}
               className={cn(
                 "justify-start h-10 px-3 rounded-lg font-bold text-sm transition-all",
-                currentTrackType === type ? "bg-[#F538BC] text-white hover:bg-[#F538BC]" : "text-gray-600 hover:bg-gray-100"
+                currentVoice === voice.value ? "bg-[#1C0357] text-white hover:bg-[#1C0357]" : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              {type === 'all' ? 'Any Quality' : type}
-              {currentTrackType === type && <ChevronRight className="ml-auto h-4 w-4" />}
+              {voice.label}
+              {currentVoice === voice.value && <ChevronRight className="ml-auto h-4 w-4" />}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Show</Label>
+        <Select value={currentShow} onValueChange={(v) => updateSearchParam('show', v)}>
+          <SelectTrigger className="h-11 bg-gray-50 border-none rounded-xl font-bold text-sm">
+            <SelectValue placeholder="All Shows" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Shows</SelectItem>
+            {showOptions.map(show => (
+              <SelectItem key={show} value={show}>{show}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator className="bg-gray-100" />
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Track Type</Label>
+          <details className="relative">
+            <summary className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 cursor-pointer hover:text-[#F538BC] list-none flex items-center gap-1">
+              <HelpCircle size={12} />
+            </summary>
+            <div className="absolute z-30 top-6 left-0 w-64 bg-white rounded-xl border border-gray-100 shadow-xl p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Track Type Guide</p>
+              {Object.values(TRACK_TYPES).filter(t => t.desc).map(t => (
+                <div key={t.value} className="flex items-start gap-2">
+                  <span className={cn("h-2 w-2 rounded-full mt-1 flex-shrink-0", t.dotClass)} />
+                  <div>
+                    <p className="text-xs font-black text-[#1C0357]">{t.label}</p>
+                    <p className="text-[11px] text-gray-500 leading-snug">{t.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+        <div className="flex flex-col gap-2">
+          {TRACK_TYPE_FILTER_OPTIONS.map(type => (
+            <Button
+              key={type.value}
+              variant="ghost"
+              onClick={() => updateSearchParam('track_type', type.value)}
+              className={cn(
+                "justify-start h-10 px-3 rounded-lg font-bold text-sm transition-all",
+                currentTrackType === type.value ? "bg-[#F538BC] text-white hover:bg-[#F538BC]" : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              {type.label}
+              {currentTrackType === type.value && <ChevronRight className="ml-auto h-4 w-4" />}
             </Button>
           ))}
         </div>
@@ -318,7 +461,7 @@ const Shop = () => {
         </Select>
       </div>
 
-      {(currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all') && (
+      {hasActiveFilters && (
         <Button
           variant="outline"
           className="w-full rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 font-black text-xs uppercase tracking-widest"
@@ -333,68 +476,98 @@ const Shop = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title="Sheet Music & Backing Track Library | Piano Backings by Daniele"
-        description="Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."
+        title={urlProduct ? `${urlProduct.title} | Piano Backings by Daniele` : "Sheet Music & Backing Track Library | Piano Backings by Daniele"}
+        description={urlProduct
+          ? (urlProduct.description || `${urlProduct.title} backing track by Piano Backings by Daniele. High-quality digital download, ready instantly.`)
+          : "Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."}
+        canonicalUrl={urlProduct ? `${window.location.origin}/shop/${urlProduct.id}` : undefined}
       />
+      {urlProduct && (
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "MusicRecording",
+            name: urlProduct.title,
+            byArtist: { "@type": "MusicGroup", name: urlProduct.artist_name || "Piano Backings by Daniele" },
+            ...(urlProduct.duration_seconds ? { duration: formatDurationIso(urlProduct.duration_seconds) } : {}),
+            ...(urlProduct.key_signature ? { inAlbum: { "@type": "MusicAlbum", name: `${urlProduct.title} in ${urlProduct.key_signature}` } } : {}),
+            offers: {
+              "@type": "Offer",
+              price: urlProduct.price,
+              priceCurrency: (urlProduct.currency || 'USD').toUpperCase(),
+              availability: "https://schema.org/InStock",
+              url: `${window.location.origin}/shop/${urlProduct.id}`,
+            },
+          })}
+        </script>
+      )}
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
         
-        {featuredProducts.length > 0 && !currentSearchTerm && currentCategory === 'all' && (
+        {featuredProducts.length > 0 && !hasActiveFilters && (
           <section className="mb-24">
             <div className="flex items-center gap-3 mb-10">
               <div className="h-12 w-12 rounded-2xl bg-[#F538BC]/10 flex items-center justify-center text-[#F538BC]">
                 <Star size={28} fill="currentColor" />
               </div>
-              <h2 className="text-4xl font-black text-[#1C0357] tracking-tighter uppercase">Featured Offers</h2>
+              <h2 className="text-4xl font-black text-[#1C0357] tracking-tighter uppercase">
+                {featuredProducts.length === 1 ? 'Featured Offer' : 'Featured Offers'}
+              </h2>
             </div>
             
             <div className="grid grid-cols-1 gap-10">
-              {featuredProducts.map(product => (
-                <div key={product.id} className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[48px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                  <Card className="relative bg-[#1C0357] text-white rounded-[48px] overflow-hidden border-none shadow-2xl">
-                    <div className="grid md:grid-cols-2 items-center">
-                      <div className="p-12 md:p-20 space-y-8 relative z-20">
-                        <div className="flex items-center gap-3">
-                          <Badge className="bg-[#F538BC] text-white border-none font-black px-4 py-1.5 text-xs tracking-widest">NEW</Badge>
-                          <Badge variant="outline" className="text-white border-white/30 font-bold px-4 py-1.5 text-xs tracking-widest">Standard</Badge>
-                        </div>
-                        <h3 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
-                          {product.title}
-                        </h3>
-                        <p className="text-xl text-white/70 font-medium leading-relaxed max-w-md">
-                          {product.description}
-                        </p>
-                        <div className="pt-6 flex flex-col sm:flex-row items-center gap-8">
-                          <div className="flex items-baseline">
-                            <span className="text-3xl font-bold mr-1">$</span>
-                            <span className="text-7xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
-                            <span className="ml-3 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
+              {featuredProducts.map(product => {
+                const quality = TRACK_TYPES[product.track_type] || TRACK_TYPES.standard;
+                const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
+                return (
+                  <div key={product.id} className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#F538BC] to-[#1C0357] rounded-[48px] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                    <Card className="relative bg-[#1C0357] text-white rounded-[48px] overflow-hidden border-none shadow-2xl">
+                      <div className="grid md:grid-cols-2 items-center">
+                        <div className="p-12 md:p-20 space-y-8 relative z-20">
+                          <div className="flex items-center gap-3">
+                            {isNew && (
+                              <Badge className="bg-[#F538BC] text-white border-none font-black px-4 py-1.5 text-xs tracking-widest">NEW</Badge>
+                            )}
+                            <Badge variant="outline" className="text-white border-white/30 font-bold px-4 py-1.5 text-xs tracking-widest">{quality.label}</Badge>
                           </div>
-                          <Button 
-                            onClick={() => handleBuyNow(product)}
-                            disabled={isBuying}
-                            className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-12 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all w-full sm:w-auto"
-                          >
-                            {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-3" /> Instant Purchase</>}
-                          </Button>
+                          <h3 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
+                            {product.title}
+                          </h3>
+                          <p className="text-xl text-white/70 font-medium leading-relaxed max-w-md line-clamp-3">
+                            {product.description}
+                          </p>
+                          <div className="pt-6 flex flex-col sm:flex-row items-center gap-8">
+                            <div className="flex items-baseline">
+                              <span className="text-3xl font-bold mr-1">$</span>
+                              <span className="text-7xl font-black tracking-tighter">{product.price.toFixed(2)}</span>
+                              <span className="ml-3 text-sm font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
+                            </div>
+                            <Button 
+                              onClick={() => handleBuyNow(product)}
+                              disabled={isBuying}
+                              className="bg-white text-[#1C0357] hover:bg-gray-100 h-16 px-12 rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-all w-full sm:w-auto"
+                            >
+                              {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-3" /> Instant Purchase</>}
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="hidden md:block relative h-full min-h-[500px]">
+                          <div className="absolute inset-0 bg-gradient-to-r from-[#1C0357] via-transparent to-transparent z-10" />
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#F538BC]/20 to-[#D1AAF2]/20 flex items-center justify-center">
+                              <Package size={160} className="text-white/10" />
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="hidden md:block relative h-full min-h-[500px]">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#1C0357] via-transparent to-transparent z-10" />
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.title} className="absolute inset-0 w-full h-full object-cover opacity-60" />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#F538BC]/20 to-[#D1AAF2]/20 flex items-center justify-center">
-                            <Package size={160} className="text-white/10" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              ))}
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
@@ -452,30 +625,52 @@ const Shop = () => {
                   <Music className="h-12 w-12 text-gray-300" />
                 </div>
                 <h3 className="text-3xl font-black text-[#1C0357] mb-3 tracking-tighter">No tracks found</h3>
-                <p className="text-gray-500 font-medium mb-10 text-lg">Try adjusting your filters or search keywords.</p>
-                <Button 
-                  variant="outline" 
-                  className="rounded-2xl font-black px-10 py-6 border-2"
-                  onClick={() => setSearchParams(new URLSearchParams())}
-                >
-                  Clear all filters
-                </Button>
+                <p className="text-gray-500 font-medium mb-10 text-lg max-w-md mx-auto">
+                  Try adjusting your filters or search keywords. Can't find what you're looking for? Request a custom backing track instead.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="rounded-2xl font-black px-10 py-6 border-2"
+                    onClick={() => setSearchParams(new URLSearchParams())}
+                  >
+                    Clear all filters
+                  </Button>
+                  <Link to="/form-page">
+                    <Button className="rounded-2xl font-black px-10 py-6 bg-[#F538BC] hover:bg-[#F538BC]/90 shadow-xl shadow-[#F538BC]/20 active:scale-95 transition-all">
+                      <Mic2 className="mr-2 h-5 w-5" /> Request this song
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="space-y-24">
-                {groupedProducts.map(group => (
-                  <section key={group.id} className="space-y-10">
+                {groupedProducts.length > 1 && (
+                  <div className="flex flex-wrap gap-2">
+                    {groupedProducts.map(section => (
+                      <a
+                        key={section.id}
+                        href={`#section-${section.id}`}
+                        className="px-4 py-2 rounded-full bg-white border border-gray-200 text-xs font-black text-[#1C0357] hover:bg-[#1C0357] hover:text-white transition-colors"
+                      >
+                        {section.label} ({section.totalCount})
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {groupedProducts.map(section => (
+                  <section key={section.id} id={`section-${section.id}`} className="space-y-10 scroll-mt-40">
                     <div className="flex items-center justify-between border-b-2 border-gray-100 pb-6">
                       <div className="space-y-2">
-                        <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">{group.label}S</h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">{group.products.length} Tracks Available</p>
+                        <h2 className="text-3xl font-black text-[#1C0357] tracking-tighter uppercase">{section.label}</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">{section.totalCount} Track{section.totalCount === 1 ? '' : 's'} Available</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
-                      {group.products.map(product => (
+                      {section.groups.map(group => (
                         <ProductCard
-                          key={product.id}
-                          product={product}
+                          key={group.key}
+                          variants={group.variants}
                           onViewDetails={handleViewDetails}
                           onBuyNow={handleBuyNow}
                           isBuying={isBuying}
@@ -496,8 +691,10 @@ const Shop = () => {
           onOpenChange={open => {
             if (!open) {
               setSelectedProductForDetail(null);
+              setUrlProduct(null);
               setPromoCode('');
               setDiscountInfo(null);
+              if (urlProductId) navigate('/shop');
             }
           }}
           product={selectedProductForDetail}

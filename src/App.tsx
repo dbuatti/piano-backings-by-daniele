@@ -53,6 +53,7 @@ function App() {
               <Route path="/form-page" element={<FormPage />} />
               <Route path="/user-dashboard" element={<UserDashboard />} />
               <Route path="/shop" element={<Shop />} />
+              <Route path="/shop/:id" element={<Shop />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/about" element={<AboutServices />} />
               <Route path="/login" element={<Login />} />

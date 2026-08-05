@@ -16,6 +16,28 @@ export interface TrackInfo {
 }
 
 /**
+ * Formats a duration in seconds as "m:ss" (e.g. 128 -> "2:08").
+ */
+export const formatDuration = (seconds?: number | null): string | null => {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return null;
+  const total = Math.round(seconds);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+};
+
+/**
+ * Formats a duration in seconds as an ISO 8601 duration (schema.org style), e.g. 128 -> "PT2M8S".
+ */
+export const formatDurationIso = (seconds?: number | null): string | null => {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return null;
+  const total = Math.round(seconds);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `PT${minutes}M${secs}S`;
+};
+
+/**
  * Safely parses backing types from various formats (string, array, JSON string).
  */
 export const getSafeBackingTypes = (backingType: string | string[] | undefined | null): string[] => {

@@ -8,24 +8,24 @@ import {
   ShoppingCart, 
   Link as LinkIcon, 
   Loader2, 
-  Music, 
   Theater, 
   Key, 
   Play, 
   Pause,
   FileAudio,
+  Clock,
   CheckCircle2,
   X,
-  Sparkles,
   ShieldCheck,
   Zap,
   Info,
   Share2,
   Tag,
-  AlertCircle
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAudioPreview } from '@/hooks/useAudioPreview';
+import { getTrackTypeInfo } from '@/utils/trackTypes';
+import { formatDuration } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import VisuallyHidden from '@/components/VisuallyHidden';
@@ -45,6 +45,7 @@ interface Product {
   key_signature?: string | null;
   show_key_signature?: boolean;
   track_type?: string;
+  duration_seconds?: number | null;
   sheet_music_url?: string | null;
   show_sheet_music_url?: boolean;
   master_download_link?: string | null;
@@ -90,21 +91,12 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleShare = () => {
-    const url = `${window.location.origin}/shop?q=${encodeURIComponent(product.title)}`;
+    const url = `${window.location.origin}/shop/${product.id}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Link Copied!",
       description: "Product link copied to clipboard.",
     });
-  };
-
-  const getTrackTypeInfo = (type?: string) => {
-    switch (type) {
-      case 'quick': return { label: 'Quick Reference', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50' };
-      case 'one-take': return { label: 'One-Take', icon: FileAudio, color: 'text-yellow-600', bg: 'bg-yellow-50' };
-      case 'polished': return { label: 'Polished', icon: Sparkles, color: 'text-[#F538BC]', bg: 'bg-pink-50' };
-      default: return { label: 'Standard', icon: Music, color: 'text-gray-600', bg: 'bg-gray-50' };
-    }
   };
 
   const typeInfo = getTrackTypeInfo(product.track_type);
@@ -142,7 +134,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
           <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col justify-end">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Badge className={cn("px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[9px]", typeInfo.bg, typeInfo.color, "border-none")}>
+              <Badge className={cn("px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[9px]", typeInfo.badgeClass, "border-none")}>
                 <typeInfo.icon size={10} className="mr-1 inline" />
                 {typeInfo.label}
               </Badge>
@@ -232,6 +224,13 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                       <span className="font-bold text-[#1C0357] text-sm">{product.key_signature}</span>
                     </div>
                   )}
+
+                  {product.duration_seconds ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 text-xs flex items-center gap-2"><Clock size={14} /> Duration</span>
+                      <span className="font-bold text-[#1C0357] text-sm">{formatDuration(product.duration_seconds)}</span>
+                    </div>
+                  ) : null}
                   
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500 text-xs flex items-center gap-2"><FileAudio size={14} /> Format</span>
