@@ -40,7 +40,7 @@ interface ProductTableProps {
   isBuying: boolean;
 }
 
-const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_130px_120px_90px_100px_auto]";
+const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_100px_130px_120px_90px_100px_150px]";
 
 const COLUMNS: { key: string; label: string; right?: boolean }[] = [
   { key: 'title', label: 'Title' },
