@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
     const GMAIL_USER = Deno.env.get("GMAIL_USER");
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com';
     const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'];
+    const BCC_EMAIL = Deno.env.get("BCC_EMAIL") || 'pianobackingsbydaniele@gmail.com';
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {
       throw new Error(`Missing required environment variables.`);
@@ -84,9 +85,15 @@ Deno.serve(async (req) => {
     const accessToken = await refreshAccessToken(senderEmail);
     const recipientList = Array.isArray(to) ? to : to.split(',').map((e: string) => e.trim());
 
+    const encodeHeaderValue = (value: string) => {
+      if (/^[\x00-\x7F]*$/.test(value)) return value;
+      return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(value)))}?=`;
+    };
+
     let message = `To: ${recipientList.join(', ')}\r\n`;
     message += `From: ${GMAIL_USER}\r\n`;
-    message += `Subject: ${subject}\r\n`;
+    message += `Subject: ${encodeHeaderValue(subject)}\r\n`;
+    message += `Bcc: ${BCC_EMAIL}\r\n`;
     if (cc) message += `Cc: ${Array.isArray(cc) ? cc.join(', ') : cc}\r\n`;
     if (replyTo) message += `Reply-To: ${replyTo}\r\n`;
     message += 'MIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n' + html;
