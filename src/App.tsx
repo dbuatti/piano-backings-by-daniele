@@ -8,6 +8,7 @@ import Shop from './pages/Shop';
 import Pricing from './pages/Pricing';
 import AboutServices from './pages/AboutServices';
 import Login from './pages/Login';
+import IgGenerator from './pages/IgGenerator';
 import NotFound from './pages/NotFound';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
@@ -57,6 +58,7 @@ function App() {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/about" element={<AboutServices />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/ig" element={<IgGenerator />} />
               <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/request/:id" element={<RequestDetails />} />
