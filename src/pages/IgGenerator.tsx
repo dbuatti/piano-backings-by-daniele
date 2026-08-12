@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ---------- Brand tokens (from src/globals.css --accent) ----------
 const PINK = "#F538BC";
@@ -35,6 +36,7 @@ export type Carousel = {
   name: string;
   slides: SlideState[];
   logos: Logo[];
+  caption: string;
   updatedAt: number;
 };
 
@@ -112,6 +114,170 @@ const COPY_PRESETS: CopyPreset[] = [
   { id: "cp-9", label: "Classic · turnaround time", template: "classic", state: { eyebrow: "Turnaround", headline: "48 hours,\nmaybe sooner.", sub: "Most tracks ship in under a day.\nDM to start the clock." } },
   { id: "cp-10", label: "CTA · recession-proof", template: "cta", state: { eyebrow: "Honest", headline: "You don’t need\na $400 accompanist.\nYou need me.", sub: "@pianobackingsbydaniele · from $15" } },
 ];
+
+// ---------- Live shop data (from Supabase, anon key) ----------
+type ShopStats = {
+  trackCount: number;
+  showCount: number;
+  minPrice: number | null;
+  newest: { title: string; show: string }[];
+};
+type ShopRow = { title: string; artist_name: string; price: number; created_at: string; is_active: boolean };
+async function fetchShopStats(): Promise<ShopStats | null> {
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select("title, artist_name, price, created_at, is_active")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error || !data) return null;
+    const active = data as ShopRow[];
+    const shows = new Set(active.map((p) => (p.artist_name || "").trim()).filter(Boolean));
+    const prices = active.map((p) => p.price).filter((n) => typeof n === "number" && !isNaN(n));
+    const minPrice = prices.length ? Math.min(...prices) : null;
+    const newest = active.slice(0, 5).map((p) => ({ title: p.title, show: p.artist_name || "" }));
+    return { trackCount: active.length, showCount: shows.size, minPrice, newest };
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Campaigns (full carousels) ----------
+type Campaign = {
+  id: string;
+  label: string;
+  blurb: string;
+  build: (stats: ShopStats | null) => { name: string; slides: SlideState[]; caption: string };
+};
+const CAMPAIGNS: Campaign[] = [
+  {
+    id: "camp-open-requests",
+    label: "Open for requests · Link in bio",
+    blurb: "3 slides · the one you wrote",
+    build: () => ({
+      name: "Open for requests",
+      caption:
+        "Open for requests.\n\nI'm away from September 7 and I'll have quiet stretches at the piano, so I'm taking backing track orders.\n\nSend me the sheet music and a YouTube reference and I'll prepare your cut, in your key, at the tempo you actually sing it. With breath where you need to breathe.\n\nThis started as tracks I made for friends before auditions. It's still that.\n\nLink in bio.",
+      slides: [
+        {
+          template: "classic",
+          eyebrow: "Piano Backings by Daniele",
+          headline: "Open for requests.",
+          sub: "Custom piano tracks, one at a time.",
+          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+        },
+        {
+          template: "list",
+          eyebrow: "What you get",
+          headline: "Your cut. Your key.\nYour tempo.\nRoom to breathe.",
+          sub: "Send the sheet music and a reference.",
+          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+        },
+        {
+          template: "cta",
+          eyebrow: "From September 7",
+          headline: "Link in bio.\nOr send me\nthe song.",
+          sub: "Spots are limited while I'm away.",
+          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+        },
+      ],
+    }),
+  },
+  {
+    id: "camp-new-in-shop",
+    label: "New in the shop",
+    blurb: "3 slides · pulls the last tracks you shipped",
+    build: (stats) => {
+      const newest = stats?.newest?.filter((t) => t.title)?.slice(0, 3) ?? [];
+      const first = newest[0];
+      const slide2List = newest.length
+        ? newest.map((t) => `${t.title}${t.show ? " — " + t.show : ""}`)
+        : ["Your latest cut goes here", "Title — Show", "Title — Show"];
+      return {
+        name: "New in the shop",
+        caption:
+          "New in the shop.\n\nFresh cuts, your key, your tempo. DM to order or grab one straight from the link in bio.\n\n#pianobackingtracks #auditionprep #musicaltheatre",
+        slides: [
+          {
+            template: "cover",
+            eyebrow: "New in the shop",
+            headline: first
+              ? `${first.title}\nis ready\nin your key.`
+              : "New cuts\nare ready\nin your key.",
+            sub: "Swipe →",
+            list: [], showKeyline: false, logoId: "builtin-profile", showVignette: true,
+          },
+          {
+            template: "list",
+            eyebrow: "Just shipped",
+            headline: "This week’s\nbackings",
+            sub: "All in your key. DM to order.",
+            list: slide2List, showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          },
+          {
+            template: "cta",
+            eyebrow: "Ready when you are",
+            headline: "Link in bio.\nOr send me\nthe song.",
+            sub: "@pianobackingsbydaniele",
+            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          },
+        ],
+      };
+    },
+  },
+  {
+    id: "camp-start-here",
+    label: "Start here · value reset",
+    blurb: "3 slides · pricing + what you get",
+    build: (stats) => {
+      const from = stats?.minPrice != null ? `$${Math.round(stats.minPrice)}` : "$15";
+      return {
+        name: "Start here",
+        caption:
+          "Start here.\n\nCustom piano backings, from " +
+          from +
+          " a track. Your cut, your key, your tempo. DM me the song and a reference and I’ll send the studio back.\n\nLink in bio.",
+        slides: [
+          {
+            template: "classic",
+            eyebrow: "Piano Backings by Daniele",
+            headline: "Backing tracks\nthat make you\nsound like home.",
+            sub: "Custom accompaniments for auditions & practice.",
+            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          },
+          {
+            template: "list",
+            eyebrow: "What you get",
+            headline: "Every track\nships with",
+            sub: `From ${from} / track · DM to order`,
+            list: ["High-fidelity WAV + MP3", "Your key, your tempo", "Lyric-marked lead sheet", "Unlimited play-throughs"],
+            showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          },
+          {
+            template: "cta",
+            eyebrow: "Ready when you are",
+            headline: "Send me\nthe song.\nI’ll send you\nthe studio.",
+            sub: "@pianobackingsbydaniele",
+            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          },
+        ],
+      };
+    },
+  },
+];
+
+function applyCampaign(c: Campaign, stats: ShopStats | null, logoIds: Logo[]): Carousel {
+  const built = c.build(stats);
+  return {
+    id: uid(),
+    name: built.name,
+    slides: built.slides,
+    logos: logoIds,
+    caption: built.caption,
+    updatedAt: Date.now(),
+  };
+}
 
 // ---------- Storage helpers ----------
 function loadCarousels(): Carousel[] {
@@ -435,6 +601,8 @@ export default function IgGenerator() {
   const [activeCarouselId, setActiveCarouselId] = useState("");
   const [activeSlide, setActiveSlide] = useState(0);
   const [presetNameInput, setPresetNameInput] = useState("");
+  const [shopStats, setShopStats] = useState<ShopStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // active carousel derived
@@ -450,7 +618,7 @@ export default function IgGenerator() {
 
     if (c.length === 0) {
       const id = uid();
-      const fresh: Carousel = { id, name: "Untitled carousel", slides: starterSlides(), logos: effectiveLogos, updatedAt: Date.now() };
+      const fresh: Carousel = { id, name: "Untitled carousel", slides: starterSlides(), logos: effectiveLogos, caption: "", updatedAt: Date.now() };
       saveCarousels([fresh]);
       setCarousels([fresh]);
       setActiveCarouselId(id);
@@ -458,6 +626,16 @@ export default function IgGenerator() {
       setCarousels(c);
       setActiveCarouselId(c[0].id);
     }
+  }, []);
+
+  // fetch shop stats behind the scenes (informs campaigns, never rendered on slides)
+  useEffect(() => {
+    let alive = true;
+    setStatsLoading(true);
+    fetchShopStats()
+      .then((s) => { if (alive) { setShopStats(s); setStatsLoading(false); } })
+      .catch(() => { if (alive) setStatsLoading(false); });
+    return () => { alive = false; };
   }, []);
 
   // preload all logo images
@@ -560,7 +738,7 @@ export default function IgGenerator() {
   }
   function newCarousel() {
     const id = uid();
-    const fresh: Carousel = { id, name: `Carousel ${carousels.length + 1}`, slides: [starterSlides()[0]], logos: allLogos(customLogos), updatedAt: Date.now() };
+    const fresh: Carousel = { id, name: `Carousel ${carousels.length + 1}`, slides: [starterSlides()[0]], logos: allLogos(customLogos), caption: "", updatedAt: Date.now() };
     const next = [...carousels, fresh];
     setCarousels(next); saveCarousels(next);
     setActiveCarouselId(id); setActiveSlide(0);
@@ -575,10 +753,22 @@ export default function IgGenerator() {
   function duplicateCarousel() {
     if (!activeCarousel) return;
     const id = uid();
-    const fresh: Carousel = { id, name: `${activeCarousel.name} (copy)`, slides: activeCarousel.slides.map((s) => ({ ...s })), logos: activeCarousel.logos, updatedAt: Date.now() };
+    const fresh: Carousel = { id, name: `${activeCarousel.name} (copy)`, slides: activeCarousel.slides.map((s) => ({ ...s })), logos: activeCarousel.logos, caption: activeCarousel.caption || "", updatedAt: Date.now() };
     const next = [...carousels, fresh];
     setCarousels(next); saveCarousels(next);
     setActiveCarouselId(id); setActiveSlide(0);
+  }
+
+  function loadCampaign(c: Campaign) {
+    const logos = allLogos(customLogos);
+    const built = applyCampaign(c, shopStats, logos);
+    const next = [built, ...carousels];
+    setCarousels(next); saveCarousels(next);
+    setActiveCarouselId(built.id); setActiveSlide(0);
+  }
+
+  function updateCaption(caption: string) {
+    updateActiveCarousel((c) => ({ ...c, caption }));
   }
 
   // ---------- Copy presets (apply to current slide) ----------
@@ -715,6 +905,60 @@ export default function IgGenerator() {
 
           {/* Controls */}
           <div className="flex flex-col gap-5">
+            {/* Campaigns */}
+            <section className={`${cardCls} border-[#F538BC]/30 ring-1 ring-[#F538BC]/10`}>
+              <h2 className={hdrCls}>Campaigns</h2>
+              <select
+                className={fieldCls}
+                value=""
+                onChange={(e) => { const camp = CAMPAIGNS.find((c) => c.id === e.target.value); if (camp) loadCampaign(camp); }}
+              >
+                <option value="">— Load a 3-slide campaign —</option>
+                {CAMPAIGNS.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label} · {c.blurb}</option>
+                ))}
+              </select>
+              <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
+                Builds a fresh carousel and loads it. The “New in the shop” campaign pulls your last shipped tracks from Supabase so the copy matches what’s live.
+              </p>
+            </section>
+
+            {/* Shop insights — for me, the marketing manager */}
+            <section className={cardCls}>
+              <h2 className={hdrCls}>Shop insights · for crafting</h2>
+              {statsLoading ? (
+                <p className="text-xs text-gray-400">Loading live shop data…</p>
+              ) : !shopStats ? (
+                <p className="text-xs text-gray-400">Couldn’t reach Supabase — using fallback copy.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-gray-50 p-2">
+                    <div className="text-xl font-black text-[#1C0357]">{shopStats.trackCount}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Tracks</div>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-2">
+                    <div className="text-xl font-black text-[#1C0357]">{shopStats.showCount}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Shows</div>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-2">
+                    <div className="text-xl font-black text-[#1C0357]">{shopStats.minPrice != null ? `$${Math.round(shopStats.minPrice)}` : "—"}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">From</div>
+                  </div>
+                </div>
+              )}
+              {shopStats?.newest?.length ? (
+                <ul className="mt-2 space-y-1">
+                  {shopStats.newest.slice(0, 3).map((t, i) => (
+                    <li key={i} className="flex items-baseline gap-2 text-[11px]">
+                      <span className="font-black text-[#F538BC]">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="font-bold text-[#1C0357]">{t.title}</span>
+                      {t.show && <span className="text-gray-400">— {t.show}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+
             {/* Carousels */}
             <section className={cardCls}>
               <h2 className={hdrCls}>Carousels</h2>
@@ -839,6 +1083,26 @@ export default function IgGenerator() {
                 <span className="text-sm font-bold">Vignette (depth)</span>
                 <input type="checkbox" checked={slide.showVignette} onChange={(e) => updateSlide({ showVignette: e.target.checked })} className="ig-toggle" />
               </label>
+            </section>
+
+            {/* Caption — saved with the carousel, copyable when posting */}
+            <section className={cardCls}>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className={hdrCls + " mb-0"}>Caption</h2>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(activeCarousel.caption || "")}
+                  className="rounded-md border border-black/10 px-2 py-1 text-[10px] font-bold hover:bg-gray-50"
+                >
+                  Copy
+                </button>
+              </div>
+              <textarea
+                value={activeCarousel.caption || ""}
+                onChange={(e) => updateCaption(e.target.value)}
+                rows={6}
+                placeholder="Carousel caption — pasted under the post, not onto the slides."
+                className={`${fieldCls} text-[12px] leading-relaxed`}
+              />
             </section>
 
             <p className="text-[11px] leading-relaxed text-gray-400">
