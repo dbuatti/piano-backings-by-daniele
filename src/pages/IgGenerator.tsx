@@ -44,7 +44,6 @@ const STORAGE_LOGOS = "pb_ig_logos_v1";
 // Built-in logos pulled from the repo's public/ folder
 const BUILTIN_LOGOS: Logo[] = [
   { id: "builtin-profile", name: "Daniele (profile)", src: "/daniele-profile.png", builtin: true },
-  { id: "builtin-og", name: "OG banner", src: "/og-image.png", builtin: true },
   { id: "builtin-wordmark", name: "Wordmark (wide)", src: "/pasted-image-2025-09-19T05-15-20-729Z.png", builtin: true },
 ];
 
