@@ -24,8 +24,9 @@ export type SlideState = {
   headline: string;
   sub: string;
   list: string[];
-  showKeyline: boolean;
-  logoId: string; // "" = none
+  showRule: boolean;
+  logoId: string;       // face — top-left circle ("" = none)
+  wordmarkId: string;   // wordmark — bottom center ("" = none)
   showVignette: boolean;
 };
 
@@ -57,8 +58,9 @@ function starterSlides(): SlideState[] {
     headline: "",
     sub: "DM to order · Spotify-quality audio",
     list: [],
-    showKeyline: true,
+    showRule: true,
     logoId: "builtin-profile",
+    wordmarkId: "builtin-wordmark",
     showVignette: true,
     ...partial,
   });
@@ -72,13 +74,13 @@ function starterSlides(): SlideState[] {
       eyebrow: "Carousel · 1 of N",
       headline: "How I build\na custom backing",
       sub: "Swipe →",
-      showKeyline: false,
+      showRule: false,
     }),
     base("quote", {
       eyebrow: "From a client",
       headline: "“It finally felt\nlike the piano\nwas breathing\nwith me.”",
       sub: "— Sara M., audition prep",
-      showKeyline: false,
+      showRule: false,
     }),
     base("list", {
       eyebrow: "What you get",
@@ -93,9 +95,9 @@ function starterSlides(): SlideState[] {
     }),
     base("cta", {
       eyebrow: "Ready when you are",
-      headline: "Send me\nthe song.\nI’ll send you\nthe studio.",
+      headline: "Link in bio.\nOr DM me.",
       sub: "@pianobackingsbydaniele",
-      showKeyline: true,
+      showRule: true,
     }),
   ];
 }
@@ -107,12 +109,12 @@ const COPY_PRESETS: CopyPreset[] = [
   { id: "cp-2", label: "Process · “how I build”", template: "cover", state: { eyebrow: "Carousel · 1 of N", headline: "How I build\na custom backing", sub: "Swipe →" } },
   { id: "cp-3", label: "Quote · client story", template: "quote", state: { eyebrow: "From a client", headline: "“It finally felt\nlike the piano\nwas breathing\nwith me.”", sub: "— Sara M., audition prep" } },
   { id: "cp-4", label: "List · what you get", template: "list", state: { eyebrow: "What you get", headline: "Every track\nships with", list: ["High-fidelity WAV + MP3", "Your key, your tempo", "Lyric-marked lead sheet", "Unlimited play-throughs"], sub: "From $15 / track · DM to order" } },
-  { id: "cp-5", label: "CTA · send me the song", template: "cta", state: { eyebrow: "Ready when you are", headline: "Send me\nthe song.\nI’ll send you\nthe studio.", sub: "@pianobackingsbydaniele" } },
-  { id: "cp-6", label: "Cover · season pack", template: "cover", state: { eyebrow: "Season Pack · 4 credits", headline: "Four tracks.\nOne season.\nOne price.", sub: "$50 · save $10 · DM to claim", showKeyline: true } },
+  { id: "cp-5", label: "CTA · link in bio", template: "cta", state: { eyebrow: "Ready when you are", headline: "Link in bio.\nOr DM me.", sub: "@pianobackingsbydaniele" } },
+  { id: "cp-6", label: "Cover · season pack", template: "cover", state: { eyebrow: "Season Pack · 4 credits", headline: "Four tracks.\nOne season.\nOne price.", sub: "$50 · save $10 · DM to claim", showRule: true } },
   { id: "cp-7", label: "Quote · audition win", template: "quote", state: { eyebrow: "From a client", headline: "“I booked\nthe role.\nAnd the tape\nwas your track.”", sub: "— Daniel R., NYC callback" } },
   { id: "cp-8", label: "List · how ordering works", template: "list", state: { eyebrow: "How it works", headline: "Three steps\nfrom song\nto studio", list: ["1 · DM me the song + your key", "2 · I arrange & record it", "3 · You get WAV + MP3 in 48h"], sub: "No subscription. Ever." } },
   { id: "cp-9", label: "Classic · turnaround time", template: "classic", state: { eyebrow: "Turnaround", headline: "48 hours,\nmaybe sooner.", sub: "Most tracks ship in under a day.\nDM to start the clock." } },
-  { id: "cp-10", label: "CTA · recession-proof", template: "cta", state: { eyebrow: "Honest", headline: "You don’t need\na $400 accompanist.\nYou need me.", sub: "@pianobackingsbydaniele · from $15" } },
+  { id: "cp-10", label: "CTA · honest", template: "cta", state: { eyebrow: "Honest", headline: "You don’t need\na $400 accompanist.\nYou need me.", sub: "@pianobackingsbydaniele · DM to order" } },
 ];
 
 // ---------- Live shop data (from Supabase, anon key) ----------
@@ -165,21 +167,21 @@ const CAMPAIGNS: Campaign[] = [
           eyebrow: "Piano Backings by Daniele",
           headline: "Open for requests.",
           sub: "Custom piano tracks, one at a time.",
-          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
         },
         {
           template: "list",
           eyebrow: "What you get",
           headline: "Your cut. Your key.\nYour tempo.\nRoom to breathe.",
           sub: "Send the sheet music and a reference.",
-          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
         },
         {
           template: "cta",
           eyebrow: "From September 7",
-          headline: "Link in bio.\nOr send me\nthe song.",
+          headline: "Link in bio.",
           sub: "Spots are limited while I'm away.",
-          list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+          list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
         },
       ],
     }),
@@ -206,21 +208,21 @@ const CAMPAIGNS: Campaign[] = [
               ? `${first.title}\nis ready\nin your key.`
               : "New cuts\nare ready\nin your key.",
             sub: "Swipe →",
-            list: [], showKeyline: false, logoId: "builtin-profile", showVignette: true,
+            list: [], showRule: false, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
           {
             template: "list",
             eyebrow: "Just shipped",
             headline: "This week’s\nbackings",
             sub: "All in your key. DM to order.",
-            list: slide2List, showKeyline: true, logoId: "builtin-profile", showVignette: true,
+            list: slide2List, showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
           {
             template: "cta",
             eyebrow: "Ready when you are",
-            headline: "Link in bio.\nOr send me\nthe song.",
+            headline: "Link in bio.",
             sub: "@pianobackingsbydaniele",
-            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+            list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
         ],
       };
@@ -231,7 +233,9 @@ const CAMPAIGNS: Campaign[] = [
     label: "Start here · value reset",
     blurb: "3 slides · pricing + what you get",
     build: (stats) => {
-      const from = stats?.minPrice != null ? `$${Math.round(stats.minPrice)}` : "$15";
+      // clamp to a sane floor so test products at $1 never leak onto a slide
+      const rawMin = stats?.minPrice ?? 15;
+      const from = `$${Math.max(15, Math.round(rawMin))}`;
       return {
         name: "Start here",
         caption:
@@ -244,7 +248,7 @@ const CAMPAIGNS: Campaign[] = [
             eyebrow: "Piano Backings by Daniele",
             headline: "Backing tracks\nthat make you\nsound like home.",
             sub: "Custom accompaniments for auditions & practice.",
-            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+            list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
           {
             template: "list",
@@ -252,18 +256,37 @@ const CAMPAIGNS: Campaign[] = [
             headline: "Every track\nships with",
             sub: `From ${from} / track · DM to order`,
             list: ["High-fidelity WAV + MP3", "Your key, your tempo", "Lyric-marked lead sheet", "Unlimited play-throughs"],
-            showKeyline: true, logoId: "builtin-profile", showVignette: true,
+            showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
           {
             template: "cta",
             eyebrow: "Ready when you are",
-            headline: "Send me\nthe song.\nI’ll send you\nthe studio.",
+            headline: "Link in bio.\nDM to order.",
             sub: "@pianobackingsbydaniele",
-            list: [], showKeyline: true, logoId: "builtin-profile", showVignette: true,
+            list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
           },
         ],
       };
     },
+},
+  {
+    id: "camp-going-away",
+    label: "Going away shortly",
+    blurb: "1 slide · quick heads-up",
+    build: () => ({
+      name: "Going away shortly",
+      caption:
+        "I'm going away shortly — get your requests in before I go.\n\nLink in bio to order. I'll have quiet stretches at the piano while I'm away, so I'll be taking a few backing track orders.\n\nDM me the song and your key.",
+      slides: [
+        {
+          template: "classic",
+          eyebrow: "Heads up",
+          headline: "I’m going away\nshortly.",
+          sub: "Get your requests in before I go.\nLink in bio.",
+          list: [], showRule: true, logoId: "builtin-profile", wordmarkId: "builtin-wordmark", showVignette: true,
+        },
+      ],
+    }),
   },
 ];
 
@@ -280,8 +303,30 @@ function applyCampaign(c: Campaign, stats: ShopStats | null, logoIds: Logo[]): C
 }
 
 // ---------- Storage helpers ----------
+function migrateSlide(s: Partial<SlideState> & { showKeyline?: boolean }): SlideState {
+  return {
+    template: (s.template as TemplateId) || "classic",
+    eyebrow: s.eyebrow || "",
+    headline: s.headline || "",
+    sub: s.sub || "",
+    list: Array.isArray(s.list) ? s.list : [],
+    showRule: s.showRule ?? s.showKeyline ?? true,
+    logoId: s.logoId ?? "builtin-profile",
+    wordmarkId: s.wordmarkId ?? "builtin-wordmark",
+    showVignette: s.showVignette ?? true,
+  };
+}
 function loadCarousels(): Carousel[] {
-  try { const r = localStorage.getItem(STORAGE_CAROUSELS); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
+  try {
+    const r = localStorage.getItem(STORAGE_CAROUSELS);
+    const a = r ? JSON.parse(r) : [];
+    if (!Array.isArray(a)) return [];
+    return a.map((c: Partial<Carousel> & { id: string; name: string; logos: Logo[]; updatedAt: number }) => ({
+      ...c,
+      caption: c.caption ?? "",
+      slides: Array.isArray(c.slides) ? c.slides.map(migrateSlide) : [],
+    })) as Carousel[];
+  } catch { return []; }
 }
 function saveCarousels(c: Carousel[]) { localStorage.setItem(STORAGE_CAROUSELS, JSON.stringify(c)); }
 function loadCustomLogos(): Logo[] {
@@ -333,44 +378,62 @@ function drawSlide(
   }
 }
 
-function drawLogo(
+// Face logo — small circular brand mark, top-left
+function drawFaceLogo(
   ctx: CanvasRenderingContext2D,
   logo: HTMLImageElement | undefined,
-  state: SlideState,
-  cx: number,
-  cy: number,
-  target: "circle" | "wide" | "auto",
+  x: number,
+  y: number,
 ) {
   if (!logo) return;
+  const size = 72;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  const s = Math.max(size / logo.width, size / logo.height);
+  const dw = logo.width * s, dh = logo.height * s;
+  ctx.drawImage(logo, x + (size - dw) / 2, y + (size - dh) / 2, dw, dh);
+  ctx.restore();
+  // soft cream ring
+  ctx.strokeStyle = CREAM_FAINT;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x + size / 2, y + size / 2, size / 2 + 3, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// Wordmark — bottom-center, faded, small ("scented logo")
+function drawWordmark(
+  ctx: CanvasRenderingContext2D,
+  logo: HTMLImageElement | undefined,
+) {
+  if (!logo) return;
+  const maxW = 360;
+  const maxH = 56;
   const ar = logo.width / logo.height;
-  if (target === "circle" || (target === "auto" && Math.abs(ar - 1) < 0.2)) {
-    const size = 76;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx + size / 2, cy + size / 2, size / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    const s = Math.max(size / logo.width, size / logo.height);
-    const dw = logo.width * s, dh = logo.height * s;
-    ctx.drawImage(logo, cx + (size - dw) / 2, cy + (size - dh) / 2, dw, dh);
-    ctx.restore();
-    // cream ring
-    ctx.strokeStyle = CREAM_FAINT;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx + size / 2, cy + size / 2, size / 2 + 3, 0, Math.PI * 2);
-    ctx.stroke();
-  } else {
-    // wide wordmark: fit within max width, preserve aspect
-    const maxW = W - MARGIN * 2;
-    const maxH = 120;
-    let dw = maxW, dh = dw / ar;
-    if (dh > maxH) { dh = maxH; dw = dh * ar; }
-    ctx.save();
-    ctx.globalAlpha = 0.95;
-    ctx.drawImage(logo, cx, cy, dw, dh);
-    ctx.restore();
-  }
+  let dw = maxW, dh = dw / ar;
+  if (dh > maxH) { dh = maxH; dw = dh * ar; }
+  const x = (W - dw) / 2;
+  const y = H - 90;
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  // behind the wordmark, a soft cap so it reads on pink
+  ctx.drawImage(logo, x, y, dw, dh);
+  ctx.restore();
+}
+
+// Full-bleed hairline rule near the bottom — exits both edges, infinite feel
+function drawBottomRule(ctx: CanvasRenderingContext2D): number {
+  const ruleY = H - 200;
+  ctx.strokeStyle = CREAM_FAINT;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-40, ruleY);
+  ctx.lineTo(W + 40, ruleY);
+  ctx.stroke();
+  return ruleY;
 }
 
 function drawEyebrow(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign = "left") {
@@ -395,26 +458,6 @@ function letterspacedWidth(ctx: CanvasRenderingContext2D, text: string, spacing:
   return w - (text.length ? spacing : 0);
 }
 
-function drawKeyline(ctx: CanvasRenderingContext2D, withTicks = true) {
-  const ruleY = H - 230;
-  const ruleLeft = MARGIN, ruleRight = W - MARGIN;
-  ctx.strokeStyle = CREAM;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(ruleLeft, ruleY); ctx.lineTo(ruleRight, ruleY); ctx.stroke();
-  if (withTicks) {
-    const tickH = 26, tickW = 6, gapIn = 4, groupGap = 14;
-    const pattern = [2, 3, 2, 3];
-    let cx = ruleLeft;
-    ctx.fillStyle = CREAM_DIM;
-    for (let g = 0; g < pattern.length; g++) {
-      const n = pattern[g];
-      for (let i = 0; i < n; i++) { roundRectFill(ctx, cx, ruleY - tickH, tickW, tickH, 1.5); cx += tickW + gapIn; }
-      cx += groupGap - gapIn;
-    }
-  }
-  return ruleY;
-}
-
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, font: string, maxWidth: number): string[] {
   ctx.font = font;
   const out: string[] = [];
@@ -432,11 +475,35 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, font: string, ma
   return out;
 }
 
+// Render the shared bottom zone: rule + wordmark + sub-line.
+function drawBottomZone(
+  ctx: CanvasRenderingContext2D,
+  s: SlideState,
+  imgs: Record<string, HTMLImageElement>,
+  subAlign: CanvasTextAlign = "left",
+  subFont = `500 30px/1.5 ${SANS}`,
+) {
+  const ruleY = s.showRule ? drawBottomRule(ctx) : H - 200;
+  // sub-line sits just under the rule
+  if (s.sub) {
+    ctx.font = subFont;
+    ctx.fillStyle = CREAM;
+    ctx.textAlign = subAlign;
+    ctx.textBaseline = "top";
+    const subX = subAlign === "center" ? W / 2 : MARGIN;
+    let sy = ruleY + 30;
+    for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, subX, sy); sy += 30 * 1.5; }
+  }
+  // wordmark always anchors the very bottom center
+  const wm = s.wordmarkId ? imgs[s.wordmarkId] : undefined;
+  drawWordmark(ctx, wm);
+}
+
 // ---- Template: Classic ----
 function drawClassic(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<string, HTMLImageElement>) {
-  const logo = s.logoId ? imgs[s.logoId] : undefined;
-  if (logo) drawLogo(ctx, logo, s, MARGIN, 96, "auto");
-  const eyebrowY = logo ? 210 : 150;
+  const face = s.logoId ? imgs[s.logoId] : undefined;
+  if (face) drawFaceLogo(ctx, face, MARGIN, 90);
+  const eyebrowY = face ? 196 : 140;
   drawEyebrow(ctx, s.eyebrow, MARGIN, eyebrowY);
 
   const headFont = `700 104px/${104 * 1.18}px ${SERIF}`;
@@ -444,55 +511,34 @@ function drawClassic(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<
   ctx.fillStyle = CREAM;
   ctx.textAlign = "left"; ctx.textBaseline = "top";
   const lines = wrapLines(ctx, s.headline, headFont, W - MARGIN * 2);
-  let y = eyebrowY + 70;
+  let y = eyebrowY + 64;
   for (const ln of lines) { ctx.fillText(ln, MARGIN, y); y += 104 * 1.18; }
 
-  const ruleY = drawKeyline(ctx, s.showKeyline);
-  ctx.font = `500 30px/1.5 ${SANS}`;
-  ctx.fillStyle = CREAM;
-  let sy = ruleY + 34;
-  for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, MARGIN, sy); sy += 30 * 1.5; }
+  drawBottomZone(ctx, s, imgs, "left", `500 30px/1.5 ${SANS}`);
 }
 
 // ---- Template: Cover (centered) ----
 function drawCover(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<string, HTMLImageElement>) {
-  const logo = s.logoId ? imgs[s.logoId] : undefined;
-  if (logo) drawLogo(ctx, logo, s, MARGIN, 96, "auto");
+  const face = s.logoId ? imgs[s.logoId] : undefined;
+  if (face) drawFaceLogo(ctx, face, MARGIN, 90);
   const centerY = H / 2 - 40;
-  drawEyebrow(ctx, s.eyebrow, W / 2, centerY - 180, "center");
+  drawEyebrow(ctx, s.eyebrow, W / 2, centerY - 200, "center");
 
   const headFont = `700 112px/${112 * 1.16}px ${SERIF}`;
   ctx.font = headFont;
   ctx.fillStyle = CREAM;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   const lines = wrapLines(ctx, s.headline, headFont, W - MARGIN * 1.6);
-  let y = centerY - 110;
+  let y = centerY - 120;
   for (const ln of lines) { ctx.fillText(ln, W / 2, y); y += 112 * 1.16; }
 
-  if (s.showKeyline) {
-    const ruleY = H - 230;
-    ctx.strokeStyle = CREAM; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(W / 2 - 240, ruleY); ctx.lineTo(W / 2 + 240, ruleY); ctx.stroke();
-    if (s.showKeyline) {
-      const tickH = 26, tickW = 6, gapIn = 4, groupGap = 14; const pattern = [2, 3, 2, 3];
-      let cx = W / 2 - 240;
-      ctx.fillStyle = CREAM_DIM;
-      for (let g = 0; g < pattern.length; g++) { const n = pattern[g]; for (let i = 0; i < n; i++) { roundRectFill(ctx, cx, ruleY - tickH, tickW, tickH, 1.5); cx += tickW + gapIn; } cx += groupGap - gapIn; }
-    }
-    ctx.font = `500 30px/1.4 ${SANS}`; ctx.fillStyle = CREAM; ctx.textAlign = "left";
-    let sy = ruleY + 34;
-    for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, MARGIN, sy); sy += 30 * 1.4; }
-  } else {
-    ctx.font = `500 32px/1.4 ${SANS}`; ctx.fillStyle = CREAM; ctx.textAlign = "center";
-    let sy = H - 200;
-    for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, W / 2, sy); sy += 32 * 1.4; }
-  }
+  drawBottomZone(ctx, s, imgs, "center", `500 32px/1.4 ${SANS}`);
 }
 
 // ---- Template: Quote (italic serif, centered) ----
 function drawQuote(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<string, HTMLImageElement>) {
-  const logo = s.logoId ? imgs[s.logoId] : undefined;
-  if (logo) drawLogo(ctx, logo, s, MARGIN, 96, "circle");
+  const face = s.logoId ? imgs[s.logoId] : undefined;
+  if (face) drawFaceLogo(ctx, face, MARGIN, 90);
   const centerY = H / 2 - 40;
   drawEyebrow(ctx, s.eyebrow, W / 2, centerY - 240, "center");
 
@@ -503,83 +549,66 @@ function drawQuote(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<st
   let y = centerY - 160;
   for (const ln of lines) { ctx.fillText(ln, W / 2, y); y += 96 * 1.22; }
 
+  // attribution centered just above the rule
   ctx.font = `500 28px/1.4 ${SANS}`; ctx.fillStyle = CREAM_DIM;
-  // attribution centered near bottom
-  let sy = H - 200;
-  for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, W / 2, sy); sy += 28 * 1.4; }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  let qy = H - 260;
+  for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, W / 2, qy); qy += 28 * 1.4; }
+
+  // rule + wordmark only (sub already drawn above the rule)
+  if (s.showRule) drawBottomRule(ctx);
+  const wm = s.wordmarkId ? imgs[s.wordmarkId] : undefined;
+  drawWordmark(ctx, wm);
 }
 
 // ---- Template: List ----
 function drawList(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<string, HTMLImageElement>) {
-  const logo = s.logoId ? imgs[s.logoId] : undefined;
-  if (logo) drawLogo(ctx, logo, s, MARGIN, 96, "auto");
-  const eyebrowY = logo ? 210 : 150;
+  const face = s.logoId ? imgs[s.logoId] : undefined;
+  if (face) drawFaceLogo(ctx, face, MARGIN, 90);
+  const eyebrowY = face ? 196 : 140;
   drawEyebrow(ctx, s.eyebrow, MARGIN, eyebrowY);
 
-  const headFont = `700 84px/${84 * 1.15}px ${SERIF}`;
+  const headFont = `700 80px/${80 * 1.15}px ${SERIF}`;
   ctx.font = headFont; ctx.fillStyle = CREAM;
   ctx.textAlign = "left"; ctx.textBaseline = "top";
   const lines = wrapLines(ctx, s.headline, headFont, W - MARGIN * 2);
-  let y = eyebrowY + 70;
-  for (const ln of lines) { ctx.fillText(ln, MARGIN, y); y += 84 * 1.15; }
+  let y = eyebrowY + 64;
+  for (const ln of lines) { ctx.fillText(ln, MARGIN, y); y += 80 * 1.15; }
 
-  // list items
-  y += 28;
-  ctx.font = `600 44px/1.3 ${SANS}`;
-  ctx.fillStyle = CREAM;
+  y += 24;
   for (let i = 0; i < s.list.length; i++) {
-    const item = s.list[i].trim();
+    const item = (s.list[i] || "").trim();
     if (!item) continue;
-    // small piano-key glyph as bullet
-    ctx.fillStyle = CREAM;
-    roundRectFill(ctx, MARGIN, y + 14, 8, 28, 2);
+    // number
     ctx.fillStyle = CREAM_DIM;
-    ctx.font = `700 22px/1 ${SANS}`;
+    ctx.font = `700 24px/1 ${SANS}`;
     const num = String(i + 1).padStart(2, "0");
-    ctx.fillText(num, MARGIN + 26, y + 8);
+    ctx.fillText(num, MARGIN, y + 6);
+    // text
     ctx.fillStyle = CREAM;
     ctx.font = `600 44px/1.3 ${SANS}`;
-    ctx.fillText(item, MARGIN + 110, y + 6);
-    y += 44 * 1.3 + 18;
+    ctx.fillText(item, MARGIN + 90, y + 4);
+    y += 44 * 1.3 + 20;
   }
 
-  const ruleY = drawKeyline(ctx, s.showKeyline);
-  ctx.font = `500 28px/1.4 ${SANS}`; ctx.fillStyle = CREAM;
-  let sy = ruleY + 34;
-  for (const ln of (s.sub || "").split("\n")) { ctx.fillText(ln, MARGIN, sy); sy += 28 * 1.4; }
+  drawBottomZone(ctx, s, imgs, "left", `500 28px/1.4 ${SANS}`);
 }
 
-// ---- Template: CTA (big bottom CTA) ----
+// ---- Template: CTA ----
 function drawCta(ctx: CanvasRenderingContext2D, s: SlideState, imgs: Record<string, HTMLImageElement>) {
-  const logo = s.logoId ? imgs[s.logoId] : undefined;
-  if (logo) drawLogo(ctx, logo, s, MARGIN, 96, "auto");
-  const eyebrowY = logo ? 210 : 150;
+  const face = s.logoId ? imgs[s.logoId] : undefined;
+  if (face) drawFaceLogo(ctx, face, MARGIN, 90);
+  const eyebrowY = face ? 196 : 140;
   drawEyebrow(ctx, s.eyebrow, MARGIN, eyebrowY);
 
-  const headFont = `700 120px/${120 * 1.12}px ${SERIF}`;
+  const headFont = `700 116px/${116 * 1.12}px ${SERIF}`;
   ctx.font = headFont; ctx.fillStyle = CREAM;
   ctx.textAlign = "left"; ctx.textBaseline = "top";
   const lines = wrapLines(ctx, s.headline, headFont, W - MARGIN * 2);
-  let y = eyebrowY + 80;
-  for (const ln of lines) { ctx.fillText(ln, MARGIN, y); y += 120 * 1.12; }
+  let y = eyebrowY + 72;
+  for (const ln of lines) { ctx.fillText(ln, MARGIN, y); y += 116 * 1.12; }
 
-  // big downward arrow glyph near the sub
-  const ruleY = drawKeyline(ctx, s.showKeyline);
-  ctx.font = `700 40px/1.2 ${SANS}`;
-  ctx.fillStyle = CREAM;
-  let sy = ruleY + 36;
-  const subLines = (s.sub || "").split("\n");
-  for (const ln of subLines) { ctx.fillText(ln, MARGIN, sy); sy += 40 * 1.2; }
-
-  // corner arrow accent (subtle premium cue)
-  ctx.strokeStyle = CREAM_DIM; ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(W - MARGIN, H - 150);
-  ctx.lineTo(W - MARGIN - 60, H - 150);
-  ctx.lineTo(W - MARGIN - 30, H - 180);
-  ctx.moveTo(W - MARGIN - 60, H - 150);
-  ctx.lineTo(W - MARGIN - 30, H - 120);
-  ctx.stroke();
+  drawBottomZone(ctx, s, imgs, "left", `700 38px/1.2 ${SANS}`);
 }
 
 function roundRectFill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -758,6 +787,15 @@ export default function IgGenerator() {
     setCarousels(next); saveCarousels(next);
     setActiveCarouselId(id); setActiveSlide(0);
   }
+  function saveAsNew() {
+    if (!activeCarousel) return;
+    const name = (presetNameInput.trim() || `${activeCarousel.name} (copy)`).trim();
+    const id = uid();
+    const fresh: Carousel = { id, name, slides: activeCarousel.slides.map((s) => ({ ...s })), logos: activeCarousel.logos, caption: activeCarousel.caption || "", updatedAt: Date.now() };
+    const next = [...carousels, fresh];
+    setCarousels(next); saveCarousels(next);
+    setActiveCarouselId(id); setActiveSlide(0); setPresetNameInput("");
+  }
 
   function loadCampaign(c: Campaign) {
     const logos = allLogos(customLogos);
@@ -887,8 +925,8 @@ export default function IgGenerator() {
             </div>
 
             <div className="mt-4 flex items-center gap-2">
-              <button onClick={() => moveSlide(-1)} disabled={activeSlide === 0} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50 disabled:opacity-40">←</button>
-              <button onClick={() => moveSlide(1)} disabled={activeSlide === activeCarousel.slides.length - 1} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50 disabled:opacity-40">→</button>
+              <button onClick={() => moveSlide(-1)} disabled={activeSlide === 0} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50 disabled:opacity-40">Move left</button>
+              <button onClick={() => moveSlide(1)} disabled={activeSlide === activeCarousel.slides.length - 1} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50 disabled:opacity-40">Move right</button>
               <button onClick={duplicateSlide} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50">Duplicate</button>
               <button onClick={deleteSlide} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50">Delete slide</button>
             </div>
@@ -981,7 +1019,11 @@ export default function IgGenerator() {
                   className={fieldCls}
                 />
                 <button onClick={savePreset} className="shrink-0 rounded-lg bg-[#F538BC] px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-[#D81A9E]">Rename</button>
+                <button onClick={saveAsNew} className="shrink-0 rounded-lg border border-black/10 px-4 py-2 text-xs font-black hover:bg-gray-50">Save as new</button>
               </div>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" /> Edits auto-save to the current carousel as you type.
+              </p>
             </section>
 
             {/* Copy presets */}
@@ -1039,15 +1081,29 @@ export default function IgGenerator() {
               </div>
             </section>
 
-            {/* Logo */}
+            {/* Logos — face (top-left) + wordmark (bottom-center) */}
             <section className={cardCls}>
-              <h2 className={hdrCls}>Logo / brand mark</h2>
-              <select value={slide.logoId} onChange={(e) => updateSlide({ logoId: e.target.value })} className={fieldCls}>
-                <option value="">— No logo —</option>
-                {logos.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}{l.builtin ? " (built-in)" : ""}</option>
-                ))}
-              </select>
+              <h2 className={hdrCls}>Logos</h2>
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>Face · top-left circle</span>
+                  <select value={slide.logoId} onChange={(e) => updateSlide({ logoId: e.target.value })} className={fieldCls}>
+                    <option value="">— No face —</option>
+                    {logos.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}{l.builtin ? " (built-in)" : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>Wordmark · bottom center</span>
+                  <select value={slide.wordmarkId} onChange={(e) => updateSlide({ wordmarkId: e.target.value })} className={fieldCls}>
+                    <option value="">— No wordmark —</option>
+                    {logos.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}{l.builtin ? " (built-in)" : ""}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-bold hover:bg-gray-50">
@@ -1076,8 +1132,8 @@ export default function IgGenerator() {
             <section className={cardCls}>
               <h2 className={hdrCls}>Layout</h2>
               <label className="flex cursor-pointer items-center justify-between py-1.5">
-                <span className="text-sm font-bold">Piano keyline</span>
-                <input type="checkbox" checked={slide.showKeyline} onChange={(e) => updateSlide({ showKeyline: e.target.checked })} className="ig-toggle" />
+                <span className="text-sm font-bold">Bottom rule</span>
+                <input type="checkbox" checked={slide.showRule} onChange={(e) => updateSlide({ showRule: e.target.checked })} className="ig-toggle" />
               </label>
               <label className="flex cursor-pointer items-center justify-between py-1.5">
                 <span className="text-sm font-bold">Vignette (depth)</span>
