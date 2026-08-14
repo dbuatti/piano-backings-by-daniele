@@ -51,6 +51,8 @@ interface BackingRequest {
   youtube_link: string | null;
   voice_memo: string | null;
   sheet_music_url: string | null;
+  voice_memo_urls?: { url: string; caption?: string | boolean | null }[];
+  sheet_music_urls?: { url: string; caption?: string | boolean | null }[];
   track_purpose: string | null;
   backing_type: string[] | string | null;
   delivery_date: string | null;
@@ -771,13 +773,13 @@ const ClientTrackView = () => {
                       </div>
                     ) : null}
                     
-                    {request.voice_memo ? (
+                    {request.voice_memo_urls?.[0]?.url || request.voice_memo ? (
                       <div>
                         <p className="text-sm text-gray-500 flex items-center">
                           <FileAudio className="mr-1 h-4 w-4" /> Voice Memo
                         </p>
                         <a 
-                          href={request.voice_memo} 
+                          href={request.voice_memo_urls?.[0]?.url || request.voice_memo} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="font-medium text-blue-600 hover:underline text-sm"

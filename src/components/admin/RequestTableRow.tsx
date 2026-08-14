@@ -1,17 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +30,7 @@ import {
   Clock, 
   CreditCard, 
   DollarSign, 
+  Edit, 
   Eye, 
   ExternalLink, 
   Facebook, 
@@ -55,7 +47,6 @@ import {
   User, 
   X, 
   Youtube,
-  Loader2,
   Copy,
   StickyNote
 } from 'lucide-react';
@@ -68,50 +59,34 @@ interface RequestTableRowProps {
   request: any;
   selectedRequests: string[];
   handleSelectRequest: (id: string) => void;
-  updateStatus: (id: string, status: string) => void;
-  updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  updateCost: (id: string, newCost: number | null) => void;
-  updateInternalNotes: (id: string, notes: string) => void;
   uploadTrack: (id: string) => void;
-  shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
   openDeleteDialog: (id: string) => void;
   openUploadPlatformsDialog: (id: string) => void;
   onDirectFileUpload: (id: string, file: File) => void;
+  onSelectRequest: (id: string) => void;
+  selectedRequestId: string | null;
 }
 
 const RequestTableRow: React.FC<RequestTableRowProps> = ({
   request,
   selectedRequests,
   handleSelectRequest,
-  updateStatus,
-  updatePaymentStatus,
-  updateCost,
-  updateInternalNotes,
   uploadTrack,
-  shareTrack,
   openEmailGenerator,
   openDeleteDialog,
   openUploadPlatformsDialog,
   onDirectFileUpload,
+  onSelectRequest,
+  selectedRequestId,
 }) => {
-  const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [isDirectUploading, setIsDirectUploading] = useState(false);
-  const [editingCost, setEditingCost] = useState(false);
-  const [currentCost, setCurrentCost] = useState<string>(
-    request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
-  );
-  const [isUpdatingCost, setIsUpdatingCost] = useState(false);
-  const [notes, setNotes] = useState(request.internal_notes || '');
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    setCurrentCost(
-      request.cost !== null ? request.cost.toFixed(2) : calculateRequestCost(request).totalCost.toFixed(2)
-    );
-    setNotes(request.internal_notes || '');
-  }, [request.cost, request.internal_notes, request]);
+  const displayCost = request.cost !== null && request.cost !== undefined
+    ? `$${request.cost.toFixed(2)}`
+    : `$${calculateRequestCost(request).totalCost.toFixed(2)}`;
 
   const getBadgeVariant = (type: string) => {
     switch (type) {
@@ -150,6 +125,19 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
 
   const normalizedBackingTypes = getSafeBackingTypes(request.backing_type);
 
+  const getStatusBadge = (status: string | undefined) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-500 text-white">Completed</Badge>;
+      case 'in-progress':
+        return <Badge className="bg-yellow-500 text-white">In Progress</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">Pending</Badge>;
+    }
+  };
+
   const handleDragOver = (event: React.DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
     setIsDragging(true);
@@ -184,23 +172,6 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     }
   };
 
-  const handleCostBlur = async () => {
-    setEditingCost(false);
-    const parsedCost = parseFloat(currentCost);
-    const newCost = isNaN(parsedCost) ? null : parsedCost;
-
-    const originalCost = request.cost !== null ? request.cost : calculateRequestCost(request).totalCost;
-    if (newCost !== originalCost) {
-      setIsUpdatingCost(true);
-      await updateCost(request.id, newCost);
-      setIsUpdatingCost(false);
-    }
-  };
-
-  const handleSaveNotes = () => {
-    updateInternalNotes(request.id, notes);
-  };
-
   const handleCopyDetails = () => {
     const details = `🎵 Song: ${request.song_title} by ${request.musical_or_artist}
 👤 Client: ${request.name || 'N/A'} (${request.email})
@@ -228,7 +199,7 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       return;
     }
 
-    navigate(`/admin/request/${request.id}`);
+    onSelectRequest(request.id);
   };
 
   return (
@@ -236,7 +207,9 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       key={request.id} 
       onClick={handleRowClick}
       className={cn(
-        `cursor-pointer hover:bg-[#D1AAF2]/10 ${selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : ""}`,
+        "cursor-pointer hover:bg-[#D1AAF2]/10",
+        selectedRequests.includes(request.id) ? "bg-[#D1AAF2]/20" : "",
+        request.id === selectedRequestId ? "bg-[#1C0357]/5 ring-1 ring-inset ring-[#1C0357]/40" : "",
         isDragging ? "bg-[#F538BC]/10 border-2 border-[#F538BC]" : "",
         isDirectUploading && "bg-green-50/50 animate-pulse"
       )}
@@ -304,54 +277,17 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
         {request.delivery_date ? format(new Date(request.delivery_date), 'MMM dd, yyyy') : 'Not specified'}
       </TableCell>
       <TableCell className="py-3">
-        <Select 
-          value={request.status || 'pending'} 
-          onValueChange={(value) => updateStatus(request.id, value)}
-        >
-          <SelectTrigger className="w-[140px] h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        {getStatusBadge(request.status)}
       </TableCell>
       <TableCell className="hidden lg:table-cell py-3">
-        <Select 
-          value={request.is_paid ? 'paid' : 'unpaid'} 
-          onValueChange={(value) => updatePaymentStatus(request.id, value === 'paid')}
-        >
-          <SelectTrigger className="w-[120px] h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        {request.is_paid ? (
+          <Badge className="bg-green-500 text-white">Paid</Badge>
+        ) : (
+          <Badge variant="secondary">Unpaid</Badge>
+        )}
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex items-center font-medium relative">
-          <span className="text-sm text-gray-500 mr-0.5">$</span>
-          <Input
-            type="number"
-            step="0.01"
-            value={currentCost}
-            onChange={(e) => setCurrentCost(e.target.value)}
-            onFocus={() => setEditingCost(true)}
-            onBlur={handleCostBlur}
-            className={cn(
-              "w-20 h-8 p-1 text-sm border-none focus:ring-0 focus:outline-none",
-              editingCost ? "bg-white border border-blue-300" : "bg-transparent"
-            )}
-          />
-          {isUpdatingCost && (
-            <Loader2 className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
-          )}
-        </div>
+        <span className="text-sm font-medium text-[#1C0357]">{displayCost}</span>
       </TableCell>
       <TableCell className="py-3">
         <div className="flex items-center gap-2">
@@ -369,15 +305,9 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
               <div className="space-y-2">
                 <h4 className="font-medium leading-none text-[#1C0357]">Internal Notes</h4>
                 <p className="text-xs text-gray-500">Private notes for your reference only.</p>
-                <Textarea 
-                  value={notes} 
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes about progress, client preferences, etc..."
-                  className="min-h-[100px] text-sm"
-                />
-                <Button size="sm" className="w-full bg-[#1C0357]" onClick={handleSaveNotes}>
-                  Save Notes
-                </Button>
+                <p className="text-sm whitespace-pre-wrap bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  {request.internal_notes || 'No notes yet.'}
+                </p>
               </div>
             </PopoverContent>
           </Popover>
@@ -400,6 +330,11 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
               <DropdownMenuItem asChild>
                 <Link to={`/admin/request/${request.id}`}>
                   <Eye className="w-4 h-4 mr-2" /> View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to={`/admin/request/${request.id}?mode=edit`}>
+                  <Edit className="w-4 h-4 mr-2" /> Edit Request
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyDetails}>

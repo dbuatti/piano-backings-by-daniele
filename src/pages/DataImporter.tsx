@@ -273,6 +273,8 @@ const DataImporter = () => {
               musical_or_artist: req.musical_or_artist,
               sheet_music_url: req.sheet_music_url,
               voice_memo: req.voice_memo,
+              sheet_music_urls: req.sheet_music_url ? [{ url: req.sheet_music_url, caption: 'Sheet Music' }] : [],
+              voice_memo_urls: req.voice_memo ? [{ url: req.voice_memo, caption: 'Voice Memo' }] : [],
               youtube_link: req.youtube_link,
               track_purpose: req.track_purpose,
               delivery_date: req.delivery_date,

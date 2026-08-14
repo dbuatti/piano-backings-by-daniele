@@ -41,6 +41,7 @@ interface BackingRequest {
   track_purpose: string; 
   additional_services: string[];
   sheet_music_url?: string;
+  sheet_music_urls?: { url: string; caption?: string | boolean | null }[];
   song_key: string;
   track_type: string;
   category?: string;
@@ -284,7 +285,7 @@ const RepurposeTrackToShop: React.FC = () => {
     let autoCategory = getSafeBackingTypes(firstRequest.backing_type).length > 0 ? getSafeBackingTypes(firstRequest.backing_type)[0] : 'general';
     let autoTrackType = firstRequest.track_type || '';
     let autoKeySignature = firstRequest.song_key || '';
-    let autoSheetMusicUrl = firstRequest.sheet_music_url || '';
+    let autoSheetMusicUrl = firstRequest.sheet_music_urls?.[0]?.url || firstRequest.sheet_music_url || '';
 
     if (isBundle) {
       const artistNames = [...new Set(selectedRequests.map(r => r.musical_or_artist))];
@@ -474,7 +475,7 @@ const RepurposeTrackToShop: React.FC = () => {
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequests.length > 0 ? selectedRequests[0].sheet_music_url || '' : '' }));
+      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequests.length > 0 ? selectedRequests[0].sheet_music_urls?.[0]?.url || selectedRequests[0].sheet_music_url || '' : '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
   };

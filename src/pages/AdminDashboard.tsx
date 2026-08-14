@@ -1,345 +1,42 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import AdminShell from '@/components/admin/AdminShell';
 
-import DashboardTabContent from '@/components/admin/DashboardTabContent';
-import OperationsTabContent from '@/components/admin/OperationsTabContent';
-import SystemTabContent from '@/components/admin/SystemTabContent';
-import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
-import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
-import CreateNewProduct from '@/components/admin/CreateNewProduct';
-import ProductManager from '@/components/admin/ProductManager';
-import { UsersTabContent } from '@/components/admin/UsersTabContent';
-import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
-import { PromoCodesTabContent } from '@/components/admin/PromoCodesTabContent';
-
-import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
-import UploadTrackDialog from '@/components/admin/UploadTrackDialog';
-import UploadPlatformsDialog from '@/components/admin/UploadPlatformsDialog';
-import DeleteConfirmationDialogs from '@/components/admin/DeleteConfirmationDialogs';
-
-import {
-  LayoutDashboard,
-  Settings,
-  Wrench,
-  ShoppingCart,
-  PlusCircle,
-  RefreshCw,
-  MessageSquare,
-  Activity,
-  RefreshCcw,
-  Loader2,
-  CreditCard,
-  Users,
-  ShoppingBag,
-  Tag
-} from 'lucide-react';
-
-import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
-import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
-import { useRequestActions } from '@/hooks/admin/useRequestActions';
-import { useUploadDialogs } from '@/hooks/admin/useUploadDialogs';
-import { useDeleteDialogs } from '@/hooks/admin/useDeleteDialogs';
-import { useBatchSelection } from '@/hooks/admin/useBatchSelection';
-import { Button } from '@/components/ui/button';
+// Map legacy ?tab= bookmarks to the new section model so old links keep working.
+const LEGACY_TAB_MAP: Record<string, string> = {
+  requests: 'requests',
+  shop: 'shop',
+  users: 'clients',
+  orders: 'clients&sub=orders',
+  credits: 'clients',
+  promo: 'shop&sub=promo',
+  'promo-codes': 'shop&sub=promo',
+  feedback: 'settings&sub=feedback',
+  operations: 'settings&sub=storefront',
+  system: 'settings&sub=data-tools',
+};
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
-
-  const rawTab = searchParams.get('tab') || 'requests';
-  const activeTab = rawTab === 'credits' ? 'users' : rawTab;
-  const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
-
-  const { requests, setRequests, loading, fetchRequests } = useAdminRequests();
-  const { 
-    searchTerm, setSearchTerm,
-    statusFilter, setStatusFilter,
-    backingTypeFilter, setBackingTypeFilter,
-    paymentStatusFilter, setPaymentStatusFilter,
-    viewMode, setViewMode,
-    selectedDate, setSelectedDate,
-    filteredRequests,
-    clearFilters,
-  } = useRequestFilters(requests);
-  
-  const { 
-    updateStatus, updatePaymentStatus, shareTrack, 
-    deleteRequest: performDeleteRequest, batchDeleteRequests: performBatchDeleteRequests,
-    updateCost, updateInternalNotes
-  } = useRequestActions(requests, setRequests);
-
-  const {
-    uploadTrackId, setUploadTrackId,
-    uploadFile, handleFileChange,
-    uploadCaption, setUploadCaption,
-    uploadPlatformsDialogOpen, setUploadPlatformsDialogOpen,
-    selectedRequestForPlatforms, setSelectedRequestForPlatforms,
-    platforms, setPlatforms,
-    handleUploadTrack,
-    handleFileUpload,
-    handleDirectFileUpload,
-    openUploadPlatformsDialog,
-    saveUploadPlatforms,
-    updateTrackCaption,
-    isUploading,
-  } = useUploadDialogs(requests, setRequests);
-
-  const {
-    selectedRequests, setSelectedRequests,
-    totalCost,
-    handleSelectAll,
-    handleSelectRequest,
-  } = useBatchSelection(filteredRequests);
-
-  const {
-    deleteDialogOpen, setDeleteDialogOpen,
-    requestToDelete, setRequestToDelete,
-    batchDeleteDialogOpen, setBatchDeleteDialogOpen,
-    openDeleteDialog, confirmDeleteRequest,
-    openBatchDeleteDialog, confirmBatchDeleteRequests,
-  } = useDeleteDialogs(requests, setRequests, selectedRequests);
-
-  const { data: totalIssueReports = 0 } = useQuery<number, Error>({
-    queryKey: ['totalIssueReports'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('issue_reports')
-        .select('id', { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin,
-  });
-
-  const { data: unreadIssueReports = 0 } = useQuery<number, Error>({
-    queryKey: ['unreadIssueReportsCount'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('issue_reports')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_read', false);
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: isAdmin,
-    refetchInterval: 30000,
-  });
 
   useEffect(() => {
-    if (!isAuthLoading && !isAdmin) {
-      navigate('/');
+    const tab = searchParams.get('tab');
+    if (tab && LEGACY_TAB_MAP[tab]) {
+      const mapping = LEGACY_TAB_MAP[tab];
+      const sp = new URLSearchParams();
+      if (mapping.includes('&')) {
+        const [section, subPart] = mapping.split('&');
+        sp.set('section', section);
+        const [k, v] = subPart.split('=');
+        if (k === 'sub') sp.set('sub', v);
+      } else {
+        sp.set('section', mapping);
+      }
+      setSearchParams(sp, { replace: true });
     }
-  }, [isAdmin, isAuthLoading, navigate]);
+  }, [searchParams, setSearchParams]);
 
-  const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value });
-  };
-
-  const handleManualRefresh = async () => {
-    await fetchRequests();
-    queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
-    queryClient.invalidateQueries({ queryKey: ['totalIssueReports'] });
-    toast({
-      title: "Data Refreshed",
-      description: "The latest requests and reports have been loaded.",
-    });
-  };
-
-  const currentRequestForUpload = requests.find(req => req.id === uploadTrackId);
-  const existingTrackUrls = currentRequestForUpload?.track_urls || [];
-
-  const handleRemoveTrack = async (urlToRemove: string) => {
-    if (!uploadTrackId) return;
-    try {
-      const updatedTrackUrls = existingTrackUrls.filter(track => track.url !== urlToRemove);
-      const { error } = await supabase.from('backing_requests').update({ track_urls: updatedTrackUrls }).eq('id', uploadTrackId);
-      if (error) throw error;
-      setRequests(prev => prev.map(req => req.id === uploadTrackId ? { ...req, track_urls: updatedTrackUrls } : req));
-      toast({ title: "Track Removed" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  if (isAuthLoading) return <div className="p-8 text-center">Loading...</div>;
-  if (!isAdmin) return null;
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FC]">
-      <Header />
-      <div className="max-w-7xl mx-auto pt-28 pb-8 px-4 sm:px-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <AdminDashboardHeader 
-            title="Admin Dashboard" 
-            description="Manage your studio operations and client requests." 
-            adminEmail={user?.email}
-          />
-          <Button 
-            onClick={handleManualRefresh} 
-            variant="outline" 
-            className="bg-white border-gray-200 text-[#1C0357] hover:bg-gray-50 font-bold rounded-xl shadow-sm"
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-            Refresh Data
-          </Button>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:grid-cols-8 bg-white p-1 rounded-2xl shadow-sm border h-auto md:h-14 gap-1">
-            <TabsTrigger value="requests" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <LayoutDashboard className="mr-2 h-4 w-4" /> Requests
-            </TabsTrigger>
-            <TabsTrigger value="shop" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <ShoppingCart className="mr-2 h-4 w-4" /> Shop
-            </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <Users className="mr-2 h-4 w-4" /> Users
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <ShoppingBag className="mr-2 h-4 w-4" /> Orders
-            </TabsTrigger>
-            <TabsTrigger value="promo-codes" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <Tag className="mr-2 h-4 w-4" /> Promo Codes
-            </TabsTrigger>
-            <TabsTrigger value="feedback" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold relative py-2 md:py-0">
-              <MessageSquare className="mr-2 h-4 w-4" /> Feedback
-              {unreadIssueReports > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
-                  {unreadIssueReports}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="operations" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <Settings className="mr-2 h-4 w-4" /> Operations
-            </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-xl data-[state=active]:bg-[#1C0357] data-[state=active]:text-white font-bold py-2 md:py-0">
-              <Activity className="mr-2 h-4 w-4" /> System
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="requests">
-            <DashboardTabContent
-              requests={requests}
-              loading={loading}
-              totalIssueReports={totalIssueReports}
-              unreadIssueReports={unreadIssueReports}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              backingTypeFilter={backingTypeFilter}
-              setBackingTypeFilter={setBackingTypeFilter}
-              paymentStatusFilter={paymentStatusFilter}
-              setPaymentStatusFilter={setPaymentStatusFilter}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              filteredRequests={filteredRequests}
-              clearFilters={clearFilters}
-              selectedRequests={selectedRequests}
-              handleSelectAll={handleSelectAll}
-              handleSelectRequest={handleSelectRequest}
-              totalCost={totalCost}
-              updateStatus={updateStatus}
-              updatePaymentStatus={updatePaymentStatus}
-              updateInternalNotes={updateInternalNotes}
-              uploadTrack={handleUploadTrack}
-              shareTrack={shareTrack}
-              openEmailGenerator={(req) => navigate(`/email-generator/${req.id}`)}
-              openDeleteDialog={openDeleteDialog}
-              openBatchDeleteDialog={openBatchDeleteDialog}
-              openUploadPlatformsDialog={openUploadPlatformsDialog}
-              onDirectFileUpload={handleDirectFileUpload}
-              updateTrackCaption={updateTrackCaption}
-              updateCost={updateCost}
-            />
-          </TabsContent>
-
-          <TabsContent value="shop" className="mt-6 space-y-8">
-            <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as any)} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
-                <TabsTrigger value="create" className="rounded-lg font-bold"><PlusCircle className="mr-2 h-4 w-4" /> Create Product</TabsTrigger>
-                <TabsTrigger value="repurpose" className="rounded-lg font-bold"><RefreshCw className="mr-2 h-4 w-4" /> Repurpose Request</TabsTrigger>
-              </TabsList>
-              <TabsContent value="create" className="mt-4"><CreateNewProduct /></TabsContent>
-              <TabsContent value="repurpose" className="mt-4"><RepurposeTrackToShop /></TabsContent>
-            </Tabs>
-            <ProductManager />
-          </TabsContent>
-
-          <TabsContent value="users" className="mt-6">
-            <UsersTabContent />
-          </TabsContent>
-
-          <TabsContent value="orders" className="mt-6">
-            <OrdersTabContent />
-          </TabsContent>
-
-          <TabsContent value="promo-codes" className="mt-6">
-            <PromoCodesTabContent />
-          </TabsContent>
-
-          <TabsContent value="feedback" className="mt-6">
-            <IssueReportsTabContent />
-          </TabsContent>
-
-          <TabsContent value="operations" className="mt-6">
-            <OperationsTabContent />
-          </TabsContent>
-
-          <TabsContent value="system" className="mt-6">
-            <SystemTabContent />
-          </TabsContent>
-        </Tabs>
-        
-        <UploadTrackDialog
-          isOpen={!!uploadTrackId}
-          onOpenChange={() => { setUploadTrackId(null); handleFileChange(null); }}
-          requestId={uploadTrackId}
-          uploadFile={uploadFile}
-          onFileChange={handleFileChange}
-          uploadCaption={uploadCaption}
-          setUploadCaption={setUploadCaption}
-          onFileUpload={handleFileUpload}
-          existingTrackUrls={existingTrackUrls}
-          onRemoveTrack={handleRemoveTrack}
-          onUpdateTrackCaption={updateTrackCaption}
-          isUploading={isUploading}
-        />
-        
-        <UploadPlatformsDialog
-          isOpen={uploadPlatformsDialogOpen}
-          onOpenChange={() => setUploadPlatformsDialogOpen(false)}
-          requestId={selectedRequestForPlatforms}
-          platforms={platforms}
-          setPlatforms={setPlatforms}
-          onSavePlatforms={saveUploadPlatforms}
-        />
-        
-        <DeleteConfirmationDialogs
-          deleteDialogOpen={deleteDialogOpen}
-          setDeleteDialogOpen={setDeleteDialogOpen}
-          requestToDelete={requestToDelete}
-          onDeleteRequest={confirmDeleteRequest}
-          batchDeleteDialogOpen={batchDeleteDialogOpen}
-          setBatchDeleteDialogOpen={setBatchDeleteDialogOpen}
-          selectedRequestsCount={selectedRequests.length}
-          onBatchDeleteRequests={confirmBatchDeleteRequests}
-        />
-      </div>
-    </div>
-  );
+  return <AdminShell />;
 };
 
 export default AdminDashboard;

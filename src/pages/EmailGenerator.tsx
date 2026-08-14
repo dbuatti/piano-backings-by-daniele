@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/Header";
 import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
@@ -274,12 +273,10 @@ const EmailGenerator = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Header />
-      <div className="max-w-7xl mx-auto pt-28 pb-8 px-4 sm:px-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1C0357]">Email Generator</h1>
-          <p className="text-lg text-[#1C0357]/90">Generate and send emails for backing track requests and product deliveries</p>
+    <div className="w-full">
+      <div className="w-full">
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-[#1C0357]">Email Generator</h1>
         </div>
         
         <div className="mb-6">

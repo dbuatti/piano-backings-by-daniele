@@ -48,9 +48,6 @@ interface RequestsTableProps {
   handleSelectRequest: (id: string) => void;
   totalCost: number;
   updateStatus: (id: string, status: string) => void;
-  updatePaymentStatus: (id: string, isPaid: boolean) => void;
-  updateCost: (id: string, newCost: number | null) => void;
-  updateInternalNotes: (id: string, notes: string) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
   openEmailGenerator: (request: any) => void;
@@ -59,6 +56,8 @@ interface RequestsTableProps {
   openUploadPlatformsDialog: (id: string) => void;
   onDirectFileUpload: (id: string, file: File) => void;
   clearFilters: () => void;
+  onSelectRequest: (id: string) => void;
+  selectedRequestId: string | null;
 }
 
 const RequestsTable: React.FC<RequestsTableProps> = ({
@@ -69,9 +68,6 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   handleSelectRequest,
   totalCost,
   updateStatus,
-  updatePaymentStatus,
-  updateCost,
-  updateInternalNotes,
   uploadTrack,
   shareTrack,
   openEmailGenerator,
@@ -80,6 +76,8 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   openUploadPlatformsDialog,
   onDirectFileUpload,
   clearFilters,
+  onSelectRequest,
+  selectedRequestId,
 }) => {
 
   return (
@@ -188,16 +186,13 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       request={request}
                       selectedRequests={selectedRequests}
                       handleSelectRequest={handleSelectRequest}
-                      updateStatus={updateStatus}
-                      updatePaymentStatus={updatePaymentStatus}
-                      updateCost={updateCost}
-                      updateInternalNotes={updateInternalNotes}
                       uploadTrack={uploadTrack}
-                      shareTrack={shareTrack}
                       openEmailGenerator={openEmailGenerator}
                       openDeleteDialog={openDeleteDialog}
                       openUploadPlatformsDialog={openUploadPlatformsDialog}
                       onDirectFileUpload={onDirectFileUpload}
+                      onSelectRequest={onSelectRequest}
+                      selectedRequestId={selectedRequestId}
                     />
                   ))
                 )}

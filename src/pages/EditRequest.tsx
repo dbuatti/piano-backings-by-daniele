@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -156,12 +155,12 @@ const EditRequest: React.FC = () => {
     if (fieldName === 'sheetMusicFile') {
       setSheetMusicFile(file);
       if (file) {
-        setRequest(prev => prev ? { ...prev, sheet_music_url: null } : null);
+        setRequest(prev => prev ? { ...prev, sheet_music_url: null, sheet_music_urls: [] } : null);
       }
     } else if (fieldName === 'voiceMemoFile') {
       setVoiceMemoFile(file);
       if (file) {
-        setRequest(prev => prev ? { ...prev, voice_memo: null } : null);
+        setRequest(prev => prev ? { ...prev, voice_memo: null, voice_memo_urls: [] } : null);
       }
     }
   };
@@ -175,18 +174,24 @@ const EditRequest: React.FC = () => {
 
     let updatedSheetMusicUrl = request.sheet_music_url;
     let updatedVoiceMemoUrl = request.voice_memo;
+    let updatedSheetMusicUrls = request.sheet_music_urls || [];
+    let updatedVoiceMemoUrls = request.voice_memo_urls || [];
 
     try {
       if (sheetMusicFile) {
         const { data: uploadData, error: uploadError } = await uploadFileToSupabase(sheetMusicFile, `sheet-music/${request.id}/`, 'sheet-music');
         if (uploadError) throw new Error(`Sheet music upload failed: ${uploadError.message}`);
-        updatedSheetMusicUrl = uploadData?.path ? supabase.storage.from('sheet-music').getPublicUrl(uploadData.path).data.publicUrl : null;
+        const newUrl = uploadData?.path ? supabase.storage.from('sheet-music').getPublicUrl(uploadData.path).data.publicUrl : null;
+        updatedSheetMusicUrl = newUrl;
+        updatedSheetMusicUrls = newUrl ? [{ url: newUrl, caption: sheetMusicFile.name }] : [];
       }
 
       if (voiceMemoFile) {
         const { data: uploadData, error: uploadError } = await uploadFileToSupabase(voiceMemoFile, `voice-memos/${request.id}/`, 'voice-memos');
         if (uploadError) throw new Error(`Voice memo upload failed: ${uploadError.message}`);
-        updatedVoiceMemoUrl = uploadData?.path ? supabase.storage.from('voice-memos').getPublicUrl(uploadData.path).data.publicUrl : null;
+        const newUrl = uploadData?.path ? supabase.storage.from('voice-memos').getPublicUrl(uploadData.path).data.publicUrl : null;
+        updatedVoiceMemoUrl = newUrl;
+        updatedVoiceMemoUrls = newUrl ? [{ url: newUrl, caption: voiceMemoFile.name }] : [];
       }
 
       const { id, created_at, track_urls, shared_link, dropbox_folder_id, uploaded_platforms, ...updates } = request;
@@ -201,6 +206,8 @@ const EditRequest: React.FC = () => {
         estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()),
         sheet_music_url: updatedSheetMusicUrl,
         voice_memo: updatedVoiceMemoUrl,
+        sheet_music_urls: updatedSheetMusicUrls,
+        voice_memo_urls: updatedVoiceMemoUrls,
       };
 
       const { error } = await supabase
@@ -246,67 +253,41 @@ const EditRequest: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p>Loading...</p>
-        </div>
+      <div className="flex items-center justify-center py-24">
+        <p>Loading...</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
-          <p className="ml-4 text-lg text-gray-600">Loading request for editing...</p>
-        </div>
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
+        <p className="ml-4 text-lg text-gray-600">Loading request for editing...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-          <ErrorDisplay error={error} title="Failed to Load Request" />
-          <Button onClick={() => navigate('/admin')} className="mt-4">Back to Dashboard</Button>
-        </div>
+      <div className="w-full">
+        <ErrorDisplay error={error} title="Failed to Load Request" />
+        <Button onClick={() => navigate('/admin')} className="mt-4">Back to Requests</Button>
       </div>
     );
   }
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="flex items-center justify-center h-96">
-          <p>Request not found.</p>
-        </div>
+      <div className="flex items-center justify-center py-24">
+        <p>Request not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto pt-28 pb-8 px-4 sm:px-6">
-        <div className="mb-6 flex items-center justify-between">
-          <Button 
-            onClick={() => navigate(`/admin/request/${id}`)} 
-            variant="outline"
-            className="flex items-center"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Details
-          </Button>
-          <h1 className="text-3xl font-bold text-[#1C0357]">Edit Request</h1>
-          <span className="text-lg text-[#1C0357]/90">#{request.id.substring(0, 8)}</span>
-        </div>
-        
+    <div className="w-full">
+      <div className="w-full">
         <Card className="shadow-lg mb-6">
           <CardHeader className="bg-[#D1AAF2]/20">
             <CardTitle className="text-2xl text-[#1C0357] flex items-center">
@@ -447,7 +428,7 @@ const EditRequest: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => setRequest(prev => prev ? { ...prev, sheet_music_url: null } : null)}
+                          onClick={() => setRequest(prev => prev ? { ...prev, sheet_music_url: null, sheet_music_urls: [] } : null)}
                           className="text-red-500 hover:bg-red-50 hover:text-red-600 mt-1"
                         >
                           Clear Current Sheet Music
@@ -475,7 +456,7 @@ const EditRequest: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => setRequest(prev => prev ? { ...prev, voice_memo: null } : null)}
+                          onClick={() => setRequest(prev => prev ? { ...prev, voice_memo: null, voice_memo_urls: [] } : null)}
                           className="text-red-500 hover:bg-red-50 hover:text-red-600 mt-1"
                         >
                           Clear Current Voice Memo

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
-import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
@@ -374,22 +373,15 @@ const RequestDetails = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-        <Header />
-        <div className="max-w-4xl mx-auto pt-28 pb-8 px-4 sm:px-6">
-          <div className="mb-6 flex items-center justify-between">
-            <Button onClick={() => navigate('/admin')} variant="outline">← Back to Dashboard</Button>
-            <h1 className="text-3xl font-bold text-[#1C0357]">Request Details</h1>
-            <span className="text-lg text-[#1C0357]/90">#{request.id.substring(0, 8)}</span>
-          </div>
-
+      <div className="w-full">
+        <div className="w-full">
           {/* Action Bar */}
           <Card className="shadow-lg mb-6 border-2 border-[#F538BC]">
             <CardContent className="p-4 flex flex-wrap gap-3 justify-between items-center">
               <div className="flex flex-wrap gap-3">
-                <Link to={`/admin/request/${id}/edit`}><Button className="bg-[#1C0357] hover:bg-[#1C0357]/90"><Edit className="mr-2 h-4 w-4" /> Edit Request</Button></Link>
+                <Button onClick={() => navigate(`/admin/request/${id}?mode=edit`)} className="bg-[#1C0357] hover:bg-[#1C0357]/90"><Edit className="mr-2 h-4 w-4" /> Edit Request</Button>
                 <Link to={`/track/${id}`}><Button variant="outline"><Eye className="w-4 h-4 mr-2" /> Client View</Button></Link>
-                <Button onClick={() => navigate(`/email-generator/${id}`)} variant="outline"><Mail className="mr-2 h-4 w-4" /> Email Client</Button>
+                <Button onClick={() => navigate(`/admin/request/${id}?mode=email`)} variant="outline"><Mail className="mr-2 h-4 w-4" /> Email Client</Button>
                 <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="mr-2 h-4 w-4" /> Copy Details</Button>
               </div>
               <div className="flex gap-3">
@@ -859,8 +851,8 @@ const RequestDetails = () => {
           </Card>
           
           <div className="flex justify-end gap-4">
-            <Button onClick={() => navigate('/admin')} variant="outline">Back to Dashboard</Button>
-            <Link to={`/admin/request/${id}/edit`}><Button className="bg-[#1C0357] hover:bg-[#1C0357]/90">Edit Request</Button></Link>
+            <Button onClick={() => navigate('/admin')} variant="outline">Back to Requests</Button>
+            <Button onClick={() => navigate(`/admin/request/${id}?mode=edit`)} className="bg-[#1C0357] hover:bg-[#1C0357]/90">Edit Request</Button>
           </div>
         </div>
       </div>
