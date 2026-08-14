@@ -25,19 +25,10 @@ WHERE (voice_memo_urls IS NULL OR jsonb_array_length(voice_memo_urls) = 0)
   AND btrim(voice_memo::text) <> '';
 
 -- 3. Backfill track_type from the legacy backing_type column where track_type is missing.
---    backing_type may be stored as a JSON array string (e.g. '["full-song"]'), a plain
---    string (e.g. 'full-song'), or a JSONB array.
+--    backing_type is stored as text[] (Postgres array, e.g. ARRAY['full-song']).
+--    Use its first element; empty values fall back to 'audition-ready'.
 UPDATE public.backing_requests
-SET track_type = COALESCE(
-  NULLIF(
-    CASE
-      WHEN btrim(backing_type::text) LIKE '[%' THEN (backing_type::jsonb ->> 0)
-      ELSE backing_type::text
-    END,
-    ''
-  ),
-  'audition-ready'
-)
+SET track_type = COALESCE(NULLIF(btrim(backing_type[1]), ''), 'audition-ready')
 WHERE (track_type IS NULL OR btrim(track_type::text) = '')
   AND backing_type IS NOT NULL
-  AND btrim(backing_type::text) <> '';
+  AND array_length(backing_type, 1) > 0;
