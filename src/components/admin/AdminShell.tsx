@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import Header from '@/components/Header';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
@@ -93,6 +94,7 @@ const AdminShell = () => {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
+      <Header />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-24 pb-10">
         {/* Section rail */}
         <nav className="flex items-center gap-2 mb-6 overflow-x-auto">
