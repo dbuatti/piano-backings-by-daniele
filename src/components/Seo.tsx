@@ -9,6 +9,7 @@ interface SeoProps {
   ogImage?: string;
   ogType?: string;
   twitterCard?: string;
+  noindex?: boolean;
 }
 
 const Seo: React.FC<SeoProps> = ({
@@ -19,6 +20,7 @@ const Seo: React.FC<SeoProps> = ({
   ogImage,
   ogType = 'website',
   twitterCard = 'summary',
+  noindex = false,
 }) => {
   const siteUrl = window.location.origin; // Dynamically get the current site URL
 
@@ -28,6 +30,7 @@ const Seo: React.FC<SeoProps> = ({
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      {noindex && <meta name="robots" content="noindex, nofollow" />}
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={ogType} />

@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 
+Disallow: /admin
+Disallow: /login
+Disallow: /user-dashboard
+Disallow: /track/
+Disallow: /gmail-oauth-callback
+
 Sitemap: https://pianobackingsbydaniele.vercel.app/sitemap.xml

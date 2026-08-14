@@ -357,6 +357,7 @@ const ClientTrackView = () => {
         description={`View details and download your custom piano backing track for "${request.song_title}" by ${request.musical_or_artist}.`}
         keywords={`piano backing track, ${request.song_title}, ${request.musical_or_artist}, custom track download, audition track, performance track`}
         canonicalUrl={`${window.location.origin}/track/${id}`}
+        noindex
       />
       <Header />
       
