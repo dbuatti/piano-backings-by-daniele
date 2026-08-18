@@ -184,10 +184,28 @@ const RequestDetails = () => {
     setIsTriggeringDropbox(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const formData = {
+        requestId: request.id,
+        email: request.email,
+        name: request.name,
+        songTitle: request.song_title,
+        musicalOrArtist: request.musical_or_artist,
+        songKey: request.song_key,
+        trackType: request.track_type,
+        additionalServices: request.additional_services,
+        specialRequests: request.special_requests,
+        deliveryDate: request.delivery_date,
+        sheetMusicUrls: request.sheet_music_urls || [],
+        voiceMemoUrls: request.voice_memo_urls || [],
+        youtubeLink: request.youtube_link,
+        differentKey: request.different_key,
+        keyForTrack: request.key_for_track,
+        additionalLinks: request.additional_links,
+      };
       const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-backing-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ formData: request })
+        body: JSON.stringify({ formData })
       });
       if (response.ok) {
         toast({ title: "Success", description: "Dropbox automation triggered." });
@@ -385,7 +403,7 @@ const RequestDetails = () => {
                 <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="mr-2 h-4 w-4" /> Copy Details</Button>
               </div>
               <div className="flex gap-3">
-                <Button onClick={triggerDropboxAutomation} disabled={isTriggeringDropbox || !!request.dropbox_folder_id} variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white">
+                <Button onClick={triggerDropboxAutomation} disabled={isTriggeringDropbox} variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white">
                   {isTriggeringDropbox ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 </Button>
               </div>
