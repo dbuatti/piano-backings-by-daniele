@@ -188,6 +188,9 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
               />
               <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
+            <p className="text-[10px] text-[#F538BC] font-bold uppercase tracking-wider">
+              Please link to the original recording with vocals — not a karaoke or backing track.
+            </p>
           </div>
           <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Voice Memo Link</Label>
