@@ -84,17 +84,24 @@ Deno.serve(async (req) => {
 
     const accessToken = await refreshAccessToken(senderEmail);
     const recipientList = Array.isArray(to) ? to : to.split(',').map((e: string) => e.trim());
+    const ccList = cc ? (Array.isArray(cc) ? cc : cc.split(',').map((e: string) => e.trim())) : [];
 
     const encodeHeaderValue = (value: string) => {
       if (/^[\x00-\x7F]*$/.test(value)) return value;
       return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(value)))}?=`;
     };
 
+    // Avoid sending a second copy to an address that's already a direct To/Cc recipient
+    // (previously pianobackingsbydaniele@gmail.com could appear in `to` AND get BCC'd,
+    // landing twice in the same inbox and looking like a duplicate request).
+    const alreadyRecipient = [...recipientList, ...ccList]
+      .some((e: string) => e.toLowerCase() === BCC_EMAIL.toLowerCase());
+
     let message = `To: ${recipientList.join(', ')}\r\n`;
     message += `From: ${GMAIL_USER}\r\n`;
     message += `Subject: ${encodeHeaderValue(subject)}\r\n`;
-    message += `Bcc: ${BCC_EMAIL}\r\n`;
-    if (cc) message += `Cc: ${Array.isArray(cc) ? cc.join(', ') : cc}\r\n`;
+    if (!alreadyRecipient) message += `Bcc: ${BCC_EMAIL}\r\n`;
+    if (cc) message += `Cc: ${ccList.join(', ')}\r\n`;
     if (replyTo) message += `Reply-To: ${replyTo}\r\n`;
     message += 'MIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n' + html;
     

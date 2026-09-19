@@ -18,42 +18,67 @@ const PurchaseConfirmation = () => {
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
+    if (!sessionId) {
+      navigate('/');
+      return;
+    }
+
+    let cancelled = false;
+
+    // Stripe redirects here the instant checkout completes, but the stripe-webhook
+    // function (which marks the request paid) fires asynchronously and can lag by a
+    // few seconds. Poll briefly before showing a "couldn't verify" error, otherwise a
+    // customer who WAS charged sees a failure page and may re-submit the form,
+    // creating a duplicate request.
+    const maxAttempts = 10;
+    const intervalMs = 2000;
+
+    const checkOnce = async () => {
+      // Check for Shop Order first
+      const { data: order } = await supabase
+        .from('orders')
+        .select('*, products(*)')
+        .eq('checkout_session_id', sessionId)
+        .maybeSingle();
+
+      if (order) return { type: 'shop', ...order };
+
+      // Check for Custom Request
+      const { data: requests } = await supabase
+        .from('backing_requests')
+        .select('*')
+        .eq('stripe_session_id', sessionId);
+
+      if (requests && requests.length > 0) return { type: 'custom', requests };
+
+      return null;
+    };
+
     const verifyPurchase = async () => {
-      if (!sessionId) {
-        navigate('/');
-        return;
-      }
-
-      try {
-        // Check for Shop Order first
-        const { data: order } = await supabase
-          .from('orders')
-          .select('*, products(*)')
-          .eq('checkout_session_id', sessionId)
-          .single();
-
-        if (order) {
-          setOrderData({ type: 'shop', ...order });
-        } else {
-          // Check for Custom Request
-          const { data: requests } = await supabase
-            .from('backing_requests')
-            .select('*')
-            .eq('stripe_session_id', sessionId);
-
-          if (requests && requests.length > 0) {
-            setOrderData({ type: 'custom', requests });
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const result = await checkOnce();
+          if (cancelled) return;
+          if (result) {
+            setOrderData(result);
+            setLoading(false);
+            return;
           }
+        } catch (err) {
+          console.error("Verification error:", err);
         }
-      } catch (err) {
-        console.error("Verification error:", err);
+        if (attempt < maxAttempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        }
+      }
+      if (!cancelled) {
         setOrderData(null);
-      } finally {
         setLoading(false);
       }
     };
 
     verifyPurchase();
+    return () => { cancelled = true; };
   }, [sessionId, navigate]);
 
   if (loading) {

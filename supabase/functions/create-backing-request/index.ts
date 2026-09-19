@@ -81,9 +81,46 @@ Deno.serve(async (req) => {
       console.log(`[create-backing-request] Re-triggering Dropbox for existing request: ${requestId}`);
     } else {
       // New request: full flow
+
+      // Guard against duplicate submissions (e.g. a customer resubmitting the form after
+      // a failed/abandoned Stripe checkout). If an unpaid request with the same email +
+      // song was created in the last 20 minutes, reuse it instead of creating a new DB
+      // row and firing a second round of client/admin emails.
+      if (formData.email && formData.songTitle) {
+        const dedupeWindow = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+        let dedupeQuery = supabaseAdmin
+          .from('backing_requests')
+          .select('id')
+          .eq('email', formData.email)
+          .eq('song_title', formData.songTitle)
+          .eq('is_paid', false)
+          .gte('created_at', dedupeWindow);
+        dedupeQuery = formData.musicalOrArtist
+          ? dedupeQuery.eq('musical_or_artist', formData.musicalOrArtist)
+          : dedupeQuery.is('musical_or_artist', null);
+        const { data: recentDupe } = await dedupeQuery
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentDupe) {
+          console.log(`[create-backing-request] Duplicate submission detected, reusing request: ${recentDupe.id}`);
+          return new Response(
+            JSON.stringify({
+              message: 'Success',
+              requestId: recentDupe.id,
+              dropboxFolderId: null,
+              guestAccessToken: null,
+              deduped: true,
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+      }
+
       const calculatedCost = calculateRequestCost(formData);
       const guestAccessToken = crypto.randomUUID();
-      
+
       // 1. Create Database Record
       const { data: insertedRecords, error: insertError } = await supabaseAdmin
         .from('backing_requests')
@@ -183,12 +220,6 @@ Deno.serve(async (req) => {
 
       // 3. Send "New Request Report" Email to Admin
       try {
-        const adminRecipients = [
-          'daniele.buatti@gmail.com',
-          'info@danielebuatti.com',
-          'pianobackingsbydaniele@gmail.com'
-        ];
-
         const sheetMusicLinks = formData.sheetMusicUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
         const voiceMemoLinks = formData.voiceMemoUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
         const siteUrl = 'https://pianobackingsbydaniele.vercel.app';
@@ -244,7 +275,8 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: adminRecipients,
+            to: 'pianobackingsbydaniele@gmail.com',
+            cc: 'info@danielebuatti.com',
             subject: `NEW REQUEST: ${formData.songTitle} - ${formData.name || formData.email}`,
             html: adminEmailHtml,
             senderEmail: 'pianobackingsbydaniele@gmail.com'
