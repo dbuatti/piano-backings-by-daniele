@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
+import HeroStats from "@/components/HeroStats";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { 
@@ -105,10 +106,12 @@ const Index = () => {
                 </Button>
               </Link>
             </motion.div>
+
+            <HeroStats />
           </motion.div>
         </div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.4 }}
           transition={{ delay: 1.5, duration: 1 }}
