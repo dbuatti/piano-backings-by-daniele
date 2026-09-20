@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isPast } from 'date-fns';
@@ -71,12 +71,16 @@ export const useAppSettings = (): AppSettingsState => {
     }
   }, []);
 
+  const channelNameRef = useRef(`app_settings_changes_${Math.random().toString(36).slice(2)}`);
+
   useEffect(() => {
     fetchSettings();
 
-    // Set up real-time subscription for changes to app_settings
+    // Unique per hook instance — this hook is mounted concurrently by multiple
+    // components (e.g. HolidayModeBanner and FormPage), and newer supabase-js
+    // throws if two channels share a name and .on() is called after either subscribes.
     const channel = supabase
-      .channel('app_settings_changes')
+      .channel(channelNameRef.current)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'app_settings' },
