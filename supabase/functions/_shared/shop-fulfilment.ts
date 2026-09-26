@@ -3,8 +3,8 @@
 // shop checkout. Shared by stripe-webhook (paid carts) and create-stripe-checkout
 // (orders made free by a promo code).
 
-const SEND_EMAIL_URL = 'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email';
-const SENDER_EMAIL = 'pianobackingsbydaniele@gmail.com';
+import { escapeHtml, sendEmail as sendServiceEmail } from './email.ts';
+
 export const ADMIN_NOTIFY_EMAIL = 'pianobackingsbydaniele@gmail.com';
 const SITE_URL = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
@@ -14,16 +14,9 @@ export interface ShopLine {
   includesSheetMusic: boolean;
 }
 
-const escapeHtml = (value: string) =>
-  String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
 async function sendEmail(to: string, subject: string, html: string) {
   try {
-    await fetch(SEND_EMAIL_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, html, senderEmail: SENDER_EMAIL }),
-    });
+    await sendServiceEmail({ to, subject, html });
   } catch (e) {
     console.error('[shop-fulfilment] Email error:', e);
   }

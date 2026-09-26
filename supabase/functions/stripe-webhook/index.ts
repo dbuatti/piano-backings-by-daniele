@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'npm:stripe@16.2.0';
 import { TIER_PRICES, SERVICE_COSTS, serviceLabel } from '../_shared/pricing.ts';
 import { fulfilShopPurchase, type ShopLine } from '../_shared/shop-fulfilment.ts';
+import { escapeHtml } from '../_shared/email.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,7 +127,7 @@ Deno.serve(async (req) => {
 
             invoiceItemsHtml += `
               <tr>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${req.song_title || 'Untitled'}${req.musical_or_artist ? ` — ${req.musical_or_artist}` : ''}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(req.song_title || 'Untitled')}${req.musical_or_artist ? ` — ${escapeHtml(req.musical_or_artist)}` : ''}</td>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${tierLabel}</td>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">$${baseCost.toFixed(2)}</td>
               </tr>`;
@@ -160,7 +161,10 @@ Deno.serve(async (req) => {
         try {
           await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
+            },
             body: JSON.stringify({
               to: customerEmail,
               subject: `Tax Invoice #${invoiceNumber} - Piano Backings by Daniele`,
@@ -182,8 +186,8 @@ Deno.serve(async (req) => {
                         </td>
                         <td style="vertical-align: top;">
                           <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">BILL TO</h3>
-                          <p style="margin: 0; font-weight: bold;">${customerName}</p>
-                          <p style="margin: 2px 0; font-size: 13px;">${customerEmail}</p>
+                          <p style="margin: 0; font-weight: bold;">${escapeHtml(customerName)}</p>
+                          <p style="margin: 2px 0; font-size: 13px;">${escapeHtml(customerEmail)}</p>
                         </td>
                       </tr>
                     </table>

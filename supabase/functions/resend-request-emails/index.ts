@@ -1,21 +1,17 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { TIER_PRICES, SERVICE_COSTS, serviceLabel } from '../_shared/pricing.ts';
+import { escapeHtml, sendEmail as sendServiceEmail } from '../_shared/email.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SEND_EMAIL_URL = 'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email';
 const SITE_URL = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
 async function sendEmail(to, subject, html) {
-  await fetch(SEND_EMAIL_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, html, senderEmail: 'pianobackingsbydaniele@gmail.com' }),
-  });
+  await sendServiceEmail({ to, subject, html });
 }
 
 function buildInvoiceHtml(request) {
@@ -27,7 +23,7 @@ function buildInvoiceHtml(request) {
   let total = baseCost;
   let invoiceItemsHtml = `
     <tr>
-      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${request.song_title || 'Untitled'}${request.musical_or_artist ? ` — ${request.musical_or_artist}` : ''}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(request.song_title || 'Untitled')}${request.musical_or_artist ? ` — ${escapeHtml(request.musical_or_artist)}` : ''}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${tierLabel}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">$${baseCost.toFixed(2)}</td>
     </tr>`;
@@ -69,8 +65,8 @@ function buildInvoiceHtml(request) {
             </td>
             <td style="vertical-align: top;">
               <h3 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">BILL TO</h3>
-              <p style="margin: 0; font-weight: bold;">${request.name || 'Valued Customer'}</p>
-              <p style="margin: 2px 0; font-size: 13px;">${request.email}</p>
+              <p style="margin: 0; font-weight: bold;">${escapeHtml(request.name || 'Valued Customer')}</p>
+              <p style="margin: 2px 0; font-size: 13px;">${escapeHtml(request.email)}</p>
             </td>
           </tr>
         </table>
@@ -127,12 +123,12 @@ function buildOrderConfirmationHtml(request) {
         <h1 style="color: #fff; margin: 0; font-size: 22px;">Request Received!</h1>
       </div>
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-        <p>Hi ${request.name || 'there'},</p>
-        <p>Thank you for submitting your custom backing track request for <strong>"${request.song_title}"</strong>${request.musical_or_artist ? ` from <strong>${request.musical_or_artist}</strong>` : ''}.</p>
+        <p>Hi ${escapeHtml(request.name || 'there')},</p>
+        <p>Thank you for submitting your custom backing track request for <strong>"${escapeHtml(request.song_title)}"</strong>${request.musical_or_artist ? ` from <strong>${escapeHtml(request.musical_or_artist)}</strong>` : ''}.</p>
         <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
           <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
-          <p style="margin: 5px 0;"><strong>Song:</strong> ${request.song_title}</p>
-          <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${request.musical_or_artist}</p>
+          <p style="margin: 5px 0;"><strong>Song:</strong> ${escapeHtml(request.song_title)}</p>
+          <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${escapeHtml(request.musical_or_artist)}</p>
           <p style="margin: 5px 0;"><strong>Track ID:</strong> ${request.id}</p>
         </div>
         <p>You'll receive another email as soon as your track is ready for download. In the meantime, you can track the status on your dashboard.</p>
