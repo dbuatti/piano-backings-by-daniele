@@ -42,7 +42,8 @@ import {
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
-import { getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
+import SheetMusicDeliveryCard from '@/components/admin/SheetMusicDeliveryCard';
 
 interface OrderItem {
   id: string;
@@ -55,6 +56,8 @@ interface OrderItem {
   payment_intent_id: string | null;
   customer_email: string;
   checkout_session_id: string | null;
+  includes_sheet_music?: boolean | null;
+  sheet_music_url?: string | null;
   products?: {
     title: string;
     product_type: string;
@@ -110,6 +113,8 @@ export const OrdersTabContent: React.FC = () => {
           payment_intent_id,
           customer_email,
           checkout_session_id,
+          includes_sheet_music,
+          sheet_music_url,
           products (
             title,
             product_type,
@@ -302,6 +307,11 @@ export const OrdersTabContent: React.FC = () => {
         </Card>
       </div>
 
+      <SheetMusicDeliveryCard
+        orders={orders.filter(o => o.includes_sheet_music && !o.sheet_music_url)}
+        onDelivered={fetchData}
+      />
+
       {/* Main Content Card */}
       <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
         <CardHeader className="pb-3">
@@ -432,6 +442,11 @@ export const OrdersTabContent: React.FC = () => {
                             <span className="text-[10px] text-gray-400 capitalize">
                               {order.products?.product_type || 'Track'}
                             </span>
+                            {order.includes_sheet_music && (
+                              <Badge variant="outline" className={cn("mt-1 w-fit text-[9px] font-bold", order.sheet_music_url ? "border-green-200 text-green-700" : "border-[#F538BC]/40 text-[#F538BC]")}>
+                                + Sheet music {order.sheet_music_url ? 'delivered' : 'to deliver'}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-black text-gray-900 text-xs">

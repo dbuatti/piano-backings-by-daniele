@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { useCart } from '@/hooks/useCart';
+import { MAX_CART_ITEMS } from '@/contexts/cart-context';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { 
-  Loader2, 
   Search, 
   Filter, 
   X, 
@@ -20,8 +22,8 @@ import {
   Mic2,
   HelpCircle,
   ArrowUpDown,
-  ArrowUp,
   LayoutGrid,
+  Check,
   List,
 } from 'lucide-react';
 import {
@@ -80,6 +82,7 @@ interface Product {
   track_type: string;
   duration_seconds?: number | null;
   master_download_link: string | null;
+  product_type?: string | null;
 }
 
 interface ProductVariantGroup {
@@ -95,18 +98,16 @@ interface GroupedSection {
   groups: ProductVariantGroup[];
 }
 
-interface DiscountInfo {
-  valid: boolean;
-  promoCode: string;
-  promoCodeId: string;
-  discountAmount: number;
-  finalAmount: number;
-  originalAmount: number;
-}
-
 const GROUP_ORDER = ['full-song', 'audition-cut', 'note-bash', 'general'];
 
 const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
+
+// PostgREST `or=(...)` filters treat commas, parentheses and quotes as syntax, so
+// strip them (and LIKE wildcards) from free-text search before interpolating.
+const sanitizeSearch = (term: string) => term.replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const variantLabel = (p: Pick<Product, 'vocal_ranges' | 'key_signature'>) =>
+  (p.vocal_ranges || []).join('/') || p.key_signature || null;
 
 const Shop = () => {
   const { toast } = useToast();
@@ -117,13 +118,8 @@ const Shop = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [selectedVariantsForDetail, setSelectedVariantsForDetail] = useState<Product[] | null>(null);
-  const [isBuying, setIsBuying] = useState(false);
   const [urlProduct, setUrlProduct] = useState<Product | null>(null);
-
-  const [promoCode, setPromoCode] = useState('');
-  const [discountInfo, setDiscountInfo] = useState<DiscountInfo | null>(null);
-  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
-  const [showBackToTop, setShowBackToTop] = useState(false);
+  const cart = useCart();
 
   const currentSearchTerm = searchParams.get('q') || '';
   const currentCategory = searchParams.get('category') || 'all';
@@ -152,8 +148,9 @@ const Shop = () => {
     queryFn: async () => {
       let query = supabase.from('products').select('*').eq('is_active', true);
 
-      if (currentSearchTerm) {
-        query = query.or(`title.ilike.%${currentSearchTerm}%,description.ilike.%${currentSearchTerm}%,artist_name.ilike.%${currentSearchTerm}%`);
+      const search = sanitizeSearch(currentSearchTerm);
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,artist_name.ilike.%${search}%`);
       }
       if (currentCategory !== 'all') query = query.eq('category', currentCategory);
       if (currentTrackType !== 'all') query = query.eq('track_type', currentTrackType);
@@ -337,11 +334,13 @@ const Shop = () => {
     return sameShow ? (current.artist_name || '').trim() || null : null;
   }, [selectedProductForDetail, products]);
 
+  // Returning from a cancelled Stripe checkout: the cart is still saved.
   useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 700);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    if (searchParams.get('checkout') !== 'cancelled') return;
+    toast({ title: "Checkout cancelled", description: "No payment was taken. Your cart is saved." });
+    cart.setOpen(true);
+    updateSearchParam('checkout', null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on arrival
   }, []);
 
   useEffect(() => {
@@ -369,48 +368,7 @@ const Shop = () => {
     return () => { cancelled = true; };
   }, [urlProductId, selectedProductForDetail]);
 
-  const handleValidatePromo = async () => {
-    if (!promoCode.trim()) {
-      setDiscountInfo(null);
-      return;
-    }
-
-    setIsValidatingPromo(true);
-    setDiscountInfo(null);
-
-    try {
-      const amount = selectedProductForDetail?.price || 0;
-      const { data: result, error } = await supabase.rpc('validate_promo_code', {
-        p_code: promoCode,
-        p_amount: amount,
-      });
-
-      if (error) throw error;
-
-      if (result.valid) {
-        setDiscountInfo({
-          valid: true,
-          promoCode: result.promoCode.code,
-          promoCodeId: result.promoCode.id,
-          discountAmount: result.discountAmount,
-          finalAmount: result.finalAmount,
-          originalAmount: result.originalAmount,
-        });
-        toast({ title: "Promo Applied!", description: `You save $${result.discountAmount.toFixed(2)}!` });
-      } else {
-        setDiscountInfo(null);
-        toast({ title: "Invalid Code", description: result.error, variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: "Validation Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
-    } finally {
-      setIsValidatingPromo(false);
-    }
-  };
-
   const handleViewDetails = useCallback(<T extends { id: string }>(product: T, variants?: T[]) => {
-    setPromoCode('');
-    setDiscountInfo(null);
     setSelectedProductForDetail(product as unknown as Product);
     setSelectedVariantsForDetail((variants && variants.length > 0 ? variants : [product]) as unknown as Product[]);
     setIsDetailDialogOpen(true);
@@ -431,34 +389,29 @@ const Shop = () => {
     return tableRows.findIndex(r => r.product.id === selectedProductForDetail.id);
   }, [selectedProductForDetail, tableRows]);
 
-  const handleBuyNow = useCallback(async (product: Product, code?: string) => {
-    setIsBuying(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const body: Record<string, unknown> = { product_id: product.id };
-
-      if (code) {
-        body.promo_code = code;
-      }
-
-      const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session && { Authorization: `Bearer ${session.access_token}` }),
-        },
-        body: JSON.stringify(body),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Checkout failed (${response.status})`);
-      if (result.url) window.location.href = result.url;
-    } catch (err) {
-      toast({ title: "Checkout Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
-    } finally {
-      setIsBuying(false);
+  const handleAddToCart = useCallback(<T extends { id: string }>(product: T, includeSheetMusic = false) => {
+    const p = product as unknown as Product;
+    if (!cart.isInCart(p.id) && cart.count >= MAX_CART_ITEMS) {
+      toast({ title: "Cart is full", description: `You can buy up to ${MAX_CART_ITEMS} items at once.`, variant: "destructive" });
+      return;
     }
-  }, [toast]);
+    const alreadyInCart = cart.isInCart(p.id);
+    cart.addItem({
+      productId: p.id,
+      title: p.title,
+      artistName: p.artist_name,
+      variantLabel: variantLabel(p),
+      price: p.price,
+      currency: p.currency || 'AUD',
+      productType: p.product_type,
+      includeSheetMusic,
+    });
+    toast({
+      title: alreadyInCart ? "Already in your cart" : "Added to cart",
+      description: `${p.title}${includeSheetMusic ? ' + custom sheet music' : ''}`,
+      action: <ToastAction altText="View cart" onClick={() => cart.setOpen(true)}>View cart</ToastAction>,
+    });
+  }, [cart, toast]);
 
   const filterContent = (
     <div className="space-y-8">
@@ -635,7 +588,7 @@ const Shop = () => {
             offers: {
               "@type": "Offer",
               price: urlProduct.price,
-              priceCurrency: (urlProduct.currency || 'USD').toUpperCase(),
+              priceCurrency: (urlProduct.currency || 'AUD').toUpperCase(),
               availability: "https://schema.org/InStock",
               url: `${window.location.origin}/shop/${urlProduct.id}`,
             },
@@ -685,11 +638,12 @@ const Shop = () => {
                           <span className="ml-2.5 text-xs font-bold text-white/40 uppercase tracking-widest">{product.currency}</span>
                         </div>
                         <Button 
-                          onClick={() => handleBuyNow(product)}
-                          disabled={isBuying}
+                          onClick={() => cart.isInCart(product.id) ? cart.setOpen(true) : handleAddToCart(product)}
                           className="bg-white text-[#1C0357] hover:bg-gray-100 h-12 px-8 rounded-xl font-black text-base shadow-xl active:scale-95 transition-all w-full sm:w-auto"
                         >
-                          {isBuying ? <Loader2 className="animate-spin" /> : <><ShoppingCart className="mr-2.5" /> Instant Purchase</>}
+                          {cart.isInCart(product.id)
+                            ? <><Check className="mr-2.5" /> In cart · View</>
+                            : <><ShoppingCart className="mr-2.5" /> Add to Cart</>}
                         </Button>
                       </div>
                     </div>
@@ -849,7 +803,7 @@ const Shop = () => {
                 </div>
               </div>
             ) : currentView === 'list' ? (
-              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onBuyNow={handleBuyNow} isBuying={isBuying} searchTerm={currentSearchTerm} />
+              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onAddToCart={handleAddToCart} isInCart={cart.isInCart} searchTerm={currentSearchTerm} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (
@@ -882,8 +836,8 @@ const Shop = () => {
                           key={group.key}
                           variants={group.variants}
                           onViewDetails={handleViewDetails}
-                          onBuyNow={handleBuyNow}
-                          isBuying={isBuying}
+                          onAddToCart={handleAddToCart}
+                          isInCart={cart.isInCart}
                         />
                       ))}
                     </div>
@@ -903,8 +857,6 @@ const Shop = () => {
               setSelectedProductForDetail(null);
               setSelectedVariantsForDetail(null);
               setUrlProduct(null);
-              setPromoCode('');
-              setDiscountInfo(null);
               if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             }
           }}
@@ -913,31 +865,22 @@ const Shop = () => {
           related={relatedProducts}
           relatedShow={relatedShowName}
           onOpenProduct={(p, v) => handleViewDetails(p, v)}
-          onBuyNow={handleBuyNow}
-          isBuying={isBuying}
-          promoCode={promoCode}
-          onPromoCodeChange={(code: string) => {
-            setPromoCode(code);
-            if (!code) setDiscountInfo(null);
+          onAddToCart={handleAddToCart}
+          isInCart={cart.isInCart}
+          onViewCart={() => {
+            setIsDetailDialogOpen(false);
+            setSelectedProductForDetail(null);
+            setSelectedVariantsForDetail(null);
+            setUrlProduct(null);
+            if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
+            cart.setOpen(true);
           }}
-          discountInfo={discountInfo}
-          isValidatingPromo={isValidatingPromo}
-          onApplyPromo={handleValidatePromo}
           navIndex={navIndex}
           navTotal={tableRows.length}
           onNavigate={handleNavigate}
         />
       )}
 
-      {showBackToTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label="Back to top"
-          className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-[#1C0357] text-white shadow-xl hover:bg-[#2D0B8C] flex items-center justify-center transition-all active:scale-95"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </button>
-      )}
     </div>
   );
 };

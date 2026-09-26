@@ -315,6 +315,10 @@ const Index = () => {
                     <span className="text-lg font-bold">Exclusive Ownership</span>
                     <span className="text-[#F1E14F] font-black text-xl">+$40</span>
                   </div>
+                  <div className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
+                    <span className="text-lg font-bold">Custom Sheet Music (clean engraved cut)</span>
+                    <span className="text-[#F1E14F] font-black text-xl">+$50</span>
+                  </div>
                 </div>
               </div>
             </div>

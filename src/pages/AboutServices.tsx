@@ -277,8 +277,8 @@ const AboutServices = () => {
 
         {/* Final CTA */}
         <section className="text-center">
-          <div className="bg-gradient-to-br from-[#D1AAF2] to-[#F538BC] p-1 rounded-[50px] inline-block shadow-2xl">
-            <div className="bg-white rounded-[46px] px-12 py-16 md:px-24">
+          <div className="bg-gradient-to-br from-[#D1AAF2] to-[#F538BC] p-1 rounded-[50px] inline-block max-w-full shadow-2xl">
+            <div className="bg-white rounded-[46px] px-6 sm:px-12 py-16 md:px-24">
               <h2 className="text-4xl md:text-6xl font-black text-[#1C0357] mb-8 tracking-tighter">Ready to sing?</h2>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                 <Link to="/form-page">

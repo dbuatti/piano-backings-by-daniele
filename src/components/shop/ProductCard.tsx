@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, ShoppingCart, Loader2, Theater, Key, Clock } from 'lucide-react';
+import { Play, Pause, ShoppingCart, Check, Theater, Key, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -30,8 +30,8 @@ interface ShopProduct {
 interface ProductCardProps {
   variants: ShopProduct[];
   onViewDetails: (product: ShopProduct, variants?: ShopProduct[]) => void;
-  onBuyNow: (product: ShopProduct) => Promise<void>;
-  isBuying: boolean;
+  onAddToCart: (product: ShopProduct) => void;
+  isInCart: (productId: string) => boolean;
 }
 
 const MAX_VISIBLE_VOICES = 2;
@@ -62,7 +62,7 @@ export const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) =
   );
 };
 
-const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBuyNow, isBuying }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAddToCart, isInCart }) => {
   const [selectedId, setSelectedId] = useState<string | undefined>(variants[0]?.id);
 
   useEffect(() => {
@@ -187,20 +187,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onBu
           </div>
 
           <div className="ml-auto">
-            <Button
-              onClick={(e) => { e.stopPropagation(); onBuyNow(selected); }}
-              disabled={isBuying}
-              className="h-10 px-4 text-xs font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 active:scale-[0.98] transition-all"
-            >
-              {isBuying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <ShoppingCart size={15} />
-                  Buy
-                </span>
-              )}
-            </Button>
+            {isInCart(selected.id) ? (
+              <Button
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); onAddToCart(selected); }}
+                className="h-10 px-4 text-xs font-black rounded-xl border-[#1C0357]/20 text-[#1C0357]"
+              >
+                <Check size={15} className="mr-1.5" /> In cart
+              </Button>
+            ) : (
+              <Button
+                onClick={(e) => { e.stopPropagation(); onAddToCart(selected); }}
+                aria-label={`Add ${selected.title} to cart`}
+                className="h-10 px-4 text-xs font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 active:scale-[0.98] transition-all"
+              >
+                <ShoppingCart size={15} className="mr-1.5" /> Add
+              </Button>
+            )}
           </div>
         </div>
       </CardFooter>

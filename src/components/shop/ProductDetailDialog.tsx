@@ -3,11 +3,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ShoppingCart, 
   Link as LinkIcon, 
-  Loader2, 
+  Check,
+  FileText,
   Theater, 
   Key, 
   Play, 
@@ -20,7 +21,6 @@ import {
   Zap,
   Info,
   Share2,
-  Tag,
   Music,
   ChevronLeft,
   ChevronRight,
@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import VisuallyHidden from '@/components/VisuallyHidden';
 import { useToast } from '@/hooks/use-toast';
+import { SHOP_SHEET_MUSIC_PRICE } from '@/utils/pricing';
 
 interface Product {
   id: string;
@@ -52,14 +53,7 @@ interface Product {
   sheet_music_url?: string | null;
   show_sheet_music_url?: boolean;
   master_download_link?: string | null;
-}
-
-interface DiscountInfo {
-  valid: boolean;
-  promoCode: string;
-  discountAmount: number;
-  finalAmount: number;
-  originalAmount: number;
+  product_type?: string | null;
 }
 
 interface ProductDetailDialogProps {
@@ -70,13 +64,9 @@ interface ProductDetailDialogProps {
   related?: Product[];
   relatedShow?: string | null;
   onOpenProduct?: (product: Product, variants?: Product[]) => void;
-  onBuyNow: (product: Product, promoCode?: string) => Promise<void>;
-  isBuying: boolean;
-  promoCode: string;
-  onPromoCodeChange: (code: string) => void;
-  discountInfo: DiscountInfo | null;
-  isValidatingPromo: boolean;
-  onApplyPromo: () => Promise<void>;
+  onAddToCart: (product: Product, includeSheetMusic: boolean) => void;
+  isInCart: (productId: string) => boolean;
+  onViewCart: () => void;
   navIndex?: number;
   navTotal?: number;
   onNavigate?: (direction: 'prev' | 'next') => void;
@@ -119,13 +109,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   related,
   relatedShow,
   onOpenProduct,
-  onBuyNow,
-  isBuying,
-  promoCode,
-  onPromoCodeChange,
-  discountInfo,
-  isValidatingPromo,
-  onApplyPromo,
+  onAddToCart,
+  isInCart,
+  onViewCart,
   navIndex,
   navTotal,
   onNavigate,
@@ -134,9 +120,11 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const hasVariants = (variants?.length || 0) > 1;
   const [selectedId, setSelectedId] = useState(product.id);
+  const [wantsSheetMusic, setWantsSheetMusic] = useState(false);
 
   useEffect(() => {
     setSelectedId(product.id);
+    setWantsSheetMusic(false);
   }, [product.id]);
 
   const selected = hasVariants ? (variants!.find(v => v.id === selectedId) || product) : product;
@@ -144,7 +132,6 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   const handleSelectVariant = (id: string) => {
     if (id === selected.id) return;
     setSelectedId(id);
-    onPromoCodeChange('');
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -172,23 +159,18 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
 
   const handleShare = () => {
     const url = `${window.location.origin}/shop/${selected.id}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Link Copied!",
-      description: "Product link copied to clipboard.",
-    });
+    navigator.clipboard.writeText(url).then(
+      () => toast({ title: "Link Copied!", description: "Product link copied to clipboard." }),
+      () => toast({ title: "Couldn't copy link", description: url }),
+    );
   };
 
   const typeInfo = getTrackTypeInfo(selected.track_type);
-  const displayPrice = discountInfo?.valid ? discountInfo.finalAmount : selected.price;
   const firstTrackUrl = selected.track_urls?.[0]?.url || null;
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onApplyPromo();
-    }
-  };
+  const offersSheetMusic = selected.product_type !== 'credit_pack';
+  const includeSheetMusic = offersSheetMusic && wantsSheetMusic;
+  const displayPrice = selected.price + (includeSheetMusic ? SHOP_SHEET_MUSIC_PRICE : 0);
+  const inCart = isInCart(selected.id);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -244,6 +226,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               size="icon"
               variant="ghost"
               onClick={handleShare}
+              aria-label="Copy link to this track"
               className="p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all"
             >
               <Share2 className="h-5 w-5" />
@@ -278,7 +261,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
             </div>
           )}
 
-          <DialogClose className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all z-10">
+          <DialogClose aria-label="Close" className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md text-white transition-all z-10">
             <X className="h-5 w-5" />
           </DialogClose>
         </div>
@@ -348,10 +331,10 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                     <FileAudio className="h-4 w-4 text-[#F538BC] flex-shrink-0" />
                     <span className="text-xs font-bold">High-Fidelity Audio</span>
                   </div>
-                  {product.show_sheet_music_url && product.sheet_music_url && (
+                  {offersSheetMusic && (
                     <div className="flex items-center gap-3 text-gray-600 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
-                      <LinkIcon className="h-4 w-4 text-[#F538BC] flex-shrink-0" />
-                      <span className="text-xs font-bold">Sheet Music Included</span>
+                      <FileText className="h-4 w-4 text-[#F538BC] flex-shrink-0" />
+                      <span className="text-xs font-bold">Custom sheet music available</span>
                     </div>
                   )}
                 </div>
@@ -400,7 +383,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               {selected.show_sheet_music_url && selected.sheet_music_url && (
                 <a href={selected.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block">
                   <Button variant="outline" className="w-full h-10 text-xs border-gray-300 rounded-lg hover:bg-gray-50 font-bold">
-                    <LinkIcon className="mr-2 h-3.5 w-3.5" /> View Sheet Music
+                    <LinkIcon className="mr-2 h-3.5 w-3.5" /> Preview Sheet Music
                   </Button>
                 </a>
               )}
@@ -441,64 +424,51 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
               <PreviewPlayer key={selected.id} url={firstTrackUrl} title={selected.title} />
             )}
 
-            {/* Promo Code Input */}
-            <div className="flex items-center gap-2 w-full md:w-auto flex-shrink-0">
-              <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={promoCode}
-                  onChange={(e) => onPromoCodeChange(e.target.value.toUpperCase())}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Promo code"
-                  className="pl-9 h-10 w-32 md:w-36 rounded-xl border-gray-200 font-mono text-xs font-bold uppercase"
-                  disabled={isBuying}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onApplyPromo}
-                disabled={!promoCode.trim() || isValidatingPromo || isBuying}
-                className="h-10 rounded-xl border-gray-200 text-xs font-bold whitespace-nowrap"
-              >
-                {isValidatingPromo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Apply'}
-              </Button>
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
+              {offersSheetMusic && (
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2 hover:border-[#F538BC]/40">
+                  <Checkbox
+                    checked={wantsSheetMusic}
+                    onCheckedChange={(v) => setWantsSheetMusic(v === true)}
+                    className="mt-0.5"
+                    aria-label="Add custom sheet music"
+                  />
+                  <span className="text-xs leading-snug">
+                    <span className="font-black text-[#1C0357] block">+ Custom sheet music ${SHOP_SHEET_MUSIC_PRICE.toFixed(0)}</span>
+                    <span className="text-gray-500">Clean engraved score of this cut</span>
+                  </span>
+                </label>
+              )}
 
-            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Total</p>
-                  <div className="flex items-baseline gap-1.5 justify-end">
-                    {discountInfo?.valid && (
-                      <span className="text-sm text-gray-400 line-through">
-                        {selected.currency}{selected.price.toFixed(2)}
-                      </span>
-                    )}
-                    <div className={cn("text-2xl font-black", discountInfo?.valid ? "text-green-600" : "text-[#1C0357]")}>
-                      <span className="text-sm mr-0.5 font-bold">{selected.currency}</span>
-                      {displayPrice.toFixed(2)}
-                    </div>
+                  <div className="text-2xl font-black text-[#1C0357] whitespace-nowrap">
+                    ${displayPrice.toFixed(2)}
+                    <span className="ml-1 text-[10px] font-bold text-gray-400">{selected.currency}</span>
                   </div>
-                  {discountInfo?.valid && (
-                    <p className="text-[10px] text-green-600 font-bold">Save ${discountInfo.discountAmount.toFixed(2)}</p>
-                  )}
                 </div>
 
-              <Button
-                onClick={() => onBuyNow(selected, discountInfo?.valid ? promoCode : undefined)}
-                disabled={isBuying}
-                className="h-12 px-8 text-base font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 flex-1 md:flex-none"
-              >
-                {isBuying ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                {inCart ? (
+                  <Button
+                    onClick={() => {
+                      if (includeSheetMusic) onAddToCart(selected, true);
+                      onViewCart();
+                    }}
+                    variant="outline"
+                    className="h-12 px-6 text-base font-black rounded-xl border-[#1C0357]/30 text-[#1C0357] flex-1 md:flex-none"
+                  >
+                    <Check className="mr-2 h-5 w-5" /> In cart · View
+                  </Button>
                 ) : (
-                  <>
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    Buy Now — {selected.currency}{displayPrice.toFixed(2)}
-                  </>
+                  <Button
+                    onClick={() => onAddToCart(selected, includeSheetMusic)}
+                    className="h-12 px-6 text-base font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-lg shadow-[#1C0357]/10 flex-1 md:flex-none"
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
           </div>
         </div>

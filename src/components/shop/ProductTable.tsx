@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Loader2, Key, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ShoppingCart, Check, Key, Clock, ArrowUpDown, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isWithinInterval, subDays } from 'date-fns';
 import { getTrackTypeInfo, getCategoryInfo } from '@/utils/trackTypes';
@@ -36,8 +36,8 @@ interface ProductTableProps {
   currentSort: string;
   onSort: (value: string) => void;
   onViewDetails: (product: TableProduct, variants?: TableProduct[]) => void;
-  onBuyNow: (product: TableProduct) => Promise<void>;
-  isBuying: boolean;
+  onAddToCart: (product: TableProduct) => void;
+  isInCart: (productId: string) => boolean;
   searchTerm?: string;
 }
 
@@ -99,7 +99,41 @@ const SortableHeader: React.FC<{ col: string; label: string; right?: boolean; cu
   );
 };
 
-const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onBuyNow: ProductTableProps['onBuyNow']; isBuying: boolean; searchTerm?: string }> = ({ row, onViewDetails, onBuyNow, isBuying, searchTerm }) => {
+// Songs with several versions (keys / voice types) open the detail view so the
+// customer picks the right one instead of silently getting the cheapest.
+const RowCartButton: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onAddToCart: ProductTableProps['onAddToCart']; isInCart: ProductTableProps['isInCart']; className: string }> = ({ row, onViewDetails, onAddToCart, isInCart, className }) => {
+  const { product, variants } = row;
+  if (variants.length > 1) {
+    const inCartCount = variants.filter(v => isInCart(v.id)).length;
+    return (
+      <Button
+        variant="outline"
+        onClick={(e) => { e.stopPropagation(); onViewDetails(product, variants); }}
+        className={cn(className, "border-[#1C0357]/20 text-[#1C0357]")}
+      >
+        {inCartCount > 0 ? <><Check size={14} className="mr-1.5" /> {inCartCount} in cart</> : <>Choose <ChevronRight size={14} className="ml-1" /></>}
+      </Button>
+    );
+  }
+  if (isInCart(product.id)) {
+    return (
+      <Button variant="outline" onClick={(e) => { e.stopPropagation(); onAddToCart(product); }} className={cn(className, "border-[#1C0357]/20 text-[#1C0357]")}>
+        <Check size={14} className="mr-1.5" /> In cart
+      </Button>
+    );
+  }
+  return (
+    <Button
+      onClick={(e) => { e.stopPropagation(); onAddToCart(product); }}
+      aria-label={`Add ${product.title} to cart`}
+      className={cn(className, "bg-[#1C0357] hover:bg-[#1C0357]/90")}
+    >
+      <ShoppingCart size={14} className="mr-1.5" /> Add
+    </Button>
+  );
+};
+
+const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onAddToCart: ProductTableProps['onAddToCart']; isInCart: ProductTableProps['isInCart']; searchTerm?: string }> = ({ row, onViewDetails, onAddToCart, isInCart, searchTerm }) => {
   const { product, variants } = row;
   const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
   const quality = getTrackTypeInfo(product.track_type);
@@ -144,13 +178,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
         <p className="text-sm font-black text-[#1C0357] text-right whitespace-nowrap">{priceLabel}</p>
         <div className="flex items-center justify-end gap-2">
           <PreviewButton variant={product} />
-          <Button
-            onClick={(e) => { e.stopPropagation(); onBuyNow(product); }}
-            disabled={isBuying}
-            className="h-9 px-4 text-xs font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-lg shadow-sm active:scale-[0.98] transition-all"
-          >
-            {isBuying ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ShoppingCart size={14} className="mr-1.5" /> Buy</>}
-          </Button>
+          <RowCartButton row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} className="h-9 px-4 text-xs font-black rounded-lg shadow-sm active:scale-[0.98] transition-all" />
         </div>
       </div>
 
@@ -196,13 +224,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
         </div>
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
           <p className="text-lg font-black text-[#1C0357]">{priceLabel}</p>
-          <Button
-            onClick={(e) => { e.stopPropagation(); onBuyNow(product); }}
-            disabled={isBuying}
-            className="h-10 px-6 text-xs font-black bg-[#1C0357] hover:bg-[#1C0357]/90 rounded-xl shadow-sm active:scale-[0.98] transition-all"
-          >
-            {isBuying ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ShoppingCart size={15} className="mr-1.5" /> Buy</>}
-          </Button>
+          <RowCartButton row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} className="h-10 px-6 text-xs font-black rounded-xl shadow-sm active:scale-[0.98] transition-all" />
         </div>
       </div>
     </div>
@@ -214,7 +236,7 @@ const firstLetter = (title: string) => {
   return /[A-Z]/.test(ch) ? ch : '#';
 };
 
-const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onBuyNow, isBuying, searchTerm }) => {
+const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onAddToCart, isInCart, searchTerm }) => {
   const titleDir = currentSort === 'title_asc' ? 'asc' : currentSort === 'title_desc' ? 'desc' : null;
   const letterGroups = useMemo(() => {
     if (!titleDir) return null;
@@ -246,13 +268,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">{g.rows.length}</span>
                 </div>
                 {g.rows.map(row => (
-                  <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} searchTerm={searchTerm} />
+                  <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} />
                 ))}
               </React.Fragment>
             ))
           ) : (
             rows.map(row => (
-              <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onBuyNow={onBuyNow} isBuying={isBuying} searchTerm={searchTerm} />
+              <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} />
             ))
           )}
         </div>

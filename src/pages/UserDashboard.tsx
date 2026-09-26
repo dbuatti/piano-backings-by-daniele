@@ -61,6 +61,8 @@ interface Order {
   amount: number;
   currency: string;
   status: string;
+  includes_sheet_music?: boolean | null;
+  sheet_music_url?: string | null;
   products: {
     id: string;
     title: string;
@@ -570,6 +572,18 @@ const UserDashboard = () => {
                               );
                             })
                           ) : null}
+                          {order.includes_sheet_music && (order.sheet_music_url ? (
+                            <Button asChild variant="outline" size="sm" className="border-[#D1AAF2] text-[#1C0357]">
+                              <a href={order.sheet_music_url} target="_blank" rel="noopener noreferrer">
+                                <Download className="mr-2 h-4 w-4" />
+                                Sheet Music (PDF)
+                              </a>
+                            </Button>
+                          ) : (
+                            <p className="text-xs text-gray-500 font-medium text-center">
+                              Sheet music being prepared (3–5 business days)
+                            </p>
+                          ))}
                         </div>
                       </div>
                     </CardContent>

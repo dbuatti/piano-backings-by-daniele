@@ -49,6 +49,21 @@ const Terms = () => (
       </ul>
     </LegalSection>
 
+    <LegalSection title="2a. Custom sheet music">
+      <p>
+        You can add custom sheet music (+$50) to a custom track order or to a track bought from the shop. It's a clean,
+        engraved score of the cut, prepared in Sibelius, with the cut already made so the music flows without cut marks.
+      </p>
+      <ul>
+        <li>For custom orders, it's delivered with your track.</li>
+        <li>
+          For shop purchases, it's delivered as a PDF, usually within 3 to 5 business days (straight away if it's
+          already been prepared for that track).
+        </li>
+        <li>Sheet music is for your own use, on the same terms as your track (see section 6).</li>
+      </ul>
+    </LegalSection>
+
     <LegalSection title="3. Payment">
       <p>
         You can pay by card through Stripe when you order, or by Buy Me a Coffee or direct bank transfer as shown on
@@ -96,7 +111,7 @@ const Terms = () => (
       </p>
       <p>Please don't:</p>
       <ul>
-        <li>share, resell, or give away the audio file, or upload it on its own (without your performance) anywhere;</li>
+        <li>share, resell, or give away the audio file or sheet music, or upload the track on its own (without your performance) anywhere;</li>
         <li>claim the recording as your own or remove credit where credit is asked for;</li>
         <li>release it commercially (for example, on streaming services) or use it to train AI models without my written permission.</li>
       </ul>

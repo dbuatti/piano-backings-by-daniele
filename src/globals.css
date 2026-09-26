@@ -77,6 +77,9 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    /* Decorative off-canvas glows must not create sideways scrolling on phones.
+       `clip` (unlike `hidden`) keeps position: sticky working. */
+    overflow-x: clip;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 
