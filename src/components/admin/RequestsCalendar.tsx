@@ -9,10 +9,11 @@ import 'react-calendar/dist/Calendar.css';
 import { format, isSameDay } from 'date-fns';
 import { Calendar, Eye, Music, Upload, User, Check, Clock, X } from 'lucide-react';
 import { getSafeBackingTypes } from '@/utils/helpers';
+import type { BackingRequest } from '@/types/backing-request';
 
 interface RequestsCalendarProps {
-  requests: any[];
-  filteredRequests: any[];
+  requests: BackingRequest[];
+  filteredRequests: BackingRequest[];
   selectedDate: Date | null;
   setSelectedDate: (date: Date | null) => void;
   uploadTrack: (id: string) => void;

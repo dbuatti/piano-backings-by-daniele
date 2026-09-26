@@ -27,7 +27,7 @@ export interface SongData {
 interface SongRequestItemProps {
   index: number;
   data: SongData;
-  onChange: (id: string, field: string, value: any) => void;
+  onChange: <K extends keyof SongData>(id: string, field: K, value: SongData[K]) => void;
   onRemove: (id: string) => void;
   isOnlySong: boolean;
   errors?: Record<string, string>;

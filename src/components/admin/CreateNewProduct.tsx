@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Music, DollarSign, Image, Link, PlusCircle, UploadCloud, FileText, Key, MinusCircle, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
 
@@ -137,7 +137,7 @@ const CreateNewProduct: React.FC = () => {
           currentTrack.file = null;
         }
       } else {
-        (currentTrack as any)[field] = value; 
+        Object.assign(currentTrack, { [field]: value }); 
       }
       newTrackUrls[index] = currentTrack;
       return { ...prev, track_urls: newTrackUrls };
@@ -260,10 +260,10 @@ const CreateNewProduct: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         title: "Error",
-        description: `Failed to add product: ${err.message}`,
+        description: `Failed to add product: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     }
@@ -283,10 +283,10 @@ const CreateNewProduct: React.FC = () => {
     if (imageFile) {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title: "Image Upload Error",
-          description: `Failed to upload image: ${uploadError.message}`, 
+          description: `Failed to upload image: ${getErrorMessage(uploadError)}`, 
           variant: "destructive",
         });
         return;
@@ -297,10 +297,10 @@ const CreateNewProduct: React.FC = () => {
     if (sheetMusicFile) {
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title : "Sheet Music Upload Error",
-          description: `Failed to upload sheet music: ${uploadError.message}`,
+          description: `Failed to upload sheet music: ${getErrorMessage(uploadError)}`,
           variant: "destructive",
         });
         return;
@@ -316,10 +316,10 @@ const CreateNewProduct: React.FC = () => {
         if (track.file) {
           try {
             trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
-          } catch (uploadError: any) {
+          } catch (uploadError: unknown) {
             toast({
               title: "Track Upload Error",
-              description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+              description: `Failed to upload track ${track.caption || track.file.name}: ${getErrorMessage(uploadError)}`,
               variant: "destructive",
             });
             return;

@@ -1,23 +1,8 @@
 import { useState, useEffect } from 'react';
 import { isSameDay } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
+import type { BackingRequest } from '@/types/backing-request';
 
-interface BackingRequest {
-  id: string;
-  created_at: string;
-  name: string;
-  email: string;
-  song_title: string;
-  musical_or_artist: string;
-  backing_type: string | string[];
-  delivery_date: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  is_paid: boolean;
-  track_url?: string;
-  shared_link?: string;
-  uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; };
-  cost?: number;
-}
 
 export const useRequestFilters = (allRequests: BackingRequest[]) => {
   const [searchTerm, setSearchTerm] = useState('');

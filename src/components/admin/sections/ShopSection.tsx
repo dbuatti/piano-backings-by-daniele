@@ -79,7 +79,7 @@ const ShopSection: React.FC = () => {
 
       {sub === 'products' && (
         <div className="space-y-8">
-          <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as any)} className="w-full">
+          <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as typeof shopViewMode)} className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
               <TabsTrigger value="create" className="rounded-lg font-bold">
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Product

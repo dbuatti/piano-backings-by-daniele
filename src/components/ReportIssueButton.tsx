@@ -21,6 +21,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from "@/lib/utils";
 
 const issueReportSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -103,10 +104,10 @@ const ReportIssueButton: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['unreadIssueReportsCount'] });
       queryClient.invalidateQueries({ queryKey: ['allIssueReports'] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: "Error",
-        description: `Failed to submit report: ${error.message}`,
+        description: `Failed to submit report: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     },

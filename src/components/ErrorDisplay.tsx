@@ -4,32 +4,34 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 
 interface ErrorDisplayProps {
-  error: any;
+  error: unknown;
   title?: string;
 }
 
 const ErrorDisplay = ({ error, title = "Error Details" }: ErrorDisplayProps) => {
   const [copied, setCopied] = useState(false);
   
+  const details = (error && typeof error === 'object' ? error : {}) as Record<string, unknown>;
+
   // Create a more readable error summary
   const getErrorSummary = () => {
-    const summary = [];
+    const summary: { label: string; value: string }[] = [];
     
-    if (error.message) {
-      summary.push({ label: "Message", value: error.message });
+    if (details.message) {
+      summary.push({ label: "Message", value: String(details.message) });
     }
     
-    if (error.error) {
-      summary.push({ label: "Error", value: error.error });
+    if (details.error) {
+      summary.push({ label: "Error", value: String(details.error) });
     }
     
-    if (error.status) {
-      summary.push({ label: "Status", value: error.status });
+    if (details.status) {
+      summary.push({ label: "Status", value: String(details.status) });
     }
     
     // Handle Supabase specific error codes if available
-    if (error.code) {
-      summary.push({ label: "Code", value: error.code });
+    if (details.code) {
+      summary.push({ label: "Code", value: String(details.code) });
     }
     
     return summary;

@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateCompletionEmail, generatePaymentReminderEmail, generateCompletionAndPaymentEmail, generateProductDeliveryEmail, BackingRequest } from "@/utils/emailGenerator";
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { 
   Mail, Send, Eye, RefreshCw, Loader2, DollarSign, CheckCircle, Copy, Music, User, Calendar, Headphones, Target, Key, Link as LinkIcon, FileText,
   Clock, XCircle, List
@@ -120,10 +120,10 @@ const EmailGenerator = () => {
       }
       
       setEmailData({ subject: result.subject, html: result.html });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to generate email: ${error.message}`,
+        description: `Failed to generate email: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {
@@ -143,8 +143,8 @@ const EmailGenerator = () => {
           .order('created_at', { ascending: false });
         if (error) throw error;
         setAllRequests(data || []);
-      } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } catch (error: unknown) {
+        toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
       } finally {
         setLoadingAllRequests(false);
       }
@@ -160,8 +160,8 @@ const EmailGenerator = () => {
           .order('created_at', { ascending: false });
         if (error) throw error;
         setAllProducts(data || []);
-      } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } catch (error: unknown) {
+        toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
       } finally {
         setLoadingAllProducts(false);
       }
@@ -244,8 +244,8 @@ const EmailGenerator = () => {
       setShowPreview(false);
       setSelectedRequestIds([]);
       setSelectedProductId(null);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Error", description: getErrorMessage(err), variant: "destructive" });
     } finally {
       setIsSending(false);
     }
@@ -284,7 +284,7 @@ const EmailGenerator = () => {
             <List className="mr-2 h-5 w-5" />
             Select Template Type
           </Label>
-          <Select onValueChange={(value: any) => setTemplateType(value)} value={templateType}>
+          <Select onValueChange={(value) => setTemplateType(value as typeof templateType)} value={templateType}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select an email template" />
             </SelectTrigger>

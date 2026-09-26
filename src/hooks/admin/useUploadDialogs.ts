@@ -2,16 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
-import { TrackInfo } from '@/utils/helpers'; // Import TrackInfo
+import { getErrorMessage } from "@/lib/utils";
 import { UploadedPlatforms } from '@/components/admin/UploadPlatformsDialog'; // Import UploadedPlatforms
-
-// Define BackingRequest interface if not globally available
-interface BackingRequest {
-  id: string;
-  track_urls?: TrackInfo[];
-  uploaded_platforms?: string | UploadedPlatforms;
-  // Add other properties as needed by the hook's logic
-}
+import type { BackingRequest } from '@/types/backing-request';
 
 export const useUploadDialogs = (
   requests: BackingRequest[],
@@ -110,11 +103,11 @@ export const useUploadDialogs = (
       setUploadTrackId(null); // Close dialog
       setUploadFile(null);
       setUploadCaption('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Upload error:", error);
       toast({
         title: "Upload Failed",
-        description: `Could not upload ${uploadFile?.name || 'file'}: ${error.message}`,
+        description: `Could not upload ${uploadFile?.name || 'file'}: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {
@@ -132,11 +125,11 @@ export const useUploadDialogs = (
         title: "Direct Upload Successful",
         description: `${fileName} has been uploaded and linked to request ${requestId.substring(0, 8)}.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Direct upload error:", error);
       toast({
         title: "Direct Upload Failed",
-        description: `Could not upload ${file.name}: ${error.message}`,
+        description: `Could not upload ${file.name}: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {
@@ -170,11 +163,11 @@ export const useUploadDialogs = (
         description: "Uploaded platforms have been updated successfully.",
       });
       setUploadPlatformsDialogOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving platforms:", error);
       toast({
         title: "Error",
-        description: `Failed to save platforms: ${error.message}`,
+        description: `Failed to save platforms: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -205,11 +198,11 @@ export const useUploadDialogs = (
         description: "Track caption updated successfully.",
       });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating caption:", error);
       toast({
         title: "Error",
-        description: `Failed to update caption: ${error.message}`,
+        description: `Failed to update caption: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
       return false;

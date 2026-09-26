@@ -19,7 +19,7 @@ interface AppSettingsState {
   isServiceClosed: boolean;
   closureReason: string | null;
   isLoading: boolean;
-  error: any;
+  error: unknown;
 }
 
 export const useAppSettings = (): AppSettingsState => {
@@ -65,7 +65,7 @@ export const useAppSettings = (): AppSettingsState => {
         isLoading: false,
         error: null,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching app settings:', err);
       setState(prev => ({ ...prev, isLoading: false, error: err }));
     }

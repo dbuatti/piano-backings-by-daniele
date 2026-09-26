@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import { RefreshCcw, Loader2, FileAudio } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
@@ -131,8 +131,8 @@ const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mo
       if (error) throw error;
       setRequests(prev => prev.map(req => req.id === uploadTrackId ? { ...req, track_urls: updatedTrackUrls } : req));
       toast({ title: "Track Removed" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     }
   };
 
@@ -281,7 +281,10 @@ const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mo
         uploadCaption={uploadCaption}
         setUploadCaption={setUploadCaption}
         onFileUpload={handleFileUpload}
-        existingTrackUrls={existingTrackUrls}
+        existingTrackUrls={existingTrackUrls.map(track => ({
+          url: track.url,
+          caption: typeof track.caption === 'string' ? track.caption : '',
+        }))}
         onRemoveTrack={handleRemoveTrack}
         onUpdateTrackCaption={updateTrackCaption}
         isUploading={isUploading}

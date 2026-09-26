@@ -10,11 +10,17 @@ import { CheckCircle, Loader2, Download, Music, Package, ArrowRight, AlertCircle
 import Seo from '@/components/Seo';
 import { downloadTrack } from '@/utils/helpers';
 
+interface OrderData {
+  type?: 'shop' | 'request';
+  products?: { title: string; track_urls?: { url: string; caption?: string | null }[] | null } | null;
+  requests?: { song_title: string }[] | null;
+}
+
 const PurchaseConfirmation = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [orderData, setOrderData] = useState<any>(null);
+  const [orderData, setOrderData] = useState<OrderData | null>(null);
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
@@ -156,7 +162,7 @@ const PurchaseConfirmation = () => {
 
                 <div className="space-y-4">
                   <h4 className="font-black text-[#1C0357] uppercase tracking-widest text-sm">Your Downloads</h4>
-                  {orderData.products.track_urls?.map((track: any, i: number) => (
+                  {orderData.products.track_urls?.map((track, i) => (
                     <Button 
                       key={i}
                       onClick={() => downloadTrack(track.url, track.caption || 'track.mp3')}
@@ -176,7 +182,7 @@ const PurchaseConfirmation = () => {
                 <div className="p-8 bg-[#1C0357]/5 rounded-[32px] border-2 border-dashed border-[#1C0357]/10">
                   <h3 className="text-2xl font-black text-[#1C0357] mb-2">Request Received</h3>
                   <p className="text-gray-600 font-medium">
-                    I've received your custom request for <strong>{orderData?.requests?.map((r: any) => r.song_title).join(', ')}</strong>.
+                    I've received your custom request for <strong>{orderData?.requests?.map((r) => r.song_title).join(', ')}</strong>.
                   </p>
                   <p className="text-sm text-gray-400 mt-4">
                     You'll receive an email notification as soon as your tracks are ready.

@@ -54,13 +54,14 @@ import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import type { BackingRequest } from '@/types/backing-request';
 
 interface RequestTableRowProps {
-  request: any;
+  request: BackingRequest;
   selectedRequests: string[];
   handleSelectRequest: (id: string) => void;
   uploadTrack: (id: string) => void;
-  openEmailGenerator: (request: any) => void;
+  openEmailGenerator: (request: BackingRequest) => void;
   openDeleteDialog: (id: string) => void;
   openUploadPlatformsDialog: (id: string) => void;
   onDirectFileUpload: (id: string, file: File) => void;
@@ -97,16 +98,18 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
     }
   };
 
-  const getPlatformIcons = (platforms: any) => {
+  const getPlatformIcons = (platforms: BackingRequest['uploaded_platforms']) => {
     if (!platforms) return null;
     
-    let platformsObj = platforms;
+    let platformsObj: Partial<Record<string, boolean>>;
     if (typeof platforms === 'string') {
       try {
         platformsObj = JSON.parse(platforms);
-      } catch (e) {
+      } catch {
         return null;
       }
+    } else {
+      platformsObj = platforms;
     }
     
     const icons = [];

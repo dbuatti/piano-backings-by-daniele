@@ -7,12 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Bug, Play, Loader2, CheckCircle, XCircle, CreditCard } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { getErrorMessage } from "@/lib/utils";
 
 const FormDebugger: React.FC = () => {
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<any>(null);
+  const [result, setResult] = useState<{ stripeUrl?: string } | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [step, setStep] = useState<string>('');
 
   const runSimulation = async (type: 'matthew' | 'akansha') => {
@@ -115,13 +116,13 @@ const FormDebugger: React.FC = () => {
         title: "Debug Test Successful",
         description: "Both Request and Stripe steps passed.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Debug test error:', err);
       setError(err);
       setStep('Failed at: ' + step);
       toast({
         title: "Debug Test Failed",
-        description: err.message,
+        description: getErrorMessage(err),
         variant: "destructive",
       });
     } finally {

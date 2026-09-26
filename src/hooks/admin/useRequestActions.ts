@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from "@/lib/utils";
 
 interface BackingRequest {
   id: string;
@@ -39,10 +40,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Status Updated",
         description: "Request status has been updated successfully.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to update status: ${error.message}`,
+        description: `Failed to update status: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -65,10 +66,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Payment Status Updated",
         description: `Request marked as ${isPaid ? 'paid' : 'unpaid'}.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to update payment status: ${error.message}`,
+        description: `Failed to update payment status: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -91,10 +92,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Cost Updated",
         description: "Request cost has been updated successfully.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to update cost: ${error.message}`,
+        description: `Failed to update cost: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -117,10 +118,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Notes Saved",
         description: "Internal notes updated.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to save notes: ${error.message}`,
+        description: `Failed to save notes: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -148,10 +149,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Track Shared",
         description: "Shared link has been generated and sent to user.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to share track: ${error.message}`,
+        description: `Failed to share track: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -172,10 +173,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Request Deleted",
         description: "The request has been deleted successfully.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to delete request: ${error.message}`,
+        description: `Failed to delete request: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }
@@ -196,10 +197,10 @@ export const useRequestActions = (requests: BackingRequest[], setRequests: React
         title: "Requests Deleted",
         description: `${ids.length} requests have been deleted successfully.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: `Failed to delete requests: ${error.message}`,
+        description: `Failed to delete requests: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     }

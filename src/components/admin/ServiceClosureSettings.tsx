@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { getErrorMessage } from "@/lib/utils";
 
 const ServiceClosureSettings: React.FC = () => {
   const { toast } = useToast();
@@ -19,7 +20,7 @@ const ServiceClosureSettings: React.FC = () => {
   const [isClosed, setIsClosed] = useState(false);
   const [closureReason, setClosureReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   // Sync local state with hook state once loaded
   useEffect(() => {
@@ -62,12 +63,12 @@ const ServiceClosureSettings: React.FC = () => {
         title: "Settings Updated",
         description: "Service closure settings saved successfully.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating service closure settings:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to update settings: ${err.message}`,
+        description: `Failed to update settings: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {

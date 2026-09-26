@@ -56,9 +56,9 @@ import { calculateRequestCost } from '@/utils/pricing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import { useAdmin } from '@/hooks/useAdmin';
-import { BackingRequest, TrackInfo } from '@/types/backing-request';
+import { BackingRequest, RequestStatus, TrackInfo } from '@/types/backing-request';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
 import FileInput from '@/components/FileInput';
 
@@ -139,15 +139,15 @@ const RequestDetails = () => {
       const calculatedCost = calculateRequestCost(data).totalCost;
       setEditableFinalPrice(data.final_price !== null && data.final_price !== undefined ? data.final_price.toFixed(2) : calculatedCost.toFixed(2));
 
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
       navigate('/admin');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateField = async (field: keyof BackingRequest, value: any) => {
+  const handleUpdateField = async <K extends keyof BackingRequest>(field: K, value: BackingRequest[K]) => {
     if (!request) return;
     setIsUpdatingStatus(true);
     try {
@@ -155,8 +155,8 @@ const RequestDetails = () => {
       if (error) throw error;
       setRequest(prev => prev ? { ...prev, [field]: value } : null);
       toast({ title: "Update Successful" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -171,8 +171,8 @@ const RequestDetails = () => {
         if (error) throw error;
         setRequest(prev => prev ? { ...prev, final_price: parsedPrice } : null);
         toast({ title: "Price Updated" });
-      } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } catch (error: unknown) {
+        toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
       } finally {
         setIsUpdatingFinalPrice(false);
       }
@@ -213,8 +213,8 @@ const RequestDetails = () => {
       } else {
         throw new Error('Failed to trigger Dropbox automation');
       }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsTriggeringDropbox(false);
     }
@@ -263,8 +263,8 @@ const RequestDetails = () => {
 
       setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
       toast({ title: "Track Uploaded Successfully" });
-    } catch (error: any) {
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Upload Failed", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -323,8 +323,8 @@ const RequestDetails = () => {
 
       setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
       toast({ title: "Track Deleted Successfully" });
-    } catch (error: any) {
-      toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Delete Failed", description: getErrorMessage(error), variant: "destructive" });
     }
   };
 
@@ -352,8 +352,8 @@ const RequestDetails = () => {
       setRequest(prev => prev ? { ...prev, track_urls: updatedTrackUrls } : null);
       setIsEditingCaption(null);
       toast({ title: "Caption Updated Successfully" });
-    } catch (error: any) {
-      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Update Failed", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsUpdatingCaption(false);
     }
@@ -419,7 +419,7 @@ const RequestDetails = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                 <div>
                   <Label className="text-sm mb-1">Request Status</Label>
-                  <Select value={request.status || 'pending'} onValueChange={(v) => handleUpdateField('status', v)}>
+                  <Select value={request.status || 'pending'} onValueChange={(v) => handleUpdateField('status', v as RequestStatus)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>

@@ -65,6 +65,7 @@ import {
 } from 'lucide-react';
 import { ADMIN_EMAILS } from '@/utils/helpers';
 import { setImpersonatedUser } from '@/utils/impersonation';
+import { getErrorMessage } from "@/lib/utils";
 
 interface UserItem {
   id: string;
@@ -233,7 +234,8 @@ export const UsersTabContent: React.FC = () => {
           )
         `);
       if (ordersError) throw ordersError;
-      setOrders((ordersData as any) || []);
+      // The untyped client infers the `products` join as an array, but it's a many-to-one object at runtime.
+      setOrders((ordersData as unknown as OrderItem[] | null) || []);
 
       // 5. Fetch backing requests
       const { data: requestsData, error: requestsError } = await supabase
@@ -243,11 +245,11 @@ export const UsersTabContent: React.FC = () => {
       if (requestsError) throw requestsError;
       setRequests(requestsData || []);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching users data:", error);
       toast({
         title: "Error loading users",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -456,10 +458,10 @@ export const UsersTabContent: React.FC = () => {
 
       setEditProfileDialogOpen(false);
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error updating profile",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -520,10 +522,10 @@ export const UsersTabContent: React.FC = () => {
 
       setAdjustCreditsDialogOpen(false);
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error adjusting credits",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -580,10 +582,10 @@ export const UsersTabContent: React.FC = () => {
 
       setQuickGrantUserId('');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error granting credits",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -701,7 +703,7 @@ export const UsersTabContent: React.FC = () => {
                 </div>
 
                 <div>
-                  <Select value={roleFilter} onValueChange={(v: any) => setRoleFilter(v)}>
+                  <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
                     <SelectTrigger className="rounded-xl border-gray-200">
                       <div className="flex items-center gap-1.5">
                         <Shield className="h-3.5 w-3.5 text-gray-400" />
@@ -717,7 +719,7 @@ export const UsersTabContent: React.FC = () => {
                 </div>
 
                 <div>
-                  <Select value={creditFilter} onValueChange={(v: any) => setCreditFilter(v)}>
+                  <Select value={creditFilter} onValueChange={(v) => setCreditFilter(v as typeof creditFilter)}>
                     <SelectTrigger className="rounded-xl border-gray-200">
                       <div className="flex items-center gap-1.5">
                         <CreditCard className="h-3.5 w-3.5 text-gray-400" />
@@ -898,7 +900,7 @@ export const UsersTabContent: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="quick-grant-type" className="font-bold text-gray-700">Credit Type</Label>
-                  <Select value={quickGrantType} onValueChange={(v: any) => setQuickGrantType(v)}>
+                  <Select value={quickGrantType} onValueChange={(v) => setQuickGrantType(v as typeof quickGrantType)}>
                     <SelectTrigger id="quick-grant-type" className="rounded-xl border-gray-200">
                       <SelectValue placeholder="Select credit type" />
                     </SelectTrigger>
@@ -1269,7 +1271,7 @@ export const UsersTabContent: React.FC = () => {
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label className="font-bold text-gray-700">Credit Type</Label>
-              <Select value={adjustCreditType} onValueChange={(v: any) => setAdjustCreditType(v)}>
+              <Select value={adjustCreditType} onValueChange={(v) => setAdjustCreditType(v as typeof adjustCreditType)}>
                 <SelectTrigger className="rounded-xl border-gray-200">
                   <SelectValue />
                 </SelectTrigger>

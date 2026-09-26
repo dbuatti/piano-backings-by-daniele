@@ -37,6 +37,8 @@ import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import Seo from "@/components/Seo";
+import { getErrorMessage } from "@/lib/utils";
+import type { Session } from '@supabase/supabase-js';
 
 interface BackingRequest {
   id: string;
@@ -82,7 +84,7 @@ const ClientTrackView = () => {
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [userSession, setUserSession] = useState<any>(null);
+  const [userSession, setUserSession] = useState<Session | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -112,8 +114,8 @@ const ClientTrackView = () => {
         throw new Error(err.error || 'Failed to send email');
       }
       toast({ title: "Email Sent", description: `The ${type === 'order_confirmation' ? 'order confirmation' : 'invoice'} has been sent.` });
-    } catch (err: any) {
-      toast({ title: "Email Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Email Error", description: getErrorMessage(err), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -146,8 +148,8 @@ const ClientTrackView = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast({ title: "Invoice Downloaded" });
-    } catch (err: any) {
-      toast({ title: "Download Error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Download Error", description: getErrorMessage(err), variant: "destructive" });
     } finally {
       setIsDownloadingInvoice(false);
     }
@@ -172,7 +174,7 @@ const ClientTrackView = () => {
 
       try {
         let requestData: BackingRequest | null = null;
-        let fetchError: any = null;
+        let fetchError: unknown = null;
 
         if (guestAccessToken) {
           const response = await fetch(
@@ -247,12 +249,12 @@ const ClientTrackView = () => {
           });
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error in ClientTrackView fetch logic:', error);
         setAccessDenied(true);
         toast({
           title: "Error",
-          description: `Failed to fetch request: ${error.message}`,
+          description: `Failed to fetch request: ${getErrorMessage(error)}`,
           variant: "destructive",
         });
       } finally {
@@ -289,11 +291,11 @@ const ClientTrackView = () => {
       if (error) {
         throw error;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing in with Google:', error);
       toast({
         title: "Sign In Error",
-        description: `Failed to sign in with Google: ${error.message}`,
+        description: `Failed to sign in with Google: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {

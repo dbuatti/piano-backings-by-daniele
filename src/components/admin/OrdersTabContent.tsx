@@ -42,6 +42,7 @@ import {
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
+import { getErrorMessage } from "@/lib/utils";
 
 interface OrderItem {
   id: string;
@@ -118,7 +119,8 @@ export const OrdersTabContent: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
-      setOrders((ordersData as any) || []);
+      // The untyped client infers the `products` join as an array, but it's a many-to-one object at runtime.
+      setOrders((ordersData as unknown as OrderItem[] | null) || []);
 
       // 2. Fetch profiles to map names
       const { data: profilesData, error: profilesError } = await supabase
@@ -128,11 +130,11 @@ export const OrdersTabContent: React.FC = () => {
       if (profilesError) throw profilesError;
       setProfiles(profilesData || []);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching orders:", error);
       toast({
         title: "Error loading orders",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -341,7 +343,7 @@ export const OrdersTabContent: React.FC = () => {
             </div>
 
             <div>
-              <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
                 <SelectTrigger className="rounded-xl border-gray-200">
                   <SelectValue placeholder="Payment Status" />
                 </SelectTrigger>
