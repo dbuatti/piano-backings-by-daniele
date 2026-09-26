@@ -133,6 +133,10 @@ BEGIN
     EXECUTE format('DROP POLICY %I ON public.orders', r.policyname);
   END LOOP;
 
+  -- Orders are created by edge functions (service role). A customer-inserted
+  -- 'completed' order would unlock product_files for free.
+  DROP POLICY IF EXISTS "Users can insert their own orders" ON public.orders;
+
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Customers can view their own orders') THEN
     CREATE POLICY "Customers can view their own orders"
       ON public.orders FOR SELECT
@@ -173,6 +177,10 @@ BEGIN
     END IF;
     EXECUTE format('DROP POLICY %I ON public.%I', r.policyname, r.tablename);
   END LOOP;
+
+  -- Mixed admin-or-owner policy: the admin email in it skips the loop above, but it
+  -- also lets owners edit their own rows (is_paid, final_price). Admins are covered below.
+  DROP POLICY IF EXISTS "Admins and owners can update backing requests" ON public.backing_requests;
 
   -- Admin tools (request editor, data importer, credit management) write directly.
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'backing_requests' AND policyname = 'Admins manage backing_requests') THEN
