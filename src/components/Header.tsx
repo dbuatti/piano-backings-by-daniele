@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import CartButton from '@/components/cart/CartButton';
+import HolidayModeBanner from '@/components/HolidayModeBanner';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -335,6 +336,7 @@ const Header = () => {
           </div>
         </div>
       )}
+      <HolidayModeBanner />
     </header>
   );
 };

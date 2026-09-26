@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CalendarIcon, Plane, Loader2 } from "lucide-react";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { supabase } from '@/integrations/supabase/client';
@@ -67,7 +67,7 @@ const HolidayModeSettings: React.FC = () => {
         setIsActive(updatedFields.is_holiday_mode_active);
       }
       if (updatedFields.holiday_mode_return_date !== undefined) {
-        setReturnDate(updatedFields.holiday_mode_return_date ? new Date(updatedFields.holiday_mode_return_date) : undefined);
+        setReturnDate(updatedFields.holiday_mode_return_date ? parseISO(updatedFields.holiday_mode_return_date) : undefined);
       }
 
       toast({
@@ -138,8 +138,10 @@ const HolidayModeSettings: React.FC = () => {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-gray-600 mb-6">
-          Toggle holiday mode to inform users you're away and set a return date.
-          When active, users will see a prominent banner and won't be able to submit new requests.
+          Toggle holiday mode to let customers know you're away and when you'll start work again.
+          Customers can still book: they see a banner, the request form explains that work starts on
+          the return date, and due dates before then can't be picked. Holiday mode switches itself off
+          on the return date.
         </p>
 
         <div className="space-y-6">
@@ -189,7 +191,7 @@ const HolidayModeSettings: React.FC = () => {
               </PopoverContent>
             </Popover>
             <p className="text-xs text-gray-500 mt-2">
-              This date will be displayed to users when holiday mode is active.
+              Work on new requests starts on this date. It's shown in the banner, the request form and the confirmation email.
             </p>
           </div>
         </div>

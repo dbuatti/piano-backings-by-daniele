@@ -23,8 +23,10 @@ import {
   Sparkles,
   XCircle,
   MessageSquare,
-  Tag
+  Tag,
+  Plane
 } from 'lucide-react';
+import { addBusinessDays, format, parseISO } from 'date-fns';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -70,7 +72,10 @@ const FormPage = () => {
   const [useCredit, setUseCredit] = useState(false);
   const [testMode, setTestMode] = useState(false);
 
-  const { isHolidayModeActive, isServiceClosed, closureReason } = useAppSettings();
+  const { isHolidayModeActive, holidayReturnDate, isServiceClosed, closureReason } = useAppSettings();
+  const holidayReturn = isHolidayModeActive ? holidayReturnDate : null;
+  // While away, the earliest due date is the return date plus the usual 3 business days.
+  const minDeliveryDate = format(holidayReturn ? addBusinessDays(holidayReturn, 3) : new Date(), 'yyyy-MM-dd');
   const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
 
   const [promoCode, setPromoCode] = useState('');
@@ -197,7 +202,7 @@ const FormPage = () => {
       name: testName,
       category: 'Audition Tracks',
       trackType: 'audition-ready',
-      deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      deliveryDate: [format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), minDeliveryDate].sort()[1],
       additionalServices: ['rush-order'],
       specialRequests: `DEBUG: Testing ${type} song submission flow.`,
     });
@@ -236,7 +241,7 @@ const FormPage = () => {
     }
     setConsentChecked(true);
     toast({ title: "Form Prefilled", description: `Loaded ${type} song test data.` });
-  }, [user, toast]);
+  }, [user, toast, minDeliveryDate]);
 
   const handleClearForm = useCallback(() => {
     setGlobalData({
@@ -291,7 +296,16 @@ const FormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isHolidayModeActive || isServiceClosed) return;
+    if (isServiceClosed) return;
+
+    if (globalData.deliveryDate && globalData.deliveryDate < minDeliveryDate) {
+      toast({
+        title: "Due date too early",
+        description: `The earliest due date I can offer is ${format(parseISO(minDeliveryDate), 'EEEE d MMMM')}.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (globalData.email !== globalData.confirmEmail) {
       toast({ title: "Email Mismatch", description: "Please ensure your email addresses match.", variant: "destructive" });
@@ -496,13 +510,32 @@ const FormPage = () => {
               <CheckCircle size={48} />
             </div>
             <h2 className="text-4xl font-black text-[#1C0357] mb-4 tracking-tighter">Submission Successful!</h2>
-            <p className="text-xl text-gray-600 mb-12 font-medium">Daniele will review your materials and start recording soon.</p>
+            <p className="text-xl text-gray-600 mb-12 font-medium">
+              {holidayReturn
+                ? `I'm away until ${format(holidayReturn, 'EEEE d MMMM')}, and I'll start recording your track from then.`
+                : 'Daniele will review your materials and start recording soon.'}
+            </p>
             <Button onClick={() => navigate('/user-dashboard')} className="rounded-2xl bg-[#1C0357] px-12 py-7 text-lg font-black shadow-xl">
               View My Requests <ChevronRight className="ml-2" />
             </Button>
           </Card>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-12">
+            {isHolidayModeActive && (
+              <div className="flex items-start gap-4 rounded-3xl border-2 border-[#F538BC]/30 bg-[#F538BC]/5 p-6">
+                <Plane className="h-6 w-6 flex-shrink-0 text-[#F538BC] mt-0.5" aria-hidden="true" />
+                <div>
+                  <p className="font-black text-lg text-[#1C0357]">
+                    {holidayReturn ? `I'm away until ${format(holidayReturn, 'EEEE d MMMM')}` : "I'm away for a little while"}
+                  </p>
+                  <p className="text-gray-600 font-medium">
+                    You can still book now. I'll start work on requests {holidayReturn ? 'from then' : "as soon as I'm back"}
+                    {holidayReturn ? `, so the earliest due date is ${format(parseISO(minDeliveryDate), 'EEEE d MMMM')}` : ''}.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <ContactDetailsForm 
               name={globalData.name}
               email={globalData.email}
@@ -577,11 +610,13 @@ const FormPage = () => {
                     name="deliveryDate" 
                     value={globalData.deliveryDate} 
                     onChange={handleGlobalInputChange} 
-                    min={new Date().toISOString().split('T')[0]} 
+                    min={minDeliveryDate} 
                     className="h-14 rounded-2xl border-gray-200 font-bold"
                   />
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                    {globalData.additionalServices.includes('asap')
+                    {holidayReturn
+                      ? `Work starts ${format(holidayReturn, 'd MMMM')}. The earliest due date is ${format(parseISO(minDeliveryDate), 'd MMMM')}.`
+                      : globalData.additionalServices.includes('asap')
                       ? 'You selected ASAP — I\'ll prioritise this as much as possible.'
                       : 'Standard delivery is 3-5 business days. Select "As soon as humanly possible" above for free priority scheduling.'}
                   </p>
