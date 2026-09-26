@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocatio
 import Index from './pages/Index';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
-import HolidayModeBanner from './components/HolidayModeBanner';
 import ReportIssueButton from './components/ReportIssueButton';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import Footer from './components/Footer';
@@ -68,7 +67,6 @@ function App() {
       <ScrollToTop />
       <div className="flex flex-col min-h-screen">
         <ImpersonationBanner />
-        <HolidayModeBanner />
         <UnreadIssueReportsNotice />
         <div className="flex-grow">
           <RouteErrorBoundary>

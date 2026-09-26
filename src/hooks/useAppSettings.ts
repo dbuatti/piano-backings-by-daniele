@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isPast } from 'date-fns';
+import { isPast, parseISO } from 'date-fns';
 
 interface AppSettings {
   id: string;
@@ -46,7 +46,9 @@ export const useAppSettings = (): AppSettingsState => {
       let returnDate: Date | null = null;
 
       if (data.holiday_mode_return_date) {
-        const parsedDate = new Date(data.holiday_mode_return_date);
+        // parseISO reads a plain 'yyyy-MM-dd' as local midnight; new Date() would read it
+        // as UTC and show the previous day for visitors west of UTC.
+        const parsedDate = parseISO(data.holiday_mode_return_date);
         if (!isNaN(parsedDate.getTime())) {
           returnDate = parsedDate;
           // If holiday mode is active but the return date is in the past, treat it as inactive in the UI

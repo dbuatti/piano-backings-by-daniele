@@ -1,80 +1,88 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { Plane, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 const DISMISS_KEY = 'holidayBannerDismissed';
 
 const HolidayModeBanner: React.FC = () => {
   const { isHolidayModeActive, holidayReturnDate, isLoading, error } = useAppSettings();
+  const location = useLocation();
   const [isDismissed, setIsDismissed] = useState(false);
 
   // On mount, check if user dismissed the banner this browser session
   useEffect(() => {
-    if (sessionStorage.getItem(DISMISS_KEY) === 'true') {
-      setIsDismissed(true);
+    try {
+      if (sessionStorage.getItem(DISMISS_KEY) === 'true') {
+        setIsDismissed(true);
+      }
+    } catch {
+      // Storage unavailable (private mode etc.) — just show the banner.
     }
   }, []);
 
-  // Reset dismissal if holiday mode was turned off and then back on (new holiday)
+  // Reset dismissal if holiday mode was turned off and then back on (new holiday).
+  // Wait for settings to load: while loading, holiday mode reads as off.
   useEffect(() => {
-    if (!isHolidayModeActive) {
-      sessionStorage.removeItem(DISMISS_KEY);
+    if (!isLoading && !error && !isHolidayModeActive) {
+      try { sessionStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
       setIsDismissed(false);
     }
-  }, [isHolidayModeActive]);
+  }, [isLoading, error, isHolidayModeActive]);
 
   const handleDismiss = () => {
-    sessionStorage.setItem(DISMISS_KEY, 'true');
+    try { sessionStorage.setItem(DISMISS_KEY, 'true'); } catch { /* ignore */ }
     setIsDismissed(true);
   };
 
-  if (isLoading || !isHolidayModeActive || isDismissed) {
+  if (isLoading || error || !isHolidayModeActive || isDismissed) {
     return null;
   }
 
-  if (error) {
-    return null;
-  }
+  const dateLong = holidayReturnDate ? format(holidayReturnDate, 'EEEE d MMMM') : null;
+  const dateShort = holidayReturnDate ? format(holidayReturnDate, 'd MMM') : null;
+  const startFrom = dateLong ? 'from then' : "as soon as I'm back";
+  const onShop = location.pathname.startsWith('/shop');
+  const onForm = location.pathname.startsWith('/form-page');
 
-  const returnDateMessage = holidayReturnDate
-    ? `I'll be back on ${format(holidayReturnDate, 'MMMM d, yyyy')} to continue tracks.`
-    : `I'll be back soon to continue tracks.`;
-
+  // Rendered inside the fixed Header and hung just below it, so it stays visible
+  // without pushing page content (pages already pad for the header).
   return (
-    <div className="fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center p-4">
-      <Card className="bg-white p-8 rounded-lg shadow-xl text-center max-w-2xl w-full relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 text-gray-500 hover:bg-gray-100"
+    <div role="status" className="absolute top-full left-0 right-0 bg-[#1C0357] text-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center gap-2 text-xs sm:text-sm">
+        <Plane className="h-4 w-4 flex-shrink-0 text-[#F538BC]" aria-hidden="true" />
+        <p className="flex-1 font-medium truncate sm:whitespace-normal">
+          <span className="sm:hidden">
+            {dateShort ? `Away until ${dateShort}. ` : 'Away for now. '}
+            {onShop ? 'Shop downloads are instant.' : "Book now, I'll start then."}
+          </span>
+          <span className="hidden sm:inline">
+            {dateLong ? `I'm away until ${dateLong}.` : "I'm away for a little while."}{' '}
+            {onShop
+              ? `Shop tracks still download instantly. Custom requests are open and I'll start on them ${startFrom}.`
+              : `You can still book a custom track now and I'll start on it ${startFrom}.`}
+            {!onShop && !onForm && (
+              <>
+                {' '}
+                <Link to="/form-page" className="underline underline-offset-2 font-bold hover:text-[#F538BC]">
+                  Request a track
+                </Link>
+              </>
+            )}
+          </span>
+        </p>
+        <button
+          type="button"
           onClick={handleDismiss}
-          aria-label="Dismiss"
+          aria-label="Dismiss holiday notice"
+          className="p-1 rounded hover:bg-white/10 flex-shrink-0"
         >
-          <X className="h-5 w-5" />
-          <span className="sr-only">Dismiss</span>
-        </Button>
-
-        <div className="flex flex-col items-center justify-center p-0">
-          <Plane className="h-12 w-12 md:h-16 md:w-16 mb-4 text-[#F538BC] flex-shrink-0" />
-          <h2 className="text-3xl md:text-5xl font-extrabold tracking-wide mb-3 text-[#1C0357]">Daniele is on Holiday!</h2>
-          <p className="text-lg md:text-xl font-medium tracking-wide text-gray-700">
-            I'm currently taking a break. {returnDateMessage} Thank you for your understanding!
-          </p>
-        </div>
-        <CardContent className="mt-6 p-0">
-          <Button
-            onClick={handleDismiss}
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white text-lg px-8 py-3"
-          >
-            Got It!
-          </Button>
-        </CardContent>
-      </Card>
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 };

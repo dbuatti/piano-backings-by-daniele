@@ -219,11 +219,26 @@ Deno.serve(async (req) => {
       try {
         const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
         const tierLabel = formData.trackType?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
+
+        // Holiday mode: tell the client when work actually starts.
+        let startNote = `I've received your materials and will begin working on your track soon.`;
+        const { data: settings } = await supabaseAdmin
+          .from('app_settings')
+          .select('is_holiday_mode_active, holiday_mode_return_date')
+          .limit(1)
+          .maybeSingle();
+        const returnDate = settings?.holiday_mode_return_date as string | null | undefined;
+        if (settings?.is_holiday_mode_active && returnDate && returnDate > new Date().toISOString().slice(0, 10)) {
+          const returnLabel = new Date(`${returnDate}T00:00:00Z`).toLocaleDateString('en-AU', {
+            weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+          });
+          startNote = `I've received your materials. I'm away at the moment and will start work on your track from ${returnLabel}.`;
+        }
         
         const clientEmailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
             <p>Hi ${firstName},</p>
-            <p>Thanks for your custom backing track request! I've received your materials and will begin working on your track soon.</p>
+            <p>Thanks for your custom backing track request! ${startNote}</p>
             
             <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
