@@ -32,6 +32,8 @@ interface ProductForm {
   key_signature: string;
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
+  cut_description: string;
+  official_score_url: string;
   track_type: string;
   master_download_link: string;
   product_type: string;
@@ -57,6 +59,8 @@ const CreateNewProduct: React.FC = () => {
     key_signature: '',
     show_sheet_music_url: true,
     show_key_signature: true,
+    cut_description: '',
+    official_score_url: '',
     track_type: 'polished',
     master_download_link: '',
     product_type: 'track',
@@ -252,7 +256,7 @@ const CreateNewProduct: React.FC = () => {
       });
       setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
+        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true, cut_description: '', official_score_url: '',
         track_type: 'polished', master_download_link: '', product_type: 'track', credit_amount: 0,
       });
       setImageFile(null);
@@ -583,6 +587,31 @@ const CreateNewProduct: React.FC = () => {
                   />
                   <Label htmlFor="show_key_signature">Show Key in Shop</Label>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="cut_description">Cut Details</Label>
+                <Input
+                  id="cut_description"
+                  name="cut_description"
+                  value={productForm.cut_description}
+                  onChange={handleFormChange}
+                  placeholder="e.g., 32-bar cut, bars 45–76"
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">Shown in the shop so singers know which cut this is.</p>
+              </div>
+              <div>
+                <Label htmlFor="official_score_url">Official Score Link (optional)</Label>
+                <Input
+                  id="official_score_url"
+                  name="official_score_url"
+                  type="url"
+                  value={productForm.official_score_url}
+                  onChange={handleFormChange}
+                  placeholder="e.g., Musicnotes or publisher page"
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">Where singers can buy the published sheet music.</p>
               </div>
             </div>
           )}

@@ -83,6 +83,8 @@ interface Product {
   duration_seconds?: number | null;
   master_download_link: string | null;
   product_type?: string | null;
+  cut_description?: string | null;
+  official_score_url?: string | null;
 }
 
 interface ProductVariantGroup {

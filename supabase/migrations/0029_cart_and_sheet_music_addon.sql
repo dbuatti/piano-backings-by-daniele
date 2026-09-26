@@ -74,3 +74,18 @@ BEGIN
       WITH CHECK (auth.email() = 'daniele.buatti@gmail.com' OR auth.email() = 'pianobackingsbydaniele@gmail.com');
   END IF;
 END $$;
+
+-- 4. Shop listings describe the cut and can link to the official published score,
+--    instead of showing a client's uploaded (marked-up) sheet music.
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS cut_description text,
+  ADD COLUMN IF NOT EXISTS official_score_url text;
+
+-- Hide existing previews that point at client uploads. Admin-uploaded previews live
+-- under sheet-music/shop-sheet-music/; client form uploads are at the bucket root or
+-- under sheet-music/<request-id>/. External links (Dropbox etc.) are left alone.
+UPDATE public.products
+SET show_sheet_music_url = false
+WHERE show_sheet_music_url = true
+  AND sheet_music_url LIKE '%/storage/v1/object/public/sheet-music/%'
+  AND sheet_music_url NOT LIKE '%/storage/v1/object/public/sheet-music/shop-sheet-music/%';

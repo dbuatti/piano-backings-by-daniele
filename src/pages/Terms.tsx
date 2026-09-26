@@ -130,12 +130,9 @@ const Terms = () => (
     <LegalSection title="7. Material you send me">
       <p>
         By uploading sheet music, voice memos or other material, you confirm you're entitled to share it with me for
-        the purpose of making your track. Voice memos and your personal details are never made public.
-      </p>
-      <p>
-        If your track is later offered in my shop, I may show the sheet music you sent (including any cuts or markings)
-        as a preview so buyers know which version they're getting. If you'd rather I didn't, just tell me and I'll
-        leave it out. See the <Link to="/privacy">Privacy Policy</Link> for how uploads are stored.
+        the purpose of making your track. I don't publish the sheet music, voice memos or personal details you send
+        me. If your track is later offered in my shop, the listing describes the key and cut in words and may link to
+        the official published score. See the <Link to="/privacy">Privacy Policy</Link> for how uploads are stored.
       </p>
     </LegalSection>
 

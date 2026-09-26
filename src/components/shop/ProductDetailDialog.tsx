@@ -9,6 +9,8 @@ import {
   Link as LinkIcon, 
   Check,
   FileText,
+  Scissors,
+  ExternalLink,
   Theater, 
   Key, 
   Play, 
@@ -54,6 +56,8 @@ interface Product {
   show_sheet_music_url?: boolean;
   master_download_link?: string | null;
   product_type?: string | null;
+  cut_description?: string | null;
+  official_score_url?: string | null;
 }
 
 interface ProductDetailDialogProps {
@@ -353,6 +357,13 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                     </div>
                   )}
 
+                  {selected.cut_description && (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-gray-500 text-xs flex items-center gap-2 flex-shrink-0"><Scissors size={14} /> Cut</span>
+                      <span className="font-bold text-[#1C0357] text-sm text-right">{selected.cut_description}</span>
+                    </div>
+                  )}
+
                   {selected.duration_seconds ? (
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 text-xs flex items-center gap-2"><Clock size={14} /> Duration</span>
@@ -384,6 +395,14 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 <a href={selected.sheet_music_url} target="_blank" rel="noopener noreferrer" className="block">
                   <Button variant="outline" className="w-full h-10 text-xs border-gray-300 rounded-lg hover:bg-gray-50 font-bold">
                     <LinkIcon className="mr-2 h-3.5 w-3.5" /> Preview Sheet Music
+                  </Button>
+                </a>
+              )}
+
+              {selected.official_score_url && (
+                <a href={selected.official_score_url} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button variant="outline" className="w-full h-10 text-xs border-gray-300 rounded-lg hover:bg-gray-50 font-bold">
+                    <ExternalLink className="mr-2 h-3.5 w-3.5" /> Buy the Official Score
                   </Button>
                 </a>
               )}

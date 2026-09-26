@@ -70,6 +70,8 @@ interface ProductForm {
   key_signature: string;
   show_sheet_music_url: boolean;
   show_key_signature: boolean;
+  cut_description: string;
+  official_score_url: string;
   track_type: string;
   master_download_link: string;
 }
@@ -156,6 +158,8 @@ const RepurposeTrackToShop: React.FC = () => {
     key_signature: '',
     show_sheet_music_url: true,
     show_key_signature: true,
+    cut_description: '',
+    official_score_url: '',
     track_type: '',
     master_download_link: '',
   });
@@ -285,7 +289,9 @@ const RepurposeTrackToShop: React.FC = () => {
     let autoCategory = getSafeBackingTypes(firstRequest.backing_type).length > 0 ? getSafeBackingTypes(firstRequest.backing_type)[0] : 'general';
     let autoTrackType = firstRequest.track_type || '';
     let autoKeySignature = firstRequest.song_key || '';
-    let autoSheetMusicUrl = firstRequest.sheet_music_urls?.[0]?.url || firstRequest.sheet_music_url || '';
+    // Never reuse the client's uploaded sheet music: it's their marked-up copy of a
+    // published score. Upload your own engraved preview instead if you want one.
+    let autoSheetMusicUrl = '';
 
     if (isBundle) {
       const artistNames = [...new Set(selectedRequests.map(r => r.musical_or_artist))];
@@ -365,7 +371,7 @@ const RepurposeTrackToShop: React.FC = () => {
     setIsFormPreFilled(false);
     setProductForm({
       title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
+      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true, cut_description: '', official_score_url: '',
       track_type: '', master_download_link: '',
     });
     setImageFile(null);
@@ -475,7 +481,7 @@ const RepurposeTrackToShop: React.FC = () => {
     if (file) {
       setProductForm(prev => ({ ...prev, sheet_music_url: URL.createObjectURL(file) }));
     } else {
-      setProductForm(prev => ({ ...prev, sheet_music_url: selectedRequests.length > 0 ? selectedRequests[0].sheet_music_urls?.[0]?.url || selectedRequests[0].sheet_music_url || '' : '' }));
+      setProductForm(prev => ({ ...prev, sheet_music_url: '' }));
     }
     setFormErrors(prev => ({ ...prev, sheet_music_url: '' }));
   };
@@ -548,7 +554,7 @@ const RepurposeTrackToShop: React.FC = () => {
       setIsFormPreFilled(false);
       setProductForm({
         title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true,
+        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true, cut_description: '', official_score_url: '',
         track_type: '', master_download_link: '',
       });
       setImageFile(null);
@@ -941,6 +947,31 @@ const RepurposeTrackToShop: React.FC = () => {
                     />
                     <Label htmlFor="show_key_signature">Show Key in Shop</Label>
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="cut_description">Cut Details</Label>
+                  <Input
+                    id="cut_description"
+                    name="cut_description"
+                    value={productForm.cut_description}
+                    onChange={handleFormChange}
+                    placeholder="e.g., 32-bar cut, bars 45–76"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Shown in the shop so singers know which cut this is.</p>
+                </div>
+                <div>
+                  <Label htmlFor="official_score_url">Official Score Link (optional)</Label>
+                  <Input
+                    id="official_score_url"
+                    name="official_score_url"
+                    type="url"
+                    value={productForm.official_score_url}
+                    onChange={handleFormChange}
+                    placeholder="e.g., Musicnotes or publisher page"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Where singers can buy the published sheet music.</p>
                 </div>
               </div>
               
