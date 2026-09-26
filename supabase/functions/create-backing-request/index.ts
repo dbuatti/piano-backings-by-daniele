@@ -1,23 +1,10 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { TIER_PRICES, SERVICE_COSTS } from '../_shared/pricing.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const TIER_PRICES: Record<string, number> = {
-  'note-bash': 15.00,
-  'audition-ready': 30.00,
-  'full-song': 50.00,
-};
-
-const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
-  'rush-order': 15.00,
-  'complex-songs': 10.00,
-  'additional-edits': 5.00,
-  'exclusive-ownership': 40.00,
-  'asap': 0,
 };
 
 function calculateRequestCost(request: any): number {
@@ -27,7 +14,7 @@ function calculateRequestCost(request: any): number {
 
   if (request.additionalServices && Array.isArray(request.additionalServices)) {
     request.additionalServices.forEach((service: string) => {
-      totalCost += ADDITIONAL_SERVICE_COSTS[service] || 0;
+      totalCost += SERVICE_COSTS[service] || 0;
     });
   }
   
