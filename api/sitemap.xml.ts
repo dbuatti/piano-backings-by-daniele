@@ -26,6 +26,8 @@ export default async function handler(
     { path: '/form-page', changefreq: 'monthly', priority: '0.8' },
     { path: '/pricing', changefreq: 'monthly', priority: '0.8' },
     { path: '/about', changefreq: 'monthly', priority: '0.6' },
+    { path: '/terms', changefreq: 'yearly', priority: '0.3' },
+    { path: '/privacy', changefreq: 'yearly', priority: '0.3' },
   ];
 
   let products: Product[] = [];

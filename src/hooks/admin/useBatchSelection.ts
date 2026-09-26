@@ -4,7 +4,8 @@ import { calculateRequestCost } from '@/utils/pricing';
 interface BackingRequest {
   id: string;
   cost?: number;
-  // Add other fields as necessary for calculateRequestCost
+  track_type?: string | null;
+  additional_services?: string[] | null;
 }
 
 export const useBatchSelection = (filteredRequests: BackingRequest[]) => {

@@ -22,7 +22,7 @@ export const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
   'asap': 0,
 };
 
-export const calculateRequestCost = (request: any) => {
+export const calculateRequestCost = (request: { track_type?: string | null; additional_services?: string[] | null }) => {
   let totalCost = 0;
   const baseCosts: { type: string; cost: number }[] = [];
   const serviceCosts: { service: string; cost: number }[] = [];

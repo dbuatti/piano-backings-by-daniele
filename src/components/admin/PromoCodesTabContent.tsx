@@ -23,6 +23,7 @@ import {
   Tag, Plus, Loader2, Search, AlertCircle, RefreshCw, Edit, Trash2, CheckCircle2, XCircle, Clock, Calendar
 } from 'lucide-react';
 import type { PromoCode, PromoCodeRedemption } from '@/types/promo-code';
+import { getErrorMessage } from "@/lib/utils";
 
 export const PromoCodesTabContent: React.FC = () => {
   const { toast } = useToast();
@@ -81,10 +82,10 @@ export const PromoCodesTabContent: React.FC = () => {
 
       if (redemptionsError) throw redemptionsError;
       setRedemptions(redemptionsData || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error loading promo codes",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -158,8 +159,8 @@ export const PromoCodesTabContent: React.FC = () => {
       setCreateDialogOpen(false);
       resetForm();
       fetchData();
-    } catch (error: any) {
-      toast({ title: "Error creating promo code", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error creating promo code", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -191,8 +192,8 @@ export const PromoCodesTabContent: React.FC = () => {
       setEditDialogOpen(false);
       setSelectedCode(null);
       fetchData();
-    } catch (error: any) {
-      toast({ title: "Error updating promo code", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error updating promo code", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -208,8 +209,8 @@ export const PromoCodesTabContent: React.FC = () => {
       setDeleteDialogOpen(false);
       setSelectedCode(null);
       fetchData();
-    } catch (error: any) {
-      toast({ title: "Error deleting promo code", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Error deleting promo code", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }

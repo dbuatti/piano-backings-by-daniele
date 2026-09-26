@@ -13,7 +13,7 @@ import { Loader2, Save, ArrowLeft, Music, User, Mail, Calendar, Key, Target, Hea
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import { calculateRequestCost } from '@/utils/pricing';
 import FileInput from '@/components/FileInput';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
@@ -69,7 +69,7 @@ const EditRequest: React.FC = () => {
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [voiceMemoFile, setVoiceMemoFile] = useState<File | null>(null);
@@ -115,11 +115,11 @@ const EditRequest: React.FC = () => {
       });
       setSheetMusicFile(null);
       setVoiceMemoFile(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to fetch request: ${err.message}`,
+        description: `Failed to fetch request: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {
@@ -238,12 +238,12 @@ const EditRequest: React.FC = () => {
         description: "Backing track request has been updated successfully.",
       });
       navigate(`/admin/request/${id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating request:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to update request: ${err.message}`,
+        description: `Failed to update request: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {

@@ -9,6 +9,7 @@ import { Search, User, Link, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from 'date-fns';
+import { getErrorMessage } from "@/lib/utils";
 
 interface UserProfile {
   id: string;
@@ -34,7 +35,7 @@ const RequestOwnershipTabContent: React.FC = () => {
   const [userRequests, setUserRequests] = useState<BackingRequest[]>([]);
   const [selectedRequestsToLink, setSelectedRequestsToLink] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const handleSearchUsers = async () => {
     setLoading(true);
@@ -67,7 +68,7 @@ const RequestOwnershipTabContent: React.FC = () => {
 
       if (authUsers && authUsers.length > 0) {
         // Map auth users to UserProfile format
-        const profiles: UserProfile[] = authUsers.map((user: any) => ({
+        const profiles: UserProfile[] = authUsers.map((user: { id: string; email: string; raw_user_meta_data?: { first_name?: string; last_name?: string } | null }) => ({
           id: user.id,
           email: user.email,
           first_name: user.raw_user_meta_data?.first_name,
@@ -80,12 +81,12 @@ const RequestOwnershipTabContent: React.FC = () => {
           description: `No registered users found with email containing "${searchTerm}".`,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error searching users:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to search for users: ${err.message}`,
+        description: `Failed to search for users: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {
@@ -113,12 +114,12 @@ const RequestOwnershipTabContent: React.FC = () => {
       }
 
       setUserRequests(requestsData || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching user requests:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to fetch requests for selected user: ${err.message}`,
+        description: `Failed to fetch requests for selected user: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {
@@ -177,12 +178,12 @@ const RequestOwnershipTabContent: React.FC = () => {
       // Refresh requests for the selected user
       await handleSelectUser(selectedUser);
       setSelectedRequestsToLink([]); // Clear selection after linking
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error linking requests:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to link requests: ${err.message}`,
+        description: `Failed to link requests: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {

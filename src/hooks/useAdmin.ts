@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ADMIN_EMAILS } from '@/utils/helpers';
+import type { User } from '@supabase/supabase-js';
 
 export const useAdmin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkAdmin = async () => {

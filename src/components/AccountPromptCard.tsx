@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Lock, Edit, UserPlus, X, Key, Loader2, Chrome } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from "@/lib/utils";
 
 interface AccountPromptCardProps {
   onDismiss?: () => void;
@@ -52,11 +53,11 @@ const AccountPromptCard: React.FC<AccountPromptCardProps> = ({ onDismiss, isHoli
       if (error) {
         throw error;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error signing in with Google:', error);
       toast({
         title: "Sign In Error",
-        description: `Failed to sign in with Google: ${error.message}`,
+        description: `Failed to sign in with Google: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {

@@ -29,7 +29,7 @@ import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useAdmin } from '@/hooks/useAdmin';
 import Seo from "@/components/Seo";
@@ -39,6 +39,7 @@ import ContactDetailsForm from '@/components/form/ContactDetailsForm';
 import TierSelection from '@/components/form/TierSelection';
 import AdditionalServices from '@/components/form/AdditionalServices';
 import { calculateRequestCost } from '@/utils/pricing';
+import type { User } from '@supabase/supabase-js';
 
 const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
   id: Math.random().toString(36).substring(7),
@@ -64,8 +65,8 @@ const FormPage = () => {
   const [submissionStep, setSubmissionStep] = useState<string>('');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
   const [showAuthOverlay, setShowAuthOverlay] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [userCredits, setUserCredits] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [userCredits, setUserCredits] = useState<{ credit_type: string; balance: number }[]>([]);
   const [useCredit, setUseCredit] = useState(false);
   const [testMode, setTestMode] = useState(false);
 
@@ -171,7 +172,7 @@ const FormPage = () => {
     });
   }, []);
 
-  const handleSongChange = useCallback((id: string, field: string, value: any) => {
+  const handleSongChange = useCallback(<K extends keyof SongData>(id: string, field: K, value: SongData[K]) => {
     setSongs(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   }, []);
 
@@ -277,9 +278,9 @@ const FormPage = () => {
         setPromoDiscount(0);
         toast({ title: "Invalid Code", description: result.error, variant: "destructive" });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPromoDiscount(0);
-      toast({ title: "Validation Error", description: err.message, variant: "destructive" });
+      toast({ title: "Validation Error", description: getErrorMessage(err), variant: "destructive" });
     } finally {
       setIsValidatingPromo(false);
     }
@@ -417,11 +418,11 @@ const FormPage = () => {
       } else {
         setIsSubmittedSuccessfully(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
       toast({
         title: "Submission Failed",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     } finally {
@@ -683,7 +684,12 @@ const FormPage = () => {
                   onCheckedChange={(v) => setConsentChecked(v as boolean)} 
                   className="h-5 w-5 rounded-md border-2"
                 />
-                <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">I understand the terms of service. *</Label>
+                <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-[#1C0357]">terms of service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-[#1C0357]">privacy policy</a>. *
+                </Label>
               </div>
               
               <div className="w-full flex flex-col items-center gap-4">

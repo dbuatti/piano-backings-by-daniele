@@ -16,7 +16,7 @@ const Login = () => {
       if (session) {
         setIsAuthenticated(true);
         // Redirect to user-dashboard or the page they were trying to access
-        const from = (location.state as any)?.from?.pathname || '/user-dashboard';
+        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/user-dashboard';
         navigate(from, { replace: true });
       } else {
         setIsAuthenticated(false);
@@ -28,7 +28,7 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        const from = (location.state as any)?.from?.pathname || '/user-dashboard';
+        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/user-dashboard';
         navigate(from, { replace: true });
       }
     };

@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import ErrorDisplay from './ErrorDisplay';
+import { getErrorMessage } from "@/lib/utils";
 
 interface Recipient {
   id: string;
@@ -20,7 +21,7 @@ const NotificationRecipientsManager: React.FC = () => {
   const [newEmail, setNewEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     fetchRecipients();
@@ -37,12 +38,12 @@ const NotificationRecipientsManager: React.FC = () => {
 
       if (error) throw error;
       setRecipients(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching recipients:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to fetch notification recipients: ${err.message}`,
+        description: `Failed to fetch notification recipients: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {
@@ -75,12 +76,12 @@ const NotificationRecipientsManager: React.FC = () => {
         title: "Recipient Added",
         description: `${newEmail} has been added to notification list.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding recipient:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to add recipient: ${err.message}`,
+        description: `Failed to add recipient: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {
@@ -106,12 +107,12 @@ const NotificationRecipientsManager: React.FC = () => {
         title: "Recipient Removed",
         description: `${email} has been removed from notification list.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting recipient:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to remove recipient: ${err.message}`,
+        description: `Failed to remove recipient: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     }

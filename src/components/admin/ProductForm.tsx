@@ -63,7 +63,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialValues, onSubmit, isSu
     }));
   };
 
-  const handleTrackChange = (index: number, field: keyof TrackInfo | 'file', value: any) => {
+  const handleTrackChange = (index: number, field: keyof TrackInfo | 'file', value: string | boolean | File | null) => {
     setValues(prev => {
       const newTracks = [...prev.track_urls];
       newTracks[index] = { ...newTracks[index], [field]: value };

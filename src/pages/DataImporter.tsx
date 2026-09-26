@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Upload, FileText, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { calculateRequestCost } from '@/utils/pricing';
-import { cn } from '@/lib/utils'; // Import cn for conditional classNames
+import { cn, getErrorMessage } from "@/lib/utils"; // Import cn for conditional classNames
 
 interface ParsedRequest {
   email: string;
@@ -32,13 +32,24 @@ interface ParsedRequest {
   created_at?: string; // Added created_at for explicit import date
 }
 
+interface ImportSuccess {
+  status: 'success';
+  data: { song_title: string; name?: string | null; email: string };
+}
+
+interface ImportFailure {
+  status: 'failed';
+  request: ParsedRequest;
+  error: string;
+}
+
 const DataImporter = () => {
   const { toast } = useToast();
   const [rawData, setRawData] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [importResults, setImportResults] = useState<any[]>([]);
-  const [importErrors, setImportErrors] = useState<any[]>([]);
-  const [error, setError] = useState<any>(null);
+  const [importResults, setImportResults] = useState<ImportSuccess[]>([]);
+  const [importErrors, setImportErrors] = useState<ImportFailure[]>([]);
+  const [error, setError] = useState<unknown>(null);
 
   // Robust CSV line parser
   const parseCSVLine = (line: string): string[] => {
@@ -245,14 +256,14 @@ const DataImporter = () => {
         setIsImporting(false);
         return;
       }
-    } catch (parseError: any) {
-      setError(new Error(`Data parsing failed: ${parseError.message}`));
+    } catch (parseError: unknown) {
+      setError(new Error(`Data parsing failed: ${getErrorMessage(parseError)}`));
       setIsImporting(false);
       return;
     }
 
-    const results: any[] = [];
-    const errors: any[] = [];
+    const results: ImportSuccess[] = [];
+    const errors: ImportFailure[] = [];
 
     for (const req of requestsToImport) {
       try {
@@ -298,9 +309,9 @@ const DataImporter = () => {
           throw insertError;
         }
         results.push({ status: 'success', data: data[0] });
-      } catch (itemError: any) {
+      } catch (itemError: unknown) {
         console.error('Error importing single request:', itemError);
-        errors.push({ status: 'failed', request: req, error: itemError.message });
+        errors.push({ status: 'failed', request: req, error: getErrorMessage(itemError) });
       }
     }
 

@@ -31,6 +31,7 @@ import { getSafeBackingTypes } from '@/utils/helpers';
 import Seo from '@/components/Seo';
 import { downloadTrack } from '@/utils/helpers';
 import { getImpersonatedUser } from '@/utils/impersonation';
+import type { User } from '@supabase/supabase-js';
 
 interface TrackInfo {
   url: string;
@@ -72,7 +73,8 @@ const UserDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<any>(null);
+  // Either the signed-in user or an admin-impersonated stand-in.
+  const [user, setUser] = useState<Pick<User, 'id' | 'email' | 'user_metadata'> | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Check authentication on mount
@@ -168,7 +170,7 @@ const UserDashboard = () => {
   });
 
   // Fetch user's credits
-  const { data: credits, isLoading: isLoadingCredits } = useQuery<any[], Error>({
+  const { data: credits, isLoading: isLoadingCredits } = useQuery<{ credit_type: string; balance: number }[], Error>({
     queryKey: ['userCredits', user?.id],
     queryFn: async () => {
       if (!user) return [];

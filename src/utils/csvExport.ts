@@ -2,7 +2,20 @@
 
 import { format } from 'date-fns';
 
-export const exportRequestsToCSV = (requests: any[]) => {
+interface ExportableRequest {
+  created_at: string;
+  name?: string | null;
+  email: string;
+  song_title: string;
+  musical_or_artist: string;
+  status: string;
+  is_paid: boolean;
+  cost?: number | null;
+  delivery_date?: string | null;
+  internal_notes?: string | null;
+}
+
+export const exportRequestsToCSV = (requests: ExportableRequest[]) => {
   if (!requests || requests.length === 0) return;
 
   // Define headers

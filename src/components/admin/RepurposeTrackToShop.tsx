@@ -16,7 +16,7 @@ import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircl
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes, TrackInfo } from '@/utils/helpers';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { FileAudio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -100,7 +100,7 @@ const generateDescriptiveCaption = (request: BackingRequest, originalCaption: st
   if (request.song_title) parts.push(request.song_title);
   if (request.musical_or_artist) parts.push(request.musical_or_artist);
 
-  let descriptiveDetails = [];
+  const descriptiveDetails: string[] = [];
   const originalCaptionString = typeof originalCaption === 'string' ? originalCaption.trim() : '';
   if (originalCaptionString) descriptiveDetails.push(originalCaptionString);
   if (request.song_key) descriptiveDetails.push(request.song_key);
@@ -179,7 +179,7 @@ const RepurposeTrackToShop: React.FC = () => {
         song_key: req.song_key || '',
         additional_services: req.additional_services || [],
         track_type: req.track_type || '',
-        track_urls: req.track_urls?.map((t: any) => ({
+        track_urls: req.track_urls?.map((t: { url: string; caption?: unknown }) => ({
           url: t.url,
           caption: typeof t.caption === 'string' ? t.caption : String(t.caption || '')
         })) || [],
@@ -437,7 +437,7 @@ const RepurposeTrackToShop: React.FC = () => {
           currentTrack.file = null;
         }
       } else {
-        (currentTrack as any)[field] = value; 
+        Object.assign(currentTrack, { [field]: value }); 
       }
       newTrackUrls[index] = currentTrack;
       return { ...prev, track_urls: newTrackUrls };
@@ -557,10 +557,10 @@ const RepurposeTrackToShop: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       toast({
         title: "Error",
-        description: `Failed to add product: ${err.message}`,
+        description: `Failed to add product: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     }
@@ -580,10 +580,10 @@ const RepurposeTrackToShop: React.FC = () => {
     if (imageFile) {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title: "Image Upload Error",
-          description: `Failed to upload image: ${uploadError.message}`, 
+          description: `Failed to upload image: ${getErrorMessage(uploadError)}`, 
           variant: "destructive",
         });
         return;
@@ -594,10 +594,10 @@ const RepurposeTrackToShop: React.FC = () => {
     if (sheetMusicFile) {
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(sheetMusicFile, 'sheet-music', 'shop-sheet-music');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title : "Sheet Music Upload Error",
-          description: `Failed to upload sheet music: ${uploadError.message}`,
+          description: `Failed to upload sheet music: ${getErrorMessage(uploadError)}`,
           variant: "destructive",
         });
         return;
@@ -613,10 +613,10 @@ const RepurposeTrackToShop: React.FC = () => {
         if (track.file) {
           try {
             trackUrlToSave = await uploadFileToStorage(track.file, 'product-tracks', 'shop-tracks');
-          } catch (uploadError: any) {
+          } catch (uploadError: unknown) {
             toast({
               title: "Track Upload Error",
-              description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+              description: `Failed to upload track ${track.caption || track.file.name}: ${getErrorMessage(uploadError)}`,
               variant: "destructive",
             });
             return;

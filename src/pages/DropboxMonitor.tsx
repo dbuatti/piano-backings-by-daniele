@@ -4,12 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertCircle, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { getErrorMessage } from "@/lib/utils";
 
 const DropboxMonitor = () => {
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [error, setError] = useState<any>(null);
+  const [testResult, setTestResult] = useState<{
+    dropboxFolderId?: string | null;
+    dropboxError?: string | null;
+    parentFolderCheck?: boolean;
+    fullPath?: string;
+  } | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const testDropboxConnection = async () => {
     setIsTesting(true);
@@ -47,12 +53,12 @@ const DropboxMonitor = () => {
       } else {
         throw new Error(data.error || `Function failed with status ${response.status}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error testing Dropbox connection:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `There was a problem testing the connection: ${err.message}`,
+        description: `There was a problem testing the connection: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {

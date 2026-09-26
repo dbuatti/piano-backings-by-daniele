@@ -39,9 +39,10 @@ import {
 import RequestTableRow from './RequestTableRow';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { exportRequestsToCSV } from '@/utils/csvExport';
+import type { BackingRequest } from '@/types/backing-request';
 
 interface RequestsTableProps {
-  filteredRequests: any[];
+  filteredRequests: BackingRequest[];
   loading: boolean;
   selectedRequests: string[];
   handleSelectAll: () => void;
@@ -50,7 +51,7 @@ interface RequestsTableProps {
   updateStatus: (id: string, status: string) => void;
   uploadTrack: (id: string) => void;
   shareTrack: (id: string) => void;
-  openEmailGenerator: (request: any) => void;
+  openEmailGenerator: (request: BackingRequest) => void;
   openDeleteDialog: (id: string) => void;
   openBatchDeleteDialog: () => void;
   openUploadPlatformsDialog: (id: string) => void;

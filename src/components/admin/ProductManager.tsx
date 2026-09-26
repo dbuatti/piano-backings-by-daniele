@@ -35,7 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle, Copy } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
@@ -239,8 +239,8 @@ const ProductManager: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       setEditDialogOpen(false);
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to update product: ${err.message}`, variant: "destructive" });
+    onError: (err: unknown) => {
+      toast({ title: "Error", description: `Failed to update product: ${getErrorMessage(err)}`, variant: "destructive" });
     }
   });
 
@@ -259,8 +259,8 @@ const ProductManager: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       setDeleteDialogOpen(false);
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to delete product: ${err.message}`, variant: "destructive" });
+    onError: (err: unknown) => {
+      toast({ title: "Error", description: `Failed to delete product: ${getErrorMessage(err)}`, variant: "destructive" });
     }
   });
 
@@ -277,8 +277,8 @@ const ProductManager: React.FC = () => {
       toast({ title: "Status Updated", description: `Product marked as ${variables.is_active ? 'active' : 'inactive'}.` });
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
     },
-    onError: (err: any) => {
-      toast({ title: "Error", description: `Failed to update status: ${err.message}`, variant: "destructive" });
+    onError: (err: unknown) => {
+      toast({ title: "Error", description: `Failed to update status: ${getErrorMessage(err)}`, variant: "destructive" });
     }
   });
 
@@ -379,7 +379,7 @@ const ProductManager: React.FC = () => {
           currentTrack.file = null;
         }
       } else {
-        (currentTrack as any)[field] = value; 
+        Object.assign(currentTrack, { [field]: value }); 
       }
       newTrackUrls[index] = currentTrack;
       return { ...prev, track_urls: newTrackUrls };
@@ -479,10 +479,10 @@ const ProductManager: React.FC = () => {
     if (imageFile) {
       try {
         imageUrlToSave = await uploadFileToStorage(imageFile, 'product-images', 'product-images');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title: "Image Upload Error",
-          description: `Failed to upload image: ${uploadError.message}`,
+          description: `Failed to upload image: ${getErrorMessage(uploadError)}`,
           variant: "destructive",
         });
         return;
@@ -495,10 +495,10 @@ const ProductManager: React.FC = () => {
     if (editSheetMusicFile) {
       try {
         sheetMusicUrlToSave = await uploadFileToStorage(editSheetMusicFile, 'sheet-music', 'shop-sheet-music');
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         toast({
           title: "Sheet Music Upload Error",
-          description: `Failed to upload sheet music: ${uploadError.message}`,
+          description: `Failed to upload sheet music: ${getErrorMessage(uploadError)}`,
           variant: "destructive",
         });
         return;
@@ -526,10 +526,10 @@ const ProductManager: React.FC = () => {
             url: trackUrlToSave, 
             file: null
           };
-        } catch (uploadError: any) {
+        } catch (uploadError: unknown) {
           toast({
             title: "Track Upload Error",
-            description: `Failed to upload track ${track.caption || track.file.name}: ${uploadError.message}`,
+            description: `Failed to upload track ${track.caption || track.file.name}: ${getErrorMessage(uploadError)}`,
             variant: "destructive",
           });
           return;

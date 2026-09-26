@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { CalendarIcon, Plane, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -33,7 +33,7 @@ const HolidayModeSettings: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [returnDate, setReturnDate] = useState<Date | undefined>(undefined);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   // Sync local state with hook state once loaded
   useEffect(() => {
@@ -74,12 +74,12 @@ const HolidayModeSettings: React.FC = () => {
         title: "Settings Updated",
         description: "Holiday mode settings saved successfully.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating app settings:', err);
       setError(err);
       toast({
         title: "Error",
-        description: `Failed to update settings: ${err.message}`,
+        description: `Failed to update settings: ${getErrorMessage(err)}`,
         variant: "destructive",
       });
     } finally {

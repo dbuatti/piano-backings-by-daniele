@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from "@/lib/utils";
 
 export interface UploadedPlatforms {
   youtube: boolean;
@@ -88,11 +89,11 @@ const UploadPlatformsDialog: React.FC<UploadPlatformsDialogProps> = ({
     try {
       await onSavePlatforms(); // Call the parent's save function
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving platforms:", error);
       toast({
         title: "Error",
-        description: `Failed to save platforms: ${error.message}`,
+        description: `Failed to save platforms: ${getErrorMessage(error)}`,
         variant: "destructive",
       });
     } finally {

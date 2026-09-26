@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { useAdmin } from '@/hooks/useAdmin';
+import { getErrorMessage } from "@/lib/utils";
 
 const GmailOAuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -14,7 +15,7 @@ const GmailOAuthCallback = () => {
   const { toast } = useToast();
   const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
   const [status, setStatus] = useState('Processing OAuth callback...');
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
@@ -92,13 +93,13 @@ const GmailOAuthCallback = () => {
         setTimeout(() => {
           navigate('/admin');
         }, 2000);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in OAuth callback:', err);
-        setStatus(`Error: ${err.message}`);
+        setStatus(`Error: ${getErrorMessage(err)}`);
         setError(err);
         toast({
           title: "Error",
-          description: `Failed to complete OAuth: ${err.message}`,
+          description: `Failed to complete OAuth: ${getErrorMessage(err)}`,
           variant: "destructive",
         });
       }
