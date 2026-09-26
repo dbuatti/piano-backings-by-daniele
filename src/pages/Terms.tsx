@@ -17,7 +17,7 @@ const Terms = () => (
     <LegalSection title="1. Who I am">
       <p>
         Piano Backings by Daniele is run by Daniele Buatti (ABN 49 833 619 500), a pianist and music director
-        based in Australia. In these terms, "I", "me" and "my" mean Daniele; "you" means the person placing an
+        based in Victoria, Australia. In these terms, "I", "me" and "my" mean Daniele; "you" means the person placing an
         order or making a purchase.
       </p>
       <p>
@@ -101,7 +101,12 @@ const Terms = () => (
         <li>release it commercially (for example, on streaming services) or use it to train AI models without my written permission.</li>
       </ul>
       <p>
-        I keep the copyright in my recordings. The underlying songs belong to their writers and publishers. If you
+        I keep the copyright in my recordings. Unless you add <strong>Exclusive Ownership</strong> to your order, I may
+        also offer the track I recorded for you in my shop so other singers can buy it. With Exclusive Ownership, your
+        track is yours alone and won't be sold to anyone else.
+      </p>
+      <p>
+        The underlying songs belong to their writers and publishers. If you
         perform publicly, any performance licensing (for example, through APRA AMCOS or the venue) is your or the
         venue's responsibility.
       </p>
@@ -110,8 +115,12 @@ const Terms = () => (
     <LegalSection title="7. Material you send me">
       <p>
         By uploading sheet music, voice memos or other material, you confirm you're entitled to share it with me for
-        the purpose of making your track. I use it only for that purpose. See the{' '}
-        <Link to="/privacy">Privacy Policy</Link> for how it's stored.
+        the purpose of making your track. Voice memos and your personal details are never made public.
+      </p>
+      <p>
+        If your track is later offered in my shop, I may show the sheet music you sent (including any cuts or markings)
+        as a preview so buyers know which version they're getting. If you'd rather I didn't, just tell me and I'll
+        leave it out. See the <Link to="/privacy">Privacy Policy</Link> for how uploads are stored.
       </p>
     </LegalSection>
 
@@ -134,7 +143,7 @@ const Terms = () => (
     <LegalSection title="10. Changes to these terms">
       <p>
         I may update these terms from time to time. The version shown here when you place an order is the one that
-        applies to that order. These terms are governed by the laws of Australia.
+        applies to that order. These terms are governed by the laws of Victoria, Australia.
       </p>
     </LegalSection>
 
