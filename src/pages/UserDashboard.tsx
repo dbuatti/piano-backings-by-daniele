@@ -156,16 +156,30 @@ const UserDashboard = () => {
           *,
           products (
             id,
-            title,
-            track_urls,
-            master_download_link
+            title
           )
         `)
         .or(`user_id.eq.${user.id},customer_email.eq.${user.email}`)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      const rows = (data || []) as Order[];
+
+      // Paid files are only readable for products this customer has bought.
+      const productIds = [...new Set(rows.map(o => o.products?.id).filter(Boolean))] as string[];
+      if (productIds.length === 0) return rows;
+      const { data: files, error: filesError } = await supabase
+        .from('product_files')
+        .select('product_id, track_urls, master_download_link')
+        .in('product_id', productIds);
+      if (filesError) throw filesError;
+      const byProduct = new Map((files || []).map(f => [f.product_id as string, f]));
+      return rows.map(o => {
+        const f = o.products ? byProduct.get(o.products.id) : undefined;
+        return o.products && f
+          ? { ...o, products: { ...o.products, track_urls: f.track_urls || [], master_download_link: f.master_download_link } }
+          : o;
+      });
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,

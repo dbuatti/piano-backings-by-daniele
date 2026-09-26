@@ -44,7 +44,7 @@ interface Product {
   price: number;
   currency: string;
   image_url?: string;
-  track_urls?: { url: string }[];
+  preview_url?: string | null;
   artist_name?: string;
   category?: string;
   vocal_ranges?: string[];
@@ -54,7 +54,6 @@ interface Product {
   duration_seconds?: number | null;
   sheet_music_url?: string | null;
   show_sheet_music_url?: boolean;
-  master_download_link?: string | null;
   product_type?: string | null;
   cut_description?: string | null;
   official_score_url?: string | null;
@@ -98,7 +97,7 @@ const PreviewPlayer: React.FC<{ url: string; title: string }> = ({ url, title })
       </Button>
       <div className="overflow-hidden flex-1">
         <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Preview Quality</p>
-        <p className="text-xs font-bold text-[#1C0357] truncate">{isPlaying ? 'Playing sample' : '10-second sample'}</p>
+        <p className="text-xs font-bold text-[#1C0357] truncate">{isPlaying ? 'Playing sample' : 'Short preview'}</p>
       </div>
       <audio ref={audioRef} src={url} onEnded={handleEnded} preload="none" />
     </div>
@@ -170,7 +169,7 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
   };
 
   const typeInfo = getTrackTypeInfo(selected.track_type);
-  const firstTrackUrl = selected.track_urls?.[0]?.url || null;
+  const firstTrackUrl = selected.preview_url || null;
   const offersSheetMusic = selected.product_type !== 'credit_pack';
   const includeSheetMusic = offersSheetMusic && wantsSheetMusic;
   const displayPrice = selected.price + (includeSheetMusic ? SHOP_SHEET_MUSIC_PRICE : 0);

@@ -183,9 +183,22 @@ Deno.serve(async (req) => {
       }
 
       metadata = { cart: '1', product_ids: ids.join(',').slice(0, 500) };
-    } else if (request_ids && amount) {
+    } else if (request_ids) {
       console.log("[create-stripe-checkout] Handling Custom Request(s):", request_ids);
-      paymentAmount = amount;
+      // Charge what the server priced when the requests were created; the
+      // browser-supplied `amount` is ignored.
+      const requestedIds = (Array.isArray(request_ids) ? request_ids : String(request_ids).split(',')).map(String);
+      const { data: requestRows, error: requestError } = await supabaseAdmin
+        .from('backing_requests')
+        .select('id, cost, is_paid')
+        .in('id', requestedIds);
+      if (requestError) throw requestError;
+      const unpaid = (requestRows || []).filter((r) => !r.is_paid && Number(r.cost || 0) > 0);
+      if (unpaid.length === 0) throw new Error('These requests are already paid for.');
+      paymentAmount = unpaid.reduce((sum, r) => sum + Number(r.cost), 0);
+      if (amount && Math.abs(Number(amount) - paymentAmount) > 0.01) {
+        console.warn("[create-stripe-checkout] Client amount differs from server price:", { amount, paymentAmount });
+      }
       line_items = [{
         price_data: {
           currency: 'aud',
@@ -193,12 +206,12 @@ Deno.serve(async (req) => {
             name: 'Custom Piano Backing Request',
             description: description || 'Professional piano accompaniment.'
           },
-          unit_amount: Math.round(amount * 100),
+          unit_amount: Math.round(paymentAmount * 100),
         },
         quantity: 1,
       }];
       metadata = {
-        request_ids: Array.isArray(request_ids) ? request_ids.join(',') : request_ids
+        request_ids: unpaid.map((r) => r.id).join(',')
       };
     } else {
       console.error("[create-stripe-checkout] Invalid parameters provided");
@@ -260,9 +273,8 @@ Deno.serve(async (req) => {
           lines: shopLines.map((l) => ({ ...l, amount: 0 })),
         });
       }
-      if (request_ids) {
-        const ids = typeof request_ids === 'string' ? request_ids.split(',') : request_ids;
-        await supabaseAdmin.from('backing_requests').update({ is_paid: true }).in('id', ids);
+      if (metadata.request_ids) {
+        await supabaseAdmin.from('backing_requests').update({ is_paid: true }).in('id', metadata.request_ids.split(','));
       }
 
       // Record promo code redemption

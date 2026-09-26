@@ -39,6 +39,7 @@ import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
+import { PRODUCT_WITH_FILES, withPrivateFiles } from '@/utils/productFiles';
 
 interface ProductForm {
   title: string;
@@ -166,7 +167,7 @@ const ProductManager: React.FC = () => {
     queryFn: async () => {
       let query = supabase
         .from('products')
-        .select('*')
+        .select(PRODUCT_WITH_FILES)
         .eq('is_active', true);
 
       if (searchTerm) {
@@ -214,7 +215,7 @@ const ProductManager: React.FC = () => {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data || [];
+      return (data || []).map(withPrivateFiles) as unknown as Product[];
     },
     staleTime: 5 * 60 * 1000,
   });

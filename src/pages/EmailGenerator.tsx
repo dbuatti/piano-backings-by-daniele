@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { getSafeBackingTypes } from '@/utils/helpers';
 import { useAdmin } from '@/hooks/useAdmin';
+import { PRODUCT_WITH_FILES, withPrivateFiles } from '@/utils/productFiles';
 
 interface TrackInfo {
   url: string;
@@ -156,10 +157,10 @@ const EmailGenerator = () => {
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select(PRODUCT_WITH_FILES)
           .order('created_at', { ascending: false });
         if (error) throw error;
-        setAllProducts(data || []);
+        setAllProducts((data || []).map(withPrivateFiles) as unknown as Product[]);
       } catch (error: unknown) {
         toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
       } finally {

@@ -22,6 +22,7 @@ import { FileAudio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { withPrivateFiles } from '@/utils/productFiles';
 
 interface BackingRequest {
   id: string;
@@ -197,10 +198,10 @@ const RepurposeTrackToShop: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, artist_name, track_urls, master_download_link');
+        .select('id, title, artist_name, product_files(track_urls, master_download_link)');
       
       if (error) throw error;
-      return data || [];
+      return (data || []).map(withPrivateFiles) as unknown as Product[];
     },
     staleTime: 5 * 60 * 1000,
   });

@@ -21,6 +21,26 @@ function calculateRequestCost(request: any): number {
   return parseFloat((Math.round(totalCost / 5) * 5).toFixed(2));
 }
 
+// A Season Pack credit covers the track itself; paid add-ons are still charged.
+function calculateAddOnCost(request: any): number {
+  const services = Array.isArray(request.additionalServices) ? request.additionalServices : [];
+  return services.reduce((sum: number, service: string) => sum + (SERVICE_COSTS[service] || 0), 0);
+}
+
+async function refundCredit(supabaseAdmin, userId: string, creditType: string) {
+  const { data: credit } = await supabaseAdmin
+    .from('user_credits')
+    .select('id, balance')
+    .eq('user_id', userId)
+    .eq('credit_type', creditType)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (credit) {
+    await supabaseAdmin.from('user_credits').update({ balance: credit.balance + 1, updated_at: new Date().toISOString() }).eq('id', credit.id);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -61,6 +81,10 @@ Deno.serve(async (req) => {
     // Check if this is a re-trigger for an existing request (admin manual trigger)
     const isRetrigger = !!formData.requestId;
     let requestId: string;
+    let guestAccessToken: string | null = null;
+    let creditApplied = false;
+    let requestCost = 0;
+    let requestIsPaid = false;
 
     if (isRetrigger) {
       // Re-trigger: use existing request, skip DB insert / emails / Notion
@@ -77,7 +101,7 @@ Deno.serve(async (req) => {
         const dedupeWindow = new Date(Date.now() - 20 * 60 * 1000).toISOString();
         let dedupeQuery = supabaseAdmin
           .from('backing_requests')
-          .select('id')
+          .select('id, cost, is_paid')
           .eq('email', formData.email)
           .eq('song_title', formData.songTitle)
           .eq('is_paid', false)
@@ -99,14 +123,35 @@ Deno.serve(async (req) => {
               dropboxFolderId: null,
               guestAccessToken: null,
               deduped: true,
+              creditApplied: false,
+              requiresPayment: !recentDupe.is_paid && Number(recentDupe.cost || 0) > 0,
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
       }
 
-      const calculatedCost = calculateRequestCost(formData);
-      const guestAccessToken = crypto.randomUUID();
+      guestAccessToken = crypto.randomUUID();
+
+      // Credits are redeemed here, never trusted from the browser. The payment status
+      // and cost are derived server-side too (formData.is_paid is ignored).
+      const creditType = formData.trackType || 'audition-ready';
+      // Older form versions sent is_paid: true for credit songs instead of useCredit.
+      const wantsCredit = formData.useCredit ?? formData.is_paid === true;
+      if (wantsCredit && userId) {
+        const { data: redeemed, error: redeemError } = await supabaseAdmin.rpc('redeem_credit', {
+          p_user_id: userId,
+          p_credit_type: creditType,
+        });
+        if (redeemError) console.error('[create-backing-request] Credit redemption failed:', redeemError.message);
+        creditApplied = redeemed === true;
+      }
+      const addOnCost = calculateAddOnCost(formData);
+      requestCost = creditApplied ? addOnCost : calculateRequestCost(formData);
+      requestIsPaid = creditApplied && addOnCost === 0;
+      const creditNote = creditApplied
+        ? (addOnCost > 0 ? `Track paid via Season Pack credit; add-ons ($${addOnCost.toFixed(2)}) charged separately` : 'Paid via Season Pack Credit')
+        : null;
 
       // 1. Create Database Record
       const { data: insertedRecords, error: insertError } = await supabaseAdmin
@@ -125,19 +170,22 @@ Deno.serve(async (req) => {
           delivery_date: formData.deliveryDate,
           category: formData.category,
           guest_access_token: guestAccessToken,
-          cost: calculatedCost,
-          is_paid: formData.is_paid || false,
+          cost: requestCost,
+          is_paid: requestIsPaid,
           sheet_music_urls: formData.sheetMusicUrls || [],
           voice_memo_urls: formData.voiceMemoUrls || [],
           youtube_link: formData.youtubeLink || null,
           voice_memo: formData.voiceMemo || null,
           different_key: formData.differentKey || 'No',
           key_for_track: formData.keyForTrack || null,
-          internal_notes: formData.internal_notes || null,
+          internal_notes: creditNote,
         }])
         .select();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        if (creditApplied) await refundCredit(supabaseAdmin, userId, creditType);
+        throw insertError;
+      }
       requestId = insertedRecords[0].id;
 
       // Sync to Notion (fire-and-forget). Failures are logged inside sync-to-notion, not fatal.
@@ -453,7 +501,9 @@ ${formData.specialRequests || 'No special requests.'}
         message: 'Success', 
         requestId,
         dropboxFolderId,
-        guestAccessToken: isRetrigger ? null : (userId ? null : guestAccessToken)
+        guestAccessToken: isRetrigger ? null : (userId ? null : guestAccessToken),
+        creditApplied,
+        requiresPayment: !isRetrigger && !requestIsPaid && requestCost > 0,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

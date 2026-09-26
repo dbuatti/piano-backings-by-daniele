@@ -23,7 +23,7 @@ interface TableProduct {
   vocal_ranges: string[];
   track_type: string;
   duration_seconds?: number | null;
-  track_urls?: { url: string | null }[];
+  preview_url?: string | null;
 }
 
 interface TableRow {

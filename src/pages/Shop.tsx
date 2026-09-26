@@ -43,7 +43,6 @@ import {
 import ProductCard from '@/components/shop/ProductCard';
 import ProductTable, { ProductTableSkeleton } from '@/components/shop/ProductTable';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
-import { TrackInfo } from '@/utils/helpers';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
 import Seo from "@/components/Seo";
@@ -70,7 +69,7 @@ interface Product {
   price: number;
   currency: string;
   image_url: string;
-  track_urls: TrackInfo[];
+  preview_url?: string | null;
   is_active: boolean;
   artist_name: string;
   category: string;
@@ -81,7 +80,6 @@ interface Product {
   show_key_signature: boolean;
   track_type: string;
   duration_seconds?: number | null;
-  master_download_link: string | null;
   product_type?: string | null;
   cut_description?: string | null;
   official_score_url?: string | null;

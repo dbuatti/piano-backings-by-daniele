@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +28,8 @@ interface OrderData {
   requests?: { song_title: string }[] | null;
 }
 
+const ORDER_LOOKUP_URL = 'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/get-order-by-session-id';
+
 const PurchaseConfirmation = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -53,24 +54,23 @@ const PurchaseConfirmation = () => {
     const maxAttempts = 10;
     const intervalMs = 2000;
 
-    const checkOnce = async () => {
-      // Check for Shop Order(s) first — a cart checkout creates one order per product.
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('*, products(*)')
-        .eq('checkout_session_id', sessionId);
-
-      if (orders && orders.length > 0) return { type: 'shop' as const, orders: orders as unknown as ShopOrder[] };
-
-      // Check for Custom Request
-      const { data: requests } = await supabase
-        .from('backing_requests')
-        .select('*')
-        .eq('stripe_session_id', sessionId);
-
-      if (requests && requests.length > 0) return { type: 'custom' as const, requests };
-
-      return null;
+    // Orders and paid files aren't publicly readable, so look them up through an edge
+    // function that treats the checkout session id as proof of purchase.
+    const checkOnce = async (): Promise<OrderData | null> => {
+      const response = await fetch(ORDER_LOOKUP_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // The public anon key satisfies the function gateway's JWT check for guests.
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (response.status === 404) return null;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Lookup failed (${response.status})`);
+      return result as OrderData;
     };
 
     const verifyPurchase = async () => {
