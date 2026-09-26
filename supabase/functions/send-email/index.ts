@@ -27,24 +27,45 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { to, subject, html, cc, replyTo, senderEmail } = await req.json();
+    const body = await req.json();
+    // Header values must be single-line: a CR/LF in (say) a song title in the subject
+    // would otherwise let the sender add headers such as Bcc.
+    const oneLine = (value: unknown) => String(value ?? '').replace(/[\r\n]+/g, ' ').trim();
+    const oneLineList = (value: unknown) =>
+      Array.isArray(value) ? value.map(oneLine) : value ? oneLine(value) : value;
+    const to = oneLineList(body.to);
+    const cc = oneLineList(body.cc);
+    const subject = oneLine(body.subject);
+    const replyTo = body.replyTo ? oneLine(body.replyTo) : undefined;
+    const senderEmail = oneLine(body.senderEmail);
+    const html = body.html;
 
-    const authHeader = req.headers.get('Authorization');
+    // Only other edge functions (service-role key) and signed-in admins may send.
+    // Anonymous calls used to be accepted whenever senderEmail named an admin inbox,
+    // which let anyone send arbitrary mail from that Gmail account.
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
     let isAuthorized = false;
 
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
+    if (token && token === supabaseServiceKey) {
+      isAuthorized = true;
+    } else if (token) {
       const { data: { user } } = await supabaseAdmin.auth.getUser(token);
       if (user && (adminEmails.includes(user.email!) || user.email === senderEmail)) {
         isAuthorized = true;
       }
-    } else if (adminEmails.includes(senderEmail)) {
-      isAuthorized = true;
     }
 
     if (!isAuthorized) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!to || !subject || !html || !senderEmail) {
+      return new Response(JSON.stringify({ error: "Missing to, subject, html or senderEmail" }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }

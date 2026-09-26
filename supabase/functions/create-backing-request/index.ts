@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { TIER_PRICES, SERVICE_COSTS } from '../_shared/pricing.ts';
+import { escapeHtml, safeLink, isValidEmail, sendEmail } from '../_shared/email.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,6 +78,14 @@ Deno.serve(async (req) => {
     
     const { formData } = await req.json();
     if (!formData) throw new Error("Missing formData");
+    // The confirmation email goes to this address, so it must be exactly one address.
+    if (typeof formData.email === 'string') formData.email = formData.email.trim();
+    if (!formData.requestId && !isValidEmail(formData.email)) {
+      return new Response(JSON.stringify({ error: "Please enter a valid email address." }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Check if this is a re-trigger for an existing request (admin manual trigger)
     const isRetrigger = !!formData.requestId;
@@ -217,7 +226,7 @@ Deno.serve(async (req) => {
 
       // 2. Send "Order Received" Email to Client
       try {
-        const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
+        const firstName = escapeHtml(formData.name ? formData.name.split(' ')[0] : 'Client');
         const tierLabel = formData.trackType?.replace('-', ' ').toUpperCase() || 'AUDITION READY';
 
         // Holiday mode: tell the client when work actually starts.
@@ -242,10 +251,10 @@ Deno.serve(async (req) => {
             
             <div style="background-color: #f0ebfb; padding: 20px; border-radius: 10px; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #1C0357;">Order Summary</h3>
-              <p style="margin: 5px 0;"><strong>Song:</strong> ${formData.songTitle}</p>
-              <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${formData.musicalOrArtist}</p>
+              <p style="margin: 5px 0;"><strong>Song:</strong> ${escapeHtml(formData.songTitle)}</p>
+              <p style="margin: 5px 0;"><strong>Artist/Musical:</strong> ${escapeHtml(formData.musicalOrArtist)}</p>
               <p style="margin: 5px 0;"><strong>Tier:</strong> ${tierLabel}</p>
-              <p style="margin: 5px 0;"><strong>Requested Due Date:</strong> ${formData.deliveryDate || 'Standard (3-5 days)'}</p>
+              <p style="margin: 5px 0;"><strong>Requested Due Date:</strong> ${escapeHtml(formData.deliveryDate || 'Standard (3-5 days)')}</p>
             </div>
 
             <p>You'll receive another email as soon as your track is ready for download. In the meantime, you can track the status of your order on your personal dashboard.</p>
@@ -253,15 +262,10 @@ Deno.serve(async (req) => {
           </div>
         `;
 
-        await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: formData.email,
-            subject: `Request Received: "${formData.songTitle}"`,
-            html: clientEmailHtml,
-            senderEmail: 'pianobackingsbydaniele@gmail.com'
-          })
+        await sendEmail({
+          to: formData.email,
+          subject: `Request Received: "${formData.songTitle}"`,
+          html: clientEmailHtml,
         });
         console.log("[create-backing-request] Client confirmation email sent");
       } catch (emailErr) {
@@ -270,8 +274,8 @@ Deno.serve(async (req) => {
 
       // 3. Send "New Request Report" Email to Admin
       try {
-        const sheetMusicLinks = formData.sheetMusicUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
-        const voiceMemoLinks = formData.voiceMemoUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
+        const sheetMusicLinks = formData.sheetMusicUrls?.map(f => `<li>${safeLink(f.url)} ${escapeHtml(f.caption)}</li>`).join('') || 'None';
+        const voiceMemoLinks = formData.voiceMemoUrls?.map(f => `<li>${safeLink(f.url)} ${escapeHtml(f.caption)}</li>`).join('') || 'None';
         const siteUrl = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
         const adminEmailHtml = `
@@ -280,19 +284,19 @@ Deno.serve(async (req) => {
             
             <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="color: #1C0357; margin-top: 0;">Client Information</h3>
-              <p><strong>Name:</strong> ${formData.name || 'N/A'}</p>
-              <p><strong>Email:</strong> ${formData.email}</p>
+              <p><strong>Name:</strong> ${escapeHtml(formData.name || 'N/A')}</p>
+              <p><strong>Email:</strong> ${escapeHtml(formData.email)}</p>
               <p><strong>User ID:</strong> ${userId || 'Guest'}</p>
             </div>
 
             <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="color: #1C0357; margin-top: 0;">Song Details</h3>
-              <p><strong>Title:</strong> ${formData.songTitle}</p>
-              <p><strong>Musical/Artist:</strong> ${formData.musicalOrArtist}</p>
-              <p><strong>Tier:</strong> ${formData.trackType?.replace('-', ' ').toUpperCase()}</p>
-              <p><strong>Key:</strong> ${formData.songKey || 'N/A'}</p>
-              <p><strong>Transposition:</strong> ${formData.differentKey} ${formData.keyForTrack ? `(To: ${formData.keyForTrack})` : ''}</p>
-              <p><strong>Due Date:</strong> ${formData.deliveryDate || 'Standard'}</p>
+              <p><strong>Title:</strong> ${escapeHtml(formData.songTitle)}</p>
+              <p><strong>Musical/Artist:</strong> ${escapeHtml(formData.musicalOrArtist)}</p>
+              <p><strong>Tier:</strong> ${escapeHtml(formData.trackType?.replace('-', ' ').toUpperCase())}</p>
+              <p><strong>Key:</strong> ${escapeHtml(formData.songKey || 'N/A')}</p>
+              <p><strong>Transposition:</strong> ${escapeHtml(formData.differentKey)} ${formData.keyForTrack ? `(To: ${escapeHtml(formData.keyForTrack)})` : ''}</p>
+              <p><strong>Due Date:</strong> ${escapeHtml(formData.deliveryDate || 'Standard')}</p>
             </div>
 
             <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -301,15 +305,15 @@ Deno.serve(async (req) => {
               <ul>${sheetMusicLinks}</ul>
               <p><strong>Voice Memos:</strong></p>
               <ul>${voiceMemoLinks}</ul>
-              <p><strong>YouTube:</strong> ${formData.youtubeLink ? `<a href="${formData.youtubeLink}">${formData.youtubeLink}</a>` : 'None'}</p>
-              <p><strong>Additional Links:</strong> ${formData.additionalLinks || 'None'}</p>
+              <p><strong>YouTube:</strong> ${formData.youtubeLink ? safeLink(formData.youtubeLink) : 'None'}</p>
+              <p><strong>Additional Links:</strong> ${escapeHtml(formData.additionalLinks || 'None')}</p>
             </div>
 
             <div style="background-color: #fff4fc; padding: 20px; border-radius: 8px; border: 1px solid #F538BC; margin: 20px 0;">
               <h3 style="color: #1C0357; margin-top: 0;">Requirements & Add-ons</h3>
-              <p><strong>Services:</strong> ${formData.additionalServices?.join(', ') || 'None'}</p>
+              <p><strong>Services:</strong> ${escapeHtml(formData.additionalServices?.join(', ') || 'None')}</p>
               <p><strong>Special Requests:</strong></p>
-              <p style="font-style: italic; white-space: pre-wrap;">${formData.specialRequests || 'No special requests.'}</p>
+              <p style="font-style: italic; white-space: pre-wrap;">${escapeHtml(formData.specialRequests || 'No special requests.')}</p>
             </div>
 
             <div style="text-align: center; margin-top: 30px;">
@@ -321,16 +325,11 @@ Deno.serve(async (req) => {
           </div>
         `;
 
-        await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: 'pianobackingsbydaniele@gmail.com',
-            cc: 'info@danielebuatti.com',
-            subject: `NEW REQUEST: ${formData.songTitle} - ${formData.name || formData.email}`,
-            html: adminEmailHtml,
-            senderEmail: 'pianobackingsbydaniele@gmail.com'
-          })
+        await sendEmail({
+          to: 'pianobackingsbydaniele@gmail.com',
+          cc: 'info@danielebuatti.com',
+          subject: `NEW REQUEST: ${formData.songTitle} - ${formData.name || formData.email}`,
+          html: adminEmailHtml,
         });
         console.log("[create-backing-request] Admin notification email sent");
       } catch (adminEmailErr) {
