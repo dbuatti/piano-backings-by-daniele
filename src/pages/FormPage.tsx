@@ -683,7 +683,12 @@ const FormPage = () => {
                   onCheckedChange={(v) => setConsentChecked(v as boolean)} 
                   className="h-5 w-5 rounded-md border-2"
                 />
-                <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">I understand the terms of service. *</Label>
+                <Label htmlFor="consent" className="text-sm font-bold text-gray-600 cursor-pointer">
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-[#1C0357]">terms of service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-[#1C0357]">privacy policy</a>. *
+                </Label>
               </div>
               
               <div className="w-full flex flex-col items-center gap-4">

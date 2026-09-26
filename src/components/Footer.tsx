@@ -178,8 +178,8 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
           <p>© {currentYear} Daniele Buatti. All rights reserved.</p>
           <div className="flex gap-8">
-            <Link to="/shop" className="hover:text-white transition-colors">Terms of Service</Link>
-            <Link to="/shop" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <a href="https://db-it.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
               Built by DB Digital <ExternalLink size={8} />
             </a>

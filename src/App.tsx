@@ -20,6 +20,8 @@ const Pricing = lazy(() => import('./pages/Pricing'));
 const AboutServices = lazy(() => import('./pages/AboutServices'));
 const Login = lazy(() => import('./pages/Login'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 
 const UserDashboard = lazy(() => import('./pages/UserDashboard'));
 const GmailOAuthCallback = lazy(() => import('./pages/GmailOAuthCallback'));
@@ -76,6 +78,8 @@ function App() {
                 <Route path="/shop/:id" element={<Shop />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<AboutServices />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
 
