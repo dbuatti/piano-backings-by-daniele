@@ -1,5 +1,20 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
+import { useLocation } from 'react-router-dom';
+import { canonicalFor } from '@/lib/site';
+
+/**
+ * Site-wide canonical for the current path (query strings dropped). Pages that
+ * render <Seo canonicalUrl=...> override it; react-helmet keeps one canonical tag.
+ */
+export const CanonicalLink: React.FC = () => {
+  const { pathname } = useLocation();
+  return (
+    <Helmet>
+      <link rel="canonical" href={canonicalFor(pathname)} />
+    </Helmet>
+  );
+};
 
 interface SeoProps {
   title: string;
@@ -22,14 +37,15 @@ const Seo: React.FC<SeoProps> = ({
   twitterCard = 'summary',
   noindex = false,
 }) => {
-  const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin; // Canonical base URL
+  const { pathname } = useLocation();
+  const canonical = canonicalUrl || canonicalFor(pathname);
 
   return (
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
-      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      <link rel="canonical" href={canonical} />
       {noindex && <meta name="robots" content="noindex, nofollow" />}
       
       {/* Open Graph / Facebook */}
@@ -37,7 +53,7 @@ const Seo: React.FC<SeoProps> = ({
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       {ogImage && <meta property="og:image" content={ogImage} />}
-      <meta property="og:url" content={canonicalUrl || siteUrl} />
+      <meta property="og:url" content={canonical} />
       <meta property="og:site_name" content="Piano Backings by Daniele" />
       
       {/* Twitter */}

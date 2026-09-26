@@ -104,6 +104,7 @@ const PurchaseConfirmation = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FDFCF7] flex flex-col">
+        <Seo title="Verifying Purchase | Piano Backings by Daniele" description="Checking your purchase." noindex />
         <Header />
         <div className="flex-1 flex flex-col items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#1C0357]" />
@@ -116,6 +117,7 @@ const PurchaseConfirmation = () => {
   if (!orderData) {
     return (
       <div className="min-h-screen bg-[#FDFCF7]">
+        <Seo title="Purchase Not Found | Piano Backings by Daniele" description="We couldn't find a matching order." noindex />
         <Header />
         <main className="max-w-3xl mx-auto py-16 px-4">
           <Card className="rounded-[40px] border-none shadow-2xl overflow-hidden bg-white">
@@ -148,7 +150,7 @@ const PurchaseConfirmation = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
-      <Seo title="Thank You! | Purchase Confirmed" description="Your purchase has been confirmed." />
+      <Seo title="Thank You! | Purchase Confirmed" description="Your purchase has been confirmed." noindex />
       <Header />
       
       <main className="max-w-3xl mx-auto py-16 px-4">

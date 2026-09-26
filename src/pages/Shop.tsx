@@ -46,6 +46,7 @@ import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
 import Seo from "@/components/Seo";
+import { SITE_URL } from "@/lib/site";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -574,7 +575,6 @@ const Shop = () => {
         description={urlProduct
           ? (urlProduct.description || `${urlProduct.title} backing track by Piano Backings by Daniele. High-quality digital download, ready instantly.`)
           : "Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."}
-        canonicalUrl={urlProduct ? `${import.meta.env.VITE_SITE_URL || window.location.origin}/shop/${urlProduct.id}` : undefined}
       />
       {urlProduct && (
         <script type="application/ld+json">
@@ -590,7 +590,7 @@ const Shop = () => {
               price: urlProduct.price,
               priceCurrency: (urlProduct.currency || 'AUD').toUpperCase(),
               availability: "https://schema.org/InStock",
-              url: `${window.location.origin}/shop/${urlProduct.id}`,
+              url: `${SITE_URL}/shop/${urlProduct.id}`,
             },
           })}
         </script>
