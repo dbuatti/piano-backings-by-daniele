@@ -1,14 +1,8 @@
 "use client";
 
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import Index from './pages/Index';
-import FormPage from './pages/FormPage';
-import Shop from './pages/Shop';
-import Pricing from './pages/Pricing';
-import AboutServices from './pages/AboutServices';
-import Login from './pages/Login';
-import NotFound from './pages/NotFound';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
 import HolidayModeBanner from './components/HolidayModeBanner';
@@ -17,6 +11,15 @@ import ImpersonationBanner from './components/ImpersonationBanner';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BackToTop from './components/BackToTop';
+import AppErrorBoundary from './components/AppErrorBoundary';
+
+// The landing page stays in the main bundle; every other route loads on demand.
+const FormPage = lazy(() => import('./pages/FormPage'));
+const Shop = lazy(() => import('./pages/Shop'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const AboutServices = lazy(() => import('./pages/AboutServices'));
+const Login = lazy(() => import('./pages/Login'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const UserDashboard = lazy(() => import('./pages/UserDashboard'));
 const GmailOAuthCallback = lazy(() => import('./pages/GmailOAuthCallback'));
@@ -25,10 +28,17 @@ const ClientTrackView = lazy(() => import('./pages/ClientTrackView'));
 const PurchaseConfirmation = lazy(() => import('./pages/PurchaseConfirmation'));
 
 const PageFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#FDFCF7]">
-    <div className="h-12 w-12 border-4 border-[#1C0357]/20 border-t-[#1C0357] rounded-full animate-spin" />
+  <div className="min-h-screen flex items-center justify-center bg-[#FDFCF7]" role="status" aria-live="polite">
+    <div className="h-12 w-12 border-4 border-[#1C0357]/20 border-t-[#1C0357] rounded-full animate-spin" aria-hidden="true" />
+    <span className="sr-only">Loading…</span>
   </div>
 );
+
+// Resets on navigation so one broken page doesn't strand the visitor.
+const RouteErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  const { pathname } = useLocation();
+  return <AppErrorBoundary resetKey={pathname}>{children}</AppErrorBoundary>;
+};
 
 // --- Bookmark-safe redirects for retired routes ---
 
@@ -56,40 +66,42 @@ function App() {
         <HolidayModeBanner />
         <UnreadIssueReportsNotice />
         <div className="flex-grow">
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/form-page" element={<FormPage />} />
-              <Route path="/user-dashboard" element={<UserDashboard />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/shop/:id" element={<Shop />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/about" element={<AboutServices />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
+          <RouteErrorBoundary>
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/form-page" element={<FormPage />} />
+                <Route path="/user-dashboard" element={<UserDashboard />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/shop/:id" element={<Shop />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/about" element={<AboutServices />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
 
-              {/* Admin shell — kept routes, render in-shell */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/request/:id" element={<AdminDashboard />} />
-              <Route path="/admin/request/:id/edit" element={<EditRequestRedirect />} />
+                {/* Admin shell — kept routes, render in-shell */}
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/request/:id" element={<AdminDashboard />} />
+                <Route path="/admin/request/:id/edit" element={<EditRequestRedirect />} />
 
-              {/* Retired admin routes — redirects */}
-              <Route path="/email-generator" element={<EmailGeneratorRedirect />} />
-              <Route path="/email-generator/:id" element={<EmailGeneratorRedirect />} />
-              <Route path="/ig" element={<IgRedirect />} />
-              <Route path="/test-email" element={<IntegrationsRedirect />} />
-              <Route path="/test-email-notification" element={<DeveloperRedirect />} />
-              <Route path="/test-backings" element={<DeveloperRedirect />} />
-              <Route path="/test-dropbox" element={<DeveloperRedirect />} />
-              <Route path="/test-dropbox-credentials" element={<DeveloperRedirect />} />
+                {/* Retired admin routes — redirects */}
+                <Route path="/email-generator" element={<EmailGeneratorRedirect />} />
+                <Route path="/email-generator/:id" element={<EmailGeneratorRedirect />} />
+                <Route path="/ig" element={<IgRedirect />} />
+                <Route path="/test-email" element={<IntegrationsRedirect />} />
+                <Route path="/test-email-notification" element={<DeveloperRedirect />} />
+                <Route path="/test-backings" element={<DeveloperRedirect />} />
+                <Route path="/test-dropbox" element={<DeveloperRedirect />} />
+                <Route path="/test-dropbox-credentials" element={<DeveloperRedirect />} />
 
-              {/* Public */}
-              <Route path="/track/:id" element={<ClientTrackView />} />
-              <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
+                {/* Public */}
+                <Route path="/track/:id" element={<ClientTrackView />} />
+                <Route path="/purchase-confirmation" element={<PurchaseConfirmation />} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </RouteErrorBoundary>
         </div>
         <ReportIssueButton />
         <Footer />

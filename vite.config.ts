@@ -17,5 +17,17 @@ export default defineConfig(() => ({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        // Split rarely-changing vendor code into its own long-cacheable chunks
+        // so app deploys don't force visitors to re-download it.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|@remix-run)[\\/]/.test(id)) return 'react-vendor';
+          if (id.includes('@supabase')) return 'supabase';
+          if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'motion';
+        },
+      },
+    },
   },
 }));

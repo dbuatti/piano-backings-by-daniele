@@ -100,7 +100,7 @@ const generateDescriptiveCaption = (request: BackingRequest, originalCaption: st
   if (request.song_title) parts.push(request.song_title);
   if (request.musical_or_artist) parts.push(request.musical_or_artist);
 
-  let descriptiveDetails = [];
+  const descriptiveDetails: string[] = [];
   const originalCaptionString = typeof originalCaption === 'string' ? originalCaption.trim() : '';
   if (originalCaptionString) descriptiveDetails.push(originalCaptionString);
   if (request.song_key) descriptiveDetails.push(request.song_key);

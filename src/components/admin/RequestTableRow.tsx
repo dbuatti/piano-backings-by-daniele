@@ -157,8 +157,8 @@ const RequestTableRow: React.FC<RequestTableRowProps> = ({
       if (file.type.startsWith('audio/')) {
         setIsDirectUploading(true);
         try {
+          // Errors are surfaced as toasts by the upload handler itself.
           await onDirectFileUpload(request.id, file);
-        } catch (e) {
         } finally {
           setIsDirectUploading(false);
         }
