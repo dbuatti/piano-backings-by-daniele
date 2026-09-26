@@ -1,4 +1,4 @@
-const BASE_URL = process.env.VITE_SITE_URL || 'https://pianobackingsbydaniele.vercel.app';
+const BASE_URL = process.env.VITE_SITE_URL || 'https://pianobackings.danielebuatti.com';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 

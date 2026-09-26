@@ -22,7 +22,7 @@ const Seo: React.FC<SeoProps> = ({
   twitterCard = 'summary',
   noindex = false,
 }) => {
-  const siteUrl = window.location.origin; // Dynamically get the current site URL
+  const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin; // Canonical base URL
 
   return (
     <Helmet>

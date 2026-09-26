@@ -43,7 +43,7 @@ const Index = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-40 px-4 overflow-hidden">
+      <section className="relative pt-28 md:pt-32 pb-16 md:pb-40 px-4 overflow-hidden">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-[#D1AAF2]/20 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-1/4 -right-20 w-96 h-96 bg-[#F538BC]/5 blur-[120px] rounded-full pointer-events-none" />
@@ -83,10 +83,25 @@ const Index = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 1 }}
-              className="text-xl md:text-2xl text-gray-600 mb-14 max-w-2xl mx-auto font-medium leading-relaxed"
+              className="text-xl md:text-2xl text-gray-600 mb-8 max-w-2xl mx-auto font-medium leading-relaxed"
             >
               High-quality, expressive accompaniment tailored for Musicals, Auditions & Performances.
             </motion.p>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-5 py-2.5 rounded-full bg-white/80 border border-[#1C0357]/10 shadow-sm backdrop-blur-sm text-sm font-bold text-[#1C0357] mb-8"
+            >
+              <span className="font-black text-[#F538BC]">From $15</span>
+              <span className="text-gray-300">•</span>
+              <span>Note Bash $15</span>
+              <span className="text-gray-300">•</span>
+              <span>Audition Ready $30</span>
+              <span className="text-gray-300">•</span>
+              <span>Full Song $50</span>
+            </motion.div>
 
             <motion.div 
               initial={{ opacity: 0, y: 20 }}

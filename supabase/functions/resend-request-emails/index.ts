@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const SEND_EMAIL_URL = 'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email';
+const SITE_URL = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
 async function sendEmail(to, subject, html) {
   await fetch(SEND_EMAIL_URL, {
@@ -108,7 +109,7 @@ function buildInvoiceHtml(request) {
         </table>
 
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
-          <p style="margin: 0 0 4px 0;">View your order: <a href="https://pianobackingsbydaniele.vercel.app/track/${request.id}" style="color: #1C0357;">pianobackingsbydaniele.vercel.app/track/${request.id}</a></p>
+          <p style="margin: 0 0 4px 0;">View your order: <a href="${SITE_URL}/track/${request.id}" style="color: #1C0357;">${SITE_URL}/track/${request.id}</a></p>
         </div>
 
         <div style="margin-top: 24px; padding: 16px; background-color: #f3e8ff; border-radius: 6px; font-size: 12px; color: #1C0357;">

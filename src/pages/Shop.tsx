@@ -621,7 +621,7 @@ const Shop = () => {
         description={urlProduct
           ? (urlProduct.description || `${urlProduct.title} backing track by Piano Backings by Daniele. High-quality digital download, ready instantly.`)
           : "Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."}
-        canonicalUrl={urlProduct ? `${window.location.origin}/shop/${urlProduct.id}` : undefined}
+        canonicalUrl={urlProduct ? `${import.meta.env.VITE_SITE_URL || window.location.origin}/shop/${urlProduct.id}` : undefined}
       />
       {urlProduct && (
         <script type="application/ld+json">

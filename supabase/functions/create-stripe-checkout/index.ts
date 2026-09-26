@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     console.log("[create-stripe-checkout] Function invoked");
 
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://pianobackingsbydaniele.vercel.app';
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
     if (!stripeSecretKey) {
       console.error("[create-stripe-checkout] STRIPE_SECRET_KEY is not set");

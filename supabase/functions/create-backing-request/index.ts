@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
       try {
         const sheetMusicLinks = formData.sheetMusicUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
         const voiceMemoLinks = formData.voiceMemoUrls?.map(f => `<li><a href="${f.url}">${f.caption}</a></li>`).join('') || 'None';
-        const siteUrl = 'https://pianobackingsbydaniele.vercel.app';
+        const siteUrl = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
 
         const adminEmailHtml = `
           <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
