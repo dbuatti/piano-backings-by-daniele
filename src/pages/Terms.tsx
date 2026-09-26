@@ -49,6 +49,21 @@ const Terms = () => (
       </ul>
     </LegalSection>
 
+    <LegalSection title="2a. Custom sheet music">
+      <p>
+        You can add custom sheet music (+$50) to a custom track order or to a track bought from the shop. It's a clean,
+        engraved score of the cut, prepared in Sibelius, with the cut already made so the music flows without cut marks.
+      </p>
+      <ul>
+        <li>For custom orders, it's delivered with your track.</li>
+        <li>
+          For shop purchases, it's delivered as a PDF, usually within 3 to 5 business days (straight away if it's
+          already been prepared for that track).
+        </li>
+        <li>Sheet music is for your own use, on the same terms as your track (see section 6).</li>
+      </ul>
+    </LegalSection>
+
     <LegalSection title="3. Payment">
       <p>
         You can pay by card through Stripe when you order, or by Buy Me a Coffee or direct bank transfer as shown on
@@ -96,7 +111,7 @@ const Terms = () => (
       </p>
       <p>Please don't:</p>
       <ul>
-        <li>share, resell, or give away the audio file, or upload it on its own (without your performance) anywhere;</li>
+        <li>share, resell, or give away the audio file or sheet music, or upload the track on its own (without your performance) anywhere;</li>
         <li>claim the recording as your own or remove credit where credit is asked for;</li>
         <li>release it commercially (for example, on streaming services) or use it to train AI models without my written permission.</li>
       </ul>
@@ -115,12 +130,9 @@ const Terms = () => (
     <LegalSection title="7. Material you send me">
       <p>
         By uploading sheet music, voice memos or other material, you confirm you're entitled to share it with me for
-        the purpose of making your track. Voice memos and your personal details are never made public.
-      </p>
-      <p>
-        If your track is later offered in my shop, I may show the sheet music you sent (including any cuts or markings)
-        as a preview so buyers know which version they're getting. If you'd rather I didn't, just tell me and I'll
-        leave it out. See the <Link to="/privacy">Privacy Policy</Link> for how uploads are stored.
+        the purpose of making your track. I don't publish the sheet music, voice memos or personal details you send
+        me. If your track is later offered in my shop, the listing describes the key and cut in words and may link to
+        the official published score. See the <Link to="/privacy">Privacy Policy</Link> for how uploads are stored.
       </p>
     </LegalSection>
 

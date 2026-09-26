@@ -12,6 +12,8 @@ import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BackToTop from './components/BackToTop';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import CartProvider from './components/cart/CartProvider';
+import CartDrawer from './components/cart/CartDrawer';
 
 // The landing page stays in the main bundle; every other route loads on demand.
 const FormPage = lazy(() => import('./pages/FormPage'));
@@ -62,6 +64,7 @@ const DeveloperRedirect = () => <Navigate to="/admin?section=settings&sub=develo
 function App() {
   return (
     <Router>
+      <CartProvider>
       <ScrollToTop />
       <div className="flex flex-col min-h-screen">
         <ImpersonationBanner />
@@ -111,7 +114,9 @@ function App() {
         <Footer />
       </div>
       <BackToTop />
+      <CartDrawer />
       <Toaster />
+      </CartProvider>
     </Router>
   );
 }

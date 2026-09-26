@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import CartButton from '@/components/cart/CartButton';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -177,6 +178,8 @@ const Header = () => {
               </DropdownMenu>
             )}
             
+            <CartButton className={isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"} />
+
             <div className="pl-2 border-l border-white/20 ml-2">
               {user ? (
                 <Button
@@ -210,7 +213,8 @@ const Header = () => {
           </nav>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center gap-1">
+            <CartButton className={isScrolled ? "text-[#1C0357] hover:bg-[#1C0357]/5" : "text-white hover:bg-white/20"} />
             <Button
               variant="ghost"
               size="icon"

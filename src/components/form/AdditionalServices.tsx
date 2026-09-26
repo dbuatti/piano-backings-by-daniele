@@ -14,7 +14,8 @@ const paidServices = [
   { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15' },
   { id: 'complex-songs', label: 'Complex Score (Sondheim, JRB, Guettel)', price: '+$10' },
   { id: 'additional-edits', label: 'Additional Edits', price: '+$5' },
-  { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' }
+  { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' },
+  { id: 'sheet-music', label: 'Custom Sheet Music', price: '+$50', note: 'A clean, engraved score of your cut, made in Sibelius with no cut marks.' }
 ];
 
 const freeOptions = [
@@ -49,7 +50,12 @@ const AdditionalServices: React.FC<AdditionalServicesProps> = ({
                     checked={isSelected} 
                     onCheckedChange={() => onToggleService(service.id)}
                   />
-                  <span className="font-bold text-sm">{service.label}</span>
+                  <span className="text-sm">
+                    <span className="font-bold block">{service.label}</span>
+                    {'note' in service && service.note && (
+                      <span className="text-xs text-gray-500 font-medium block mt-0.5">{service.note}</span>
+                    )}
+                  </span>
                 </div>
                 <span className="text-xs font-black text-[#F538BC]">{service.price}</span>
               </label>

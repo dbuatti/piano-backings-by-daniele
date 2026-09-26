@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
 import ProductManager from '@/components/admin/ProductManager';
+import ShopPreviewsCard from '@/components/admin/ShopPreviewsCard';
 import { PromoCodesTabContent } from '@/components/admin/PromoCodesTabContent';
 
 const IgGenerator = lazy(() => import('@/pages/IgGenerator'));
@@ -79,6 +80,7 @@ const ShopSection: React.FC = () => {
 
       {sub === 'products' && (
         <div className="space-y-8">
+          <ShopPreviewsCard />
           <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as typeof shopViewMode)} className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
               <TabsTrigger value="create" className="rounded-lg font-bold">

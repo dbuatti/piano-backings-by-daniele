@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1';
+import { TIER_PRICES, SERVICE_COSTS, serviceLabel } from '../_shared/pricing.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,8 +68,6 @@ Deno.serve(async (req) => {
     }
 
     // Calculate cost breakdown
-    const TIER_PRICES = { 'note-bash': 15.00, 'audition-ready': 30.00, 'full-song': 50.00 };
-    const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00, 'asap': 0 };
 
     const tier = request.track_type || 'audition-ready';
     const baseCost = TIER_PRICES[tier] || 30.00;
@@ -83,7 +82,7 @@ Deno.serve(async (req) => {
         if (cost > 0) {
           total += cost;
           items.push({
-            desc: svc.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            desc: serviceLabel(svc),
             amount: cost,
           });
         }

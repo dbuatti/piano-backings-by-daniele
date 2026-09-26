@@ -19,7 +19,21 @@ export const ADDITIONAL_SERVICE_COSTS: Record<string, number> = {
   'complex-songs': 10.00,
   'additional-edits': 5.00,
   'exclusive-ownership': 40.00,
+  'sheet-music': 50.00,
   'asap': 0,
+};
+
+// Engraved sheet music added to a shop track purchase.
+// Keep in sync with supabase/functions/_shared/pricing.ts.
+export const SHOP_SHEET_MUSIC_PRICE = 50.00;
+
+export const SERVICE_LABELS: Record<string, string> = {
+  'rush-order': 'Rush Order (24h)',
+  'complex-songs': 'Complex Score',
+  'additional-edits': 'Additional Edits',
+  'exclusive-ownership': 'Exclusive Ownership',
+  'sheet-music': 'Custom Sheet Music',
+  'asap': 'ASAP',
 };
 
 export const calculateRequestCost = (request: { track_type?: string | null; additional_services?: string[] | null }) => {
@@ -46,7 +60,7 @@ export const calculateRequestCost = (request: { track_type?: string | null; addi
       const cost = ADDITIONAL_SERVICE_COSTS[service] || 0;
       if (cost > 0) {
         serviceCosts.push({ 
-          service: service.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '), 
+          service: SERVICE_LABELS[service] || service.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
           cost 
         });
         totalCost += cost;

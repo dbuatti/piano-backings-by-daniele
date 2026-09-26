@@ -146,11 +146,14 @@ const FormPage = () => {
     const perSong = calculateRequestCost(mockRequest);
     const creditsApplied = useCredit ? Math.min(currentTierCredits, songs.length) : 0;
     const cashSongs = songs.length - creditsApplied;
+    // A credit covers the track; add-ons are still charged (matches create-backing-request).
+    const addOnsPerSong = perSong.serviceCosts.reduce((sum, s) => sum + s.cost, 0);
     return {
-      total: cashSongs * perSong.totalCost,
+      total: cashSongs * perSong.totalCost + creditsApplied * addOnsPerSong,
       perSong: perSong.totalCost,
       creditsApplied,
-      cashSongs
+      cashSongs,
+      addOnsPerSong,
     };
   }, [globalData.trackType, globalData.additionalServices, songs.length, useCredit, currentTierCredits]);
 
@@ -340,8 +343,8 @@ const FormPage = () => {
           globalData.specialRequests.trim()
         ].filter(Boolean).join('\n\n--- GENERAL ORDER NOTES ---\n');
 
-        // Determine if this specific song is paid via credit
-        const isSongPaidViaCredit = useCredit && (i < creditsApplied);
+        // The server redeems the credit (if the balance allows) and decides what's paid.
+        const wantsCredit = useCredit && (i < creditsApplied);
 
         const submissionData = {
           formData: {
@@ -352,8 +355,7 @@ const FormPage = () => {
             voiceMemoUrls,
             backingType: [globalData.trackType],
             specialRequests: combinedNotes,
-            is_paid: isSongPaidViaCredit,
-            internal_notes: isSongPaidViaCredit ? "Paid via Season Pack Credit" : ""
+            useCredit: wantsCredit,
           }
         };
         
@@ -368,25 +370,9 @@ const FormPage = () => {
         
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Failed to create request");
-        if (result.requestId) {
-          if (!isSongPaidViaCredit) {
-            createdRequestIds.push(result.requestId);
-          }
+        if (result.requestId && result.requiresPayment !== false) {
+          createdRequestIds.push(result.requestId);
         }
-      }
-
-      if (creditsApplied > 0 && session) {
-        setSubmissionStep('Applying credits...');
-        const { error: creditError } = await supabase
-          .from('user_credits')
-          .update({
-            balance: currentTierCredits - creditsApplied,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', session.user.id)
-          .eq('credit_type', globalData.trackType);
-        
-        if (creditError) throw creditError;
       }
 
       if (createdRequestIds.length > 0) {
@@ -395,7 +381,7 @@ const FormPage = () => {
           request_ids: createdRequestIds,
           amount: priceBreakdown.total,
           customer_email: globalData.email,
-          description: `Custom Backing Tracks: ${songs.filter((_, idx) => !useCredit || idx >= creditsApplied).map(s => s.songTitle).join(', ')}`
+          description: `Custom Backing Tracks: ${songs.map(s => s.songTitle).join(', ')}`
         };
         if (promoDiscount > 0 && promoCode.trim()) {
           checkoutBody.promo_code = promoCode.trim();
@@ -642,6 +628,11 @@ const FormPage = () => {
                   {priceBreakdown.cashSongs > 0 && (
                     <p className="text-white/70 text-sm font-bold uppercase tracking-widest">
                       ({priceBreakdown.cashSongs} remaining {priceBreakdown.cashSongs === 1 ? 'song' : 'songs'} to be paid at ${priceBreakdown.perSong.toFixed(2)} each)
+                    </p>
+                  )}
+                  {priceBreakdown.addOnsPerSong > 0 && (
+                    <p className="text-white/70 text-sm font-bold uppercase tracking-widest">
+                      (Credits cover the track; add-ons are ${priceBreakdown.addOnsPerSong.toFixed(2)} per song)
                     </p>
                   )}
                 </div>

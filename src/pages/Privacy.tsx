@@ -66,8 +66,8 @@ const Privacy = () => (
 
     <LegalSection title="4. Cookies and browser storage">
       <p>
-        The site uses your browser's storage only for things it needs to work, such as keeping you signed in and
-        remembering that you closed a notice. There are no advertising or cross-site tracking cookies.
+        The site uses your browser's storage only for things it needs to work, such as keeping you signed in,
+        remembering what's in your cart, and remembering that you closed a notice. There are no advertising or cross-site tracking cookies.
       </p>
     </LegalSection>
 

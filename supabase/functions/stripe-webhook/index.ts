@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'npm:stripe@16.2.0';
+import { TIER_PRICES, SERVICE_COSTS, serviceLabel } from '../_shared/pricing.ts';
+import { fulfilShopPurchase, type ShopLine } from '../_shared/shop-fulfilment.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,95 +50,50 @@ Deno.serve(async (req) => {
       const discountAmount = session.metadata?.discount_amount;
       const promoCode = session.metadata?.promo_code;
 
-      if (!productId && !requestIds) {
+      const isCart = session.metadata?.cart === '1';
+
+      if (!productId && !requestIds && !isCart) {
         console.log("[stripe-webhook] Ignoring session: No Piano Backings metadata found.");
         return new Response(JSON.stringify({ ignored: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       let orderId = null;
 
-      // 1. Handle Shop Product Purchase
-      if (productId) {
-        const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
-        if (product) {
-          let finalUserId = userId;
-          if (!finalUserId && customerEmail) {
-            const { data: users } = await supabaseAdmin.rpc('get_users_by_email', { p_email: customerEmail });
-            if (users && users.length > 0) {
-              finalUserId = users[0].id;
-            }
+      // 1. Handle Shop Purchase (cart, or a legacy single-product session)
+      if (isCart || productId) {
+        let lines: ShopLine[] = [];
+
+        if (isCart) {
+          const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+            limit: 100,
+            expand: ['data.price.product'],
+          });
+          const byProduct: Record<string, { amount: number; includesSheetMusic: boolean }> = {};
+          for (const li of lineItems.data) {
+            const meta = li.price?.product?.metadata || {};
+            if (!meta.product_id) continue;
+            const entry = byProduct[meta.product_id] || { amount: 0, includesSheetMusic: false };
+            entry.amount += (li.amount_total || 0) / 100;
+            if (meta.kind === 'sheet_music') entry.includesSheetMusic = true;
+            byProduct[meta.product_id] = entry;
           }
+          const ids = Object.keys(byProduct);
+          const { data: products } = await supabaseAdmin.from('products').select('*').in('id', ids);
+          lines = (products || []).map((product) => ({ product, ...byProduct[product.id] }));
+        } else {
+          const { data: product } = await supabaseAdmin.from('products').select('*').eq('id', productId).single();
+          if (product) lines = [{ product, amount: session.amount_total! / 100, includesSheetMusic: false }];
+        }
 
-          const { data: order } = await supabaseAdmin.from('orders').insert({
-            product_id: productId,
-            customer_email: customerEmail,
-            amount: session.amount_total! / 100,
-            currency: session.currency!.toUpperCase(),
-            status: 'completed',
-            user_id: finalUserId,
-            checkout_session_id: session.id,
-          }).select().single();
-
-          orderId = order?.id || null;
-
-          if (product.product_type === 'credit_pack' && finalUserId) {
-            const creditType = product.track_type || 'audition-ready';
-            const creditAmount = product.credit_amount || 0;
-
-            const { data: existingCredit } = await supabaseAdmin
-              .from('user_credits')
-              .select('*')
-              .eq('user_id', finalUserId)
-              .eq('credit_type', creditType)
-              .maybeSingle();
-
-            if (existingCredit) {
-              await supabaseAdmin
-                .from('user_credits')
-                .update({
-                  balance: existingCredit.balance + creditAmount,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingCredit.id);
-            } else {
-              await supabaseAdmin
-                .from('user_credits')
-                .insert({
-                  user_id: finalUserId,
-                  credit_type: creditType,
-                  balance: creditAmount,
-                  updated_at: new Date().toISOString()
-                });
-            }
-          }
-
-          try {
-            const isCreditPack = product.product_type === 'credit_pack';
-            const emailSubject = isCreditPack
-              ? `Your Season Pack Credits are Ready!`
-              : `Your Purchase: "${product.title}" is Ready!`;
-
-            const emailHtml = isCreditPack
-              ? `<p>Hi there,</p>
-                 <p>Thank you for purchasing the <strong>${product.title}</strong>!</p>
-                 <p>We have added <strong>${product.credit_amount} credits</strong> to your account.</p>
-                 <p>You can redeem them anytime on the request form by toggling "Use Credit".</p>
-                 <p>Enjoy your tracks!</p>`
-              : `<p>Hi there,</p>
-                 <p>Thank you for your purchase of <strong>${product.title}</strong>!</p>
-                 <p>You can download your tracks from your dashboard.</p>`;
-
-            await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-email`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to: customerEmail,
-                subject: emailSubject,
-                html: emailHtml,
-                senderEmail: 'pianobackingsbydaniele@gmail.com'
-              })
-            });
-          } catch (e) { console.error("Email error:", e); }
+        if (lines.length > 0) {
+          const orderIds = await fulfilShopPurchase(supabaseAdmin, {
+            sessionId: session.id,
+            customerEmail,
+            userId,
+            currency: session.currency || 'aud',
+            lines,
+          });
+          orderId = orderIds[0] || null;
         }
       }
 
@@ -160,8 +117,6 @@ Deno.serve(async (req) => {
         let invoiceTotal = 0;
 
         if (paidRequests && paidRequests.length > 0) {
-          const TIER_PRICES = { 'note-bash': 15.00, 'audition-ready': 30.00, 'full-song': 50.00 };
-          const SERVICE_COSTS = { 'rush-order': 15.00, 'complex-songs': 10.00, 'additional-edits': 5.00, 'exclusive-ownership': 40.00, 'asap': 0 };
 
           paidRequests.forEach((req, i) => {
             const tier = req.track_type || 'audition-ready';
@@ -183,7 +138,7 @@ Deno.serve(async (req) => {
                   subtotal += svcCost;
                   invoiceItemsHtml += `
                     <tr>
-                      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; padding-left: 24px; color: #6b7280; font-size: 13px;">+ ${svc.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</td>
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; padding-left: 24px; color: #6b7280; font-size: 13px;">+ ${serviceLabel(svc)}</td>
                       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;"></td>
                       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #6b7280; font-size: 13px;">+$${svcCost.toFixed(2)}</td>
                     </tr>`;
@@ -293,7 +248,13 @@ Deno.serve(async (req) => {
       }
 
       // 3. Record Promo Code Redemption (if promo was applied)
-      if (promoCodeId && customerEmail && originalAmount && discountAmount) {
+      const { data: existingRedemption } = await supabaseAdmin
+        .from('promo_code_redemptions')
+        .select('id')
+        .eq('stripe_session_id', session.id)
+        .maybeSingle();
+
+      if (promoCodeId && customerEmail && originalAmount && discountAmount && !existingRedemption) {
         console.log("[stripe-webhook] Recording promo code redemption:", {
           promoCodeId,
           customerEmail,
@@ -316,6 +277,7 @@ Deno.serve(async (req) => {
           metadata: {
             promo_code: promoCode || null,
             product_id: productId || null,
+            product_ids: session.metadata?.product_ids || null,
           },
         });
       }

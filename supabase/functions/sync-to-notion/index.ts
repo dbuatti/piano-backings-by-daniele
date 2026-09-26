@@ -169,7 +169,17 @@ Deno.serve(async (req) => {
 
   if (!row) {
     const table = type === 'product' ? 'products' : 'backing_requests';
-    const { data, error } = await supabaseAdmin.from(table).select('*').eq('id', id).single();
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select(type === 'product' ? '*, product_files(master_download_link)' : '*')
+      .eq('id', id)
+      .single();
+    // Paid links live in product_files (see migration 0030).
+    if (data && type === 'product') {
+      const files = Array.isArray(data.product_files) ? data.product_files[0] : data.product_files;
+      data.master_download_link = files?.master_download_link || null;
+      delete data.product_files;
+    }
     if (error) {
       return new Response(JSON.stringify({ error: `Row lookup failed: ${error.message}` }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

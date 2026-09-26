@@ -58,6 +58,7 @@ const additionalServiceOptions = [
   { value: 'complex-songs', label: 'Complex Score (Sondheim, JRB, Guettel) (+$10)' },
   { value: 'additional-edits', label: 'Additional Edits (+$5)' },
   { value: 'exclusive-ownership', label: 'Exclusive Ownership (+$40)' },
+  { value: 'sheet-music', label: 'Custom Sheet Music (+$50)' },
   { value: 'asap', label: 'As soon as humanly possible (Free)' }
 ];
 

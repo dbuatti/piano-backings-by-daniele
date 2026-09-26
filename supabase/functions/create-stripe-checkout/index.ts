@@ -1,6 +1,11 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'npm:stripe@16.2.0';
+import { SHOP_SHEET_MUSIC_PRICE } from '../_shared/pricing.ts';
+import { fulfilShopPurchase, type ShopLine } from '../_shared/shop-fulfilment.ts';
+
+const MAX_CART_ITEMS = 20;
+const ADMIN_EMAILS = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,10 +97,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { product_id, request_ids, amount, description, customer_email, promo_code, test_mode } = body;
+    const { product_id, items, request_ids, amount, description, customer_email, promo_code, test_mode } = body;
+
+    // Legacy single-product calls are treated as a one-item cart.
+    const cartItems: { product_id: string; include_sheet_music?: boolean }[] | null =
+      Array.isArray(items) ? items : product_id ? [{ product_id, include_sheet_music: false }] : null;
 
     console.log("[create-stripe-checkout] Received data:", {
-      hasProductId: !!product_id,
+      cartSize: cartItems?.length || 0,
       hasRequestIds: !!request_ids,
       amount,
       customer_email,
@@ -105,36 +114,91 @@ Deno.serve(async (req) => {
 
     let line_items = [];
     let metadata: Record<string, string> = {};
-    let paymentAmount = amount || 0;
+    let paymentAmount = 0;
+    let shopLines: ShopLine[] = [];
+    let currency = 'aud';
 
-    if (product_id) {
-      console.log("[create-stripe-checkout] Handling Shop Product:", product_id);
-      const { data: product, error: productError } = await supabaseAdmin
+    if (cartItems) {
+      if (cartItems.length === 0 || cartItems.length > MAX_CART_ITEMS) {
+        throw new Error(`Your cart must contain between 1 and ${MAX_CART_ITEMS} items.`);
+      }
+      const ids = [...new Set(cartItems.map((i) => String(i.product_id)))];
+      const { data: products, error: productError } = await supabaseAdmin
         .from('products')
         .select('*')
-        .eq('id', product_id)
-        .single();
+        .in('id', ids)
+        .eq('is_active', true);
 
-      if (productError || !product) {
-        console.error("[create-stripe-checkout] Product fetch error:", productError);
-        throw new Error("Product not found");
+      if (productError) throw productError;
+      if (!products || products.length !== ids.length) {
+        throw new Error("One of the items in your cart is no longer available. Please remove it and try again.");
       }
 
-      paymentAmount = product.price;
-      line_items = [{
-        price_data: {
-          currency: product.currency?.toLowerCase() || 'aud',
-          product_data: {
-            name: product.title,
-            description: product.description || undefined
+      const byId = Object.fromEntries(products.map((p) => [p.id, p]));
+      currency = (products[0].currency || 'aud').toLowerCase();
+
+      for (const id of ids) {
+        const product = byId[id];
+        if ((product.currency || 'aud').toLowerCase() !== currency) {
+          throw new Error("Items in different currencies can't be bought together.");
+        }
+        const wantsSheetMusic = cartItems.some((i) => String(i.product_id) === id && i.include_sheet_music)
+          && product.product_type !== 'credit_pack';
+
+        line_items.push({
+          price_data: {
+            currency,
+            product_data: {
+              name: product.title,
+              description: product.description ? String(product.description).slice(0, 500) : undefined,
+              metadata: { product_id: product.id, kind: 'track' },
+            },
+            unit_amount: Math.round(product.price * 100),
           },
-          unit_amount: Math.round(product.price * 100),
-        },
-        quantity: 1,
-      }];
-      metadata = { product_id: product.id };
-    } else if (request_ids && amount) {
+          quantity: 1,
+        });
+        paymentAmount += Number(product.price);
+
+        if (wantsSheetMusic) {
+          line_items.push({
+            price_data: {
+              currency,
+              product_data: {
+                name: `Custom sheet music: ${product.title}`,
+                description: 'Clean, engraved sheet music of this cut, prepared in Sibelius.',
+                metadata: { product_id: product.id, kind: 'sheet_music' },
+              },
+              unit_amount: Math.round(SHOP_SHEET_MUSIC_PRICE * 100),
+            },
+            quantity: 1,
+          });
+          paymentAmount += SHOP_SHEET_MUSIC_PRICE;
+        }
+
+        shopLines.push({
+          product,
+          amount: Number(product.price) + (wantsSheetMusic ? SHOP_SHEET_MUSIC_PRICE : 0),
+          includesSheetMusic: wantsSheetMusic,
+        });
+      }
+
+      metadata = { cart: '1', product_ids: ids.join(',').slice(0, 500) };
+    } else if (request_ids) {
       console.log("[create-stripe-checkout] Handling Custom Request(s):", request_ids);
+      // Charge what the server priced when the requests were created; the
+      // browser-supplied `amount` is ignored.
+      const requestedIds = (Array.isArray(request_ids) ? request_ids : String(request_ids).split(',')).map(String);
+      const { data: requestRows, error: requestError } = await supabaseAdmin
+        .from('backing_requests')
+        .select('id, cost, is_paid')
+        .in('id', requestedIds);
+      if (requestError) throw requestError;
+      const unpaid = (requestRows || []).filter((r) => !r.is_paid && Number(r.cost || 0) > 0);
+      if (unpaid.length === 0) throw new Error('These requests are already paid for.');
+      paymentAmount = unpaid.reduce((sum, r) => sum + Number(r.cost), 0);
+      if (amount && Math.abs(Number(amount) - paymentAmount) > 0.01) {
+        console.warn("[create-stripe-checkout] Client amount differs from server price:", { amount, paymentAmount });
+      }
       line_items = [{
         price_data: {
           currency: 'aud',
@@ -142,38 +206,52 @@ Deno.serve(async (req) => {
             name: 'Custom Piano Backing Request',
             description: description || 'Professional piano accompaniment.'
           },
-          unit_amount: Math.round(amount * 100),
+          unit_amount: Math.round(paymentAmount * 100),
         },
         quantity: 1,
       }];
       metadata = {
-        request_ids: Array.isArray(request_ids) ? request_ids.join(',') : request_ids
+        request_ids: unpaid.map((r) => r.id).join(',')
       };
     } else {
       console.error("[create-stripe-checkout] Invalid parameters provided");
       throw new Error('Invalid request parameters.');
     }
 
-    // Admin test mode — override amount to $0.50
-    if (test_mode && userId) {
+    paymentAmount = Math.round(paymentAmount * 100) / 100;
+
+    // Admin-only test mode: charge $0.50 in total.
+    if (test_mode && userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
       console.log("[create-stripe-checkout] Test mode enabled — overriding amount to $0.50");
       paymentAmount = 0.50;
-      line_items[0].price_data.unit_amount = 50;
+      line_items = [{ ...line_items[0], price_data: { ...line_items[0].price_data, unit_amount: 50 }, quantity: 1 }];
+      shopLines = shopLines.map((l, i) => ({ ...l, amount: i === 0 ? 0.5 : 0 }));
     }
 
     // Apply promo code if provided
     let promoResult = null;
+    let discounts = undefined;
     if (promo_code) {
       console.log("[create-stripe-checkout] Validating promo code:", promo_code);
       promoResult = await validatePromoCode(supabaseAdmin, promo_code, paymentAmount);
 
       if (promoResult.finalAmount < paymentAmount) {
-        line_items[0].price_data.unit_amount = Math.round(promoResult.finalAmount * 100);
-
         metadata.promo_code_id = promoResult.promoCodeId;
         metadata.original_amount = promoResult.originalAmount.toString();
         metadata.discount_amount = promoResult.discountAmount.toString();
         metadata.promo_code = promo_code.trim().toUpperCase();
+
+        if (promoResult.finalAmount > 0) {
+          // A single-use coupon spreads the discount across every line item.
+          const coupon = await stripe.coupons.create({
+            amount_off: Math.round(promoResult.discountAmount * 100),
+            currency,
+            duration: 'once',
+            max_redemptions: 1,
+            name: promo_code.trim().toUpperCase().slice(0, 40),
+          });
+          discounts = [{ coupon: coupon.id }];
+        }
       }
     }
 
@@ -183,21 +261,20 @@ Deno.serve(async (req) => {
       console.log("[create-stripe-checkout] Free order — skipping Stripe");
 
       const customerEmail = customer_email || userEmail || 'unknown';
+      const freeSessionId = `free_${crypto.randomUUID()}`;
+      let orderIds: string[] = [];
 
-      if (product_id) {
-        await supabaseAdmin.from('orders').insert({
-          product_id,
-          customer_email: customerEmail,
-          amount: 0,
-          currency: 'AUD',
-          status: 'completed',
-          user_id: userId,
-          checkout_session_id: null,
+      if (shopLines.length > 0) {
+        orderIds = await fulfilShopPurchase(supabaseAdmin, {
+          sessionId: freeSessionId,
+          customerEmail,
+          userId,
+          currency,
+          lines: shopLines.map((l) => ({ ...l, amount: 0 })),
         });
       }
-      if (request_ids) {
-        const ids = typeof request_ids === 'string' ? request_ids.split(',') : request_ids;
-        await supabaseAdmin.from('backing_requests').update({ is_paid: true }).in('id', ids);
+      if (metadata.request_ids) {
+        await supabaseAdmin.from('backing_requests').update({ is_paid: true }).in('id', metadata.request_ids.split(','));
       }
 
       // Record promo code redemption
@@ -207,17 +284,17 @@ Deno.serve(async (req) => {
           promo_code_id: promoResult.promoCodeId,
           user_id: userId || null,
           email: customerEmail,
-          order_id: null,
+          order_id: orderIds[0] || null,
           stripe_session_id: null,
           discount_amount: promoResult.discountAmount,
           original_amount: promoResult.originalAmount,
           final_amount: 0,
-          metadata: { promo_code: promo_code.trim().toUpperCase(), product_id: product_id || null },
+          metadata: { promo_code: promo_code.trim().toUpperCase(), product_ids: shopLines.map((l) => l.product.id) },
         });
       }
 
-      const redirectUrl = product_id
-        ? `${siteUrl}/purchase-confirmation?free=true`
+      const redirectUrl = shopLines.length > 0
+        ? `${siteUrl}/purchase-confirmation?session_id=${freeSessionId}`
         : `${siteUrl}/user-dashboard`;
 
       return new Response(
@@ -230,11 +307,12 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items,
+      ...(discounts ? { discounts } : {}),
       mode: 'payment',
       customer_email: customer_email || undefined,
       client_reference_id: userId || undefined,
       success_url: `${siteUrl}/purchase-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/form-page`,
+      cancel_url: shopLines.length > 0 ? `${siteUrl}/shop?checkout=cancelled` : `${siteUrl}/form-page`,
       metadata,
       payment_intent_data: {
         statement_descriptor: 'PIANO BACKINGS',
