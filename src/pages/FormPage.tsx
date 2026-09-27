@@ -35,6 +35,7 @@ import { cn, getErrorMessage } from "@/lib/utils";
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useAdmin } from '@/hooks/useAdmin';
 import Seo from "@/components/Seo";
+import seoPages from "@/lib/seo-pages.json";
 import AuthOverlay from "@/components/AuthOverlay";
 import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
 import ContactDetailsForm from '@/components/form/ContactDetailsForm';
@@ -451,7 +452,7 @@ const FormPage = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
-      <Seo title="Custom Piano Backing Request" description="Submit your custom piano backing track request." />
+      <Seo title={seoPages['/form-page'].title} description={seoPages['/form-page'].description} />
       <Header />
       
       <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />

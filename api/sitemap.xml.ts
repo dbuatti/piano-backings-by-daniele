@@ -2,7 +2,7 @@ const BASE_URL = process.env.VITE_SITE_URL || 'https://pianobackings.danielebuat
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
-type Product = { id: string };
+type Product = { id: string; updated_at?: string | null; created_at?: string | null };
 
 const xmlEscape = (value: string): string =>
   value
@@ -18,8 +18,6 @@ export default async function handler(
     status: (code: number) => { send: (body: string) => void };
   }
 ) {
-  const today = new Date().toISOString().slice(0, 10);
-
   const staticPages = [
     { path: '/', changefreq: 'weekly', priority: '1.0' },
     { path: '/shop', changefreq: 'weekly', priority: '0.9' },
@@ -34,7 +32,7 @@ export default async function handler(
   if (SUPABASE_URL && ANON_KEY) {
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/products?select=id&is_active=eq.true`,
+        `${SUPABASE_URL}/rest/v1/products?select=id,updated_at,created_at&is_active=eq.true`,
         { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }
       );
       if (response.ok) {
@@ -46,15 +44,16 @@ export default async function handler(
   }
 
   const urls = [
+    // Static pages carry no lastmod: an always-today date teaches crawlers to ignore it.
     ...staticPages.map((p) => ({
       loc: `${BASE_URL}${p.path}`,
-      lastmod: today,
+      lastmod: null as string | null,
       changefreq: p.changefreq,
       priority: p.priority,
     })),
     ...products.map((p) => ({
       loc: `${BASE_URL}/shop/${p.id}`,
-      lastmod: today,
+      lastmod: (p.updated_at || p.created_at || '').slice(0, 10) || null,
       changefreq: 'monthly',
       priority: '0.8',
     })),
@@ -65,8 +64,8 @@ export default async function handler(
 ${urls
   .map(
     (u) => `  <url>
-    <loc>${xmlEscape(u.loc)}</loc>
-    <lastmod>${u.lastmod}</lastmod>
+    <loc>${xmlEscape(u.loc)}</loc>${u.lastmod ? `
+    <lastmod>${u.lastmod}</lastmod>` : ''}
     <changefreq>${u.changefreq}</changefreq>
     <priority>${u.priority}</priority>
   </url>`

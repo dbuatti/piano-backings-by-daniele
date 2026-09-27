@@ -9,7 +9,19 @@ export default defineConfig(() => ({
     host: "::",
     port: 8080,
   },
-  plugins: [dyadComponentTagger(), react()],
+  plugins: [
+    dyadComponentTagger(),
+    react(),
+    {
+      // Writes dist/seo/*.html (page-specific titles, canonicals, structured data)
+      // after every production build, however the build is invoked.
+      name: 'prerender-seo',
+      apply: 'build',
+      async closeBundle() {
+        await import('./scripts/prerender-seo.mjs');
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

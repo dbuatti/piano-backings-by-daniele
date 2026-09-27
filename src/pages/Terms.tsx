@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import seoPages from "@/lib/seo-pages.json";
 import LegalPage, { LegalSection, CONTACT_EMAIL } from "@/components/LegalPage";
 
 const Terms = () => (
   <LegalPage
     title="Terms of Service"
-    seoTitle="Terms of Service | Piano Backings by Daniele"
-    description="The terms for ordering custom piano backing tracks and buying tracks from the Piano Backings by Daniele shop."
+    seoTitle={seoPages['/terms'].title}
+    description={seoPages['/terms'].description}
     intro={
       <>
         These terms cover custom backing tracks ordered through this site and tracks bought from the shop.

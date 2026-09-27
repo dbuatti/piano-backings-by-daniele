@@ -3,6 +3,8 @@
 import React from 'react';
 import Header from "@/components/Header";
 import Seo from "@/components/Seo";
+import aboutFaqs from "@/lib/about-faqs.json";
+import seoPages from "@/lib/seo-pages.json";
 import { motion } from 'framer-motion';
 import { 
   Music, 
@@ -38,8 +40,8 @@ const AboutServices = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title="About & Services | Piano Backings by Daniele"
-        description="Learn more about Daniele Buatti and the professional piano backing track services offered."
+        title={seoPages['/about'].title}
+        description={seoPages['/about'].description}
       />
       <Header />
 
@@ -74,12 +76,12 @@ const AboutServices = () => {
             <h2 className="text-4xl font-black text-[#1C0357] mb-6 tracking-tight">Pianist, Coach & Music Director</h2>
             <div className="space-y-6 text-lg text-gray-700 font-medium leading-relaxed">
               <p>
-                I help singers, performers, and speakers connect body, breath, and voice for authentic and easeful expression. 
+                I'm a Melbourne-based pianist, music director and vocal coach. I help singers, performers, and speakers connect body, breath, and voice for authentic and easeful expression. 
                 With over 12 years as a music director, pianist, and vocal coach, I combine musical theatre expertise with kinesiology and somatic practices.
               </p>
               <p>
                 Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. 
-                What started as a passion project has evolved into a professional offering for the arts community worldwide.
+                What started as a passion project has evolved into a professional offering for performers in Melbourne, across Australia and worldwide.
               </p>
             </div>
             <div className="mt-10 flex flex-wrap gap-4">
@@ -97,7 +99,7 @@ const AboutServices = () => {
             <div className="aspect-square rounded-[60px] bg-[#1C0357] overflow-hidden shadow-2xl rotate-3 group">
               <img 
                 src="/daniele-profile.png" 
-                alt="Daniele Buatti - Pianist & Music Director"
+                alt="Daniele Buatti, Melbourne pianist and music director"
                 className="w-full h-full object-cover opacity-90 group-hover:scale-110 transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1C0357]/40 to-transparent" />
@@ -241,28 +243,7 @@ const AboutServices = () => {
           </div>
 
           <Accordion type="single" collapsible className="space-y-4">
-            {[
-              {
-                q: "How long does it take to receive my track?",
-                a: "Standard delivery is typically within 3-5 business days. If you need it faster, select 'As soon as humanly possible' (free) to request priority scheduling, or choose the 'Rush Order' add-on for guaranteed 24-hour delivery."
-              },
-              {
-                q: "Can I request a transposition (different key)?",
-                a: "Absolutely! You can specify the original key and your requested key on the order form. I'm happy to provide the track in whatever key suits your voice best."
-              },
-              {
-                q: "What file format will I receive?",
-                a: "All tracks are delivered as high-quality MP3 files (320kbps). If you require a WAV file for a specific performance, just let me know in the special requests."
-              },
-              {
-                q: "What if I need a small adjustment after delivery?",
-                a: "I want you to be 100% happy with your track. Small adjustments to tempo or dynamics are included. Just reply to your delivery email and I'll take care of it."
-              },
-              {
-                q: "How do I pay for my track?",
-                a: "You can pay via Stripe (Credit/Debit Card) directly on the site, or use 'Buy Me a Coffee' or Direct Bank Transfer. Details are provided on your personal track dashboard."
-              }
-            ].map((item, i) => (
+            {aboutFaqs.map((item, i) => (
               <AccordionItem key={i} value={`item-${i}`} className="border-none bg-white rounded-3xl px-8 shadow-sm">
                 <AccordionTrigger className="text-lg font-black text-[#1C0357] hover:no-underline py-6">
                   {item.q}

@@ -46,13 +46,14 @@ import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
 import Seo from "@/components/Seo";
+import seoPages from "@/lib/seo-pages.json";
+import { productSeo } from "../../shared/product-seo.mjs";
 import { SITE_URL } from "@/lib/site";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { isWithinInterval, subDays } from 'date-fns';
-import { formatDurationIso } from '@/utils/helpers';
 import {
   CATEGORY_OPTIONS,
   CATEGORY_PLURALS,
@@ -568,37 +569,26 @@ const Shop = () => {
     </div>
   );
 
+  const urlProductSeo = urlProduct ? productSeo(urlProduct, SITE_URL) : null;
+
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title={urlProduct ? `${urlProduct.title} | Piano Backings by Daniele` : "Sheet Music & Backing Track Library | Piano Backings by Daniele"}
-        description={urlProduct
-          ? (urlProduct.description || `${urlProduct.title} backing track by Piano Backings by Daniele. High-quality digital download, ready instantly.`)
-          : "Premium collection of piano backing tracks for musical theatre. High-quality digital downloads ready instantly."}
+        title={urlProductSeo ? urlProductSeo.title : seoPages['/shop'].title}
+        description={urlProductSeo ? urlProductSeo.description : seoPages['/shop'].description}
+        canonicalUrl={urlProductSeo?.url}
       />
-      {urlProduct && (
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "MusicRecording",
-            name: urlProduct.title,
-            byArtist: { "@type": "MusicGroup", name: urlProduct.artist_name || "Piano Backings by Daniele" },
-            ...(urlProduct.duration_seconds ? { duration: formatDurationIso(urlProduct.duration_seconds) } : {}),
-            ...(urlProduct.key_signature ? { inAlbum: { "@type": "MusicAlbum", name: `${urlProduct.title} in ${urlProduct.key_signature}` } } : {}),
-            offers: {
-              "@type": "Offer",
-              price: urlProduct.price,
-              priceCurrency: (urlProduct.currency || 'AUD').toUpperCase(),
-              availability: "https://schema.org/InStock",
-              url: `${SITE_URL}/shop/${urlProduct.id}`,
-            },
-          })}
-        </script>
-      )}
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-        
+        <header className="mb-10">
+          <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
+          <p className="mt-3 text-gray-600 font-medium max-w-2xl">
+            Instant-download piano backing tracks for auditions and performances, recorded in Melbourne by Daniele Buatti.
+            Preview any track, or <Link to="/form-page" className="font-bold text-[#1C0357] underline">order one in your key</Link>.
+          </p>
+        </header>
+
         {featuredProducts.length > 0 && !hasActiveFilters && (
           <section className="mb-12">
             <div className="flex items-center gap-2.5 mb-6">
