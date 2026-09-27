@@ -32,7 +32,7 @@ export const productSeo = (product, siteUrl) => {
   const summary = [
     `${category ? `${category[0].toUpperCase()}${category.slice(1)} piano` : 'Piano'} backing track of "${title}"${show ? ` from ${show}` : ''}${key ? ` in ${key}` : ''}${voices ? ` for ${voices}` : ''}.`,
     clean(product.cut_description) ? `${clean(product.cut_description)}.` : '',
-    `Instant download, $${price.toFixed(2)} ${currency}. Recorded by Melbourne pianist Daniele Buatti.`,
+    `Instant download, $${price.toFixed(2)} ${currency}. Recorded in Melbourne by Daniele Buatti, delivered worldwide.`,
   ].filter(Boolean).join(' ');
 
   const productDescription = clean(product.description) || summary;

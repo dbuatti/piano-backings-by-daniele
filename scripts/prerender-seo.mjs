@@ -24,7 +24,7 @@ const NAV = [
 ];
 
 const HEADINGS = {
-  '/': 'Custom piano backing tracks, recorded in Melbourne',
+  '/': 'Custom piano backing tracks for singers worldwide, recorded in Melbourne',
   '/shop': 'Musical theatre piano backing track library',
   '/form-page': 'Order a custom piano backing track',
   '/pricing': 'Piano backing track pricing',
