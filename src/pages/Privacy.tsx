@@ -1,10 +1,11 @@
+import seoPages from "@/lib/seo-pages.json";
 import LegalPage, { LegalSection, CONTACT_EMAIL } from "@/components/LegalPage";
 
 const Privacy = () => (
   <LegalPage
     title="Privacy Policy"
-    seoTitle="Privacy Policy | Piano Backings by Daniele"
-    description="What personal information Piano Backings by Daniele collects, why, who helps process it, and how to access or delete it."
+    seoTitle={seoPages['/privacy'].title}
+    description={seoPages['/privacy'].description}
     intro={
       <>
         In short: I only collect what I need to make and deliver your tracks. There are no advertising trackers, and I

@@ -243,7 +243,7 @@ const Header = () => {
           <div className="fixed inset-y-0 right-0 w-full max-w-xs transform transition-transform duration-300 ease-in-out">
             <div className="h-full flex flex-col bg-[#1C0357] text-white shadow-2xl">
               <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
-                <img className="h-10 w-auto rounded-xl" src="/pasted-image-2025-09-19T05-15-20-729Z.png" alt="Logo" />
+                <img className="h-10 w-auto rounded-xl" src="/pasted-image-2025-09-19T05-15-20-729Z.png" alt="Piano Backings by Daniele" />
                 <Button
                   variant="ghost"
                   size="icon"

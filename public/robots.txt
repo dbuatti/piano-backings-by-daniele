@@ -7,5 +7,7 @@ Disallow: /user-dashboard
 Disallow: /track/
 Disallow: /gmail-oauth-callback
 Disallow: /purchase-confirmation
+Disallow: /seo/
+Disallow: /purchase-confirmation
 
 Sitemap: https://pianobackings.danielebuatti.com/sitemap.xml

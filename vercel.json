@@ -10,6 +10,14 @@
   ],
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap.xml" },
+    { "source": "/shop/:id", "destination": "/api/shop-product?id=:id" },
+    { "source": "/", "destination": "/seo/home.html" },
+    { "source": "/shop", "destination": "/seo/shop.html" },
+    { "source": "/form-page", "destination": "/seo/form-page.html" },
+    { "source": "/pricing", "destination": "/seo/pricing.html" },
+    { "source": "/about", "destination": "/seo/about.html" },
+    { "source": "/terms", "destination": "/seo/terms.html" },
+    { "source": "/privacy", "destination": "/seo/privacy.html" },
     { "source": "/(.*\\..*)", "destination": "/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

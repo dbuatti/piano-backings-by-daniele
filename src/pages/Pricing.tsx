@@ -3,6 +3,7 @@
 import React from 'react';
 import Header from "@/components/Header";
 import Seo from "@/components/Seo";
+import seoPages from "@/lib/seo-pages.json";
 import PricingMatrix from "@/components/PricingMatrix";
 import { motion } from 'framer-motion';
 
@@ -10,8 +11,8 @@ const PricingPage = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title="Pricing Matrix | Piano Backings by Daniele"
-        description="View our transparent pricing for custom piano backing tracks, including Note Bash, Audition Ready, and Full Song tiers."
+        title={seoPages['/pricing'].title}
+        description={seoPages['/pricing'].description}
       />
       <Header />
 
