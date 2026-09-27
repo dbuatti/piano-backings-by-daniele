@@ -81,7 +81,7 @@ const AboutServices = () => {
               </p>
               <p>
                 Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. 
-                What started as a passion project has evolved into a professional offering for performers in Melbourne, across Australia and worldwide.
+                What started as a passion project has evolved into a professional offering for performers worldwide.
               </p>
             </div>
             <div className="mt-10 flex flex-wrap gap-4">

@@ -66,7 +66,7 @@ const Index = () => {
               className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#1C0357]/5 text-[#1C0357] text-sm font-black mb-10 border border-[#1C0357]/10 shadow-sm backdrop-blur-sm"
             >
               <Star className="w-4 h-4 fill-[#F538BC] text-[#F538BC]" />
-              <span className="tracking-wide uppercase text-[10px]">Melbourne-made · Trusted by MT performers worldwide</span>
+              <span className="tracking-wide uppercase text-[10px]">Trusted by MT performers worldwide · Made in Melbourne</span>
             </motion.div>
 
             <h1 className="text-6xl md:text-9xl font-black text-[#1C0357] mb-10 tracking-tighter leading-[0.85]">
