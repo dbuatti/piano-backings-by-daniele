@@ -6,10 +6,11 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyPageMeta } from '../shared/html-meta.mjs';
+import { normaliseSiteUrl } from '../shared/site-url.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
-const siteUrl = (process.env.VITE_SITE_URL || 'https://pianobackings.danielebuatti.com').replace(/\/+$/, '');
+const siteUrl = normaliseSiteUrl(process.env.VITE_SITE_URL);
 
 const pages = JSON.parse(readFileSync(join(root, 'src/lib/seo-pages.json'), 'utf8'));
 const faqs = JSON.parse(readFileSync(join(root, 'src/lib/about-faqs.json'), 'utf8'));
@@ -76,5 +77,18 @@ for (const [route, meta] of Object.entries(pages)) {
 const home = applyPageMeta(shell, { ...pages['/'], url: `${siteUrl}/`, heading: HEADINGS['/'], links: NAV })
   .replace(/\s*<link rel="canonical"[^>]*>/, '');
 writeFileSync(join(dist, 'index.html'), home);
+
+// Vercel serves dist/404.html with a real 404 status for any URL no route in
+// vercel.json matches; the app then loads and shows its own "Page not found".
+const notFound = applyPageMeta(shell, {
+  title: 'Page Not Found | Piano Backings by Daniele',
+  description: "This page doesn't exist. Browse custom piano backing tracks and the backing track library instead.",
+  url: `${siteUrl}/`,
+  heading: 'Page not found',
+  links: NAV,
+  noindex: true,
+}).replace(/\s*<link rel="canonical"[^>]*>/, '');
+writeFileSync(join(dist, '404.html'), notFound);
+written.push('404.html');
 
 console.log(`[prerender-seo] wrote ${written.length} pages: ${written.join(', ')}`);

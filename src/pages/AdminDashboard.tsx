@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminShell from '@/components/admin/AdminShell';
+import Seo from '@/components/Seo';
 
 // Map legacy ?tab= bookmarks to the new section model so old links keep working.
 const LEGACY_TAB_MAP: Record<string, string> = {
@@ -36,7 +37,12 @@ const AdminDashboard = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  return <AdminShell />;
+  return (
+    <>
+      <Seo title="Admin | Piano Backings by Daniele" description="Piano Backings by Daniele admin." noindex />
+      <AdminShell />
+    </>
+  );
 };
 
 export default AdminDashboard;

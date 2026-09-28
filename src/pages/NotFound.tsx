@@ -1,11 +1,17 @@
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
+import Seo from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 
 const NotFound = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <Seo
+        title="Page Not Found | Piano Backings by Daniele"
+        description="This page doesn't exist. Browse custom piano backing tracks and the backing track library instead."
+        noindex
+      />
       <Header />
       <main className="flex-grow flex items-center justify-center px-4 pt-24 pb-12">
         <div className="text-center max-w-md">

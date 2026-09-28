@@ -3,8 +3,9 @@
 // here). The React shop then loads on top exactly as before.
 import { productSeo, type ProductSeoInput } from '../shared/product-seo.mjs';
 import { applyPageMeta } from '../shared/html-meta.mjs';
+import { normaliseSiteUrl } from '../shared/site-url.mjs';
 
-const BASE_URL = (process.env.VITE_SITE_URL || 'https://pianobackings.danielebuatti.com').replace(/\/+$/, '');
+const BASE_URL = normaliseSiteUrl(process.env.VITE_SITE_URL);
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 

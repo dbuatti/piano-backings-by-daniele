@@ -435,6 +435,7 @@ const FormPage = () => {
   if (isServiceClosed) {
     return (
       <div className="min-h-screen bg-[#FDFCF7]">
+        <Seo title={seoPages['/form-page'].title} description={seoPages['/form-page'].description} />
         <Header />
         <div className="max-w-3xl mx-auto py-32 px-4 text-center">
           <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">

@@ -1,7 +1,9 @@
 import React from 'react';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
-import { canonicalFor } from '@/lib/site';
+import { SITE_URL, canonicalFor } from '@/lib/site';
+
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 /**
  * Site-wide canonical for the current path (query strings dropped). Pages that
@@ -19,7 +21,6 @@ export const CanonicalLink: React.FC = () => {
 interface SeoProps {
   title: string;
   description: string;
-  keywords?: string;
   canonicalUrl?: string;
   ogImage?: string;
   ogType?: string;
@@ -30,11 +31,10 @@ interface SeoProps {
 const Seo: React.FC<SeoProps> = ({
   title,
   description,
-  keywords,
   canonicalUrl,
-  ogImage,
+  ogImage = DEFAULT_OG_IMAGE,
   ogType = 'website',
-  twitterCard = 'summary',
+  twitterCard = 'summary_large_image',
   noindex = false,
 }) => {
   const { pathname } = useLocation();
@@ -44,23 +44,23 @@ const Seo: React.FC<SeoProps> = ({
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
-      {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonical} />
       {noindex && <meta name="robots" content="noindex, nofollow" />}
-      
+
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={ogType} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
-      {ogImage && <meta property="og:image" content={ogImage} />}
+      <meta property="og:image" content={ogImage} />
       <meta property="og:url" content={canonical} />
       <meta property="og:site_name" content="Piano Backings by Daniele" />
-      
+
       {/* Twitter */}
       <meta name="twitter:card" content={twitterCard} />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      {ogImage && <meta name="twitter:image" content={ogImage} />}
+      <meta name="twitter:url" content={canonical} />
+      <meta name="twitter:image" content={ogImage} />
     </Helmet>
   );
 };
