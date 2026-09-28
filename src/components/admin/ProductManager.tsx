@@ -40,6 +40,7 @@ import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
 import { PRODUCT_WITH_FILES, withPrivateFiles } from '@/utils/productFiles';
+import { formatKey } from '../../../shared/song-catalog.mjs';
 
 interface ProductForm {
   title: string;
@@ -233,6 +234,7 @@ const ProductManager: React.FC = () => {
         .from('products')
         .update({
           ...fieldsToUpdate,
+          key_signature: formatKey(fieldsToUpdate.key_signature),
           price: parseFloat(fieldsToUpdate.price),
           track_urls: tracksToSave,
           updated_at: new Date().toISOString(),

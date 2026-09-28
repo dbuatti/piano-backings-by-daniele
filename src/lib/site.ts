@@ -9,3 +9,6 @@ export const canonicalFor = (pathname: string): string => {
   const path = `/${pathname.replace(/^\/+|\/+$/g, '')}`;
   return path === '/' ? `${SITE_URL}/` : `${SITE_URL}${path}`;
 };
+
+/** The one public contact address. Order emails are sent from (and replied to) this inbox. */
+export const CONTACT_EMAIL = 'pianobackingsbydaniele@gmail.com';

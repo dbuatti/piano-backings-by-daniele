@@ -5,7 +5,6 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import Index from './pages/Index';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
-import ReportIssueButton from './components/ReportIssueButton';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
@@ -16,7 +15,7 @@ import CartDrawer from './components/cart/CartDrawer';
 import { CanonicalLink } from './components/Seo';
 
 import {
-  FormPage, Shop, Pricing, AboutServices, Login, NotFound, Terms, Privacy,
+  FormPage, Shop, SongPage, Pricing, AboutServices, Login, NotFound, Terms, Privacy,
   UserDashboard, GmailOAuthCallback, AdminDashboard, ClientTrackView, PurchaseConfirmation,
 } from './routes';
 
@@ -68,7 +67,7 @@ function App() {
                 <Route path="/form-page" element={<FormPage />} />
                 <Route path="/user-dashboard" element={<UserDashboard />} />
                 <Route path="/shop" element={<Shop />} />
-                <Route path="/shop/:id" element={<Shop />} />
+                <Route path="/shop/:slug" element={<SongPage />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/about" element={<AboutServices />} />
                 <Route path="/terms" element={<Terms />} />
@@ -100,7 +99,6 @@ function App() {
             </Suspense>
           </RouteErrorBoundary>
         </div>
-        <ReportIssueButton />
         <Footer />
       </div>
       <BackToTop />

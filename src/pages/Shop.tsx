@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   type ShopProduct as Product,
   SHOP_STALE_TIME,
-  fetchShopProduct,
   fetchShopProducts,
-  shopProductQueryKey,
   shopProductsQueryKey,
 } from '@/lib/shop-queries';
 import Header from '@/components/Header';
@@ -51,13 +49,13 @@ import ProductCard from '@/components/shop/ProductCard';
 import ProductTable, { ProductTableSkeleton } from '@/components/shop/ProductTable';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { Badge } from '@/components/ui/badge';
-import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
-import { productSeo } from "../../shared/product-seo.mjs";
-import { SITE_URL } from "@/lib/site";
+import { buildSongCatalog, songSlugForProduct } from "../../shared/song-catalog.mjs";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
+import { trackConversion } from '@/lib/analytics';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { isWithinInterval, subDays } from 'date-fns';
@@ -93,8 +91,6 @@ const variantLabel = (p: Pick<Product, 'vocal_ranges' | 'key_signature'>) =>
 
 const Shop = () => {
   const { toast } = useToast();
-  const { id: urlProductId } = useParams();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -131,14 +127,12 @@ const Shop = () => {
     staleTime: SHOP_STALE_TIME,
   });
 
-  // /shop/:id — the product is also rendered into the static HTML at build time.
-  const { data: urlProductData } = useQuery<Product | null, Error>({
-    queryKey: shopProductQueryKey(urlProductId || ''),
-    queryFn: () => fetchShopProduct(urlProductId!),
-    enabled: !!urlProductId,
-    staleTime: SHOP_STALE_TIME,
-  });
-  const urlProduct = urlProductId && urlProductData?.id === urlProductId ? urlProductData : null;
+  // Each song has its own page (/shop/<slug>); the list links to it.
+  const songCatalog = useMemo(() => buildSongCatalog(products || []), [products]);
+  const songHref = useCallback((productId: string) => {
+    const slug = songSlugForProduct(songCatalog, productId);
+    return slug ? `/shop/${slug}` : null;
+  }, [songCatalog]);
 
   const hasActiveFilters = Boolean(
     currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all' || currentMinPrice || currentMaxPrice
@@ -304,20 +298,12 @@ const Shop = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on arrival
   }, []);
 
-  // Arriving on /shop/:id opens that product's details.
-  useEffect(() => {
-    if (!urlProduct || selectedProductForDetail?.id === urlProduct.id) return;
-    setSelectedProductForDetail(urlProduct);
-    setSelectedVariantsForDetail([urlProduct]);
-    setIsDetailDialogOpen(true);
-  }, [urlProduct, selectedProductForDetail]);
 
   const handleViewDetails = useCallback(<T extends { id: string }>(product: T, variants?: T[]) => {
     setSelectedProductForDetail(product as unknown as Product);
     setSelectedVariantsForDetail((variants && variants.length > 0 ? variants : [product]) as unknown as Product[]);
     setIsDetailDialogOpen(true);
-    navigate(`/shop/${product.id}${window.location.search}`, { replace: true });
-  }, [navigate]);
+  }, []);
 
   const handleNavigate = useCallback((dir: 'prev' | 'next') => {
     if (!selectedProductForDetail) return;
@@ -335,6 +321,7 @@ const Shop = () => {
 
   const handleAddToCart = useCallback(<T extends { id: string }>(product: T, includeSheetMusic = false) => {
     const p = product as unknown as Product;
+    trackConversion('buy_click', { where: 'shop', what: p.product_type === 'credit_pack' ? 'season_pack' : 'add_to_cart', price: p.price });
     if (!cart.isInCart(p.id) && cart.count >= MAX_CART_ITEMS) {
       toast({ title: "Cart is full", description: `You can buy up to ${MAX_CART_ITEMS} items at once.`, variant: "destructive" });
       return;
@@ -511,37 +498,23 @@ const Shop = () => {
     </div>
   );
 
-  const urlProductSeo = urlProduct ? productSeo(urlProduct, SITE_URL) : null;
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title={urlProductSeo ? urlProductSeo.title : seoPages['/shop'].title}
-        description={urlProductSeo ? urlProductSeo.description : seoPages['/shop'].description}
-        canonicalUrl={urlProductSeo?.url}
+        title={seoPages['/shop'].title}
+        description={seoPages['/shop'].description}
       />
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-        {urlProductSeo ? (
-          // A song's own page (/shop/:id): its name is the page heading, with the full
-          // library listed below.
-          <header className="mb-10">
-            <Link to="/shop" className="text-xs font-black uppercase tracking-widest text-[#F538BC] hover:underline">
-              Backing track library
-            </Link>
-            <h1 className="mt-2 text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">{urlProductSeo.title.split(' | ')[0]}</h1>
-            <p className="mt-3 text-gray-600 font-medium max-w-2xl">{urlProductSeo.description}</p>
-          </header>
-        ) : (
-          <header className="mb-10">
-            <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
-            <p className="mt-3 text-gray-600 font-medium max-w-2xl">
-              Instant-download piano backing tracks for auditions and performances, recorded in Melbourne by Daniele Buatti.
-              Preview any track, or <Link to="/form-page" className="font-bold text-[#1C0357] underline">order one in your key</Link>.
-            </p>
-          </header>
-        )}
+        <header className="mb-10">
+          <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
+          <p className="mt-3 text-gray-600 font-medium max-w-2xl">
+            Instant-download piano backing tracks for auditions and performances, recorded in Melbourne by Daniele Buatti.
+            Preview any track, or <Link to="/form-page" className="font-bold text-[#1C0357] underline">order one in your key</Link>.
+          </p>
+        </header>
 
         {featuredProducts.length > 0 && !hasActiveFilters && (
           <section className="mb-12">
@@ -747,7 +720,7 @@ const Shop = () => {
                 </div>
               </div>
             ) : currentView === 'list' ? (
-              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onAddToCart={handleAddToCart} isInCart={cart.isInCart} searchTerm={currentSearchTerm} />
+              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onAddToCart={handleAddToCart} isInCart={cart.isInCart} searchTerm={currentSearchTerm} songHref={songHref} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (
@@ -782,6 +755,7 @@ const Shop = () => {
                           onViewDetails={handleViewDetails}
                           onAddToCart={handleAddToCart}
                           isInCart={cart.isInCart}
+                          songHref={group.variants[0] ? songHref(group.variants[0].id) : null}
                         />
                       ))}
                     </div>
@@ -800,7 +774,6 @@ const Shop = () => {
             if (!open) {
               setSelectedProductForDetail(null);
               setSelectedVariantsForDetail(null);
-              if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             }
           }}
           product={selectedProductForDetail}
@@ -814,7 +787,6 @@ const Shop = () => {
             setIsDetailDialogOpen(false);
             setSelectedProductForDetail(null);
             setSelectedVariantsForDetail(null);
-            if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             cart.setOpen(true);
           }}
           navIndex={navIndex}

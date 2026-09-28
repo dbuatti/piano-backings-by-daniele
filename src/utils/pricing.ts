@@ -36,6 +36,15 @@ export const SERVICE_LABELS: Record<string, string> = {
   'asap': 'ASAP',
 };
 
+// One wording for what each add-on covers, shown on the order form and /pricing and
+// matching the FAQ ("What if I need a small adjustment after delivery?").
+export const SERVICE_NOTES: Record<string, string> = {
+  'complex-songs': 'Dense scores by Sondheim, Jason Robert Brown or Adam Guettel.',
+  'additional-edits': 'Bigger changes such as a new cut, intro or ending. Small tempo and dynamics tweaks after delivery are free.',
+  'sheet-music': 'A clean, engraved score of your cut, made in Sibelius with no cut marks.',
+  'asap': 'Priority scheduling at no extra cost.',
+};
+
 export const calculateRequestCost = (request: { track_type?: string | null; additional_services?: string[] | null }) => {
   let totalCost = 0;
   const baseCosts: { type: string; cost: number }[] = [];

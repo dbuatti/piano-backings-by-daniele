@@ -16,6 +16,7 @@ import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
+import { formatKey } from '../../../shared/song-catalog.mjs';
 
 interface ProductForm {
   title: string;
@@ -242,6 +243,7 @@ const CreateNewProduct: React.FC = () => {
         .from('products')
         .insert([{
           ...fieldsToCreate,
+          key_signature: formatKey(fieldsToCreate.key_signature),
           track_urls: tracksToSave,
         }])
         .select();

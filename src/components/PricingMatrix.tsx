@@ -3,7 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { 
   TIER_PRICES, 
-  ADDITIONAL_SERVICE_COSTS 
+  ADDITIONAL_SERVICE_COSTS,
+  SERVICE_LABELS,
+  SERVICE_NOTES,
 } from "@/utils/pricing";
 
 const PricingMatrix = () => {
@@ -16,7 +18,8 @@ const PricingMatrix = () => {
 
   const additionalServices = Object.entries(ADDITIONAL_SERVICE_COSTS).map(([id, price]) => ({
     id,
-    name: id.replace('-', ' '),
+    name: id === 'asap' ? 'As soon as humanly possible' : SERVICE_LABELS[id] || id.replace('-', ' '),
+    note: SERVICE_NOTES[id],
     price,
   }));
 
@@ -62,10 +65,11 @@ const PricingMatrix = () => {
               <Card key={service.id} className="border-2 border-gray-100 rounded-2xl shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center gap-2">
-                    <span className="font-black capitalize text-[#1C0357]">{service.name.replace('-', ' ')}</span>
+                    <span className="font-black text-[#1C0357]">{service.name}</span>
                     <Badge variant="default" className="bg-[#F538BC] text-white font-black">
-                      +${service.price.toFixed(2)}
+                      {service.price ? `+$${service.price.toFixed(2)}` : 'Free'}
                     </Badge>
+                    {service.note && <span className="text-xs text-gray-500 font-medium">{service.note}</span>}
                   </div>
                 </CardContent>
               </Card>

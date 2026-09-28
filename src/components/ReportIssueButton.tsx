@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
 import { MessageSquare } from 'lucide-react';
 
 const ReportIssueDialog = lazy(() => import('./ReportIssueDialog'));
 
-const ReportIssueButton: React.FC = () => {
+const ReportIssueButton: React.FC<{ className?: string }> = ({ className }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
   useEffect(() => {
@@ -34,15 +33,17 @@ const ReportIssueButton: React.FC = () => {
 
   if (location.pathname.startsWith('/admin')) return null;
 
+  // Lives in the footer (it used to float over the page and covered Buy buttons).
   return (
     <>
-      <Button
+      <button
+        type="button"
         onClick={() => setDialogOpen(true)}
-        className="fixed bottom-6 right-6 shadow-lg bg-[#F538BC] hover:bg-[#F538BC]/90 text-white z-50 rounded-lg"
+        className={className ?? "inline-flex items-center gap-1.5 hover:text-white transition-colors uppercase"}
       >
-        <MessageSquare className="mr-2 h-5 w-5" />
-        Report an Issue
-      </Button>
+        <MessageSquare className="h-3 w-3" aria-hidden="true" />
+        Report an issue
+      </button>
 
       {/* Mounted from the first open onwards, so it keeps its close animation. */}
       {hasOpened && (

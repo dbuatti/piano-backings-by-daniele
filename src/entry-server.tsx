@@ -12,9 +12,7 @@ import { preloadNotFound, preloadRoute } from './routes';
 import {
   DEFAULT_SHOP_QUERY,
   SHOP_STALE_TIME,
-  fetchShopProduct,
   fetchShopProducts,
-  shopProductQueryKey,
   shopProductsQueryKey,
   type ShopProduct,
 } from './lib/shop-queries';
@@ -24,8 +22,7 @@ export type { ShopProduct };
 // Embedded in public HTML, so keep only what the shop displays: no hidden sheet
 // music links or internal bookkeeping. The browser refetches the full rows anyway.
 const INTERNAL_FIELDS = ['master_download_link', 'track_urls', 'metadata', 'notion_page_id', 'notion_sync_error', 'notion_synced_at'];
-const forHtml = (product: ShopProduct | null): ShopProduct | null => {
-  if (!product) return null;
+const forHtml = (product: ShopProduct): ShopProduct => {
   const copy: Record<string, unknown> = { ...product };
   for (const field of INTERNAL_FIELDS) delete copy[field];
   if (!product.show_sheet_music_url) copy.sheet_music_url = null;
@@ -75,18 +72,12 @@ export async function render(url: string, options: { notFound?: boolean } = {}):
   });
 
   const path = url.split('?')[0];
+  // The shop list and every song page render from the full product list.
   if (path === '/shop' || path.startsWith('/shop/')) {
     await queryClient.prefetchQuery({
       queryKey: shopProductsQueryKey(DEFAULT_SHOP_QUERY),
       queryFn: async () => (await fetchShopProducts(DEFAULT_SHOP_QUERY)).map(forHtml),
     });
-    const id = path.split('/')[2];
-    if (id) {
-      await queryClient.prefetchQuery({
-        queryKey: shopProductQueryKey(id),
-        queryFn: async () => forHtml(await fetchShopProduct(id)),
-      });
-    }
   }
 
   await (options.notFound ? preloadNotFound() : preloadRoute(path));

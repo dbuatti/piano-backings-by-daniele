@@ -1,5 +1,5 @@
 // After `vite build`: write dist/seo/<page>.html for each public page (and
-// dist/seo/shop/<id>.html for each song) with the page itself rendered into the HTML
+// dist/seo/shop/<slug>.html for each song) with the page itself rendered into the HTML
 // by dist-ssr/entry-server.js, plus its own title, description, canonical URL and
 // structured data, so search engines see everything without running JavaScript.
 // vercel.json rewrites /pricing → /seo/pricing.html etc.; api/shop-product.ts serves
@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { applyPageMeta } from '../shared/html-meta.mjs';
-import { productSeo } from '../shared/product-seo.mjs';
+import { buildSongCatalog, introFor, songSeo } from '../shared/song-catalog.mjs';
 import { normaliseSiteUrl } from '../shared/site-url.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -99,24 +99,25 @@ for (const [route, meta] of Object.entries(pages)) {
   writePage(`seo/${name}.html`, html);
 }
 
-// One page per song in the shop. Songs added after this build are still served by
-// api/shop-product.ts, with their tags but without prerendered content.
+// One page per song in the shop (/shop/<slug>). Songs added after this build are
+// still served by api/shop-product.ts, with their tags but without prerendered content.
+const intros = JSON.parse(readFileSync(join(root, 'src/lib/song-intros.json'), 'utf8'));
 let products = [];
 try {
   products = await listShopProducts();
 } catch (error) {
   console.warn(`[prerender-seo] could not load shop products, skipping song pages: ${error?.message || error}`);
 }
-for (const product of products) {
-  const seo = productSeo(product, siteUrl);
+for (const song of buildSongCatalog(products)) {
+  const seo = songSeo(song, siteUrl, introFor(song, intros));
   const html = applyPageMeta(shell, {
     title: seo.title,
     description: seo.description,
     url: seo.url,
     jsonLd: seo.jsonLd,
-    ...(await renderPage(`/shop/${product.id}`)),
+    ...(await renderPage(`/shop/${song.slug}`)),
   });
-  writePage(`seo/shop/${product.id}.html`, html);
+  writePage(`seo/shop/${song.slug}.html`, html);
 }
 
 // index.html is also the fallback for every other route (dashboard, admin...), so it

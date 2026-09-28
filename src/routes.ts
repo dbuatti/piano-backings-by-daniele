@@ -3,6 +3,7 @@ import { lazyWithPreload } from './lib/lazy-with-preload';
 // The landing page stays in the main bundle; every other route loads on demand.
 export const FormPage = lazyWithPreload(() => import('./pages/FormPage'));
 export const Shop = lazyWithPreload(() => import('./pages/Shop'));
+export const SongPage = lazyWithPreload(() => import('./pages/SongPage'));
 export const Pricing = lazyWithPreload(() => import('./pages/Pricing'));
 export const AboutServices = lazyWithPreload(() => import('./pages/AboutServices'));
 export const Login = lazyWithPreload(() => import('./pages/Login'));
@@ -22,7 +23,8 @@ export const PurchaseConfirmation = lazyWithPreload(() => import('./pages/Purcha
 export const preloadRoute = (pathname: string): Promise<unknown> => {
   const path = pathname.replace(/\/+$/, '') || '/';
   if (path === '/') return Promise.resolve();
-  if (path === '/shop' || /^\/shop\/[^/]+$/.test(path)) return Shop.preload();
+  if (path === '/shop') return Shop.preload();
+  if (/^\/shop\/[^/]+$/.test(path)) return SongPage.preload();
   const page = ({
     '/form-page': FormPage,
     '/pricing': Pricing,

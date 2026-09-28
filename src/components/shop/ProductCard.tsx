@@ -11,6 +11,8 @@ import { isWithinInterval, subDays } from 'date-fns';
 import { useAudioPreview } from '@/hooks/useAudioPreview';
 import { getTrackTypeInfo, getCategoryInfo } from '@/utils/trackTypes';
 import { formatDuration } from '@/utils/helpers';
+import { Link } from 'react-router-dom';
+import { formatKey } from '../../../shared/song-catalog.mjs';
 
 interface ShopProduct {
   id: string;
@@ -33,6 +35,8 @@ interface ProductCardProps {
   onViewDetails: (product: ShopProduct, variants?: ShopProduct[]) => void;
   onAddToCart: (product: ShopProduct) => void;
   isInCart: (productId: string) => boolean;
+  /** URL of the song's own page, for linking the title. */
+  songHref?: string | null;
 }
 
 const MAX_VISIBLE_VOICES = 2;
@@ -63,7 +67,7 @@ export const PreviewButton: React.FC<{ variant: ShopProduct }> = ({ variant }) =
   );
 };
 
-const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAddToCart, isInCart }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAddToCart, isInCart, songHref }) => {
   const [selectedId, setSelectedId] = useState<string | undefined>(variants[0]?.id);
 
   useEffect(() => {
@@ -88,7 +92,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAd
   const handleCardClick = () => onViewDetails(selected, variants);
 
   const variantLabel = (v: ShopProduct) =>
-    (v.vocal_ranges || []).join('/') || v.key_signature || getTrackTypeInfo(v.track_type).label;
+    (v.vocal_ranges || []).join('/') || formatKey(v.key_signature) || getTrackTypeInfo(v.track_type).label;
 
   return (
     <Card
@@ -98,7 +102,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAd
       <CardContent className="flex-1 p-5 flex flex-col gap-4">
         <div className="min-w-0">
           <h3 className="text-lg font-black text-[#1C0357] leading-snug line-clamp-2 group-hover:text-[#F538BC] transition-colors duration-300">
-            {selected.title}
+            {songHref ? (
+              <Link to={songHref} onClick={(e) => e.stopPropagation()} className="hover:underline underline-offset-2">
+                {selected.title}
+              </Link>
+            ) : selected.title}
           </h3>
           <div className="flex items-center gap-1.5 mt-1.5">
             <Theater size={13} className="text-[#F538BC] flex-shrink-0" />
@@ -154,9 +162,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ variants, onViewDetails, onAd
               </Tooltip>
             </TooltipProvider>
           )}
-          {selected.key_signature && (
+          {formatKey(selected.key_signature) && (
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
-              <Key size={10} className="mr-1.5 text-gray-400" /> {selected.key_signature}
+              <Key size={10} className="mr-1.5 text-gray-400" /> {formatKey(selected.key_signature)}
             </Badge>
           )}
           {!isMulti && visibleVoices.map((range: string) => (

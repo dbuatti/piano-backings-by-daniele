@@ -1,11 +1,11 @@
 import { normaliseSiteUrl } from '../shared/site-url.mjs';
 import { SITEMAP_PAGES } from '../shared/sitemap-pages.mjs';
+import { buildSongCatalog, songPath, type CatalogProduct } from '../shared/song-catalog.mjs';
 
 const BASE_URL = normaliseSiteUrl(process.env.VITE_SITE_URL);
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
 
-type Product = { id: string; updated_at?: string | null; created_at?: string | null };
 
 const xmlEscape = (value: string): string =>
   value
@@ -51,28 +51,28 @@ export default async function handler(
   }
 ) {
   const [productRows, settingsRows] = await Promise.all([
-    supabaseGet<Product[]>('products?select=id,updated_at,created_at&is_active=eq.true'),
+    supabaseGet<CatalogProduct[]>('products?select=id,title,artist_name,price,product_type,is_active,updated_at,created_at&is_active=eq.true'),
     supabaseGet<OrderSettings[]>(
       'app_settings?select=is_service_closed,is_holiday_mode_active,holiday_mode_return_date&limit=1',
     ),
   ]);
-  const products = productRows || [];
+  const songs = buildSongCatalog(productRows || []);
   const ordersOpen = areOrdersOpen(settingsRows?.[0]);
 
-  const productDates = products.map((p) => day(p.updated_at || p.created_at)).filter(Boolean) as string[];
-  const newestProduct = productDates.sort().at(-1) || null;
+  const newestSong = songs.map((s) => day(s.updatedAt)).filter(Boolean).sort().at(-1) || null;
 
   const urls = [
     ...SITEMAP_PAGES.filter((p) => !p.requiresOrdersOpen || ordersOpen).map((p) => ({
       loc: p.path === '/' ? `${BASE_URL}/` : `${BASE_URL}${p.path}`,
-      // The shop listing changes whenever a product does.
-      lastmod: p.path === '/shop' && newestProduct && newestProduct > p.lastmod ? newestProduct : p.lastmod,
+      // The shop listing changes whenever a song does.
+      lastmod: p.path === '/shop' && newestSong && newestSong > p.lastmod ? newestSong : p.lastmod,
       changefreq: p.changefreq,
       priority: p.priority,
     })),
-    ...products.map((p) => ({
-      loc: `${BASE_URL}/shop/${p.id}`,
-      lastmod: day(p.updated_at || p.created_at),
+    // One page per song (/shop/<slug>), dated by its most recently edited version.
+    ...songs.map((s) => ({
+      loc: `${BASE_URL}${songPath(s)}`,
+      lastmod: day(s.updatedAt),
       changefreq: 'monthly',
       priority: '0.8',
     })),

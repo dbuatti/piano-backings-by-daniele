@@ -1,14 +1,16 @@
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Users, ShoppingBag } from 'lucide-react';
+import { Users, ShoppingBag, Star } from 'lucide-react';
 import { UsersTabContent } from '@/components/admin/UsersTabContent';
 import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
+import ReviewRequestsTab from '@/components/admin/ReviewRequestsTab';
 
-type ClientsSub = 'directory' | 'orders';
+type ClientsSub = 'directory' | 'orders' | 'reviews';
 
 const SUBS: { id: ClientsSub; label: string; icon: typeof Users }[] = [
   { id: 'directory', label: 'Directory', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
+  { id: 'reviews', label: 'Review requests', icon: Star },
 ];
 
 const ClientsSection: React.FC = () => {
@@ -45,6 +47,7 @@ const ClientsSection: React.FC = () => {
 
       {sub === 'directory' && <UsersTabContent />}
       {sub === 'orders' && <OrdersTabContent />}
+      {sub === 'reviews' && <ReviewRequestsTab />}
     </div>
   );
 };
