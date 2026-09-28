@@ -19,7 +19,10 @@ const setMeta = (html, attr, name, content) => {
 /**
  * @param {string} html built index.html
  * @param {{ title: string, description: string, url: string, heading?: string,
- *           jsonLd?: object[], links?: { href: string, label: string }[], noindex?: boolean }} page
+ *           jsonLd?: object[], links?: { href: string, label: string }[], noindex?: boolean,
+ *           bodyHtml?: string, state?: object, pageId?: string }} page
+ *   bodyHtml: the page prerendered by src/entry-server.tsx, placed inside #root.
+ *   state: react-query data it was rendered from, for the browser's first render.
  */
 export const applyPageMeta = (html, page) => {
   let out = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`);
@@ -38,6 +41,17 @@ export const applyPageMeta = (html, page) => {
     extras.push(`<script type="application/ld+json">${safeJson(data)}</script>`);
   }
   out = out.replace('</head>', `    ${extras.join('\n    ')}\n  </head>`);
+
+  if (page.pageId) out = out.replace(/<html([^>]*)>/, `<html$1 data-page="${escapeHtml(page.pageId)}">`);
+
+  if (page.bodyHtml) {
+    // The real page is in the HTML, so no summary is needed for crawlers.
+    const state = page.state
+      ? `\n    <script type="application/json" id="__PBD_STATE__">${safeJson(page.state)}</script>`
+      : '';
+    out = out.replace(/<div id="root"><\/div>/, () => `<div id="root">${page.bodyHtml}</div>${state}`);
+    return out.replace(/<noscript>[\s\S]*?<\/noscript>/, '<noscript>Ordering and previews need JavaScript enabled.</noscript>');
+  }
 
   // Readable summary + links for crawlers that don't run JavaScript.
   const links = (page.links || [])

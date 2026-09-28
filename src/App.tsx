@@ -1,7 +1,7 @@
 "use client";
 
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import Index from './pages/Index';
 import { Toaster } from "@/components/ui/toaster";
 import UnreadIssueReportsNotice from './components/UnreadIssueReportsNotice';
@@ -15,21 +15,10 @@ import CartProvider from './components/cart/CartProvider';
 import CartDrawer from './components/cart/CartDrawer';
 import { CanonicalLink } from './components/Seo';
 
-// The landing page stays in the main bundle; every other route loads on demand.
-const FormPage = lazy(() => import('./pages/FormPage'));
-const Shop = lazy(() => import('./pages/Shop'));
-const Pricing = lazy(() => import('./pages/Pricing'));
-const AboutServices = lazy(() => import('./pages/AboutServices'));
-const Login = lazy(() => import('./pages/Login'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-const Terms = lazy(() => import('./pages/Terms'));
-const Privacy = lazy(() => import('./pages/Privacy'));
-
-const UserDashboard = lazy(() => import('./pages/UserDashboard'));
-const GmailOAuthCallback = lazy(() => import('./pages/GmailOAuthCallback'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const ClientTrackView = lazy(() => import('./pages/ClientTrackView'));
-const PurchaseConfirmation = lazy(() => import('./pages/PurchaseConfirmation'));
+import {
+  FormPage, Shop, Pricing, AboutServices, Login, NotFound, Terms, Privacy,
+  UserDashboard, GmailOAuthCallback, AdminDashboard, ClientTrackView, PurchaseConfirmation,
+} from './routes';
 
 const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#FDFCF7]" role="status" aria-live="polite">
@@ -61,9 +50,10 @@ const IgRedirect = () => <Navigate to="/admin?section=shop&sub=marketing" replac
 const IntegrationsRedirect = () => <Navigate to="/admin?section=settings&sub=integrations" replace />;
 const DeveloperRedirect = () => <Navigate to="/admin?section=settings&sub=developer" replace />;
 
+// The router is supplied by the caller: BrowserRouter in main.tsx, StaticRouter in
+// entry-server.tsx (build-time prerendering).
 function App() {
   return (
-    <Router>
       <CartProvider>
       <ScrollToTop />
       <CanonicalLink />
@@ -117,7 +107,6 @@ function App() {
       <CartDrawer />
       <Toaster />
       </CartProvider>
-    </Router>
   );
 }
 

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  type ShopProduct as Product,
+  SHOP_STALE_TIME,
+  fetchShopProduct,
+  fetchShopProducts,
+  shopProductQueryKey,
+  shopProductsQueryKey,
+} from '@/lib/shop-queries';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -63,29 +70,6 @@ import {
   TRACK_TYPES,
 } from '@/utils/trackTypes';
 
-interface Product {
-  id: string;
-  created_at: string;
-  title: string;
-  description: string;
-  price: number;
-  currency: string;
-  image_url: string;
-  preview_url?: string | null;
-  is_active: boolean;
-  artist_name: string;
-  category: string;
-  vocal_ranges: string[];
-  sheet_music_url: string | null;
-  key_signature: string | null;
-  show_sheet_music_url: boolean;
-  show_key_signature: boolean;
-  track_type: string;
-  duration_seconds?: number | null;
-  product_type?: string | null;
-  cut_description?: string | null;
-  official_score_url?: string | null;
-}
 
 interface ProductVariantGroup {
   key: string;
@@ -104,10 +88,6 @@ const GROUP_ORDER = ['full-song', 'audition-cut', 'note-bash', 'general'];
 
 const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
 
-// PostgREST `or=(...)` filters treat commas, parentheses and quotes as syntax, so
-// strip them (and LIKE wildcards) from free-text search before interpolating.
-const sanitizeSearch = (term: string) => term.replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
-
 const variantLabel = (p: Pick<Product, 'vocal_ranges' | 'key_signature'>) =>
   (p.vocal_ranges || []).join('/') || p.key_signature || null;
 
@@ -120,7 +100,6 @@ const Shop = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [selectedVariantsForDetail, setSelectedVariantsForDetail] = useState<Product[] | null>(null);
-  const [urlProduct, setUrlProduct] = useState<Product | null>(null);
   const cart = useCart();
 
   const currentSearchTerm = searchParams.get('q') || '';
@@ -145,41 +124,21 @@ const Shop = () => {
     }, { replace: true });
   }, [setSearchParams]);
 
+  const shopQuery = { search: currentSearchTerm, category: currentCategory, trackType: currentTrackType, sort: currentSort };
   const { data: products, isLoading } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', currentSearchTerm, currentCategory, currentTrackType, currentSort],
-    queryFn: async () => {
-      let query = supabase.from('products').select('*').eq('is_active', true);
-
-      const search = sanitizeSearch(currentSearchTerm);
-      if (search) {
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,artist_name.ilike.%${search}%`);
-      }
-      if (currentCategory !== 'all') query = query.eq('category', currentCategory);
-      if (currentTrackType !== 'all') query = query.eq('track_type', currentTrackType);
-
-      const sortableColumns: Record<string, string> = {
-        title: 'title',
-        artist_name: 'artist_name',
-        key_signature: 'key_signature',
-        track_type: 'track_type',
-        duration_seconds: 'duration_seconds',
-        price: 'price',
-        created_at: 'created_at',
-      };
-      const sortMatch = currentSort.match(/^(\w+)_(asc|desc)$/);
-      const sortColumn = sortMatch ? sortableColumns[sortMatch[1]] : undefined;
-      if (sortColumn) {
-        query = query.order(sortColumn, { ascending: sortMatch![2] === 'asc' });
-      } else {
-        query = query.order('title', { ascending: true });
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 2 * 60 * 1000,
+    queryKey: shopProductsQueryKey(shopQuery),
+    queryFn: () => fetchShopProducts(shopQuery),
+    staleTime: SHOP_STALE_TIME,
   });
+
+  // /shop/:id — the product is also rendered into the static HTML at build time.
+  const { data: urlProductData } = useQuery<Product | null, Error>({
+    queryKey: shopProductQueryKey(urlProductId || ''),
+    queryFn: () => fetchShopProduct(urlProductId!),
+    enabled: !!urlProductId,
+    staleTime: SHOP_STALE_TIME,
+  });
+  const urlProduct = urlProductId && urlProductData?.id === urlProductId ? urlProductData : null;
 
   const hasActiveFilters = Boolean(
     currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all' || currentMinPrice || currentMaxPrice
@@ -345,30 +304,13 @@ const Shop = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on arrival
   }, []);
 
+  // Arriving on /shop/:id opens that product's details.
   useEffect(() => {
-    let cancelled = false;
-    if (!urlProductId) {
-      setUrlProduct(null);
-      return;
-    }
-    if (selectedProductForDetail?.id === urlProductId) return;
-    const loadUrlProduct = async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', urlProductId)
-        .maybeSingle();
-      if (!cancelled && !error && data) {
-        const record = data as Product;
-        setUrlProduct(record);
-        setSelectedProductForDetail(record);
-        setSelectedVariantsForDetail([record]);
-        setIsDetailDialogOpen(true);
-      }
-    };
-    loadUrlProduct();
-    return () => { cancelled = true; };
-  }, [urlProductId, selectedProductForDetail]);
+    if (!urlProduct || selectedProductForDetail?.id === urlProduct.id) return;
+    setSelectedProductForDetail(urlProduct);
+    setSelectedVariantsForDetail([urlProduct]);
+    setIsDetailDialogOpen(true);
+  }, [urlProduct, selectedProductForDetail]);
 
   const handleViewDetails = useCallback(<T extends { id: string }>(product: T, variants?: T[]) => {
     setSelectedProductForDetail(product as unknown as Product);
@@ -581,13 +523,25 @@ const Shop = () => {
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
-        <header className="mb-10">
-          <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
-          <p className="mt-3 text-gray-600 font-medium max-w-2xl">
-            Instant-download piano backing tracks for auditions and performances, recorded in Melbourne by Daniele Buatti.
-            Preview any track, or <Link to="/form-page" className="font-bold text-[#1C0357] underline">order one in your key</Link>.
-          </p>
-        </header>
+        {urlProductSeo ? (
+          // A song's own page (/shop/:id): its name is the page heading, with the full
+          // library listed below.
+          <header className="mb-10">
+            <Link to="/shop" className="text-xs font-black uppercase tracking-widest text-[#F538BC] hover:underline">
+              Backing track library
+            </Link>
+            <h1 className="mt-2 text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">{urlProductSeo.title.split(' | ')[0]}</h1>
+            <p className="mt-3 text-gray-600 font-medium max-w-2xl">{urlProductSeo.description}</p>
+          </header>
+        ) : (
+          <header className="mb-10">
+            <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
+            <p className="mt-3 text-gray-600 font-medium max-w-2xl">
+              Instant-download piano backing tracks for auditions and performances, recorded in Melbourne by Daniele Buatti.
+              Preview any track, or <Link to="/form-page" className="font-bold text-[#1C0357] underline">order one in your key</Link>.
+            </p>
+          </header>
+        )}
 
         {featuredProducts.length > 0 && !hasActiveFilters && (
           <section className="mb-12">
@@ -846,7 +800,6 @@ const Shop = () => {
             if (!open) {
               setSelectedProductForDetail(null);
               setSelectedVariantsForDetail(null);
-              setUrlProduct(null);
               if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             }
           }}
@@ -861,7 +814,6 @@ const Shop = () => {
             setIsDetailDialogOpen(false);
             setSelectedProductForDetail(null);
             setSelectedVariantsForDetail(null);
-            setUrlProduct(null);
             if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             cart.setOpen(true);
           }}
