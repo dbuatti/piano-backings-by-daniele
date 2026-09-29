@@ -164,7 +164,11 @@ const ReviewRequestsTab: React.FC = () => {
             senderEmail: CONTACT_EMAIL,
           }),
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+          // send-email returns { error } with the real reason (e.g. Gmail not connected).
+          const detail = await response.json().then((j) => j?.error).catch(() => null);
+          throw new Error(detail ? `${response.status}: ${detail}` : `HTTP ${response.status}`);
+        }
         sent++;
         setAsked((prev) => ({ ...prev, [client.email]: new Date().toISOString() }));
       } catch (err) {
