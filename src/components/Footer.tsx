@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { CONTACT_EMAIL } from '@/lib/site';
+import { CONTACT_EMAIL, GOOGLE_REVIEW_URL } from '@/lib/site';
 import ReportIssueButton from './ReportIssueButton';
 
 const Footer = () => {
@@ -182,6 +182,7 @@ const Footer = () => {
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <a href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Leave a Google review</a>
             <ReportIssueButton />
             <a href="https://db-it.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
               Built by DB Digital <ExternalLink size={8} />

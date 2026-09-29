@@ -9,6 +9,7 @@ import { CheckCircle, Loader2, Download, Music, Package, ArrowRight, AlertCircle
 import Seo from '@/components/Seo';
 import { downloadTrack } from '@/utils/helpers';
 import { useCart } from '@/hooks/useCart';
+import ReviewCta from '@/components/ReviewCta';
 
 interface ShopOrder {
   id: string;
@@ -214,6 +215,7 @@ const PurchaseConfirmation = () => {
                     ))}
                   </div>
                 ))}
+                {orderData.orders?.some(o => o.products?.product_type !== 'credit_pack') && <ReviewCta />}
               </div>
             ) : (
               <div className="text-center space-y-6">
