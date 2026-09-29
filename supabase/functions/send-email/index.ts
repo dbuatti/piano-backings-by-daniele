@@ -16,7 +16,9 @@ Deno.serve(async (req) => {
     const GMAIL_CLIENT_SECRET = Deno.env.get("GMAIL_CLIENT_SECRET");
     const GMAIL_USER = Deno.env.get("GMAIL_USER");
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || 'daniele.buatti@gmail.com';
-    const adminEmails = [ADMIN_EMAIL, 'pianobackingsbydaniele@gmail.com'];
+    // Both admin logins may send, whatever ADMIN_EMAIL is set to (matches the site's
+    // ADMIN_EMAILS). Previously an ADMIN_EMAIL secret could lock out daniele.buatti@gmail.com.
+    const adminEmails = [...new Set([ADMIN_EMAIL, 'daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'])];
     const BCC_EMAIL = Deno.env.get("BCC_EMAIL") || 'pianobackingsbydaniele@gmail.com';
 
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_USER) {

@@ -4,6 +4,7 @@
 // (orders made free by a promo code).
 
 import { escapeHtml, sendEmail as sendServiceEmail } from './email.ts';
+import { REVIEW_CTA_HTML } from './review.ts';
 
 export const ADMIN_NOTIFY_EMAIL = 'pianobackingsbydaniele@gmail.com';
 const SITE_URL = Deno.env.get('SITE_URL') || 'https://pianobackings.danielebuatti.com';
@@ -123,6 +124,7 @@ export async function fulfilShopPurchase(supabaseAdmin, {
   let html = `<p>Hi there,</p><p>Thank you for your purchase!</p><ul>${itemList}</ul>`;
   if (tracks.length > 0) {
     html += `<p>Your tracks are ready to download from <a href="${SITE_URL}/user-dashboard">your dashboard</a>.</p>`;
+    html += REVIEW_CTA_HTML;
   }
   if (creditPacks.length > 0) {
     html += creditPacks.map((l) =>

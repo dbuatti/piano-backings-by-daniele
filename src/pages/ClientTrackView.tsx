@@ -39,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import Seo from "@/components/Seo";
 import { getErrorMessage } from "@/lib/utils";
 import type { Session } from '@supabase/supabase-js';
+import ReviewCta from '@/components/ReviewCta';
 
 interface BackingRequest {
   id: string;
@@ -481,7 +482,8 @@ const ClientTrackView = () => {
                   {request.status === 'completed' ? (
                     <div className="mt-6 space-y-4">
                       {request.track_urls && request.track_urls.length > 0 ? (
-                        request.track_urls.map((track: TrackInfo, index: number) => (
+                        <>
+                        {request.track_urls.map((track: TrackInfo, index: number) => (
                           <div key={track.url} className="flex flex-col items-center">
                             <Button 
                               onClick={() => downloadTrack(track.url, track.caption || `${request.song_title}.mp3`)}
@@ -495,7 +497,9 @@ const ClientTrackView = () => {
                               {track.caption}
                             </p>
                           </div>
-                        ))
+                        ))}
+                        <ReviewCta className="mt-2" />
+                        </>
                       ) : (
                         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
                           <div className="flex">

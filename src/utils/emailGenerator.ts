@@ -2,6 +2,7 @@
 
 import { calculateRequestCost } from "./pricing";
 import { TrackInfo } from "./helpers";
+import { GOOGLE_REVIEW_URL } from "@/lib/site";
 
 export interface BackingRequest {
   id?: string;
@@ -45,6 +46,21 @@ export interface Product {
   key_signature?: string | null;
   sheet_music_url?: string | null;
 }
+
+// Google review ask, placed straight after the download link in delivery emails.
+// Keep in sync with supabase/functions/_shared/review.ts.
+export const REVIEW_CTA_HTML = `
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 24px 0;">
+  <tr>
+    <td style="padding: 20px; background-color: #FDFCF7; border: 1px solid #ece8f5; border-radius: 12px; text-align: center; font-family: Arial, sans-serif;">
+      <p style="margin: 0 0 14px 0; color: #1C0357; font-size: 16px; font-weight: bold;">Loved your track? A quick Google review helps other performers find me&nbsp;→</p>
+      <a href="${GOOGLE_REVIEW_URL}" target="_blank" rel="noopener noreferrer"
+         style="background-color: #F538BC; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+        Leave a Google review
+      </a>
+    </td>
+  </tr>
+</table>`;
 
 export const EMAIL_SIGNATURE_HTML = `
 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -129,6 +145,8 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
           </a>
         </p>
 
+        ${REVIEW_CTA_HTML}
+
         <p>I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
         <p style="margin-top: 20px;">
@@ -181,6 +199,8 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
             View Request & Make Payment
           </a>
         </p>
+
+        ${REVIEW_CTA_HTML}
 
         <p>I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
@@ -290,6 +310,8 @@ export const generateProductDeliveryEmail = async (product: Product, customerEma
             ${listItems}
           </ul>
         </div>
+
+        ${REVIEW_CTA_HTML}
 
         <p style="margin-top: 20px;">
           We hope you enjoy your new track! Feel free to browse our other offerings:

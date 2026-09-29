@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { CONTACT_EMAIL, SITE_URL } from '@/lib/site';
+import { CONTACT_EMAIL, GOOGLE_REVIEW_URL, SITE_URL } from '@/lib/site';
 import { getErrorMessage } from '@/lib/utils';
 
 // Admin → Clients → Review requests: email past clients a short, personal note asking
@@ -110,16 +110,38 @@ const fetchClients = async (): Promise<Client[]> => {
 
 const ReviewRequestsTab: React.FC = () => {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<Settings>(() =>
-    readJson(SETTINGS_KEY, { reviewLink: '', businessLink: SITE_URL, subject: DEFAULT_SUBJECT, message: DEFAULT_MESSAGE }),
-  );
-  const [asked, setAsked] = useState<Record<string, string>>(() => readJson(ASKED_KEY, {}));
+  const [settings, setSettings] = useState<Settings>(() => {
+    const saved = readJson(SETTINGS_KEY, { reviewLink: GOOGLE_REVIEW_URL, businessLink: SITE_URL, subject: DEFAULT_SUBJECT, message: DEFAULT_MESSAGE });
+    return { ...saved, reviewLink: saved.reviewLink || GOOGLE_REVIEW_URL };
+  });
+  const [localAsked, setLocalAsked] = useState<Record<string, string>>(() => readJson(ASKED_KEY, {}));
+
+  // Who's been asked, shared with the automatic 3-day follow-up (review_requests,
+  // migration 0032). Falls back to this browser's record if the table isn't there yet.
+  const { data: sharedAsked = {}, refetch: refetchAsked } = useQuery({
+    queryKey: ['review-requests-asked'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('review_requests').select('email, last_sent_at');
+      if (error) return {};
+      return Object.fromEntries((data || []).map((r) => [r.email, r.last_sent_at])) as Record<string, string>;
+    },
+  });
+  const asked = useMemo(() => ({ ...localAsked, ...sharedAsked }), [localAsked, sharedAsked]);
+
+  const markAsked = (email: string) => {
+    const at = new Date().toISOString();
+    setLocalAsked((prev) => ({ ...prev, [email]: at }));
+    supabase
+      .from('review_requests')
+      .upsert({ email, last_sent_at: at, source: 'manual' })
+      .then(() => refetchAsked());
+  };
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewEmail, setPreviewEmail] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => writeJson(SETTINGS_KEY, settings), [settings]);
-  useEffect(() => writeJson(ASKED_KEY, asked), [asked]);
+  useEffect(() => writeJson(ASKED_KEY, localAsked), [localAsked]);
 
   const { data: clients = [], isLoading, error } = useQuery({ queryKey: ['review-request-clients'], queryFn: fetchClients });
 
@@ -170,7 +192,7 @@ const ReviewRequestsTab: React.FC = () => {
           throw new Error(detail ? `${response.status}: ${detail}` : `HTTP ${response.status}`);
         }
         sent++;
-        setAsked((prev) => ({ ...prev, [client.email]: new Date().toISOString() }));
+        markAsked(client.email);
       } catch (err) {
         failed.push(`${client.email} (${getErrorMessage(err)})`);
       }
@@ -294,7 +316,7 @@ const ReviewRequestsTab: React.FC = () => {
                 <Button variant="ghost" size="icon" asChild title="Open in your email app">
                   <a
                     href={`mailto:${client.email}?subject=${encodeURIComponent(fill(settings.subject, client, settings))}&body=${encodeURIComponent(fill(settings.message, client, settings))}`}
-                    onClick={() => setAsked((prev) => ({ ...prev, [client.email]: new Date().toISOString() }))}
+                    onClick={() => markAsked(client.email)}
                   >
                     <Mail className="h-4 w-4" />
                   </a>
@@ -302,7 +324,7 @@ const ReviewRequestsTab: React.FC = () => {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[11px] text-gray-400">"Asked" dates and your wording are saved in this browser.</p>
+          <p className="mt-3 text-[11px] text-gray-400">"Asked" dates are shared with the automatic 3-day follow-up, so nobody is asked twice. Your wording is saved in this browser.</p>
         </CardContent>
       </Card>
     </div>
