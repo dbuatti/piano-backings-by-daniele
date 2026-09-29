@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 import { isWithinInterval, subDays } from 'date-fns';
 import { getTrackTypeInfo, getCategoryInfo } from '@/utils/trackTypes';
 import { formatDuration } from '@/utils/helpers';
+import { Link } from 'react-router-dom';
 import { PreviewButton } from './ProductCard';
+import { formatKey } from '../../../shared/song-catalog.mjs';
 
 interface TableProduct {
   id: string;
@@ -39,6 +41,8 @@ interface ProductTableProps {
   onAddToCart: (product: TableProduct) => void;
   isInCart: (productId: string) => boolean;
   searchTerm?: string;
+  /** URL of the song's own page, for linking the title. */
+  songHref?: (productId: string) => string | null;
 }
 
 const GRID_COLS = "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_110px_100px_130px_120px_90px_100px_150px]";
@@ -67,7 +71,7 @@ const Highlight: React.FC<{ text: string; query?: string }> = ({ text, query }) 
 
 const COLUMNS: { key: string; label: string; right?: boolean }[] = [
   { key: 'title', label: 'Title' },
-  { key: 'artist_name', label: 'Show' },
+  { key: 'artist_name', label: 'Show / artist' },
   { key: 'category', label: 'Type' },
   { key: 'key_signature', label: 'Key' },
   { key: 'voice', label: 'Voice' },
@@ -133,7 +137,17 @@ const RowCartButton: React.FC<{ row: TableRow; onViewDetails: ProductTableProps[
   );
 };
 
-const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onAddToCart: ProductTableProps['onAddToCart']; isInCart: ProductTableProps['isInCart']; searchTerm?: string }> = ({ row, onViewDetails, onAddToCart, isInCart, searchTerm }) => {
+// The song title links to the song's page; the rest of the row opens the quick view.
+const SongTitle: React.FC<{ href: string | null; className: string; children: React.ReactNode }> = ({ href, className, children }) =>
+  href ? (
+    <Link to={href} onClick={(e) => e.stopPropagation()} className={cn(className, "hover:underline underline-offset-2")}>
+      {children}
+    </Link>
+  ) : (
+    <span className={className}>{children}</span>
+  );
+
+const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['onViewDetails']; onAddToCart: ProductTableProps['onAddToCart']; isInCart: ProductTableProps['isInCart']; searchTerm?: string; songHref?: ProductTableProps['songHref'] }> = ({ row, onViewDetails, onAddToCart, isInCart, searchTerm, songHref }) => {
   const { product, variants } = row;
   const isNew = isWithinInterval(new Date(product.created_at), { start: subDays(new Date(), 14), end: new Date() });
   const quality = getTrackTypeInfo(product.track_type);
@@ -145,6 +159,8 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
   const priceLabel = minPrice !== maxPrice ? `$${minPrice.toFixed(2)} – $${maxPrice.toFixed(2)}` : `$${minPrice.toFixed(2)}`;
   const voiceLabel = product.vocal_ranges?.length ? product.vocal_ranges.join(' / ') : '—';
   const duration = formatDuration(product.duration_seconds);
+  const keyLabel = formatKey(product.key_signature);
+  const href = songHref?.(product.id) ?? null;
 
   const open = () => onViewDetails(product, variants);
 
@@ -153,7 +169,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
       {/* Desktop row */}
       <div className={cn("hidden lg:grid gap-4 px-6 py-4 items-center transition-colors hover:bg-gray-50/80", GRID_COLS)}>
         <div className="min-w-0">
-          <p className="font-black text-[#1C0357] text-sm truncate group-hover:text-[#F538BC] transition-colors"><Highlight text={product.title} query={searchTerm} /></p>
+          <p className="truncate"><SongTitle href={href} className="font-black text-[#1C0357] text-sm group-hover:text-[#F538BC] transition-colors"><Highlight text={product.title} query={searchTerm} /></SongTitle></p>
           <div className="flex items-center gap-1.5 mt-1">
             {isNew && <Badge className="bg-[#F538BC] text-white border-none text-[9px] font-black h-4 px-1.5">NEW</Badge>}
             {isMulti && (
@@ -168,7 +184,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
           <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
           {cat.label}
         </span>
-        <p className="text-sm text-gray-600 font-semibold">{product.key_signature || '—'}</p>
+        <p className="text-sm text-gray-600 font-semibold">{keyLabel || '—'}</p>
         <p className="text-sm text-gray-600 font-semibold truncate">{voiceLabel}</p>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase w-fit", quality.badgeClass)}>
           <span className={cn("h-1.5 w-1.5 rounded-full", quality.dotClass)} />
@@ -186,7 +202,7 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
       <div className="lg:hidden p-4 transition-colors hover:bg-gray-50/80">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-black text-[#1C0357] text-base leading-snug"><Highlight text={product.title} query={searchTerm} /></p>
+            <p className="leading-snug"><SongTitle href={href} className="font-black text-[#1C0357] text-base"><Highlight text={product.title} query={searchTerm} /></SongTitle></p>
             <p className="text-xs font-bold text-gray-500 mt-0.5 truncate"><Highlight text={product.artist_name || 'Various Artists'} query={searchTerm} /></p>
           </div>
           <PreviewButton variant={product} />
@@ -202,9 +218,9 @@ const TableRowView: React.FC<{ row: TableRow; onViewDetails: ProductTableProps['
             <span className={cn("h-1.5 w-1.5 rounded-full", cat.dotClass)} />
             {cat.label}
           </span>
-          {product.key_signature && (
+          {keyLabel && (
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-gray-200 bg-gray-50/50 text-gray-600 font-bold">
-              <Key size={10} className="mr-1.5 text-gray-400" /> {product.key_signature}
+              <Key size={10} className="mr-1.5 text-gray-400" /> {keyLabel}
             </Badge>
           )}
           {voiceLabel !== '—' && (
@@ -236,7 +252,7 @@ const firstLetter = (title: string) => {
   return /[A-Z]/.test(ch) ? ch : '#';
 };
 
-const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onAddToCart, isInCart, searchTerm }) => {
+const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, onViewDetails, onAddToCart, isInCart, searchTerm, songHref }) => {
   const titleDir = currentSort === 'title_asc' ? 'asc' : currentSort === 'title_desc' ? 'desc' : null;
   const letterGroups = useMemo(() => {
     if (!titleDir) return null;
@@ -268,13 +284,13 @@ const ProductTable: React.FC<ProductTableProps> = ({ rows, currentSort, onSort, 
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">{g.rows.length}</span>
                 </div>
                 {g.rows.map(row => (
-                  <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} />
+                  <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} songHref={songHref} />
                 ))}
               </React.Fragment>
             ))
           ) : (
             rows.map(row => (
-              <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} />
+              <TableRowView key={row.product.id} row={row} onViewDetails={onViewDetails} onAddToCart={onAddToCart} isInCart={isInCart} searchTerm={searchTerm} songHref={songHref} />
             ))
           )}
         </div>

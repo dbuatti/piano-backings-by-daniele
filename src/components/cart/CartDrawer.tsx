@@ -11,6 +11,7 @@ import { useCart } from '@/hooks/useCart';
 import { canHaveSheetMusic } from '@/contexts/cart-context';
 import { SHOP_SHEET_MUSIC_PRICE } from '@/utils/pricing';
 import { getErrorMessage } from '@/lib/utils';
+import { trackConversion } from '@/lib/analytics';
 
 const CHECKOUT_URL = 'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/create-stripe-checkout';
 
@@ -61,6 +62,7 @@ const CartDrawer = () => {
   };
 
   const checkout = async () => {
+    trackConversion('checkout_start', { items: items.length, subtotal: subtotal });
     setIsCheckingOut(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();

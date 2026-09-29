@@ -357,7 +357,6 @@ const ClientTrackView = () => {
       <Seo 
         title={`${request.song_title} - Track Details | Piano Backings by Daniele`}
         description={`View details and download your custom piano backing track for "${request.song_title}" by ${request.musical_or_artist}.`}
-        keywords={`piano backing track, ${request.song_title}, ${request.musical_or_artist}, custom track download, audition track, performance track`}
         noindex
       />
       <Header />

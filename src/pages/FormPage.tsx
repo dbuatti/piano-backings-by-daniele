@@ -30,7 +30,7 @@ import { addBusinessDays, format, parseISO } from 'date-fns';
 import Header from "@/components/Header";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { cn, getErrorMessage } from "@/lib/utils";
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -41,7 +41,9 @@ import SongRequestItem, { SongData } from '@/components/form/SongRequestItem';
 import ContactDetailsForm from '@/components/form/ContactDetailsForm';
 import TierSelection from '@/components/form/TierSelection';
 import AdditionalServices from '@/components/form/AdditionalServices';
-import { calculateRequestCost } from '@/utils/pricing';
+import { calculateRequestCost, TIER_PRICES } from '@/utils/pricing';
+import { trackConversion } from '@/lib/analytics';
+import { CONTACT_EMAIL } from '@/lib/site';
 import type { User } from '@supabase/supabase-js';
 
 const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
@@ -77,7 +79,13 @@ const FormPage = () => {
   const holidayReturn = isHolidayModeActive ? holidayReturnDate : null;
   // While away, the earliest due date is the return date plus the usual 3 business days.
   const minDeliveryDate = format(holidayReturn ? addBusinessDays(holidayReturn, 3) : new Date(), 'yyyy-MM-dd');
-  const [songs, setSongs] = useState<SongData[]>(() => [createNewSong()]);
+  // Song pages link here as /form-page?tier=full-song&song=...&show=... to prefill the order.
+  const [searchParams] = useSearchParams();
+  const prefillTier = searchParams.get('tier');
+  const initialTier = prefillTier && prefillTier in TIER_PRICES ? prefillTier : 'audition-ready';
+  const [songs, setSongs] = useState<SongData[]>(() => [
+    createNewSong({ songTitle: searchParams.get('song') || '', musicalOrArtist: searchParams.get('show') || '' }),
+  ]);
 
   const [promoCode, setPromoCode] = useState('');
   const [promoDiscount, setPromoDiscount] = useState<number>(0);
@@ -88,7 +96,7 @@ const FormPage = () => {
     confirmEmail: '',
     name: '',
     category: 'Audition Tracks',
-    trackType: 'audition-ready',
+    trackType: initialTier,
     deliveryDate: '',
     additionalServices: [] as string[],
     specialRequests: '',
@@ -390,6 +398,15 @@ const FormPage = () => {
         }
       }
 
+      if (!testMode) {
+        trackConversion('order_submitted', {
+          tier: globalData.trackType,
+          songs: songs.length,
+          total: priceBreakdown.total,
+          paid_now: createdRequestIds.length > 0,
+        });
+      }
+
       if (createdRequestIds.length > 0) {
         setSubmissionStep('Redirecting to secure payment...');
         const checkoutBody: Record<string, unknown> = {
@@ -435,14 +452,24 @@ const FormPage = () => {
   if (isServiceClosed) {
     return (
       <div className="min-h-screen bg-[#FDFCF7]">
+        <Seo title={seoPages['/form-page'].title} description={seoPages['/form-page'].description} />
         <Header />
         <div className="max-w-3xl mx-auto py-32 px-4 text-center">
           <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
             <XCircle size={40} />
           </div>
-          <h1 className="text-4xl font-black text-[#1C0357] mb-6 tracking-tighter">Requests Temporarily Closed</h1>
-          <p className="text-xl text-gray-600 font-medium mb-12 leading-relaxed">{closureReason}</p>
-          <Button asChild className="bg-[#1C0357] hover:bg-[#2D0B8C] rounded-2xl px-12 py-8 text-xl font-black shadow-xl">
+          <h1 className="text-4xl font-black text-[#1C0357] mb-6 tracking-tighter">Custom orders are closed for now</h1>
+          <p className="text-xl text-gray-600 font-medium leading-relaxed">
+            I'm not taking new custom recordings at the moment. The recorded tracks in the shop are still available to buy.
+          </p>
+          {closureReason && (
+            <p className="mt-6 text-lg text-gray-600 font-medium leading-relaxed">{closureReason}</p>
+          )}
+          <p className="mt-6 text-lg text-gray-600 font-medium">
+            Questions, or need something urgently?{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-black text-[#1C0357] underline underline-offset-4">Email me at {CONTACT_EMAIL}</a>.
+          </p>
+          <Button asChild className="mt-12 bg-[#1C0357] hover:bg-[#2D0B8C] rounded-2xl px-12 py-8 text-xl font-black shadow-xl">
             <Link to="/shop">Browse the Shop Instead</Link>
           </Button>
         </div>

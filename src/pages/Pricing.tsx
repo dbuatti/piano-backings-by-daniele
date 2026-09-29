@@ -6,6 +6,7 @@ import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
 import PricingMatrix from "@/components/PricingMatrix";
 import { motion } from 'framer-motion';
+import { CONTACT_EMAIL } from "@/lib/site";
 
 const PricingPage = () => {
   return (
@@ -35,7 +36,7 @@ const PricingPage = () => {
         
         <div className="mt-16 text-center text-gray-500 text-sm font-medium">
           <p>All prices are in Australian Dollars (AUD).</p>
-          <p className="mt-2">Need something unique? <a href="mailto:pianobackingsbydaniele@gmail.com" className="text-[#F538BC] hover:underline">Contact me</a> for a custom quote.</p>
+          <p className="mt-2">Need something unique? <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#F538BC] hover:underline">Contact me</a> for a custom quote.</p>
         </div>
       </main>
     </div>

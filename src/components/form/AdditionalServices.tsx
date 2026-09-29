@@ -4,6 +4,7 @@ import React from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Zap } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { SERVICE_NOTES } from '@/utils/pricing';
 
 interface AdditionalServicesProps {
   selectedServices: string[];
@@ -13,9 +14,9 @@ interface AdditionalServicesProps {
 const paidServices = [
   { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15' },
   { id: 'complex-songs', label: 'Complex Score (Sondheim, JRB, Guettel)', price: '+$10' },
-  { id: 'additional-edits', label: 'Additional Edits', price: '+$5' },
+  { id: 'additional-edits', label: 'Additional Edits', price: '+$5', note: SERVICE_NOTES['additional-edits'] },
   { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' },
-  { id: 'sheet-music', label: 'Custom Sheet Music', price: '+$50', note: 'A clean, engraved score of your cut, made in Sibelius with no cut marks.' }
+  { id: 'sheet-music', label: 'Custom Sheet Music', price: '+$50', note: SERVICE_NOTES['sheet-music'] }
 ];
 
 const freeOptions = [

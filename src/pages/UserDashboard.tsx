@@ -251,8 +251,9 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF7] flex flex-col">
       <Seo 
-        title="User Dashboard"
+        title="Your Dashboard | Piano Backings by Daniele"
         description="Manage your custom backing track requests and order history."
+        noindex
       />
       <Header />
       

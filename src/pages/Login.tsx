@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Header from "@/components/Header";
+import Seo from "@/components/Seo";
 import { supabase } from '@/integrations/supabase/client';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
@@ -45,6 +46,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30 flex flex-col justify-center">
+      <Seo title="Log In | Piano Backings by Daniele" description="Log in to track your custom backing track orders and download your purchases." noindex />
       <Header />
       
       <div className="max-w-md w-full mx-auto px-4 sm:px-6 py-12">

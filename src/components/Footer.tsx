@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { CONTACT_EMAIL } from '@/lib/site';
+import ReportIssueButton from './ReportIssueButton';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -132,15 +134,15 @@ const Footer = () => {
             </h4>
             <div className="space-y-4">
               <a 
-                href="mailto:info@danielebuatti.com" 
+                href={`mailto:${CONTACT_EMAIL}`} 
                 className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
               >
-                <div className="h-10 w-10 rounded-xl bg-[#F538BC]/20 flex items-center justify-center text-[#F538BC]">
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-[#F538BC]/20 flex items-center justify-center text-[#F538BC]">
                   <Mail size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Email</p>
-                  <p className="text-sm font-bold">info@danielebuatti.com</p>
+                  <p className="text-sm font-bold break-all">{CONTACT_EMAIL}</p>
                 </div>
               </a>
               <a 
@@ -177,9 +179,10 @@ const Footer = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
           <p>© {currentYear} Daniele Buatti. All rights reserved.</p>
-          <div className="flex gap-8">
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <ReportIssueButton />
             <a href="https://db-it.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
               Built by DB Digital <ExternalLink size={8} />
             </a>

@@ -213,9 +213,9 @@ const ProductDetailDialog: React.FC<ProductDetailDialogProps> = ({
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-md">
+            <h2 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-md">
               {selected.title}
-            </h1>
+            </h2>
             {selected.artist_name && (
               <p className="text-sm md:text-base text-white/90 mt-1 font-medium flex items-center gap-1.5">
                 <Theater className="h-4 w-4 text-[#F538BC]" />

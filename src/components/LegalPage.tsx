@@ -4,7 +4,8 @@ import Header from "@/components/Header";
 import Seo from "@/components/Seo";
 
 export const LEGAL_LAST_UPDATED = '26 September 2026';
-export const CONTACT_EMAIL = 'info@danielebuatti.com';
+export { CONTACT_EMAIL } from '@/lib/site';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 interface LegalPageProps {
   title: string;

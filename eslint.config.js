@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   // supabase/functions are Deno edge functions with their own toolchain.
-  { ignores: ["dist", "supabase/functions"] },
+  { ignores: ["dist", "dist-ssr", "supabase/functions"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

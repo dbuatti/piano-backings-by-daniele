@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
+import Seo from '@/components/Seo';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -110,6 +111,7 @@ const GmailOAuthCallback = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
+      <Seo title="Connecting Gmail | Piano Backings by Daniele" description="Finishing the Gmail connection." noindex />
       <Header />
       
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6">

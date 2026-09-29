@@ -9,5 +9,8 @@ export declare const applyPageMeta: (
     jsonLd?: object[];
     links?: { href: string; label: string }[];
     noindex?: boolean;
+    bodyHtml?: string;
+    state?: object;
+    pageId?: string;
   },
 ) => string;

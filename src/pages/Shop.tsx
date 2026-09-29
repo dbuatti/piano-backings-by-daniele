@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  type ShopProduct as Product,
+  SHOP_STALE_TIME,
+  fetchShopProducts,
+  shopProductsQueryKey,
+} from '@/lib/shop-queries';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -44,13 +49,13 @@ import ProductCard from '@/components/shop/ProductCard';
 import ProductTable, { ProductTableSkeleton } from '@/components/shop/ProductTable';
 import ProductDetailDialog from '@/components/shop/ProductDetailDialog';
 import { Badge } from '@/components/ui/badge';
-import { useSearchParams, Link, useParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
-import { productSeo } from "../../shared/product-seo.mjs";
-import { SITE_URL } from "@/lib/site";
+import { buildSongCatalog, songSlugForProduct } from "../../shared/song-catalog.mjs";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
 import { cn } from '@/lib/utils';
+import { trackConversion } from '@/lib/analytics';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { isWithinInterval, subDays } from 'date-fns';
@@ -63,29 +68,6 @@ import {
   TRACK_TYPES,
 } from '@/utils/trackTypes';
 
-interface Product {
-  id: string;
-  created_at: string;
-  title: string;
-  description: string;
-  price: number;
-  currency: string;
-  image_url: string;
-  preview_url?: string | null;
-  is_active: boolean;
-  artist_name: string;
-  category: string;
-  vocal_ranges: string[];
-  sheet_music_url: string | null;
-  key_signature: string | null;
-  show_sheet_music_url: boolean;
-  show_key_signature: boolean;
-  track_type: string;
-  duration_seconds?: number | null;
-  product_type?: string | null;
-  cut_description?: string | null;
-  official_score_url?: string | null;
-}
 
 interface ProductVariantGroup {
   key: string;
@@ -104,23 +86,16 @@ const GROUP_ORDER = ['full-song', 'audition-cut', 'note-bash', 'general'];
 
 const normalizeTitle = (title: string) => title.trim().toLowerCase().replace(/\s+/g, ' ');
 
-// PostgREST `or=(...)` filters treat commas, parentheses and quotes as syntax, so
-// strip them (and LIKE wildcards) from free-text search before interpolating.
-const sanitizeSearch = (term: string) => term.replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
-
 const variantLabel = (p: Pick<Product, 'vocal_ranges' | 'key_signature'>) =>
   (p.vocal_ranges || []).join('/') || p.key_signature || null;
 
 const Shop = () => {
   const { toast } = useToast();
-  const { id: urlProductId } = useParams();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
   const [selectedVariantsForDetail, setSelectedVariantsForDetail] = useState<Product[] | null>(null);
-  const [urlProduct, setUrlProduct] = useState<Product | null>(null);
   const cart = useCart();
 
   const currentSearchTerm = searchParams.get('q') || '';
@@ -145,41 +120,19 @@ const Shop = () => {
     }, { replace: true });
   }, [setSearchParams]);
 
+  const shopQuery = { search: currentSearchTerm, category: currentCategory, trackType: currentTrackType, sort: currentSort };
   const { data: products, isLoading } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', currentSearchTerm, currentCategory, currentTrackType, currentSort],
-    queryFn: async () => {
-      let query = supabase.from('products').select('*').eq('is_active', true);
-
-      const search = sanitizeSearch(currentSearchTerm);
-      if (search) {
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,artist_name.ilike.%${search}%`);
-      }
-      if (currentCategory !== 'all') query = query.eq('category', currentCategory);
-      if (currentTrackType !== 'all') query = query.eq('track_type', currentTrackType);
-
-      const sortableColumns: Record<string, string> = {
-        title: 'title',
-        artist_name: 'artist_name',
-        key_signature: 'key_signature',
-        track_type: 'track_type',
-        duration_seconds: 'duration_seconds',
-        price: 'price',
-        created_at: 'created_at',
-      };
-      const sortMatch = currentSort.match(/^(\w+)_(asc|desc)$/);
-      const sortColumn = sortMatch ? sortableColumns[sortMatch[1]] : undefined;
-      if (sortColumn) {
-        query = query.order(sortColumn, { ascending: sortMatch![2] === 'asc' });
-      } else {
-        query = query.order('title', { ascending: true });
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 2 * 60 * 1000,
+    queryKey: shopProductsQueryKey(shopQuery),
+    queryFn: () => fetchShopProducts(shopQuery),
+    staleTime: SHOP_STALE_TIME,
   });
+
+  // Each song has its own page (/shop/<slug>); the list links to it.
+  const songCatalog = useMemo(() => buildSongCatalog(products || []), [products]);
+  const songHref = useCallback((productId: string) => {
+    const slug = songSlugForProduct(songCatalog, productId);
+    return slug ? `/shop/${slug}` : null;
+  }, [songCatalog]);
 
   const hasActiveFilters = Boolean(
     currentSearchTerm || currentCategory !== 'all' || currentTrackType !== 'all' || currentVoice !== 'all' || currentShow !== 'all' || currentMinPrice || currentMaxPrice
@@ -345,37 +298,12 @@ const Shop = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on arrival
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!urlProductId) {
-      setUrlProduct(null);
-      return;
-    }
-    if (selectedProductForDetail?.id === urlProductId) return;
-    const loadUrlProduct = async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', urlProductId)
-        .maybeSingle();
-      if (!cancelled && !error && data) {
-        const record = data as Product;
-        setUrlProduct(record);
-        setSelectedProductForDetail(record);
-        setSelectedVariantsForDetail([record]);
-        setIsDetailDialogOpen(true);
-      }
-    };
-    loadUrlProduct();
-    return () => { cancelled = true; };
-  }, [urlProductId, selectedProductForDetail]);
 
   const handleViewDetails = useCallback(<T extends { id: string }>(product: T, variants?: T[]) => {
     setSelectedProductForDetail(product as unknown as Product);
     setSelectedVariantsForDetail((variants && variants.length > 0 ? variants : [product]) as unknown as Product[]);
     setIsDetailDialogOpen(true);
-    navigate(`/shop/${product.id}${window.location.search}`, { replace: true });
-  }, [navigate]);
+  }, []);
 
   const handleNavigate = useCallback((dir: 'prev' | 'next') => {
     if (!selectedProductForDetail) return;
@@ -393,6 +321,7 @@ const Shop = () => {
 
   const handleAddToCart = useCallback(<T extends { id: string }>(product: T, includeSheetMusic = false) => {
     const p = product as unknown as Product;
+    trackConversion('buy_click', { where: 'shop', what: p.product_type === 'credit_pack' ? 'season_pack' : 'add_to_cart', price: p.price });
     if (!cart.isInCart(p.id) && cart.count >= MAX_CART_ITEMS) {
       toast({ title: "Cart is full", description: `You can buy up to ${MAX_CART_ITEMS} items at once.`, variant: "destructive" });
       return;
@@ -569,14 +498,12 @@ const Shop = () => {
     </div>
   );
 
-  const urlProductSeo = urlProduct ? productSeo(urlProduct, SITE_URL) : null;
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
       <Seo 
-        title={urlProductSeo ? urlProductSeo.title : seoPages['/shop'].title}
-        description={urlProductSeo ? urlProductSeo.description : seoPages['/shop'].description}
-        canonicalUrl={urlProductSeo?.url}
+        title={seoPages['/shop'].title}
+        description={seoPages['/shop'].description}
       />
       <Header />
 
@@ -793,7 +720,7 @@ const Shop = () => {
                 </div>
               </div>
             ) : currentView === 'list' ? (
-              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onAddToCart={handleAddToCart} isInCart={cart.isInCart} searchTerm={currentSearchTerm} />
+              <ProductTable rows={tableRows} currentSort={currentSort} onSort={(v) => updateSearchParam('sort', v)} onViewDetails={handleViewDetails} onAddToCart={handleAddToCart} isInCart={cart.isInCart} searchTerm={currentSearchTerm} songHref={songHref} />
             ) : (
               <div className="space-y-24">
                 {groupedProducts.length > 1 && (
@@ -828,6 +755,7 @@ const Shop = () => {
                           onViewDetails={handleViewDetails}
                           onAddToCart={handleAddToCart}
                           isInCart={cart.isInCart}
+                          songHref={group.variants[0] ? songHref(group.variants[0].id) : null}
                         />
                       ))}
                     </div>
@@ -846,8 +774,6 @@ const Shop = () => {
             if (!open) {
               setSelectedProductForDetail(null);
               setSelectedVariantsForDetail(null);
-              setUrlProduct(null);
-              if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             }
           }}
           product={selectedProductForDetail}
@@ -861,8 +787,6 @@ const Shop = () => {
             setIsDetailDialogOpen(false);
             setSelectedProductForDetail(null);
             setSelectedVariantsForDetail(null);
-            setUrlProduct(null);
-            if (urlProductId) navigate(`/shop${window.location.search}`, { replace: true });
             cart.setOpen(true);
           }}
           navIndex={navIndex}

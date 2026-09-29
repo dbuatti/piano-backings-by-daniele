@@ -8,8 +8,15 @@ import Header from "@/components/Header";
 import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
 import HeroStats from "@/components/HeroStats";
+import KeyFactsStrip from "@/components/home/KeyFactsStrip";
+import Credits from "@/components/home/Credits";
+import AudioSamples from "@/components/home/AudioSamples";
+import Testimonials from "@/components/home/Testimonials";
+import OrdersClosedBanner from "@/components/home/OrdersClosedBanner";
+import { trackConversion } from "@/lib/analytics";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { CONTACT_EMAIL } from "@/lib/site";
 import { 
   Youtube, 
   Instagram, 
@@ -59,6 +66,8 @@ const Index = () => {
             transition={{ duration: 1, ease: "easeOut" }}
             className="text-center"
           >
+            <OrdersClosedBanner />
+
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -113,7 +122,7 @@ const Index = () => {
               transition={{ delay: 0.7 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-6"
             >
-              <Link to="/form-page">
+              <Link to="/form-page" onClick={() => trackConversion('buy_click', { where: 'home_hero', what: 'order_custom' })}>
                 <Button className="bg-[#1C0357] hover:bg-[#2D0B8C] text-white px-12 py-8 text-xl font-black rounded-2xl shadow-2xl hover:shadow-[#1C0357]/30 hover:-translate-y-1 active:translate-y-0 transition-all group">
                   Order Custom Track
                   <ChevronRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -126,6 +135,7 @@ const Index = () => {
               </Link>
             </motion.div>
 
+            <Credits className="mt-12" />
             <HeroStats />
           </motion.div>
         </div>
@@ -140,7 +150,9 @@ const Index = () => {
         </motion.div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-48 pb-48">
+      <KeyFactsStrip />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-48 pt-32 pb-48">
         
         {/* How it Works Section */}
         <motion.section {...fadeInUp} className="relative">
@@ -172,6 +184,11 @@ const Index = () => {
             </div>
           </div>
         </motion.section>
+
+        {/* One short clip per tier */}
+        <motion.div {...fadeInUp}>
+          <AudioSamples />
+        </motion.div>
 
         {/* Pricing Tiers */}
         <motion.section {...fadeInUp} id="pricing">
@@ -251,7 +268,7 @@ const Index = () => {
                   <p className="text-xl text-white/80 font-medium leading-relaxed mb-10">
                     Get 3 Audition Ready tracks and save $15. Perfect for showcase prep or busy audition seasons.
                   </p>
-                  <Link to="/shop">
+                  <Link to="/shop" onClick={() => trackConversion('buy_click', { where: 'home_season_pack', what: 'season_pack' })}>
                     <Button className="bg-white text-[#1C0357] hover:bg-gray-100 font-black rounded-2xl px-12 py-7 text-xl shadow-xl transition-transform active:scale-95">
                       <ShoppingCart className="mr-3" /> Buy Pack in Shop
                     </Button>
@@ -279,6 +296,11 @@ const Index = () => {
           </motion.div>
         </motion.section>
 
+        {/* Named client quotes */}
+        <motion.div {...fadeInUp}>
+          <Testimonials />
+        </motion.div>
+
         {/* About Section */}
         <motion.section {...fadeInUp} id="about" className="relative">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#F1E14F]/10 blur-[120px] rounded-full pointer-events-none" />
@@ -295,9 +317,17 @@ const Index = () => {
                   <p>
                     Since 2020, I've been creating high-quality piano backing tracks for performers preparing for auditions and shows. What started as a passion project has evolved into a professional offering for the arts community.
                   </p>
-                  <div className="p-10 bg-[#F1E14F]/10 rounded-[40px] border-l-[12px] border-[#F1E14F] text-gray-600 italic text-xl shadow-inner">
-                    "Dense scores by Sondheim, Jason Robert Brown, or Adam Guettel carry a complexity adjustment due to the intricate nature of their scores."
-                  </div>
+                  <p>
+                    My credits include Wicked, The Bodyguard and Into the Woods (VCA), and I've spent more than 12 years
+                    as a music director.
+                  </p>
+                  <Credits className="!justify-start" />
+                  <p className="text-base">
+                    <Link to="/about" className="font-black text-[#1C0357] underline underline-offset-4 hover:text-[#F538BC]">
+                      Read the FAQ
+                    </Link>{' '}
+                    for turnaround, file formats, edits and complex-score pricing.
+                  </p>
                 </div>
               </div>
               <div className="bg-[#1C0357] p-16 md:p-24 flex flex-col justify-center text-white relative overflow-hidden">
@@ -341,7 +371,7 @@ const Index = () => {
                 { icon: Youtube, label: "YouTube", color: "text-red-500", href: "https://www.youtube.com/@pianobackingsbydaniele" },
                 { icon: Instagram, label: "Instagram", color: "text-pink-400", href: "https://www.instagram.com/pianobackingsbydaniele/" },
                 { icon: Facebook, label: "Facebook", color: "text-blue-400", href: "https://www.facebook.com/PianoBackingsbyDaniele/" },
-                { icon: Mail, label: "Email", color: "text-gray-300", href: "mailto:pianobackingsbydaniele@gmail.com" }
+                { icon: Mail, label: "Email", color: "text-gray-300", href: `mailto:${CONTACT_EMAIL}` }
               ].map((social, i) => (
                 <a 
                   key={i}
