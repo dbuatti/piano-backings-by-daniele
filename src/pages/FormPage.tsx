@@ -45,6 +45,7 @@ import { calculateRequestCost, TIER_PRICES } from '@/utils/pricing';
 import { trackConversion } from '@/lib/analytics';
 import { CONTACT_EMAIL } from '@/lib/site';
 import type { User } from '@supabase/supabase-js';
+import WaitlistSignup from '@/components/WaitlistSignup';
 
 const createNewSong = (initialData: Partial<SongData> = {}): SongData => ({
   id: Math.random().toString(36).substring(7),
@@ -469,7 +470,10 @@ const FormPage = () => {
             Questions, or need something urgently?{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="font-black text-[#1C0357] underline underline-offset-4">Email me at {CONTACT_EMAIL}</a>.
           </p>
-          <Button asChild className="mt-12 bg-[#1C0357] hover:bg-[#2D0B8C] rounded-2xl px-12 py-8 text-xl font-black shadow-xl">
+          <div className="mt-10 flex justify-center">
+            <WaitlistSignup />
+          </div>
+          <Button asChild className="mt-10 bg-[#1C0357] hover:bg-[#2D0B8C] rounded-2xl px-12 py-8 text-xl font-black shadow-xl">
             <Link to="/shop">Browse the Shop Instead</Link>
           </Button>
         </div>
