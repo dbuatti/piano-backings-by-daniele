@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { PauseCircle } from 'lucide-react';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { CONTACT_EMAIL } from '@/lib/site';
+import WaitlistSignup from '@/components/WaitlistSignup';
 
 /** Home-page notice while custom orders are closed (Admin → Settings → Service closure). */
 const OrdersClosedBanner = () => {
@@ -18,6 +19,7 @@ const OrdersClosedBanner = () => {
         The <Link to="/shop" className="font-bold text-[#1C0357] underline">shop's recorded tracks</Link> are still available.
         Questions? <a href={`mailto:${CONTACT_EMAIL}`} className="font-bold text-[#1C0357] underline">Email me</a>.
       </p>
+      <WaitlistSignup className="mt-4" source="home-banner" />
     </div>
   );
 };

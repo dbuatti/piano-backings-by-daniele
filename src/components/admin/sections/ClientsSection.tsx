@@ -1,25 +1,31 @@
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Users, ShoppingBag, Star } from 'lucide-react';
+import { Users, ShoppingBag, Star, Contact, ListChecks, Gift } from 'lucide-react';
 import { UsersTabContent } from '@/components/admin/UsersTabContent';
 import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
 import ReviewRequestsTab from '@/components/admin/ReviewRequestsTab';
+import CustomersTab from '@/components/admin/crm/CustomersTab';
+import WaitlistTab from '@/components/admin/crm/WaitlistTab';
+import ReferralsTab from '@/components/admin/crm/ReferralsTab';
 
-type ClientsSub = 'directory' | 'orders' | 'reviews';
+type ClientsSub = 'customers' | 'directory' | 'orders' | 'reviews' | 'waitlist' | 'referrals';
 
 const SUBS: { id: ClientsSub; label: string; icon: typeof Users }[] = [
-  { id: 'directory', label: 'Directory', icon: Users },
+  { id: 'customers', label: 'Customers (CRM)', icon: Contact },
+  { id: 'directory', label: 'Accounts', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'reviews', label: 'Review requests', icon: Star },
+  { id: 'waitlist', label: 'Waitlist', icon: ListChecks },
+  { id: 'referrals', label: 'Referral codes', icon: Gift },
 ];
 
 const ClientsSection: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const sub = (searchParams.get('sub') as ClientsSub) || 'directory';
+  const sub = (searchParams.get('sub') as ClientsSub) || 'customers';
 
   const setSub = (next: ClientsSub) => {
     const sp = new URLSearchParams(searchParams);
-    if (next === 'directory') sp.delete('sub'); else sp.set('sub', next);
+    if (next === 'customers') sp.delete('sub'); else sp.set('sub', next);
     setSearchParams(sp, { replace: false });
   };
 
@@ -45,9 +51,12 @@ const ClientsSection: React.FC = () => {
         })}
       </div>
 
+      {sub === 'customers' && <CustomersTab />}
       {sub === 'directory' && <UsersTabContent />}
       {sub === 'orders' && <OrdersTabContent />}
       {sub === 'reviews' && <ReviewRequestsTab />}
+      {sub === 'waitlist' && <WaitlistTab />}
+      {sub === 'referrals' && <ReferralsTab />}
     </div>
   );
 };
