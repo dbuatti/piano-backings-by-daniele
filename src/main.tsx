@@ -42,6 +42,13 @@ const root = document.getElementById("root")!;
 const hasPrerenderedContent = root.hasChildNodes();
 
 const render = () => {
+  // If something re-runs this bundle in the same page (a browser extension, a framed
+  // copy), a second React root would fight the first for #root and lazy pages would
+  // read contexts from the other copy ("No QueryClient set", Helmet crashing on
+  // `.add`). The DOM is shared by both copies, so mark it and only mount once.
+  if (root.dataset.appMounted) return;
+  root.dataset.appMounted = "true";
+
   // Prerendered content is already on screen: don't fade it out and back in when
   // the app takes over. Entrance animations resume for anything that mounts later.
   if (hasPrerenderedContent) {
