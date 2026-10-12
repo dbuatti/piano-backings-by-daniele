@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Film, RefreshCw } from "lucide-react";
+import { Download, Film, RefreshCw, Video } from "lucide-react";
 import "@fontsource/press-start-2p";
 import "@fontsource/silkscreen/400.css";
 import "@fontsource/silkscreen/700.css";
@@ -271,6 +271,7 @@ function Field({
 export default function TitleCardGenerator() {
   const [state, setState] = useState<CardState>(DEFAULT_STATE);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
+  const [recording, setRecording] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dims = ASPECTS[state.aspect];
 
@@ -324,23 +325,85 @@ export default function TitleCardGenerator() {
     };
   }, [paint]);
 
+  const slug = useCallback(
+    () =>
+      state.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "title-card",
+    [state.title]
+  );
+
+  const download = useCallback(
+    (blob: Blob, ext: string) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug()}-title-card.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    [slug]
+  );
+
   const exportPng = () => {
     const cv = canvasRef.current;
     if (!cv) return;
     cv.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const slug = state.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "") || "title-card";
-      a.href = url;
-      a.download = `${slug}-title-card.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (blob) download(blob, "png");
     }, "image/png");
   };
+
+  const exportVideo = useCallback(async () => {
+    const cv = canvasRef.current;
+    const ctx = cv?.getContext("2d");
+    if (!cv || !ctx || recording || typeof MediaRecorder === "undefined") return;
+
+    const stream = cv.captureStream(30);
+    const mimeType = [
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm",
+    ].find((m) => MediaRecorder.isTypeSupported(m));
+    const rec = new MediaRecorder(
+      stream,
+      mimeType ? { mimeType, videoBitsPerSecond: 8_000_000 } : undefined
+    );
+    const chunks: BlobPart[] = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size) chunks.push(e.data);
+    };
+    const stopped = new Promise<void>((res) => {
+      rec.onstop = () => res();
+    });
+
+    setRecording(true);
+    const duration = 6;
+    const fade = 1.1;
+    const t0 = performance.now();
+    rec.start();
+
+    await new Promise<void>((res) => {
+      const loop = () => {
+        const el = (performance.now() - t0) / 1000;
+        const p = Math.min(el / fade, 1);
+        drawCard(ctx, dims.w, dims.h, state, logoImg);
+        const ease = 1 - Math.pow(1 - p, 3);
+        ctx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+        ctx.fillRect(0, 0, dims.w, dims.h);
+        if (el < duration) requestAnimationFrame(loop);
+        else res();
+      };
+      requestAnimationFrame(loop);
+    });
+
+    rec.stop();
+    stream.getTracks().forEach((tr) => tr.stop());
+    await stopped;
+    setRecording(false);
+    paint();
+    download(new Blob(chunks, { type: "video/webm" }), "webm");
+  }, [recording, dims.w, dims.h, state, logoImg, paint, download]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
@@ -437,12 +500,19 @@ export default function TitleCardGenerator() {
             <Download className="h-4 w-4" /> Export PNG
           </button>
           <button
-            onClick={() => setState(DEFAULT_STATE)}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-[#1C0357] transition-colors hover:bg-gray-50"
+            onClick={exportVideo}
+            disabled={recording}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1C0357] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            <RefreshCw className="h-4 w-4" /> Reset
+            <Video className="h-4 w-4" /> {recording ? "Recording…" : "Export video"}
           </button>
         </div>
+        <button
+          onClick={() => setState(DEFAULT_STATE)}
+          className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-[#1C0357] transition-colors hover:bg-gray-50"
+        >
+          <RefreshCw className="h-4 w-4" /> Reset
+        </button>
 
         <p className="text-xs leading-relaxed text-gray-400">
           Banner uses the real arcade font. Song block is the self-hosted
