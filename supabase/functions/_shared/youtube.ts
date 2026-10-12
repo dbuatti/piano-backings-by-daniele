@@ -105,8 +105,13 @@ export async function mintChannelAccessToken(
     { headers: { Authorization: `Bearer ${tokenJson.access_token}` } }
   );
   if (!channelRes.ok) {
+    // Distinguish "the channel was never connected" (we fell back to the Gmail
+    // token, which only has gmail.send) from "a channel token exists but was
+    // granted without the upload scope" (reconnect after adding the scope).
     throw new Error(
-      'The stored Google token lacks YouTube upload access — connect the channel in Admin → Settings.'
+      source === 'gmail_tokens'
+        ? 'No YouTube channel token is stored yet — connect the channel in Admin → Settings → Integrations.'
+        : 'The stored channel token lacks YouTube upload access — reconnect the channel in Admin → Settings → Integrations.'
     );
   }
   const channelJson = await channelRes.json();

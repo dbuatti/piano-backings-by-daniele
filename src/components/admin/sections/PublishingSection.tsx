@@ -349,6 +349,7 @@ function QueueRow({
         approved_at: new Date().toISOString(),
         approved_by: user.user?.id ?? null,
         error: null,
+        attempts: 0,
       };
       const { data: settings } = await supabase
         .from('publishing_settings')
@@ -373,6 +374,7 @@ function QueueRow({
           status: 'approved',
           scheduled_for: new Date().toISOString(),
           error: null,
+          attempts: 0,
         })
         .eq('id', publication.id);
       if (error) throw error;
@@ -400,6 +402,7 @@ function QueueRow({
           status: 'approved',
           scheduled_for: when.toISOString(),
           error: null,
+          attempts: 0,
         })
         .eq('id', publication.id);
       if (error) throw error;
