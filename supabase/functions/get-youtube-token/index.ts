@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { mintChannelAccessToken } from '../_shared/youtube.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,81 +60,19 @@ Deno.serve(async (req) => {
       return json({ error: 'Forbidden' }, 403);
     }
 
-    // --- Find the refresh token for the channel account. ---
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    const channelUser =
-      usersData.users.find((u) => u.email === YT_ACCOUNT_EMAIL) ||
-      (callerId ? usersData.users.find((u) => u.id === callerId) : null);
-    if (!channelUser) {
-      throw new Error(`No account found for ${YT_ACCOUNT_EMAIL}.`);
-    }
-
-    // Prefer the dedicated YouTube channel token (Brand Account); fall back to
-    // the Gmail token for setups where the channel lives on the mailbox account.
-    const { data: ytToken } = await supabaseAdmin
-      .from('youtube_tokens')
-      .select('refresh_token')
-      .eq('user_id', channelUser.id)
-      .maybeSingle();
-
-    let refreshToken: string | null = ytToken?.refresh_token ?? null;
-    let source = 'youtube_tokens';
-
-    if (!refreshToken) {
-      const { data: gmailToken } = await supabaseAdmin
-        .from('gmail_tokens')
-        .select('refresh_token')
-        .eq('user_id', channelUser.id)
-        .maybeSingle();
-      refreshToken = gmailToken?.refresh_token ?? null;
-      source = 'gmail_tokens';
-    }
-
-    if (!refreshToken) {
-      throw new Error(
-        `No stored Google refresh token for ${YT_ACCOUNT_EMAIL}. Connect the YouTube channel in Admin → Settings.`
-      );
-    }
-
-    // --- Exchange the refresh token for a fresh access token. ---
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: GMAIL_CLIENT_ID,
-        client_secret: GMAIL_CLIENT_SECRET,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
+    // --- Find the refresh token for the channel account and mint a token. ---
+    const token = await mintChannelAccessToken(supabaseAdmin, {
+      clientId: GMAIL_CLIENT_ID,
+      clientSecret: GMAIL_CLIENT_SECRET,
+      accountEmail: YT_ACCOUNT_EMAIL,
+      fallbackUserId: callerId,
     });
-    const tokenJson = await tokenRes.json();
-    if (!tokenRes.ok || !tokenJson.access_token) {
-      throw new Error(
-        tokenJson.error_description ||
-          tokenJson.error ||
-          `Token refresh failed (${tokenRes.status})`
-      );
-    }
-
-    // --- Confirm the token actually has YouTube access and identify the channel. ---
-    const channelRes = await fetch(
-      'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
-      { headers: { Authorization: `Bearer ${tokenJson.access_token}` } }
-    );
-    if (!channelRes.ok) {
-      // Usually means the stored token predates the youtube.upload scope.
-      throw new Error(
-        'The stored Google token lacks YouTube upload access — reconnect the account to enable silent uploads.'
-      );
-    }
-    const channelJson = await channelRes.json();
-    const channel = channelJson?.items?.[0]?.snippet?.title ?? null;
 
     return json({
-      access_token: tokenJson.access_token,
-      expires_in: tokenJson.expires_in ?? 3600,
-      channel,
-      source,
+      access_token: token.access_token,
+      expires_in: token.expires_in,
+      channel: token.channel,
+      source: token.source,
     });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);

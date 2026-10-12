@@ -1,0 +1,151 @@
+// @ts-nocheck
+// Drafts per-platform publishing metadata with Google Gemini and stores it on the
+// publication row, flipping it to pending_approval. Called when a video is added
+// to the publishing queue. Requires a GEMINI_API_KEY secret.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const SITE = 'https://pianobackings.danielebuatti.com';
+
+function buildPrompt({ song, show, dedication, key, title }) {
+  const firstName = (dedication || '').split(/\s+/)[0] || '';
+  return `You write YouTube metadata for solo piano backing tracks made by a small independent musician.
+
+Song: ${song || 'unknown song'}
+Show/film (optional): ${show || ''}
+Prepared for: ${firstName || 'a client'}
+Key: ${key || 'their chosen key'}
+Working title: ${title || ''}
+
+Return ONLY JSON (no markdown) with this shape:
+{
+  "title": string,       // e.g. "Song — Banner (from Show)". Use the working title as-is if good; keep it short and searchable.
+  "description": string, // paragraphs separated by blank lines:
+                         //  1. "Song — Banner (from Show)" + "Prepared for <firstName>." + "Key: X."
+                         //  2. One line pitching custom piano backing tracks (auditions, performances, practice; arranged & recorded in the key you choose; delivered fast).
+                         //  3. "Order yours: ${SITE}/form-page" and "Browse ready-made cuts: ${SITE}/shop"
+                         //  4. "Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/"
+                         //  5. 3-4 hashtags like "#pianobackingtrack #backingtrack #auditioncut #musicaltheatre"
+  "tags": string[],      // 5-8 lowercase tags: song, show, piano, piano backing track, backing track, audition, musical theatre, key (e.g. "key of C major")
+  "hashtags": string[]   // 3-4 hashtags without the # symbol
+}
+No emojis. Write like a friendly professional, never hype.`;
+}
+
+async function callGemini(apiKey, prompt) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
+      }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Gemini request failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text =
+    data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '{}';
+  return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
+}
+
+async function isAdmin(req, supabaseAdmin) {
+  const authHeader = req.headers.get('Authorization') || '';
+  const callerToken = authHeader.replace(/^Bearer\s+/i, '');
+  const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  if (callerToken && callerToken === serviceKey) return true;
+  if (!callerToken) return false;
+  const { data } = await supabaseAdmin.auth.getUser(callerToken);
+  return Boolean(data?.user && adminEmails.includes(data.user.email || ''));
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    );
+    if (!(await isAdmin(req, supabaseAdmin))) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+
+    const body = await req.json().catch(() => ({}));
+    if (!body.asset_id) {
+      return json({ error: 'asset_id is required.' }, 400);
+    }
+    const platform = String(body.platform || 'youtube').toLowerCase();
+
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) {
+      return json({ error: 'GEMINI_API_KEY is not set.' }, 500);
+    }
+
+    const { data: asset, error: assetErr } = await supabaseAdmin
+      .from('content_assets')
+      .select('*, backing_requests(song_title, musical_or_artist, name, song_key, key_for_track, different_key)')
+      .eq('id', body.asset_id)
+      .maybeSingle();
+    if (assetErr || !asset) throw new Error(assetErr?.message || 'Asset not found.');
+
+    const reqRow = asset.backing_requests || {};
+    const key =
+      String(reqRow.different_key ?? '') === 'Yes'
+        ? (reqRow.key_for_track || reqRow.song_key) || null
+        : reqRow.song_key || null;
+    const fallbackTitle =
+      asset.title ||
+      String(reqRow.song_title || asset.song_title || '').trim() ||
+      'Piano backing track';
+
+    const drafted = await callGemini(apiKey, buildPrompt({
+      song: String(reqRow.song_title || '').trim(),
+      show: String(reqRow.musical_or_artist || '').trim(),
+      dedication: String(reqRow.name || '').trim(),
+      key: key || null,
+      title: fallbackTitle,
+    }));
+
+    const metadata = {
+      title: String(drafted.title || fallbackTitle).slice(0, 100),
+      description: String(drafted.description || '').slice(0, 5000),
+      tags: Array.isArray(drafted.tags) ? drafted.tags.slice(0, 10).map(String) : [],
+      hashtags: Array.isArray(drafted.hashtags) ? drafted.hashtags.slice(0, 6).map(String) : [],
+    };
+
+    const { data: pub, error: pubErr } = await supabaseAdmin
+      .from('publications')
+      .update({ metadata, status: 'pending_approval', error: null })
+      .eq('asset_id', body.asset_id)
+      .eq('platform', platform)
+      .in('status', ['draft', 'pending_approval', 'scheduled', 'failed'])
+      .select('id')
+      .maybeSingle();
+    if (pubErr) throw pubErr;
+    if (!pub) {
+      return json({ error: `No ${platform} publication exists for this asset.` }, 400);
+    }
+
+    return json({ publication_id: pub.id, metadata });
+  } catch (error) {
+    return json({ error: error?.message || 'Unknown error' }, 500);
+  }
+});

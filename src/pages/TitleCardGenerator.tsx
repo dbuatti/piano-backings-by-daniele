@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Film, Loader2, RefreshCw, Search, Video, Youtube } from "lucide-react";
+import { Check, Download, Film, ListChecks, Loader2, RefreshCw, Search, Video, Youtube } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { KEY_OPTIONS, keyForDisplay } from "@/utils/musicalKeys";
 import "@fontsource/press-start-2p";
@@ -517,6 +517,10 @@ export default function TitleCardGenerator() {
     loaded: number;
     total: number;
   } | null>(null);
+  const [queuing, setQueuing] = useState(false);
+  const [queueStep, setQueueStep] = useState("");
+  const [queueResult, setQueueResult] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const manualAudioRef = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dims = ASPECTS[state.aspect];
@@ -1033,6 +1037,109 @@ export default function TitleCardGenerator() {
     }
   }, [recording, publishing, recordClip, state, privacy, selectedTrack, linkedRequest]);
 
+  // Small PNG snapshot of the painted card for the publishing queue's preview /
+  // printable PDF. Scaled down so a thumbnail session stays light.
+  const captureCardPreview = useCallback(async (): Promise<Blob | null> => {
+    const cv = canvasRef.current;
+    if (!cv) return null;
+    const MAX_W = 1200;
+    const sw = Math.round(Math.min(MAX_W, dims.w));
+    const sh = Math.round((dims.h / dims.w) * sw);
+    const tmp = document.createElement("canvas");
+    tmp.width = sw;
+    tmp.height = sh;
+    const tctx = tmp.getContext("2d");
+    if (!tctx) return null;
+    tctx.drawImage(cv, 0, 0, sw, sh);
+    return new Promise((res) => tmp.toBlob((b) => res(b), "image/png"));
+  }, [dims.w, dims.h]);
+
+  // Save the video into the publishing catalogue without posting it: records the
+  // full-length card, uploads to the private `content` bucket, creates the asset
+  // + YouTube draft, then has the AI draft metadata and flags it for approval.
+  const addToQueue = useCallback(async () => {
+    if (recording || publishing || queuing) return;
+    setQueuing(true);
+    setQueueStep("recording");
+    setQueueResult(null);
+    setQueueError(null);
+    try {
+      const blob = await recordClip((loaded, total) =>
+        setPublishProgress({ loaded, total })
+      );
+      if (!blob) throw new Error("Recording failed in this browser.");
+      setQueueStep("uploading");
+      setPublishProgress({ loaded: 0, total: blob.size });
+
+      const { data: user } = await supabase.auth.getUser();
+      const id = crypto.randomUUID();
+      const path = `content/${id}.webm`;
+      const previewPath = `content/${id}.preview.png`;
+      const { error: uploadErr } = await supabase.storage
+        .from("content")
+        .upload(path, blob, { contentType: "video/webm", upsert: false });
+      if (uploadErr) throw uploadErr;
+
+      const previewBlob = await captureCardPreview();
+      if (previewBlob) {
+        const { error: previewErr } = await supabase.storage
+          .from("content")
+          .upload(previewPath, previewBlob, { contentType: "image/png", upsert: false });
+        if (previewErr) throw previewErr;
+      }
+
+      const showText = state.show.replace(/^\s*from\s+/i, "").trim();
+      const titleCore =
+        [state.title.trim(), state.banner.trim()].filter(Boolean).join(" — ") || "Backing track";
+
+      const { data: asset, error: assetErr } = await supabase
+        .from("content_assets")
+        .insert({
+          storage_path: path,
+          preview_path: previewBlob ? previewPath : null,
+          mime_type: blob.type || "video/webm",
+          title: `${titleCore}${showText ? ` (from ${showText})` : ""}`,
+          song_title: state.title.trim() || null,
+          show: showText || null,
+          key: state.key || null,
+          dedication:
+            state.dedication.trim() || (linkedRequest?.client ?? null) || null,
+          request_id: selectedTrack?.requestId ?? null,
+          duration_seconds: null,
+          aspect: state.aspect,
+          created_by: user.user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+
+      const { data: pub, error: pubErr } = await supabase
+        .from("publications")
+        .insert({ asset_id: asset.id, platform: "youtube", status: "draft" })
+        .select("id")
+        .single();
+      if (pubErr || !pub) throw new Error(pubErr?.message || "Couldn't create the publication.");
+
+      setQueueStep("drafting");
+      const { error: draftErr } = await supabase.functions.invoke(
+        "draft-publication-metadata",
+        { body: { asset_id: asset.id, platform: "youtube" } }
+      );
+      const draftFailed = Boolean(draftErr);
+
+      setQueueResult(
+        draftFailed
+          ? "Video saved to the publishing queue, but the AI metadata draft failed. Re-draft or edit it in Admin → Publishing."
+          : "Saved to the publishing queue with AI-drafted metadata. Review and approve it in Admin → Publishing."
+      );
+    } catch (e) {
+      setQueueError(e instanceof Error ? e.message : "Failed to save to the queue.");
+    } finally {
+      setQueuing(false);
+      setPublishProgress(null);
+    }
+  }, [recording, publishing, queuing, recordClip, captureCardPreview, state, selectedTrack, linkedRequest]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
       <div className="space-y-4">
@@ -1369,6 +1476,47 @@ export default function TitleCardGenerator() {
                 {ytUrl}
               </a>
             </p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-gray-200 p-3">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#1C0357]/70">
+            Publishing queue
+          </span>
+          <p className="mb-2 text-xs text-gray-500">
+            Save this video without posting it — AI drafts the title and blurb,
+            then you approve the weekly slot in Admin → Publishing.
+          </p>
+          <button
+            onClick={addToQueue}
+            disabled={queuing || recording || publishing}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#1C0357] bg-white px-4 py-2.5 text-sm font-bold text-[#1C0357] transition-colors hover:bg-[#1C0357] hover:text-white disabled:opacity-50"
+          >
+            <ListChecks className="h-4 w-4" />
+            {queuing
+              ? queueStep === "recording"
+                ? "Recording…"
+                : queueStep === "uploading"
+                  ? "Uploading…"
+                  : "Drafting metadata…"
+              : "Save to publishing queue"}
+          </button>
+          {queuing && queueStep === "recording" && publishProgress && (
+            <p className="mt-2 text-[11px] text-gray-500">
+              {publishProgress.total > 0
+                ? `${formatClock(publishProgress.loaded)} / ${formatClock(publishProgress.total)}`
+                : "Preparing the track…"}
+            </p>
+          )}
+          {queuing && queueStep === "uploading" && publishProgress && (
+            <p className="mt-2 text-[11px] text-gray-500">
+              {(publishProgress.loaded / 1048576).toFixed(1)} /{" "}
+              {(publishProgress.total / 1048576).toFixed(1)} MB
+            </p>
+          )}
+          {queueError && <p className="mt-2 text-xs text-red-500">{queueError}</p>}
+          {queueResult && (
+            <p className="mt-2 text-xs font-bold text-green-600">{queueResult}</p>
           )}
         </div>
 
