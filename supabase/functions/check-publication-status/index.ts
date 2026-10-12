@@ -1,7 +1,8 @@
 // @ts-nocheck
 // Best-effort reconciliation of a publication with YouTube's actual state.
-// Admin-callable (verify_jwt = true). With no body it reconciles every
-// non-terminal YouTube publication; with `{ publication_id }` it checks one.
+// Signed-in admin only (JWT verified by the gateway AND the caller's email is
+// checked against the admin list). With no body it reconciles every non-terminal
+// YouTube publication; with `{ publication_id }` it checks one.
 //
 // Uses videos.list (part=status) so we can tell when a scheduled (private)
 // video has actually been promoted to public by YouTube, instead of trusting
@@ -36,6 +37,17 @@ Deno.serve(async (req) => {
       throw new Error('GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set.');
     }
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Admin-only: the gateway's verify_jwt merely requires a valid JWT, and the
+    // anon key is one — so gate on the real signed-in user like send-email does.
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return json({ error: 'Forbidden' }, 403);
+    const { data: authUser } = await supabaseAdmin.auth.getUser(token);
+    const email = authUser?.user?.email ?? '';
+    if (!['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'].includes(email)) {
+      return json({ error: 'Forbidden' }, 403);
+    }
 
     const body = (await req.json().catch(() => ({}))) as {
       publication_id?: string;
