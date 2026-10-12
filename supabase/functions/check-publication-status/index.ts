@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
     // Admin-only: the gateway's verify_jwt merely requires a valid JWT, and the
     // anon key is one — so gate on the real signed-in user like send-email does.
     const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.replace(/^Bearer\s+/i, '');
-    if (!token) return json({ error: 'Forbidden' }, 403);
-    const { data: authUser } = await supabaseAdmin.auth.getUser(token);
+    const authToken = authHeader.replace(/^Bearer\s+/i, '');
+    if (!authToken) return json({ error: 'Forbidden' }, 403);
+    const { data: authUser } = await supabaseAdmin.auth.getUser(authToken);
     const email = authUser?.user?.email ?? '';
     if (!['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'].includes(email)) {
       return json({ error: 'Forbidden' }, 403);
