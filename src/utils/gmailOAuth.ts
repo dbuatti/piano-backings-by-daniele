@@ -1,40 +1,61 @@
 // src/utils/gmailOAuth.ts
+const REDIRECT_PATH = '/gmail-oauth-callback';
+const CHANNEL_EMAIL =
+  import.meta.env.VITE_YOUTUBE_CHANNEL_EMAIL || 'pianobackingsbydaniele@gmail.com';
+
+const buildAuthUrl = (opts: {
+  clientId: string;
+  scopes: string;
+  state: 'gmail' | 'youtube';
+  loginHint?: string;
+}) => {
+  const redirectUri = `${window.location.origin}${REDIRECT_PATH}`;
+  return (
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(opts.clientId)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=${encodeURIComponent(opts.scopes)}` +
+    `&response_type=code` +
+    `&access_type=offline` + // ensures a refresh token
+    (opts.loginHint ? `&login_hint=${encodeURIComponent(opts.loginHint)}` : '') +
+    `&state=${opts.state}` +
+    `&prompt=consent` // forces a refresh token to be returned
+  );
+};
+
+// Connect the Gmail mailbox used for outgoing email (gmail.send only).
 export const initiateOAuth = () => {
-  // This function will redirect the user to Google's authorization server
-  // You'll need to replace these with your actual client ID and redirect URI
   const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID;
-  const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
-  
-  // Check if client ID is available
   if (!clientId) {
     console.error('GMAIL_CLIENT_ID is not set in environment variables');
     alert('Gmail OAuth is not properly configured. Please check environment variables.');
     return;
   }
-  
-  // Scopes required for sending emails and uploading YouTube videos as the channel.
-  const scopes = [
-    'https://www.googleapis.com/auth/gmail.send',
-    'https://www.googleapis.com/auth/youtube.upload',
-  ].join(' ');
 
-  // The channel account whose videos we publish as. Kept in sync with the
-  // YT_ACCOUNT_EMAIL secret used by the get-youtube-token edge function.
-  const loginHint =
-    import.meta.env.VITE_YOUTUBE_CHANNEL_EMAIL || 'pianobackingsbydaniele@gmail.com';
-
-  // Construct the authorization URL
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${encodeURIComponent(clientId)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=${encodeURIComponent(scopes)}` +
-    `&response_type=code` +
-    `&access_type=offline` + // This ensures we get a refresh token
-    `&login_hint=${encodeURIComponent(loginHint)}` + // Default to the channel account
-    `&prompt=consent`; // This ensures we get a refresh token every time (for demo purposes)
-  
-  // Redirect the user to Google's authorization server
-  window.location.href = authUrl;
+  window.location.href = buildAuthUrl({
+    clientId,
+    scopes: 'https://www.googleapis.com/auth/gmail.send',
+    state: 'gmail',
+    loginHint: CHANNEL_EMAIL,
+  });
 };
 
-export default { initiateOAuth };
+// Connect the YouTube channel (a Brand Account). No login hint so Google lets
+// you pick the channel identity, and only the upload scope is requested.
+export const initiateYouTubeOAuth = () => {
+  const clientId =
+    import.meta.env.VITE_YOUTUBE_CLIENT_ID || import.meta.env.VITE_GMAIL_CLIENT_ID;
+  if (!clientId) {
+    console.error('VITE_YOUTUBE_CLIENT_ID / VITE_GMAIL_CLIENT_ID is not set');
+    alert('YouTube OAuth is not properly configured. Please check environment variables.');
+    return;
+  }
+
+  window.location.href = buildAuthUrl({
+    clientId,
+    scopes: 'https://www.googleapis.com/auth/youtube.upload',
+    state: 'youtube',
+  });
+};
+
+export default { initiateOAuth, initiateYouTubeOAuth };
