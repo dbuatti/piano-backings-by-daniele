@@ -19,24 +19,9 @@ import FileInput from '@/components/FileInput';
 import { uploadFileToSupabase } from '@/utils/supabase-client';
 import { useAdmin } from '@/hooks/useAdmin';
 import { BackingRequest } from '@/types/backing-request';
+import { KEY_OPTIONS } from '@/utils/musicalKeys';
 
-const keyOptions = [
-  { value: 'C Major (0)', label: 'C Major (0)' },
-  { value: 'G Major (1♯)', label: 'G Major (1♯)' },
-  { value: 'D Major (2♯)', label: 'D Major (2♯)' },
-  { value: 'A Major (3♯)', label: 'A Major (3♯)' },
-  { value: 'E Major (4♯)', label: 'E Major (4♯)' },
-  { value: 'B Major (5♯)', label: 'B Major (5♯)' },
-  { value: 'F♯ Major (6♯)', label: 'F♯ Major (6♯)' },
-  { value: 'C♯ Major (7♯)', label: 'C♯ Major (7♯)' },
-  { value: 'F Major (1♭)', label: 'F Major (1♭)' },
-  { value: 'B♭ Major (2♭)', label: 'B♭ Major (2♭)' },
-  { value: 'E♭ Major (3♭)', label: 'E♭ Major (3♭)' },
-  { value: 'A♭ Major (4♭)', label: 'A♭ Major (4♭)' },
-  { value: 'D♭ Major (5♭)', label: 'D♭ Major (5♭)' },
-  { value: 'G♭ Major (6♭)', label: 'G♭ Major (6♭)' },
-  { value: 'C♭ Major (7♭)', label: 'C♭ Major (7♭)' },
-];
+const keyOptions = KEY_OPTIONS;
 
 const categoryOptions = [
   { value: 'Practice Tracks', label: 'Practice Tracks' },
