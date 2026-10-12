@@ -1079,10 +1079,25 @@ export default function TitleCardGenerator() {
   const addToQueue = useCallback(async () => {
     if (recording || publishing || queuing) return;
     setQueuing(true);
-    setQueueStep("recording");
-    setQueueResult(null);
     setQueueError(null);
     try {
+      // Duplicate guard: same song already queued for YouTube? Don't create a second.
+      const song = state.title.trim();
+      if (song) {
+        const { data: alreadyQueued } = await supabase
+          .from('publications')
+          .select('id')
+          .eq('platform', 'youtube')
+          .in('status', ['draft', 'pending_approval', 'approved', 'scheduled', 'publishing'])
+          .eq('content_assets.song_title', song)
+          .limit(1)
+          .maybeSingle();
+        if (alreadyQueued) {
+          throw new Error('This song already has a video in the YouTube publishing queue — check Admin → Publishing first.');
+        }
+      }
+      setQueueStep("recording");
+      setQueueResult(null);
       const blob = await recordClip((loaded, total) =>
         setPublishProgress({ loaded, total })
       );

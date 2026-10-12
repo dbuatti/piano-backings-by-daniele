@@ -3,13 +3,16 @@
 // callable by admins / service role. Idempotent: each publication is claimed
 // (status -> publishing) before upload so concurrent runs can't double-post.
 //
-// Two responsibilities:
+// Responsibilities:
 //   1. Upload `approved` rows now as private videos scheduled via YouTube's
-//      native `status.publishAt` — YouTube promotes them to public at the slot,
-//      so no second, time-bound upload is needed.
-//   2. Flip `scheduled` rows whose slot has passed to `published` (label only).
+//      native `status.publishAt` — YouTube promotes them to public at the slot.
+//   2. Confirm with YouTube that uploaded rows whose slot passed are actually
+//      public, then label them `published` and email the owner.
+//   3. Reclaim long-published source videos from the `content` bucket after a
+//      retention window so storage doesn't accumulate forever.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { mintChannelAccessToken, uploadVideoToYouTube } from '../_shared/youtube.ts';
+import { escapeHtml, safeLink, sendEmail } from '../_shared/email.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,6 +26,33 @@ const json = (body: unknown, status = 200) =>
   });
 
 const MAX_ATTEMPTS = 3;
+const ADMIN_EMAILS = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
+const ADMIN_URL = 'https://pianobackings.danielebuatti.com/admin?section=publishing';
+
+// Best-effort notifications: never let an email failure take the queue down.
+async function notifyAdmins(subject: string, bodyHtml: string) {
+  for (const email of ADMIN_EMAILS) {
+    try {
+      await sendEmail({ to: email, subject, html: bodyHtml, replyTo: ADMIN_EMAILS[0] });
+    } catch (err) {
+      console.error(`[run-publish-queue] email to ${email} failed:`, err?.message || err);
+    }
+  }
+}
+
+function publishEmailSubject(title: string) {
+  return `Now live on YouTube: ${title}`;
+}
+
+function failureEmailSubject(title: string) {
+  return `Publishing failed: ${title}`;
+}
+
+function titleOf(pub: Record<string, unknown>): string {
+  const asset = (pub.content_assets || {}) as Record<string, unknown>;
+  const meta = (pub.metadata || {}) as Record<string, unknown>;
+  return String(meta.title || asset.title || asset.song_title || 'Untitled video');
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -118,6 +148,16 @@ Deno.serve(async (req) => {
           .update({ status: finalStatus, error: String(err?.message || err) })
           .eq('id', pub.id);
         results.push({ id: pub.id, status: finalStatus, error: String(err?.message || err) });
+        if (finalStatus === 'failed') {
+          const title = titleOf(pub);
+          await notifyAdmins(
+            failureEmailSubject(title),
+            `<p>A video failed to publish after ${MAX_ATTEMPTS} attempts:</p>
+             <p><strong>${escapeHtml(title)}</strong></p>
+             <p>Error: ${escapeHtml(String(err?.message || err))}</p>
+             <p>Open the publishing queue to retry: ${safeLink(ADMIN_URL)}</p>`
+          );
+        }
       }
     }
 
@@ -127,7 +167,7 @@ Deno.serve(async (req) => {
     // `scheduled` and get re-checked on the next run.
     const { data: due, error: dueErr } = await supabaseAdmin
       .from('publications')
-      .select('id, platform_post_id')
+      .select('id, platform_post_id, url, metadata, content_assets(title, song_title)')
       .eq('platform', 'youtube')
       .eq('status', 'scheduled')
       .lte('scheduled_for', nowIso)
@@ -161,7 +201,45 @@ Deno.serve(async (req) => {
           .from('publications')
           .update({ status: 'published', published_at: nowIso })
           .eq('id', row.id);
-        results.push({ id: row.id, status: 'published' });
+        results.push({ id: row.id, status: 'published', url: row.url });
+        const title = titleOf(row);
+        await notifyAdmins(
+          publishEmailSubject(title),
+          `<p>This week's video is live on YouTube:</p>
+           <p><strong>${escapeHtml(title)}</strong></p>
+           <p>Watch: ${safeLink(row.url || '')}</p>
+           <p>Manage the queue: ${safeLink(ADMIN_URL)}</p>`
+        );
+      }
+    }
+
+    // 3) Storage retention: once a full-length video has been published for a
+    // while, its webm in the `content` bucket is just a source record — delete
+    // it (keeping the row, URL and small preview) to stop storage from growing.
+    const retentionDays = Number(Deno.env.get('CONTENT_RETENTION_DAYS') || 30);
+    const cutoff = new Date(Date.now() - retentionDays * 86_400_000).toISOString();
+    const { data: stalePubs, error: staleErr } = await supabaseAdmin
+      .from('publications')
+      .select('id, asset_id, content_assets(storage_path)')
+      .eq('status', 'published')
+      .lt('published_at', cutoff)
+      .not('published_at', 'is', null);
+
+    if (staleErr) throw staleErr;
+    const cleaned = new Set<string>();
+    for (const pub of stalePubs ?? []) {
+      const path = pub?.content_assets?.storage_path;
+      if (!path || cleaned.has(pub.asset_id)) continue;
+      cleaned.add(pub.asset_id);
+      try {
+        await supabaseAdmin.storage.from('content').remove([path]);
+        await supabaseAdmin
+          .from('content_assets')
+          .update({ storage_path: null })
+          .eq('id', pub.asset_id);
+        results.push({ id: pub.asset_id, status: 'source-retired' });
+      } catch (err) {
+        console.error(`[run-publish-queue] cleanup of ${path} failed:`, err?.message || err);
       }
     }
 

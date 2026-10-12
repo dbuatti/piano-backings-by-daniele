@@ -147,24 +147,38 @@ The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Sh
 
 ## Publishing Queue (catalogue + approval + weekly scheduler)
 
-The **Video Title Cards** tool now has a second destination next to "Publish": **Save to publishing queue**. It records the same full-length title-card video, uploads it to the private `content` storage bucket, catalogues it in `content_assets`, creates a YouTube `publications` row, and has Google Gemini draft the title/description/tags. Nothing is posted until it's approved.
+The **Video Title Cards** tool has two queue destinations:
+- **Save to publishing queue** — records the full-length title-card video, uploads it to the private `content` bucket, catalogues it in `content_assets`, creates a YouTube `publications` row, and has Gemini draft the title/description/tags.
+- **Save teaser (TikTok & IG)** — records a ~30s teaser with a "Full version on YouTube" footer band, creates one asset plus a `tiktok` **and** an `instagram` `publications` draft, and AI-drafts each platform's caption.
 
-**Flow:** generate → save to queue → AI drafts metadata → **Admin → Publishing** review/edit → **Approve & schedule** → the queue runner publishes it at the weekly slot.
+Nothing is posted until approved. Both use the background-safe recorder, so you can start a recording and navigate away — it finishes and saves itself.
+
+**Flow:** generate → save to queue → AI drafts metadata → **Admin → Publishing** review/edit → **Approve & schedule** → uploaded to YouTube **now** as a `private` video → YouTube itself promotes it to public exactly at the weekly slot → the queue confirms via YouTube and emails you.
 
 **One-off setup:**
 1.  **Apply the migrations** in the Supabase SQL editor, in order (after `0034`):
     - `0035_content_publishing.sql` — `content_assets`, `publications`, `publishing_settings`, and the private `content` bucket (admin-only policies).
-    - `0036_publishing_cron.sql` — schedules `run-publish-queue` every 15 minutes. Apply **after** the function is deployed.
-2.  **Set the Gemini secret:** Supabase → Settings → API → Secrets: `GEMINI_API_KEY` (the app's Google AI key — used server-side only, never shipped to the browser bundle).
-3.  **Deploy the functions** (push to `main` and the Action deploys all, or `supabase functions deploy` for each): `draft-publication-metadata` and `run-publish-queue`.
-4.  **Set the slot:** Admin → **Publishing** → Weekly publishing slot (day, time, timezone, auto-schedule toggle). The timezone matters — scheduling converts the local wall time to UTC.
-5.  **Connect the YouTube channel** (Admin → Settings → Integrations) if not done — the queue publishes as the channel via the same server-side token as the "Publish" button.
+    - `0036_publishing_cron.sql` — calls `run-publish-queue` every 15 minutes (to upload anything not client-triggered and to flip/verify statuses). Apply **after** the function is deployed.
+    - `0037_add_card_preview.sql` — `preview_path` column for the PDF key preview.
+    - `0038_make_content_storage_path_nullable.sql` — lets the retention cleanup clear `content_assets.storage_path` (the queue deletes old source webms after `CONTENT_RETENTION_DAYS`).
+2.  **Set the Gemini secret:** Supabase → Settings → API → Secrets: `GEMINI_API_KEY` (server-side only).
+3.  **Deploy the functions** (push to `main` and the Action deploys all): `run-publish-queue`, `draft-publication-metadata`, `check-publication-status`.
+4.  **Set the slot:** Admin → **Publishing** → weekly slot (day, time, timezone, auto-schedule). The timezone matters — scheduling converts wall time to UTC.
+5.  **Connect the YouTube channel** (Admin → Settings → Integrations) if not done — publishing uses the same server-side channel token as the "Publish" button.
 
 **How it works:**
-- **Approve & schedule** flips `pending_approval → scheduled` using the next occurrence of the weekly slot (calculated in the configured timezone). With auto-schedule off it flips to `approved` instead so you can pick a slot by hand.
-- **Publish now** schedules for now and triggers one queue pass.
-- **run-publish-queue** claims due `scheduled` rows one at a time (status → `publishing`), downloads the video from the `content` bucket, uploads it to YouTube (resumable, `unlisted` by default), and records `url`/`platform_post_id`. Failures retry up to 3 times, then go `failed` (editable + re-schedulable from Admin).
-- **Metadata editing / Re-draft AI** are per-row actions in Admin → Publishing.
-- YouTube quota: each upload is 1,600 units — the queue counts against the same ~6/day ceiling as manual publishes.
+- **Approve & schedule** marks the row `approved`, assigns the next weekly slot (auto mode), and triggers one queue pass that uploads **immediately** as a private video with `publishAt` = the slot. YouTube schedules the public flip — no second upload at publish time.
+- **Schedule…** opens a manual datetime picker (used instead of the auto slot, or when auto-schedule is off).
+- **Publish now** sets the slot to now and uploads immediately (`unlisted` by default).
+- **run-publish-queue** claims `approved` rows one at a time (`publishing`), downloads from `content`, uploads to YouTube with `publishAt`. Failures retry up to 3 times, then go `failed` with an **email alert**. It also confirms with YouTube (`videos.list`) that a slot that has passed actually went public before labelling it `published` (with a **"now live" email**).
+- **Check** re-syncs one row against YouTube's real state any time (via `check-publication-status`).
+- **Re-draft AI / Edit** regenerate or hand-edit the metadata.
+- **Storage retention:** source webms in the `content` bucket are deleted `CONTENT_RETENTION_DAYS` (default **30**) after their YouTube publication goes live — the row, URL and PDF preview are kept. Set the env in Supabase secrets to change the window.
+- **Duplicate guard:** saving the same song to the YouTube queue twice is blocked at the generator page.
 
-**Platforms:** only YouTube is wired so far. TikTok (Content Posting API) and Instagram Reels (Meta API) are mapped as `platform` values in `publications` and will plug into the same pipeline once their developer apps are approved.
+**Operating (weekly, ~2 min):**
+1. Check you got the **"Now live on YouTube"** email for last week (or that the badge is `Published`).
+2. Open **Admin → Publishing** → approve the next item(s) for this week's slot. YouTube will promote them privately → public at the slot.
+3. If anything shows `Failed`, check the error, re-draft/edit, and **Approve & schedule** again.
+
+**Platforms:** only YouTube is wired for posting so far. TikTok (Content Posting API) and Instagram Reels (Meta API) are mapped as `platform` values in `publications`; teasers + AI captions are already produced and shown in Admin → Publishing (buttons are hidden until posting integrations land).
