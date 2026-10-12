@@ -121,19 +121,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2) Mark already-uploaded rows whose slot has passed as published.
-    // YouTube already promoted them to public at publishAt; this is a label only.
+    // 2) For uploaded rows whose slot has passed, confirm with YouTube that the
+    // video actually became public before labelling it published. One videos.list
+    // call covers all due ids; rows YouTube still reports as private stay
+    // `scheduled` and get re-checked on the next run.
     const { data: due, error: dueErr } = await supabaseAdmin
       .from('publications')
-      .update({ status: 'published', published_at: nowIso })
+      .select('id, platform_post_id')
       .eq('platform', 'youtube')
       .eq('status', 'scheduled')
       .lte('scheduled_for', nowIso)
-      .select('id');
+      .not('platform_post_id', 'is', null);
 
     if (dueErr) throw dueErr;
-    for (const row of due ?? []) {
-      results.push({ id: row.id, status: 'published' });
+
+    if ((due ?? []).length) {
+      const token = await mintChannelAccessToken(supabaseAdmin, {
+        clientId: GMAIL_CLIENT_ID,
+        clientSecret: GMAIL_CLIENT_SECRET,
+        accountEmail: YT_ACCOUNT_EMAIL,
+      });
+      const ids = due.map((p) => p.platform_post_id);
+      const listRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?id=${ids.join(',')}&part=status`,
+        { headers: { Authorization: `Bearer ${token.access_token}` } }
+      );
+      if (!listRes.ok) throw new Error(`YouTube videos.list failed (${listRes.status}).`);
+      const list = await listRes.json();
+
+      const publicIds = new Set<string>();
+      for (const item of list.items ?? []) {
+        const privacy = item?.status?.privacyStatus;
+        if (privacy === 'public' || privacy === 'unlisted') publicIds.add(item.id);
+      }
+
+      for (const row of due ?? []) {
+        if (!publicIds.has(row.platform_post_id)) continue;
+        await supabaseAdmin
+          .from('publications')
+          .update({ status: 'published', published_at: nowIso })
+          .eq('id', row.id);
+        results.push({ id: row.id, status: 'published' });
+      }
     }
 
     return json({ processed: results.length, results });

@@ -316,9 +316,11 @@ function QueueRow({
   onMutation: () => void;
 }) {
   const { toast } = useToast();
-  const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'draft' | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'refresh' | 'draft' | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [manualWhen, setManualWhen] = useState('');
   const asset = publication.content_assets;
   const label = [asset?.song_title, asset?.show].filter(Boolean).join(' — ') || asset?.title || 'Untitled video';
   const key = asset?.key?.replace(/ \([^)]*\)$/, '') || null;
@@ -386,6 +388,39 @@ function QueueRow({
       if (error) throw error;
     }, 'draft', 'Metadata regenerated');
 
+  // Manual slot: lets a publish time be chosen even when auto_schedule is off
+  // (or to override the auto slot for one video). Uploads via the same queue.
+  const scheduleManual = () =>
+    run(async () => {
+      const when = new Date(manualWhen);
+      if (Number.isNaN(when.getTime())) throw new Error('Choose a publish time first.');
+      const { error } = await supabase
+        .from('publications')
+        .update({
+          status: 'approved',
+          scheduled_for: when.toISOString(),
+          error: null,
+        })
+        .eq('id', publication.id);
+      if (error) throw error;
+      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+      if (invokeError) throw invokeError;
+      setScheduleOpen(false);
+      setManualWhen('');
+    }, 'schedule', 'Scheduled — uploading to YouTube');
+
+  // Live state from YouTube (promotion to public, processed status, failures)
+  // rather than trusting the DB's assumption that the slot has come and gone.
+  const checkStatus = () =>
+    run(async () => {
+      const { data, error } = await supabase.functions.invoke<{
+        processed: number;
+        error?: string;
+      }>('check-publication-status', { body: { publication_id: publication.id } });
+      if (error) throw error;
+      if (data && typeof data.error === 'string') throw new Error(data.error);
+    }, 'refresh', 'Status refreshed');
+
   return (
     <>
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
@@ -443,8 +478,18 @@ function QueueRow({
             </Button>
           )}
           {['approved', 'failed'].includes(publication.status) && (
+            <Button variant="outline" size="sm" onClick={() => setScheduleOpen(true)} disabled={busy !== null}>
+              <CalendarClock className="h-3.5 w-3.5" /> Schedule…
+            </Button>
+          )}
+          {['approved', 'failed'].includes(publication.status) && (
             <Button size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90" onClick={publishNow} disabled={busy !== null}>
               <Rocket className="h-3.5 w-3.5" /> Publish now
+            </Button>
+          )}
+          {(publication.status === 'scheduled' || publication.status === 'publishing') && (
+            <Button variant="outline" size="sm" onClick={checkStatus} disabled={busy !== null}>
+              {busy === 'refresh' ? '…' : 'Check'}
             </Button>
           )}
         </div>
@@ -462,6 +507,35 @@ function QueueRow({
           />
         </div>
       )}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Schedule publish</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Label htmlFor="publish-when">
+              Publish time (local to your browser; YouTube promotes the private
+              video to public exactly then)
+            </Label>
+            <Input
+              id="publish-when"
+              type="datetime-local"
+              value={manualWhen}
+              onChange={(e) => setManualWhen(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+              onClick={scheduleManual}
+              disabled={busy !== null}
+            >
+              {busy === 'schedule' ? '…' : 'Schedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <MetadataDialog
         publication={publication}
         open={editOpen}
