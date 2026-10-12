@@ -520,9 +520,12 @@ export default function TitleCardGenerator() {
     if (recording || publishing) return;
     setYtUrl(null);
     setYtError(null);
-    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID as string | undefined;
+    const clientId = (import.meta.env.VITE_YOUTUBE_CLIENT_ID ||
+      import.meta.env.VITE_GMAIL_CLIENT_ID) as string | undefined;
     if (!clientId) {
-      setYtError("Missing VITE_GMAIL_CLIENT_ID in the environment.");
+      setYtError(
+        "Missing VITE_YOUTUBE_CLIENT_ID (or VITE_GMAIL_CLIENT_ID) in the environment."
+      );
       return;
     }
     setRecording(true);
