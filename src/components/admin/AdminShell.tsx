@@ -11,6 +11,7 @@ import {
   Users,
   Settings,
   BarChart3,
+  Clapperboard,
 } from 'lucide-react';
 
 import RequestsSection from './sections/RequestsSection';
@@ -18,16 +19,18 @@ import ShopSection from './sections/ShopSection';
 import ClientsSection from './sections/ClientsSection';
 import SettingsSection from './sections/SettingsSection';
 import ReportsSection from './sections/ReportsSection';
+import PublishingSection from './sections/PublishingSection';
 
-export type AdminSection = 'requests' | 'shop' | 'clients' | 'reports' | 'settings';
+export type AdminSection = 'requests' | 'shop' | 'clients' | 'reports' | 'publishing' | 'settings';
 
-const VALID_SECTIONS: AdminSection[] = ['requests', 'shop', 'clients', 'reports', 'settings'];
+const VALID_SECTIONS: AdminSection[] = ['requests', 'shop', 'clients', 'reports', 'publishing', 'settings'];
 
 const NAV: { id: AdminSection; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'requests', label: 'Requests', icon: LayoutDashboard },
   { id: 'shop', label: 'Shop', icon: ShoppingCart },
   { id: 'clients', label: 'Clients', icon: Users },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'publishing', label: 'Publishing', icon: Clapperboard },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -90,6 +93,7 @@ const AdminShell = () => {
       {section === 'shop' && <ShopSection />}
       {section === 'clients' && <ClientsSection />}
       {section === 'reports' && <ReportsSection />}
+      {section === 'publishing' && <PublishingSection />}
       {section === 'settings' && (
         <SettingsSection unreadIssueReports={unreadIssueReports as number} />
       )}
