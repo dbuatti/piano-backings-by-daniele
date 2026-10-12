@@ -2,6 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Only ever serve the real domain: the Vercel bare alias
+      // (pianobackingsbydaniele.vercel.app) runs the same build but falls outside
+      // the Google/Supabase OAuth allow-lists, so auth and the admin tools
+      // misbehave there (cross-origin redirects, double app boot). Preview
+      // deployments use their own random subdomain and are unaffected.
+      if (location.hostname === 'pianobackingsbydaniele.vercel.app') {
+        location.replace('%VITE_SITE_URL%' + location.pathname + location.search + location.hash);
+      }
+    </script>
     <!-- Brand icon (PB from the wordmark). Google shows the 48px+ square icon in search results. -->
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" href="/favicon-48x48.png" type="image/png" sizes="48x48" />
