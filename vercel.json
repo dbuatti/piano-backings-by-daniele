@@ -3,9 +3,9 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "pianobackingsbydaniele.vercel.app" }],
-      "destination": "https://pianobackings.danielebuatti.com/:path*",
+      "destination": "https://pianobackings.danielebuatti.com/$1",
       "statusCode": 301
     }
   ],
