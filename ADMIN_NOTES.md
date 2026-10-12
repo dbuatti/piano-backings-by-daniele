@@ -101,7 +101,14 @@ done
 
 **Important Considerations:**
 
-*   **OAuth Client Configuration:** Ensure the Google Cloud Project's OAuth 2.0 Client ID for "Web application" has the correct "Authorized JavaScript origins" and "Authorized redirect URIs" for both local development (`http://localhost:32100/...`) and production (`https://pianobackingsbydaniele.vercel.app/...`).
+*   **OAuth Client Configuration:** Ensure the Google Cloud Project's OAuth 2.0 Client ID for "Web application" has the correct values for both local development and production:
+    *   **Authorized JavaScript origins:**
+        *   `http://localhost:8080`
+        *   `https://pianobackings.danielebuatti.com`
+    *   **Authorized redirect URIs** (the Gmail connect flow redirects to `<origin>/gmail-oauth-callback`):
+        *   `http://localhost:8080/gmail-oauth-callback`
+        *   `https://pianobackings.danielebuatti.com/gmail-oauth-callback`
+    *   A `redirect_uri_mismatch` (Error 400) means the exact redirect URI isn't listed yet (changes take ~5 minutes to propagate). Origins and redirect URIs are separate fields.
 *   **API Enablement:** The Gmail API must be explicitly enabled in your Google Cloud Project.
 *   **OAuth Consent Screen:** If your OAuth consent screen is in "Testing" status, ensure all admin accounts (e.g., `daniele.buatti@gmail.com`, `pianobackingsbydaniele@gmail.com`) are added as "Test users".
 
@@ -117,7 +124,9 @@ The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Sh
 3.  **Origins (only needed for the fallback popup):** Google Auth Platform → **Clients** → open the **Web application** client whose ID matches `VITE_GMAIL_CLIENT_ID` → under **Authorized JavaScript origins** add:
     *   `http://localhost:8080` — local dev (`server.port` in `vite.config.ts`)
     *   `https://pianobackings.danielebuatti.com` — production (`VITE_SITE_URL`)
-4.  **Redirect URI:** ensure `https://<your-host>/gmail-oauth-callback` is listed for the Web client (both local and production) — this is the existing Gmail connect redirect.
+4.  **Redirect URIs:** under the same Web client's **Authorized redirect URIs**, add:
+    *   `http://localhost:8080/gmail-oauth-callback`
+    *   `https://pianobackings.danielebuatti.com/gmail-oauth-callback`
 5.  **Test users:** if the consent screen is in **Testing**, add both admin accounts under Audience → Test users.
 6.  **Deploy the function:** `supabase functions deploy get-youtube-token` (also deploy `gmail-oauth-callback` since its scope list changed).
 7.  **Reconnect the channel account:** in Admin → Settings, click **Connect Gmail Account** while signed into Google as `pianobackingsbydaniele@gmail.com`. This replaces the stored refresh token with one that also has the `youtube.upload` scope — the step that enables silent uploads. (The same token continues to power email sending.)
