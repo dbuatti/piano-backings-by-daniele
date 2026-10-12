@@ -65,7 +65,10 @@ const MarketingPanel = () => (
 
 const ShopSection: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const sub = (searchParams.get('sub') as ShopSub) || 'products';
+  const rawSub = searchParams.get('sub');
+  const sub: ShopSub = SUBS.some((item) => item.id === rawSub)
+    ? (rawSub as ShopSub)
+    : 'products';
   const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
 
   const setSub = (next: ShopSub) => {

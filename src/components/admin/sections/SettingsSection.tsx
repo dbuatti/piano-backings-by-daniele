@@ -35,7 +35,10 @@ const SUBS: { id: SettingsSub; label: string; icon: typeof Store }[] = [
 
 const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const sub = (searchParams.get('sub') as SettingsSub) || 'storefront';
+  const rawSub = searchParams.get('sub');
+  const sub: SettingsSub = SUBS.some((item) => item.id === rawSub)
+    ? (rawSub as SettingsSub)
+    : 'storefront';
 
   const setSub = (next: SettingsSub) => {
     const sp = new URLSearchParams(searchParams);
