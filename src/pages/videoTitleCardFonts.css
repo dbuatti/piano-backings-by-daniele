@@ -1,0 +1,45 @@
+/*
+ * Video title-card fonts.
+ *
+ * Really-wanted licensed font (Baskerville Display PT) can be dropped into
+ * /public/fonts with the filename below and it activates immediately —
+ * TitleCardGenerator.tsx lists it first in its font stack, so the swap is a
+ * pure drop-in with no code change. The banner already uses the real Arcade
+ * face (/public/fonts/arcade_ya/ARCADE_N.TTF); until Baskerville Display PT
+ * arrives, the song block uses the self-hosted Baskervville revival
+ * (/public/fonts/Baskervville) as the display stand-in.
+ */
+@font-face {
+  font-family: 'Arcade Gamer';
+  src: url('/fonts/arcade_ya/ARCADE_N.TTF') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Baskerville Display PT';
+  src: url('/fonts/BaskervilleDisplayPT-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Self-hosted Baskervville — variable fonts cover the whole weight axis. */
+@font-face {
+  font-family: 'Baskervville';
+  src: url('/fonts/Baskervville/Baskervville-VariableFont_wght.ttf')
+    format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Baskervville';
+  src: url('/fonts/Baskervville/Baskervville-Italic-VariableFont_wght.ttf')
+    format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
