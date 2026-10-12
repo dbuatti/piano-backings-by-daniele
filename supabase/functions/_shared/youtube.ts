@@ -43,11 +43,26 @@ export async function mintChannelAccessToken(
   const user = await findChannelUser(supabaseAdmin, accountEmail, opts.fallbackUserId);
   if (!user) throw new Error(`No account found for ${accountEmail}.`);
 
-  const { data: ytToken } = await supabaseAdmin
+  let { data: ytToken } = await supabaseAdmin
     .from('youtube_tokens')
     .select('refresh_token')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  // The connect flow stores the channel token under whichever admin clicked
+  // "Connect YouTube Channel", but there is only one channel — any stored
+  // youtube_tokens row is the channel token. Fall back to the most recent row
+  // so the queue can mint regardless of which admin connected it.
+  if (!ytToken?.refresh_token) {
+    const { data: anyToken } = await supabaseAdmin
+      .from('youtube_tokens')
+      .select('refresh_token')
+      .not('refresh_token', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    ytToken = anyToken;
+  }
 
   let refreshToken: string | null = ytToken?.refresh_token ?? null;
   let source: ChannelToken['source'] = 'youtube_tokens';
