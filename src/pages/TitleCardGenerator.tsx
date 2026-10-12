@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Film, RefreshCw, Video } from "lucide-react";
+import { Download, Film, RefreshCw, Video, Youtube } from "lucide-react";
 import "@fontsource/press-start-2p";
 import "@fontsource/silkscreen/400.css";
 import "@fontsource/silkscreen/700.css";
@@ -241,6 +241,101 @@ function drawCard(
   }
 }
 
+// ---------- YouTube upload (client-side OAuth via Google Identity Services) ----------
+const YT_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
+
+type GisTokenResponse = { access_token?: string; error?: string };
+type GisError = { message?: string };
+type GisTokenClient = { requestAccessToken: (opts?: { prompt?: string }) => void };
+type GisOAuth2 = {
+  initTokenClient: (cfg: {
+    client_id: string;
+    scope: string;
+    callback: (r: GisTokenResponse) => void;
+    error_callback?: (e: GisError) => void;
+  }) => GisTokenClient;
+};
+type GoogleGlobal = { accounts?: { oauth2?: GisOAuth2 } };
+
+let gisPromise: Promise<void> | null = null;
+
+function loadGis(): Promise<void> {
+  const g = (window as unknown as { google?: GoogleGlobal }).google;
+  if (g?.accounts?.oauth2) return Promise.resolve();
+  if (gisPromise) return gisPromise;
+  gisPromise = new Promise<void>((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load Google Identity Services"));
+    document.head.appendChild(s);
+  });
+  return gisPromise;
+}
+
+async function getAccessToken(clientId: string): Promise<string> {
+  await loadGis();
+  const g = (window as unknown as { google?: GoogleGlobal }).google;
+  const oauth2 = g?.accounts?.oauth2;
+  if (!oauth2) throw new Error("Google Identity Services unavailable");
+  return new Promise<string>((resolve, reject) => {
+    const client = oauth2.initTokenClient({
+      client_id: clientId,
+      scope: YT_UPLOAD_SCOPE,
+      callback: (resp) => {
+        if (resp.access_token) resolve(resp.access_token);
+        else reject(new Error(resp.error || "Google did not return a token"));
+      },
+      error_callback: (err) =>
+        reject(new Error(err?.message || "Google authorization failed")),
+    });
+    client.requestAccessToken({ prompt: "consent" });
+  });
+}
+
+async function uploadToYouTube(
+  token: string,
+  blob: Blob,
+  meta: { title: string; description: string; privacy: "private" | "unlisted" | "public" }
+): Promise<string> {
+  const body = {
+    snippet: {
+      title: meta.title,
+      description: meta.description,
+      categoryId: "10",
+      tags: ["piano", "piano backing", "audition cut"],
+    },
+    status: { privacyStatus: meta.privacy, selfDeclaredMadeForKids: false },
+  };
+  const init = await fetch(
+    "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": "video/webm",
+        "X-Upload-Content-Length": String(blob.size),
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!init.ok) throw new Error(`Upload init failed (${init.status})`);
+  const session = init.headers.get("Location");
+  if (!session) throw new Error("YouTube did not return an upload session");
+  const put = await fetch(session, {
+    method: "PUT",
+    headers: { "Content-Type": "video/webm" },
+    body: blob,
+  });
+  if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+  const data = (await put.json()) as { id?: string };
+  if (!data.id) throw new Error("Upload succeeded but no video id returned");
+  return data.id;
+}
+
 // ---------- Page ----------
 function Field({
   label,
@@ -272,6 +367,13 @@ export default function TitleCardGenerator() {
   const [state, setState] = useState<CardState>(DEFAULT_STATE);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
   const [recording, setRecording] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [ytStatus, setYtStatus] = useState<string | null>(null);
+  const [ytError, setYtError] = useState<string | null>(null);
+  const [ytUrl, setYtUrl] = useState<string | null>(null);
+  const [privacy, setPrivacy] = useState<"private" | "unlisted" | "public">(
+    "unlisted"
+  );
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dims = ASPECTS[state.aspect];
 
@@ -354,10 +456,10 @@ export default function TitleCardGenerator() {
     }, "image/png");
   };
 
-  const exportVideo = useCallback(async () => {
+  const recordClip = useCallback(async (): Promise<Blob | null> => {
     const cv = canvasRef.current;
     const ctx = cv?.getContext("2d");
-    if (!cv || !ctx || recording || typeof MediaRecorder === "undefined") return;
+    if (!cv || !ctx || typeof MediaRecorder === "undefined") return null;
 
     const stream = cv.captureStream(30);
     const mimeType = [
@@ -377,7 +479,6 @@ export default function TitleCardGenerator() {
       rec.onstop = () => res();
     });
 
-    setRecording(true);
     const duration = 6;
     const fade = 1.1;
     const t0 = performance.now();
@@ -400,10 +501,58 @@ export default function TitleCardGenerator() {
     rec.stop();
     stream.getTracks().forEach((tr) => tr.stop());
     await stopped;
-    setRecording(false);
     paint();
-    download(new Blob(chunks, { type: "video/webm" }), "webm");
-  }, [recording, dims.w, dims.h, state, logoImg, paint, download]);
+    return new Blob(chunks, { type: "video/webm" });
+  }, [dims.w, dims.h, state, logoImg, paint]);
+
+  const exportVideo = useCallback(async () => {
+    if (recording) return;
+    setRecording(true);
+    try {
+      const blob = await recordClip();
+      if (blob) download(blob, "webm");
+    } finally {
+      setRecording(false);
+    }
+  }, [recording, recordClip, download]);
+
+  const publishVideo = useCallback(async () => {
+    if (recording || publishing) return;
+    setYtUrl(null);
+    setYtError(null);
+    const clientId = import.meta.env.VITE_GMAIL_CLIENT_ID as string | undefined;
+    if (!clientId) {
+      setYtError("Missing VITE_GMAIL_CLIENT_ID in the environment.");
+      return;
+    }
+    setRecording(true);
+    setPublishing(true);
+    try {
+      setYtStatus("Recording clip…");
+      const blob = await recordClip();
+      if (!blob) throw new Error("Recording failed in this browser.");
+      setYtStatus("Authorising with Google…");
+      const token = await getAccessToken(clientId);
+      setYtStatus("Uploading to YouTube…");
+      const title = `${state.title}${state.show ? ` — ${state.show}` : ""} (title card)`;
+      const description = [state.dedication, state.key ? `Key: ${state.key}` : ""]
+        .filter(Boolean)
+        .join("\n");
+      const id = await uploadToYouTube(token, blob, {
+        title,
+        description,
+        privacy,
+      });
+      setYtUrl(`https://youtu.be/${id}`);
+      setYtStatus(null);
+    } catch (e) {
+      setYtStatus(null);
+      setYtError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setRecording(false);
+      setPublishing(false);
+    }
+  }, [recording, publishing, recordClip, state, privacy]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
@@ -513,6 +662,48 @@ export default function TitleCardGenerator() {
         >
           <RefreshCw className="h-4 w-4" /> Reset
         </button>
+
+        <div className="rounded-xl border border-gray-200 p-3">
+          <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#1C0357]/70">
+            Publish to YouTube
+          </span>
+          <div className="flex gap-2">
+            <select
+              value={privacy}
+              onChange={(e) =>
+                setPrivacy(e.target.value as "private" | "unlisted" | "public")
+              }
+              className="rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm font-bold text-[#1C0357] focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+            >
+              <option value="unlisted">Unlisted</option>
+              <option value="private">Private</option>
+              <option value="public">Public</option>
+            </select>
+            <button
+              onClick={publishVideo}
+              disabled={publishing || recording}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#FF0000] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              <Youtube className="h-4 w-4" />{" "}
+              {publishing ? "Publishing…" : "Publish"}
+            </button>
+          </div>
+          {ytStatus && <p className="mt-2 text-xs text-gray-500">{ytStatus}</p>}
+          {ytError && <p className="mt-2 text-xs text-red-500">{ytError}</p>}
+          {ytUrl && (
+            <p className="mt-2 text-xs text-green-600">
+              Uploaded —{" "}
+              <a
+                className="underline"
+                href={ytUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {ytUrl}
+              </a>
+            </p>
+          )}
+        </div>
 
         <p className="text-xs leading-relaxed text-gray-400">
           Banner uses the real arcade font. Song block is the self-hosted
