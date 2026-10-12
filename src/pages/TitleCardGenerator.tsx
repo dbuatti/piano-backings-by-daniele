@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, Film, ListChecks, Loader2, RefreshCw, Search, Video, Youtube } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getActiveRecordingProgress,
+  isRecordingActive,
+  recordCanvasClip,
+  subscribeRecording,
+  type RecordingAudio,
+} from "@/utils/canvasRecorder";
 import { KEY_OPTIONS, keyForDisplay } from "@/utils/musicalKeys";
 import "@fontsource/press-start-2p";
 import "@fontsource/silkscreen/400.css";
@@ -554,6 +561,30 @@ export default function TitleCardGenerator() {
     };
   }, []);
 
+  // When a recording was cued in the background (then this page was left and
+  // re-entered), mirror the module-level recorder's state so the UI shows live
+  // progress, disables the buttons, and clears up when it finally completes.
+  useEffect(() => {
+    if (isRecordingActive()) {
+      setRecording(true);
+      const progress = getActiveRecordingProgress();
+      if (progress) setPublishProgress(progress);
+    }
+    const unsubscribe = subscribeRecording((progress) => {
+      if (progress) {
+        setPublishProgress(progress);
+      } else {
+        setPublishProgress(null);
+        setRecording(false);
+      }
+    });
+    return () => {
+      unsubscribe();
+      setRecording(false);
+      setPublishProgress(null);
+    };
+  }, []);
+
   // Preload Google Identity Services so the auth popup can open synchronously
   // inside the Publish click (otherwise browsers treat it as a blocked popup).
   useEffect(() => {
@@ -825,88 +856,53 @@ export default function TitleCardGenerator() {
       onProgress?: (loaded: number, total: number) => void
     ): Promise<Blob | null> => {
     const cv = canvasRef.current;
-    const ctx = cv?.getContext("2d");
-    if (!cv || !ctx || typeof MediaRecorder === "undefined") return null;
-
-    const videoTrack = cv.captureStream(30).getVideoTracks()[0];
-    if (!videoTrack) return null;
+    if (!cv || typeof MediaRecorder === "undefined") return null;
 
     // Without a selected track this stays a silent 6-second title card. With one,
     // the clip runs the full length of the track and mixes its audio in.
     let duration = 6;
-    let audioCtx: AudioContext | null = null;
-    let audioSource: AudioBufferSourceNode | null = null;
-    let audioTrack: MediaStreamTrack | null = null;
-
+    let audio: RecordingAudio | null = null;
     if (audioUrl) {
-      audioCtx = new AudioContext();
-      if (audioCtx.state === "suspended") await audioCtx.resume();
+      const context = new AudioContext();
+      if (context.state === "suspended") await context.resume();
       const response = await fetch(audioUrl);
       if (!response.ok) {
-        await audioCtx.close();
+        await context.close();
         throw new Error(`Couldn't load the backing track (${response.status}).`);
       }
-      const decoded = await audioCtx.decodeAudioData(await response.arrayBuffer());
+      const decoded = await context.decodeAudioData(await response.arrayBuffer());
       duration = decoded.duration;
-      const dest = audioCtx.createMediaStreamDestination();
-      audioSource = audioCtx.createBufferSource();
-      audioSource.buffer = decoded;
-      audioSource.connect(dest);
-      audioSource.connect(audioCtx.destination);
-      audioTrack = dest.stream.getAudioTracks()[0] ?? null;
+      const source = context.createBufferSource();
+      source.buffer = decoded;
+      source.connect(context.destination);
+      audio = { context, source };
     }
 
-    const stream = new MediaStream(
-      audioTrack ? [videoTrack, audioTrack] : [videoTrack]
-    );
-    const mimeType = [
-      audioTrack ? "video/webm;codecs=vp9,opus" : "video/webm;codecs=vp9",
-      audioTrack ? "video/webm;codecs=vp8,opus" : "video/webm;codecs=vp8",
-      "video/webm",
-    ].find((m) => MediaRecorder.isTypeSupported(m));
-    const rec = new MediaRecorder(
-      stream,
-      mimeType ? { mimeType, videoBitsPerSecond: 8_000_000 } : undefined
-    );
-    const chunks: BlobPart[] = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size) chunks.push(e.data);
-    };
-    const stopped = new Promise<void>((res) => {
-      rec.onstop = () => res();
-    });
-
+    const cvCtx = cv.getContext("2d");
+    const W = dims.w;
+    const H = dims.h;
     const fade = 1.1;
-    const t0 = performance.now();
-    rec.start();
-    audioSource?.start();
 
-    await new Promise<void>((res) => {
-      const loop = () => {
-        const el = (performance.now() - t0) / 1000;
-        const p = Math.min(el / fade, 1);
-        drawCard(ctx, dims.w, dims.h, state, logoImg);
+    // Runs in the module-level recorder so it survives navigating away: the
+    // blob still resolves and the caller (queue/publish) finishes server-side.
+    const blob = await recordCanvasClip({
+      canvas: cv,
+      duration,
+      audio: audio ?? undefined,
+      fps: 30,
+      drawFrame: (elapsed) => {
+        if (!cvCtx) return;
+        drawCard(cvCtx, W, H, state, logoImg);
+        const p = Math.min(elapsed / fade, 1);
         const ease = 1 - Math.pow(1 - p, 3);
-        ctx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
-        ctx.fillRect(0, 0, dims.w, dims.h);
-        onProgress?.(Math.min(el, duration), duration);
-        if (el < duration) requestAnimationFrame(loop);
-        else res();
-      };
-      requestAnimationFrame(loop);
+        cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+        cvCtx.fillRect(0, 0, W, H);
+      },
+      onProgress: (p) => onProgress?.(p.loaded, p.total),
     });
 
-    rec.stop();
-    try {
-      audioSource?.stop();
-    } catch {
-      // Already ended.
-    }
-    stream.getTracks().forEach((tr) => tr.stop());
-    await stopped;
-    await audioCtx?.close();
     paint();
-    return new Blob(chunks, { type: "video/webm" });
+    return blob;
     },
     [dims.w, dims.h, state, logoImg, paint, audioUrl]
   );
