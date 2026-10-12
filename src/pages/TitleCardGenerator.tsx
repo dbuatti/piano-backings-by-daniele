@@ -954,14 +954,32 @@ export default function TitleCardGenerator() {
         [state.title.trim(), state.banner.trim()].filter(Boolean).join(" — ") ||
         "Backing track";
       const title = `${titleCore}${showText ? ` (from ${showText})` : ""}`;
+
+      // Marketing description: song + who it was for + key, then how to order.
+      // Only the first name is used (the dedication is often a full name).
+      const dedication = (state.dedication.trim() || linkedRequest?.client || "")
+        .replace(/^\s*prepared\s+for\s+/i, "")
+        .trim();
+      const firstName = dedication.split(/\s+/)[0] || "";
       const description = [
-        linkedRequest?.client
-          ? `prepared for ${linkedRequest.client}`
-          : state.dedication,
-        state.key ? `Key: ${keyForDisplay(state.key)}` : "",
+        [
+          title,
+          firstName ? `Prepared for ${firstName}.` : "",
+          state.key ? `Key: ${keyForDisplay(state.key)}.` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        [
+          "Custom piano backing tracks — arranged and recorded in your key.",
+          "Need a backing track for your audition, performance or practice? I create custom piano backings in your key and tempo, delivered fast.",
+          "Order yours: https://pianobackings.danielebuatti.com/form-page",
+          "Browse ready-made cuts: https://pianobackings.danielebuatti.com/shop",
+        ].join("\n"),
+        "Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/",
+        "#pianobackingtrack #backingtrack #auditioncut #musicaltheatre",
       ]
         .filter(Boolean)
-        .join("\n");
+        .join("\n\n");
       const id = await uploadToYouTube(
         token,
         blob,
