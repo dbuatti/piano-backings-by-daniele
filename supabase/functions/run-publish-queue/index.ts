@@ -1,7 +1,13 @@
 // @ts-nocheck
-// Publishes due, approved videos from the queue. Triggered by pg_cron (anon JWT)
-// and safely callable by admins / service role. Idempotent: each publication is
-// claimed (status -> publishing) before upload so concurrent runs can't double-post.
+// Processes the publishing queue. Triggered by pg_cron (anon JWT) and safely
+// callable by admins / service role. Idempotent: each publication is claimed
+// (status -> publishing) before upload so concurrent runs can't double-post.
+//
+// Two responsibilities:
+//   1. Upload `approved` rows now as private videos scheduled via YouTube's
+//      native `status.publishAt` — YouTube promotes them to public at the slot,
+//      so no second, time-bound upload is needed.
+//   2. Flip `scheduled` rows whose slot has passed to `published` (label only).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { mintChannelAccessToken, uploadVideoToYouTube } from '../_shared/youtube.ts';
 
@@ -37,26 +43,27 @@ Deno.serve(async (req) => {
     }
 
     const nowIso = new Date().toISOString();
-    const { data: due, error: dueErr } = await supabaseAdmin
+    const results: Array<Record<string, unknown>> = [];
+
+    // 1) Upload approved rows immediately, scheduling them through publishAt.
+    const { data: toUpload, error: uploadErr } = await supabaseAdmin
       .from('publications')
-      .select('id, asset_id, platform, metadata, attempts, content_assets(storage_path, mime_type, title, song_title)')
+      .select('id, asset_id, platform, metadata, scheduled_for, attempts, content_assets(storage_path, mime_type, title, song_title)')
       .eq('platform', 'youtube')
-      .eq('status', 'scheduled')
-      .lte('scheduled_for', nowIso)
+      .eq('status', 'approved')
+      .not('scheduled_for', 'is', null)
       .order('scheduled_for', { ascending: true })
       .limit(5);
 
-    if (dueErr) throw dueErr;
+    if (uploadErr) throw uploadErr;
 
-    const results: Array<Record<string, unknown>> = [];
-
-    for (const pub of due ?? []) {
-      // Claim it — only one worker wins the transition from scheduled -> publishing.
+    for (const pub of toUpload ?? []) {
+      // Claim it — only one worker wins the transition from approved -> publishing.
       const { data: claimed } = await supabaseAdmin
         .from('publications')
         .update({ status: 'publishing', attempts: (pub.attempts ?? 0) + 1 })
         .eq('id', pub.id)
-        .eq('status', 'scheduled')
+        .eq('status', 'approved')
         .select('id')
         .maybeSingle();
       if (!claimed) continue;
@@ -79,35 +86,54 @@ Deno.serve(async (req) => {
 
         const meta = pub.metadata || {};
         const fallbackTitle = asset.title || asset.song_title || 'Piano backing track';
+        const publishAt =
+          pub.scheduled_for && new Date(pub.scheduled_for).getTime() > Date.now()
+            ? pub.scheduled_for
+            : undefined;
         const videoId = await uploadVideoToYouTube(token.access_token, bytes, {
           title: meta.title || fallbackTitle,
           description: meta.description || '',
           tags: Array.isArray(meta.tags) ? meta.tags : [],
-          privacy: meta.privacy || 'unlisted',
+          privacy: publishAt ? 'private' : meta.privacy || 'unlisted',
+          publishAt,
           mimeType: asset.mime_type || 'video/webm',
         });
 
         await supabaseAdmin
           .from('publications')
           .update({
-            status: 'published',
-            published_at: new Date().toISOString(),
+            status: 'scheduled',
             platform_post_id: videoId,
             url: `https://youtu.be/${videoId}`,
             error: null,
           })
           .eq('id', pub.id);
 
-        results.push({ id: pub.id, status: 'published', url: `https://youtu.be/${videoId}` });
+        results.push({ id: pub.id, status: 'scheduled', url: `https://youtu.be/${videoId}` });
       } catch (err) {
         const attempts = (pub.attempts ?? 0) + 1;
-        const finalStatus = attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled';
+        const finalStatus = attempts >= MAX_ATTEMPTS ? 'failed' : 'approved';
         await supabaseAdmin
           .from('publications')
           .update({ status: finalStatus, error: String(err?.message || err) })
           .eq('id', pub.id);
         results.push({ id: pub.id, status: finalStatus, error: String(err?.message || err) });
       }
+    }
+
+    // 2) Mark already-uploaded rows whose slot has passed as published.
+    // YouTube already promoted them to public at publishAt; this is a label only.
+    const { data: due, error: dueErr } = await supabaseAdmin
+      .from('publications')
+      .update({ status: 'published', published_at: nowIso })
+      .eq('platform', 'youtube')
+      .eq('status', 'scheduled')
+      .lte('scheduled_for', nowIso)
+      .select('id');
+
+    if (dueErr) throw dueErr;
+    for (const row of due ?? []) {
+      results.push({ id: row.id, status: 'published' });
     }
 
     return json({ processed: results.length, results });

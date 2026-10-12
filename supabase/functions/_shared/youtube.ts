@@ -113,11 +113,18 @@ export async function uploadVideoToYouTube(
     description: string;
     tags?: string[];
     privacy?: 'private' | 'unlisted' | 'public';
+    publishAt?: string; // ISO-8601; forces privacy 'private' until this time
     categoryId?: string;
     mimeType?: string;
   }
 ): Promise<string> {
   const mimeType = meta.mimeType || 'video/webm';
+
+  // Scheduled publishing: YouTube requires the video to start as `private` and
+  // promote it to public when publishAt arrives. Past/empty times upload as-is.
+  const scheduled = meta.publishAt
+    ? new Date(meta.publishAt).getTime() > Date.now()
+    : false;
 
   const initRes = await fetch(
     'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
@@ -137,7 +144,8 @@ export async function uploadVideoToYouTube(
           categoryId: meta.categoryId ?? '10',
         },
         status: {
-          privacyStatus: meta.privacy ?? 'unlisted',
+          privacyStatus: scheduled ? 'private' : meta.privacy ?? 'unlisted',
+          ...(scheduled ? { publishAt: new Date(meta.publishAt!).toISOString() } : {}),
           selfDeclaredMadeForKids: false,
         },
       }),

@@ -336,44 +336,39 @@ function QueueRow({
     }
   };
 
+  // Approve & schedule = mark approved, assign the next weekly slot (if auto),
+  // then kick the queue so the video is uploaded to YouTube immediately as a
+  // private video that YouTube itself publishes at `scheduled_for`.
   const approve = () =>
     run(async () => {
+      const { data: user } = await supabase.auth.getUser();
+      const patch: Record<string, unknown> = {
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: user.user?.id ?? null,
+        error: null,
+      };
       const { data: settings } = await supabase
         .from('publishing_settings')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
-      const { data: user } = await supabase.auth.getUser();
-      const patch: Record<string, unknown> = {
-        approved_at: new Date().toISOString(),
-        approved_by: user.user?.id ?? null,
-        error: null,
-      };
       if (settings?.auto_schedule) {
-        patch.status = 'scheduled';
         patch.scheduled_for = nextWeeklySlot(settings).toISOString();
-      } else {
-        patch.status = 'approved';
       }
       const { error } = await supabase.from('publications').update(patch).eq('id', publication.id);
       if (error) throw error;
-    }, 'approve', 'Approved and scheduled');
+      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+      if (invokeError) throw invokeError;
+    }, 'approve', 'Approved — uploading to YouTube');
 
-  const scheduleNow = (whenIso: string) =>
-    run(async () => {
-      const { error } = await supabase
-        .from('publications')
-        .update({ status: 'scheduled', scheduled_for: whenIso, error: null })
-        .eq('id', publication.id);
-      if (error) throw error;
-    }, 'schedule', 'Scheduled');
-
+  // Publish now = upload immediately (no publishAt), via the same queue path.
   const publishNow = () =>
     run(async () => {
       const { error } = await supabase
         .from('publications')
         .update({
-          status: 'scheduled',
+          status: 'approved',
           scheduled_for: new Date().toISOString(),
           error: null,
         })
@@ -381,7 +376,7 @@ function QueueRow({
       if (error) throw error;
       const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
       if (invokeError) throw invokeError;
-    }, 'publish', 'Publish triggered');
+    }, 'publish', 'Published');
 
   const redraft = () =>
     run(async () => {
@@ -427,7 +422,7 @@ function QueueRow({
           <Badge variant="outline">{publication.platform}</Badge>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {publication.status === 'published' && publication.url && (
+          {['published', 'scheduled'].includes(publication.status) && publication.url && (
             <Button variant="outline" size="sm" asChild>
               <a href={publication.url} target="_blank" rel="noreferrer">View</a>
             </Button>
@@ -447,7 +442,7 @@ function QueueRow({
               <RefreshCw className="h-3.5 w-3.5" /> Re-draft AI
             </Button>
           )}
-          {publication.status === 'scheduled' && (
+          {['approved', 'failed'].includes(publication.status) && (
             <Button size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90" onClick={publishNow} disabled={busy !== null}>
               <Rocket className="h-3.5 w-3.5" /> Publish now
             </Button>
