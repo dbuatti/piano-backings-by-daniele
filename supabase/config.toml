@@ -1,0 +1,28 @@
+project_id = "kyfofikkswxtwgtqutdu"
+
+# verify_jwt controls the API-gateway JWT check that runs BEFORE the function.
+# Functions that must serve unauthenticated guests (or are called by an external
+# service with no Supabase JWT) are set to false here; each still enforces its
+# own auth internally. Everything else keeps the default (true) and is called by
+# the client/admin with a valid Supabase JWT.
+
+[functions.create-backing-request]
+verify_jwt = false
+
+[functions.create-stripe-checkout]
+verify_jwt = false
+
+[functions.get-guest-request-by-token]
+verify_jwt = false
+
+[functions.public-stats]
+verify_jwt = false
+
+[functions.keep-alive]
+verify_jwt = false
+
+[functions.resend-request-emails]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Trash2, Music, Youtube, Mic, FileText, MessageSquare } from 'lucide-react';
 import FileInput from "@/components/FileInput";
+import { KEY_VALUES } from "@/utils/musicalKeys";
 import { cn } from "@/lib/utils";
 
 export interface SongData {
@@ -33,9 +34,7 @@ interface SongRequestItemProps {
   errors?: Record<string, string>;
 }
 
-const keyOptions = [
-  "C Major (0)", "G Major (1♯)", "D Major (2♯)", "A Major (3♯)", "E Major (4♯)", "B Major (5♯)", "F♯ Major (6♯)", "C♯ Major (7♯)", "F Major (1♭)", "B♭ Major (2♭)", "E♭ Major (3♭)", "A♭ Major (4♭)", "D♭ Major (5♭)", "G♭ Major (6♭)", "C♭ Major (7♭)"
-];
+const keyOptions = KEY_VALUES;
 
 const SongRequestItem: React.FC<SongRequestItemProps> = ({
   index,

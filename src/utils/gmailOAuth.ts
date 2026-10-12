@@ -12,9 +12,17 @@ export const initiateOAuth = () => {
     return;
   }
   
-  // Scopes required for sending emails
-  const scopes = 'https://www.googleapis.com/auth/gmail.send';
-  
+  // Scopes required for sending emails and uploading YouTube videos as the channel.
+  const scopes = [
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/youtube.upload',
+  ].join(' ');
+
+  // The channel account whose videos we publish as. Kept in sync with the
+  // YT_ACCOUNT_EMAIL secret used by the get-youtube-token edge function.
+  const loginHint =
+    import.meta.env.VITE_YOUTUBE_CHANNEL_EMAIL || 'pianobackingsbydaniele@gmail.com';
+
   // Construct the authorization URL
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${encodeURIComponent(clientId)}` +
@@ -22,6 +30,7 @@ export const initiateOAuth = () => {
     `&scope=${encodeURIComponent(scopes)}` +
     `&response_type=code` +
     `&access_type=offline` + // This ensures we get a refresh token
+    `&login_hint=${encodeURIComponent(loginHint)}` + // Default to the channel account
     `&prompt=consent`; // This ensures we get a refresh token every time (for demo purposes)
   
   // Redirect the user to Google's authorization server
