@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Film, ListChecks, Loader2, RefreshCw, Search, Video, Youtube } from "lucide-react";
+import { Check, Download, Film, ListChecks, Loader2, RefreshCw, Search, Smartphone, Video, Youtube } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getActiveRecordingProgress,
@@ -471,6 +471,29 @@ const formatClock = (seconds: number) => {
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, "0")}`;
 };
+
+// Teasers for TikTok / Instagram: the same card for ~30s with a "Full version
+// on YouTube" footer band pointing viewers to the full-length channel upload.
+const TEASER_SECONDS = 30;
+
+function drawTeaserFooter(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  const bandH = Math.round(H * 0.16);
+  const y = H - bandH;
+  ctx.fillStyle = NAVY;
+  ctx.fillRect(0, y, W, bandH);
+  ctx.fillStyle = KEY_YELLOW;
+  ctx.fillRect(0, y, W, Math.max(3, Math.round(H * 0.006)));
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = WHITE;
+  const fs = Math.max(12, Math.round(Math.min(W, H) * 0.05));
+  ctx.font = `700 ${fs}px ${FONT_SANS}`;
+  ctx.fillText("Full version on YouTube", W / 2, y + bandH * 0.36);
+  ctx.fillStyle = KEY_YELLOW;
+  const sub = Math.max(10, Math.round(fs * 0.55));
+  ctx.font = `400 ${sub}px ${FONT_SANS}`;
+  ctx.fillText("@pianobackingsbydaniele", W / 2, y + bandH * 0.72);
+}
 
 // ---------- Page ----------
 function Field({
@@ -1136,6 +1159,152 @@ export default function TitleCardGenerator() {
     }
   }, [recording, publishing, queuing, recordClip, captureCardPreview, state, selectedTrack, linkedRequest]);
 
+  // 30s teaser aimed at TikTok / Instagram: same background, a "Full version on
+  // YouTube" footer band, and at most ~30s of the track. Same background-safe
+  // recorder, so it too completes even if the user navigates away.
+  const recordTeaser = useCallback(
+    async (
+      onProgress?: (loaded: number, total: number) => void
+    ): Promise<Blob | null> => {
+      const cv = canvasRef.current;
+      if (!cv || typeof MediaRecorder === "undefined") return null;
+
+      let duration = TEASER_SECONDS;
+      let audio: RecordingAudio | null = null;
+      if (audioUrl) {
+        const context = new AudioContext();
+        if (context.state === "suspended") await context.resume();
+        const response = await fetch(audioUrl);
+        if (!response.ok) {
+          await context.close();
+          throw new Error(`Couldn't load the backing track (${response.status}).`);
+        }
+        const decoded = await context.decodeAudioData(await response.arrayBuffer());
+        duration = Math.min(decoded.duration, TEASER_SECONDS);
+        const source = context.createBufferSource();
+        source.buffer = decoded;
+        source.connect(context.destination);
+        audio = { context, source };
+      }
+
+      const cvCtx = cv.getContext("2d");
+      const W = dims.w;
+      const H = dims.h;
+      const fade = 1.1;
+
+      const blob = await recordCanvasClip({
+        canvas: cv,
+        duration,
+        audio: audio ?? undefined,
+        fps: 30,
+        drawFrame: (elapsed) => {
+          if (!cvCtx) return;
+          drawCard(cvCtx, W, H, state, logoImg);
+          const p = Math.min(elapsed / fade, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+          cvCtx.fillRect(0, 0, W, H);
+          drawTeaserFooter(cvCtx, W, H);
+        },
+        onProgress: (p) => onProgress?.(p.loaded, p.total),
+      });
+
+      paint();
+      return blob;
+    },
+    [dims.w, dims.h, state, logoImg, paint, audioUrl]
+  );
+
+  // Save a 30s teaser (TikTok + Instagram) into the publishing catalogue without
+  // posting: uploads the clip, creates one asset + a tiktok + an instagram draft,
+  // then AI-drafts each platform's caption and flags them for approval.
+  const addTeaserToQueue = useCallback(async () => {
+    if (queuing || recording || publishing) return;
+    setQueuing(true);
+    setQueueStep("recording");
+    setQueueResult(null);
+    setQueueError(null);
+    try {
+      const blob = await recordTeaser((loaded, total) =>
+        setPublishProgress({ loaded, total })
+      );
+      if (!blob) throw new Error("Recording failed in this browser.");
+      setQueueStep("uploading");
+      setPublishProgress({ loaded: 0, total: blob.size });
+
+      const { data: user } = await supabase.auth.getUser();
+      const id = crypto.randomUUID();
+      const path = `content/${id}-teaser.webm`;
+      const previewPath = `content/${id}-teaser.preview.png`;
+      const { error: uploadErr } = await supabase.storage
+        .from("content")
+        .upload(path, blob, { contentType: "video/webm", upsert: false });
+      if (uploadErr) throw uploadErr;
+
+      const previewBlob = await captureCardPreview();
+      if (previewBlob) {
+        const { error: previewErr } = await supabase.storage
+          .from("content")
+          .upload(previewPath, previewBlob, { contentType: "image/png", upsert: false });
+        if (previewErr) throw previewErr;
+      }
+
+      const showText = state.show.replace(/^\s*from\s+/i, "").trim();
+      const titleCore =
+        [state.title.trim(), state.banner.trim()].filter(Boolean).join(" — ") || "Backing track";
+
+      const { data: asset, error: assetErr } = await supabase
+        .from("content_assets")
+        .insert({
+          storage_path: path,
+          preview_path: previewBlob ? previewPath : null,
+          mime_type: blob.type || "video/webm",
+          title: `${titleCore}${showText ? ` (from ${showText})` : ""} (Teaser)`,
+          song_title: state.title.trim() || null,
+          show: showText || null,
+          key: state.key || null,
+          dedication:
+            state.dedication.trim() || (linkedRequest?.client ?? null) || null,
+          request_id: selectedTrack?.requestId ?? null,
+          duration_seconds: TEASER_SECONDS,
+          aspect: state.aspect,
+          created_by: user.user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+
+      const platforms = ["tiktok", "instagram"] as const;
+      for (const platform of platforms) {
+        const { error: pubErr } = await supabase
+          .from("publications")
+          .insert({ asset_id: asset.id, platform, status: "draft" });
+        if (pubErr) throw pubErr;
+      }
+
+      setQueueStep("drafting");
+      let draftsFailed = 0;
+      for (const platform of platforms) {
+        const { error: draftErr } = await supabase.functions.invoke(
+          "draft-publication-metadata",
+          { body: { asset_id: asset.id, platform } }
+        );
+        if (draftErr) draftsFailed += 1;
+      }
+
+      setQueueResult(
+        draftsFailed
+          ? "Teaser saved for TikTok & Instagram, but the AI caption draft failed. Re-draft or edit it in Admin → Publishing."
+          : "30s teaser saved for TikTok & Instagram with AI-drafted captions. Review them in Admin → Publishing."
+      );
+    } catch (e) {
+      setQueueError(e instanceof Error ? e.message : "Failed to save the teaser.");
+    } finally {
+      setQueuing(false);
+      setPublishProgress(null);
+    }
+  }, [queuing, recording, publishing, recordTeaser, captureCardPreview, state, selectedTrack, linkedRequest]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
       <div className="space-y-4">
@@ -1400,7 +1569,7 @@ export default function TitleCardGenerator() {
                   total > 0
                     ? Math.min(100, Math.round((loaded / total) * 100))
                     : 0;
-                return (
+  return (
                   <li key={step} className="flex items-start gap-2">
                     <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
                       {isDone ? (
@@ -1497,6 +1666,18 @@ export default function TitleCardGenerator() {
                   : "Drafting metadata…"
               : "Save to publishing queue"}
           </button>
+          <button
+            onClick={addTeaserToQueue}
+            disabled={queuing || recording || publishing}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-[#F538BC]/40 bg-[#F538BC]/5 px-4 py-2.5 text-sm font-bold text-[#F538BC] transition-colors hover:bg-[#F538BC] hover:text-white disabled:opacity-50"
+          >
+            <Smartphone className="h-4 w-4" />
+            Save teaser (TikTok & IG)
+          </button>
+          <p className="mt-2 text-[11px] text-gray-400">
+            30-second teaser that points to the full version on YouTube — approved
+            captions appear under TikTok & Instagram in Admin → Publishing.
+          </p>
           {queuing && queueStep === "recording" && publishProgress && (
             <p className="mt-2 text-[11px] text-gray-500">
               {publishProgress.total > 0

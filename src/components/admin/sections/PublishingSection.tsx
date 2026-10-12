@@ -467,31 +467,42 @@ function QueueRow({
               <SlidersHorizontal className="h-3.5 w-3.5" /> Edit
             </Button>
           )}
-          {['draft', 'pending_approval', 'approved', 'failed'].includes(publication.status) && (
-            <Button size="sm" className="bg-[#1C0357] hover:bg-[#1C0357]/90" onClick={approve} disabled={busy !== null}>
-              {busy === 'approve' ? '…' : 'Approve & schedule'}
-            </Button>
-          )}
-          {['draft', 'pending_approval', 'failed'].includes(publication.status) && (
-            <Button variant="outline" size="sm" onClick={redraft} disabled={busy !== null}>
-              <RefreshCw className="h-3.5 w-3.5" /> Re-draft AI
-            </Button>
-          )}
-          {['approved', 'failed'].includes(publication.status) && (
-            <Button variant="outline" size="sm" onClick={() => setScheduleOpen(true)} disabled={busy !== null}>
-              <CalendarClock className="h-3.5 w-3.5" /> Schedule…
-            </Button>
-          )}
-          {['approved', 'failed'].includes(publication.status) && (
-            <Button size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90" onClick={publishNow} disabled={busy !== null}>
-              <Rocket className="h-3.5 w-3.5" /> Publish now
-            </Button>
-          )}
-          {(publication.status === 'scheduled' || publication.status === 'publishing') && (
-            <Button variant="outline" size="sm" onClick={checkStatus} disabled={busy !== null}>
-              {busy === 'refresh' ? '…' : 'Check'}
-            </Button>
-          )}
+          {publication.platform !== 'youtube' &&
+            ['draft', 'pending_approval'].includes(publication.status) && (
+              <span className="text-[11px] text-gray-400" title="The posting integration for this platform isn't available yet, so it can't be approved or published.">
+                Posting pending
+              </span>
+            )}
+          {publication.platform === 'youtube' &&
+            ['draft', 'pending_approval', 'approved', 'failed'].includes(publication.status) && (
+              <Button size="sm" className="bg-[#1C0357] hover:bg-[#1C0357]/90" onClick={approve} disabled={busy !== null}>
+                {busy === 'approve' ? '…' : 'Approve & schedule'}
+              </Button>
+            )}
+          {publication.platform === 'youtube' &&
+            ['draft', 'pending_approval', 'failed'].includes(publication.status) && (
+              <Button variant="outline" size="sm" onClick={redraft} disabled={busy !== null}>
+                <RefreshCw className="h-3.5 w-3.5" /> Re-draft AI
+              </Button>
+            )}
+          {publication.platform === 'youtube' &&
+            ['approved', 'failed'].includes(publication.status) && (
+              <Button variant="outline" size="sm" onClick={() => setScheduleOpen(true)} disabled={busy !== null}>
+                <CalendarClock className="h-3.5 w-3.5" /> Schedule…
+              </Button>
+            )}
+          {publication.platform === 'youtube' &&
+            ['approved', 'failed'].includes(publication.status) && (
+              <Button size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90" onClick={publishNow} disabled={busy !== null}>
+                <Rocket className="h-3.5 w-3.5" /> Publish now
+              </Button>
+            )}
+          {publication.platform === 'youtube' &&
+            (publication.status === 'scheduled' || publication.status === 'publishing') && (
+              <Button variant="outline" size="sm" onClick={checkStatus} disabled={busy !== null}>
+                {busy === 'refresh' ? '…' : 'Check'}
+              </Button>
+            )}
         </div>
       </div>
       {showPreview && (
