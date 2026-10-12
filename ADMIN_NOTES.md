@@ -18,9 +18,9 @@ This document outlines the specific Google accounts used for different services 
     *   **Configuration:** This email address (or any other designated admin email) must be listed in the `adminEmails` array within the application's code (e.g., `src/components/Header.tsx`, `src/pages/AdminDashboard.tsx`, `src/components/UnreadIssueReportsNotice.tsx`, and relevant Edge Functions like `gmail-oauth-callback`, `send-email`, `list-all-users`).
 
 3.  **YouTube Data API (for the title-card "Publish to YouTube" tool):**
-    *   **Account Used:** `pianobackingsbydaniele@gmail.com` — the same account whose refresh token is stored by the Gmail OAuth flow.
-    *   **Purpose:** Uploads the generated title-card clip. By default the access token is minted **server-side** (Edge Function `get-youtube-token`) from the stored refresh token, so there is **no browser popup** and uploads always land on the channel. If the server token is unavailable, the client silently falls back to the Google Identity Services popup.
-    *   **Scope:** `https://www.googleapis.com/auth/youtube.upload` (added to the Google connect flow alongside `gmail.send`).
+    *   **Account Used:** the **Piano Backings by Daniele** YouTube channel — a **Brand Account**, which is a separate Google identity from the Gmail mailbox.
+    *   **Purpose:** Uploads the generated title-card clip. The access token is minted **server-side** (Edge Function `get-youtube-token`) from a refresh token stored in the `youtube_tokens` table, so there is **no browser popup**. This is deliberately separate from `gmail_tokens` so channel uploads never disturb email sending. If no YouTube token is stored yet, the function falls back to the Gmail token, and if that fails the client falls back to the Google Identity Services popup.
+    *   **Scope:** `https://www.googleapis.com/auth/youtube.upload`.
     *   **Configuration:** See the dedicated section below.
 
 ---
@@ -116,7 +116,7 @@ done
 
 ## YouTube Publish (server-side token, no popup)
 
-The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Shop → Marketing) records the clip in the browser. The access token is normally minted **server-side** by the `get-youtube-token` Edge Function from the Google refresh token already stored for `pianobackingsbydaniele@gmail.com`, so publishing is **silent** (no OAuth popup) and always uploads as the channel. If that call fails (e.g. the stored token predates the YouTube scope), the client falls back to the Google Identity Services popup so publishing never breaks.
+The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Shop → Marketing) records the clip in the browser. The access token is normally minted **server-side** by the `get-youtube-token` Edge Function from the channel refresh token in `youtube_tokens`, so publishing is **silent** (no OAuth popup) and always uploads as the channel. If no `youtube_tokens` row exists it falls back to the Gmail token, and if that fails the client falls back to the Google Identity Services popup so publishing never breaks.
 
 **One-off Google Cloud + Supabase setup:**
 1.  **Enable the API:** APIs & Services → Library → **YouTube Data API v3** → Enable.
@@ -128,13 +128,14 @@ The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Sh
     *   `http://localhost:8080/gmail-oauth-callback`
     *   `https://pianobackings.danielebuatti.com/gmail-oauth-callback`
 5.  **Test users:** if the consent screen is in **Testing**, add both admin accounts under Audience → Test users.
-6.  **Deploy the function:** `supabase functions deploy get-youtube-token` (also deploy `gmail-oauth-callback` since its scope list changed).
-7.  **Reconnect the channel account:** in Admin → Settings, click **Connect Gmail Account** while signed into Google as `pianobackingsbydaniele@gmail.com`. This replaces the stored refresh token with one that also has the `youtube.upload` scope — the step that enables silent uploads. (The same token continues to power email sending.)
-8.  **Environment:**
+6.  **Apply the migration:** run `0034_youtube_tokens.sql` in the Supabase SQL editor (creates the `youtube_tokens` table).
+7.  **Connect the YouTube channel:** in Admin → Settings → **Integrations**, click **Connect YouTube Channel** and, on Google's account picker, choose the **Piano Backings by Daniele** channel (Brand Account). This stores a channel-only refresh token in `youtube_tokens` — the step that enables silent uploads. The **Connect Gmail Account** button separately keeps the mailbox token for email sending.
+8.  **Deploy the functions:** `supabase functions deploy get-youtube-token` and `supabase functions deploy gmail-oauth-callback` (or just push to `main` and let the Action do it).
+9.  **Environment:**
     *   `VITE_YOUTUBE_CLIENT_ID` (optional) or `VITE_GMAIL_CLIENT_ID` must be present at build time — set in `.env.local` for dev and in the Vercel project's env for production.
-    *   `VITE_YOUTUBE_CHANNEL_EMAIL` (optional) — defaults to `pianobackingsbydaniele@gmail.com`; used as the Google `login_hint` on connect.
+    *   `VITE_YOUTUBE_CHANNEL_EMAIL` (optional) — defaults to `pianobackingsbydaniele@gmail.com`; used as the Google `login_hint` on the Gmail connect.
     *   Supabase secrets `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` are **reused** by `get-youtube-token`; optionally set `YT_ACCOUNT_EMAIL` (defaults to `pianobackingsbydaniele@gmail.com`).
-9.  **Propagation:** config changes can take ~5 minutes. An `origin_mismatch` error in the fallback popup usually means the origin isn't listed yet.
+10. **Propagation:** config changes can take ~5 minutes. An `origin_mismatch` error in the fallback popup usually means the origin isn't listed yet.
 
 **Quota:** every upload costs **1,600 units** of the default 10,000 units/day YouTube quota, so the project allows roughly **6 uploads per day**. Request a quota increase in Google Cloud if you need more.
 

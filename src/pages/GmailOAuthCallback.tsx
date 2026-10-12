@@ -17,6 +17,7 @@ const GmailOAuthCallback = () => {
   const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
   const [status, setStatus] = useState('Processing OAuth callback...');
   const [error, setError] = useState<unknown>(null);
+  const isYouTubeFlow = searchParams.get('state') === 'youtube';
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
@@ -25,6 +26,8 @@ const GmailOAuthCallback = () => {
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
       const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
+      const intent = searchParams.get('state') === 'youtube' ? 'youtube' : 'gmail';
+      const isYouTube = intent === 'youtube';
 
       if (errorParam) {
         const errorMessage = errorParam === 'access_denied' 
@@ -75,7 +78,7 @@ const GmailOAuthCallback = () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session?.access_token}`
             },
-            body: JSON.stringify({ code, redirectUri })
+            body: JSON.stringify({ code, redirectUri, intent })
           }
         );
         
@@ -83,12 +86,24 @@ const GmailOAuthCallback = () => {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to exchange code for tokens');
         }
-        
-        setStatus('OAuth completed successfully!');
-        toast({
-          title: "Success",
-          description: "Gmail OAuth completed successfully. You can now send emails.",
-        });
+
+        const successData = await response.json().catch(() => ({}));
+
+        if (isYouTube) {
+          setStatus('YouTube channel connected!');
+          toast({
+            title: "Success",
+            description: successData.channel
+              ? `YouTube connected as "${successData.channel}". Publish will now be silent.`
+              : "YouTube channel connected successfully.",
+          });
+        } else {
+          setStatus('OAuth completed successfully!');
+          toast({
+            title: "Success",
+            description: "Gmail OAuth completed successfully. You can now send emails.",
+          });
+        }
         
         // Redirect to admin dashboard after a short delay
         setTimeout(() => {
@@ -111,13 +126,17 @@ const GmailOAuthCallback = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo title="Connecting Gmail | Piano Backings by Daniele" description="Finishing the Gmail connection." noindex />
+      <Seo title="Connecting account | Piano Backings by Daniele" description="Finishing the Google connection." noindex />
       <Header />
       
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1C0357]">Gmail OAuth Callback</h1>
-          <p className="text-lg text-[#1C0357]/90">Completing Gmail authorization</p>
+          <h1 className="text-3xl font-bold text-[#1C0357]">
+            {isYouTubeFlow ? 'Connect YouTube Channel' : 'Gmail OAuth Callback'}
+          </h1>
+          <p className="text-lg text-[#1C0357]/90">
+            {isYouTubeFlow ? 'Completing YouTube authorization' : 'Completing Gmail authorization'}
+          </p>
         </div>
         
         <Card className="shadow-lg">

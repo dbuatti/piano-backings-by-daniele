@@ -68,15 +68,30 @@ Deno.serve(async (req) => {
       throw new Error(`No account found for ${YT_ACCOUNT_EMAIL}.`);
     }
 
-    const { data: tokenData } = await supabaseAdmin
-      .from('gmail_tokens')
+    // Prefer the dedicated YouTube channel token (Brand Account); fall back to
+    // the Gmail token for setups where the channel lives on the mailbox account.
+    const { data: ytToken } = await supabaseAdmin
+      .from('youtube_tokens')
       .select('refresh_token')
       .eq('user_id', channelUser.id)
       .maybeSingle();
 
-    if (!tokenData?.refresh_token) {
+    let refreshToken: string | null = ytToken?.refresh_token ?? null;
+    let source = 'youtube_tokens';
+
+    if (!refreshToken) {
+      const { data: gmailToken } = await supabaseAdmin
+        .from('gmail_tokens')
+        .select('refresh_token')
+        .eq('user_id', channelUser.id)
+        .maybeSingle();
+      refreshToken = gmailToken?.refresh_token ?? null;
+      source = 'gmail_tokens';
+    }
+
+    if (!refreshToken) {
       throw new Error(
-        `No stored Google refresh token for ${YT_ACCOUNT_EMAIL}. Reconnect the account in Admin → Settings.`
+        `No stored Google refresh token for ${YT_ACCOUNT_EMAIL}. Connect the YouTube channel in Admin → Settings.`
       );
     }
 
@@ -87,7 +102,7 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({
         client_id: GMAIL_CLIENT_ID,
         client_secret: GMAIL_CLIENT_SECRET,
-        refresh_token: tokenData.refresh_token,
+        refresh_token: refreshToken,
         grant_type: 'refresh_token',
       }),
     });
@@ -118,6 +133,7 @@ Deno.serve(async (req) => {
       access_token: tokenJson.access_token,
       expires_in: tokenJson.expires_in ?? 3600,
       channel,
+      source,
     });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);

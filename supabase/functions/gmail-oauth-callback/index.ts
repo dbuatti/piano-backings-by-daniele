@@ -34,7 +34,10 @@ Deno.serve(async (req) => {
     const adminEmails = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
     if (!adminEmails.includes(user.email!)) throw new Error('Unauthorized');
     
-    const { code, redirectUri } = await req.json();
+    const { code, redirectUri, intent } = await req.json();
+    // 'youtube' stores the token for the YouTube channel (a Brand Account,
+    // separate from the Gmail mailbox); anything else is the Gmail flow.
+    const isYouTube = intent === 'youtube';
 
     if (!code || !redirectUri) {
       return new Response(JSON.stringify({ error: "Missing code or redirectUri" }), { 
@@ -61,7 +64,45 @@ Deno.serve(async (req) => {
     }
 
     const tokenData = await tokenResponse.json();
-    
+
+    if (isYouTube) {
+      if (!tokenData.refresh_token) {
+        throw new Error(
+          'Google did not return a refresh token. Remove the app from your Google account permissions and try again.'
+        );
+      }
+
+      // Identify which channel this token can upload to.
+      let channelId: string | null = null;
+      let channelTitle: string | null = null;
+      const channelRes = await fetch(
+        'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+        { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+      );
+      if (channelRes.ok) {
+        const channelJson = await channelRes.json();
+        channelId = channelJson?.items?.[0]?.id ?? null;
+        channelTitle = channelJson?.items?.[0]?.snippet?.title ?? null;
+      }
+
+      const { error: ytError } = await supabase
+        .from('youtube_tokens')
+        .upsert({
+          user_id: user.id,
+          refresh_token: tokenData.refresh_token,
+          channel_id: channelId,
+          channel_title: channelTitle,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (ytError) throw ytError;
+
+      return new Response(
+        JSON.stringify({ message: "YouTube channel connected", channel: channelTitle }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
     const { error: insertError } = await supabase
       .from('gmail_tokens')
       .upsert({

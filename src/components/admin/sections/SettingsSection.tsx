@@ -13,6 +13,7 @@ import HolidayModeSettings from '@/components/admin/HolidayModeSettings';
 import NotificationRecipientsManager from '@/components/NotificationRecipientsManager';
 import DropboxMonitor from '@/pages/DropboxMonitor';
 import GmailOAuthButton from '@/components/GmailOAuthButton';
+import YouTubeOAuthButton from '@/components/YouTubeOAuthButton';
 import DataImporter from '@/pages/DataImporter';
 import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
@@ -98,6 +99,20 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
             </CardContent>
           </Card>
           <DropboxMonitor />
+          <Card className="bg-white border-none shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-[#1C0357]">YouTube — Channel Uploads</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-gray-500">
+                Connect the <strong>Piano Backings by Daniele</strong> YouTube channel so the Video Title
+                Cards tool can publish silently. On Google's account picker, choose the{' '}
+                <em>Piano Backings by Daniele</em> channel (a Brand Account) — not the Gmail mailbox,
+                which stays authorised separately for email.
+              </p>
+              <YouTubeOAuthButton />
+            </CardContent>
+          </Card>
         </div>
       )}
 
