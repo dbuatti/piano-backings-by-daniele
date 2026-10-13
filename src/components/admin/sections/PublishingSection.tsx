@@ -703,6 +703,7 @@ function QueueRow({
 // ---------------------------------------------------------------------------
 const PublishingSection = () => {
   const { toast } = useToast();
+  const [bulkDrafting, setBulkDrafting] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -768,6 +769,42 @@ const PublishingSection = () => {
 
   // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
   // slot in one go, then kick the queue so the first upload begins now.
+  // Bulk recovery: (re)generate metadata for every active row that still has no
+  // description, so a batch of failed AI drafts is one click to fix.
+  const draftAll = async () => {
+    const missing = active.filter(
+      (p) =>
+        ['draft', 'pending_approval', 'approved', 'failed', 'scheduled'].includes(p.status) &&
+        !p.metadata?.description?.trim()
+    );
+    if (missing.length === 0) {
+      toast({ title: 'Every queue row already has metadata' });
+      return;
+    }
+    if (!window.confirm(`Draft metadata for ${missing.length} video${missing.length === 1 ? '' : 's'}?`)) return;
+    setBulkDrafting(true);
+    let ok = 0;
+    let failed = 0;
+    for (const p of missing) {
+      try {
+        const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+          body: { asset_id: p.asset_id, platform: p.platform },
+        });
+        if (error) throw error;
+        ok += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setBulkDrafting(false);
+    refetch();
+    toast({
+      title: `Drafted ${ok} of ${missing.length}`,
+      description: failed ? `${failed} failed — retry those rows individually.` : undefined,
+      variant: failed ? 'destructive' : 'default',
+    });
+  };
+
   const scheduleAll = async () => {
     const ready = active.filter(
       (p) =>
@@ -832,6 +869,10 @@ const PublishingSection = () => {
           <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
             <span>Approval queue</span>
             <span className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={draftAll} disabled={isLoading || bulkDrafting}>
+                <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
+                {bulkDrafting ? 'Drafting…' : 'Draft all missing'}
+              </Button>
               <Button variant="outline" size="sm" onClick={scheduleAll} disabled={isLoading}>
                 <CalendarClock className="h-3.5 w-3.5" /> Schedule all ready
               </Button>
