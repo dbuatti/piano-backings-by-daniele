@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import { useState, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Tag,
@@ -20,6 +20,8 @@ const IgGenerator = lazy(() => import('@/pages/IgGenerator'));
 const TitleCardGenerator = lazy(() => import('@/pages/TitleCardGenerator'));
 
 type ShopSub = 'products' | 'promo' | 'marketing';
+
+type ShopView = 'create' | 'repurpose';
 
 const SUBS: { id: ShopSub; label: string; icon: typeof Tag }[] = [
   { id: 'products', label: 'Products', icon: PlusCircle },
@@ -69,7 +71,14 @@ const ShopSection: React.FC = () => {
   const sub: ShopSub = SUBS.some((item) => item.id === rawSub)
     ? (rawSub as ShopSub)
     : 'products';
-  const [shopViewMode, setShopViewMode] = useState<'create' | 'repurpose'>('create');
+  const shopViewMode: ShopView = searchParams.get('view') === 'repurpose' ? 'repurpose' : 'create';
+
+  const setShopViewMode = (next: string) => {
+    const sp = new URLSearchParams(searchParams);
+    if (next === 'repurpose') sp.set('view', 'repurpose');
+    else sp.delete('view');
+    setSearchParams(sp, { replace: true });
+  };
 
   const setSub = (next: ShopSub) => {
     const sp = new URLSearchParams(searchParams);
@@ -102,7 +111,7 @@ const ShopSection: React.FC = () => {
       {sub === 'products' && (
         <div className="space-y-8">
           <ShopPreviewsCard />
-          <Tabs value={shopViewMode} onValueChange={(v) => setShopViewMode(v as typeof shopViewMode)} className="w-full">
+          <Tabs value={shopViewMode} onValueChange={setShopViewMode} className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
               <TabsTrigger value="create" className="rounded-lg font-bold">
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Product

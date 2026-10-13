@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -138,6 +139,9 @@ const generateDescriptiveCaption = (request: BackingRequest, originalCaption: st
 const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestParam = searchParams.get('request');
+  const autoPrefillRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isFormPreFilled, setIsFormPreFilled] = useState(false);
@@ -358,6 +362,27 @@ const RepurposeTrackToShop: React.FC = () => {
       preFillForm();
     }
   }, [useFilenameCaption, isFormPreFilled, selectedRequestIds, preFillForm]);
+
+  // Deep-link from the release board: ?request=<id> preselects and prefills the form.
+  useEffect(() => {
+    if (autoPrefillRef.current || !requestParam || isLoadingRequests) return;
+    autoPrefillRef.current = true;
+    // Consume the param so switching tabs (which unmounts this panel) can't
+    // re-trigger the prefill and clobber any edits the admin has made.
+    const sp = new URLSearchParams(searchParams);
+    sp.delete('request');
+    setSearchParams(sp, { replace: true });
+    if (requests?.some(r => r.id === requestParam)) {
+      setSelectedRequestIds([requestParam]);
+      setIsFormPreFilled(true);
+    } else {
+      toast({
+        title: 'Track not available',
+        description: 'That track isn\'t a completed request, so it can\'t be repurposed. Pick one from the list below.',
+        variant: 'destructive',
+      });
+    }
+  }, [requestParam, isLoadingRequests, requests, toast, searchParams, setSearchParams]);
 
   const handleToggleRequestSelection = (requestId: string) => {
     setSelectedRequestIds(prev => 

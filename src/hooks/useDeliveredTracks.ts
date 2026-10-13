@@ -12,6 +12,9 @@ export type DeliveredTrack = {
   createdAt: string;
   url: string;
   noSocials: boolean;
+  // Client bought exclusive ownership (+$40) → the track is theirs; don't nudge
+  // it onto socials from the board.
+  isExclusive: boolean;
 };
 
 const AUDIO_EXT = /\.(mp3|wav|m4a|aac|ogg|opus|flac|webm)$/i;
@@ -23,9 +26,9 @@ const isAudioFile = (name: string, metadata: unknown) => {
 
 async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
   const selectWithFlag =
-    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, no_socials, created_at';
+    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, no_socials, additional_services, created_at';
   const selectWithoutFlag =
-    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, created_at';
+    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, additional_services, created_at';
   // no_socials arrives with migration 0039; fall back so the board still loads
   // (tracks just show as allowed) if it hasn't been applied yet.
   let reqData: Record<string, unknown>[] | null = null;
@@ -48,6 +51,10 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
     (reqData || []).map((row) => {
       const r = row as Record<string, unknown>;
       const different = String(r.different_key ?? '') === 'Yes';
+      const services = Array.isArray(r.additional_services) ? (r.additional_services as unknown[]) : [];
+      const isExclusive = services.some(
+        (s) => String(s).trim().toLowerCase().replace(/\s+/g, '-') === 'exclusive-ownership'
+      );
       return [
         String(r.id ?? ''),
         {
@@ -59,6 +66,7 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
             : String(r.song_key ?? '').trim()) || null,
           createdAt: String(r.created_at ?? ''),
           noSocials: Boolean(r.no_socials),
+          isExclusive,
         },
       ] as const;
     })

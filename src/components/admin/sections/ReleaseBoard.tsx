@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,15 +43,19 @@ export default function ReleaseBoard({
   const { data: products = [] } = useActiveShopProducts();
   const [vetting, setVetting] = useState<string | null>(null);
 
-  const pubsForTrack = (song: string, requestId: string) =>
-    queue.filter((p) => {
+  const pubsForTrack = (song: string, requestId: string, show: string) => {
+    const songLc = song.trim().toLowerCase();
+    const showLc = show.trim().toLowerCase();
+    return queue.filter((p) => {
       const a = p.content_assets;
-      return (
-        a &&
-        (a.request_id === requestId ||
-          (a.song_title || '').trim().toLowerCase() === song.trim().toLowerCase())
-      );
+      if (!a) return false;
+      if (a.request_id === requestId) return true;
+      // Fallback for legacy assets with no request_id: same song title AND show.
+      const titleMatch = (a.song_title || '').trim().toLowerCase() === songLc;
+      const assetShow = (a.show || '').trim().toLowerCase();
+      return titleMatch && (!showLc || !assetShow || assetShow === showLc);
     });
+  };
 
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;
@@ -91,7 +96,7 @@ export default function ReleaseBoard({
           </p>
         ) : (
           tracks.map((t) => {
-            const pubs = pubsForTrack(t.song, t.requestId);
+            const pubs = pubsForTrack(t.song, t.requestId, t.show);
             const yt = pubs.find((p) => p.platform === 'youtube');
             const tt = pubs.find((p) => p.platform === 'tiktok');
             const ig = pubs.find((p) => p.platform === 'instagram');
@@ -104,6 +109,15 @@ export default function ReleaseBoard({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-[#1C0357]">
                       {t.song}
+                      {t.isExclusive && (
+                        <Badge
+                          className="ml-2 bg-purple-100 text-purple-700"
+                          variant="secondary"
+                          title="Client bought exclusive ownership — this track shouldn't be shared publicly."
+                        >
+                          Exclusive
+                        </Badge>
+                      )}
                       {t.noSocials && (
                         <Badge className="ml-2 bg-gray-100 text-gray-500" variant="secondary">
                           Not for socials
@@ -130,13 +144,13 @@ export default function ReleaseBoard({
                         Shop <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : (
-                      <a
-                        href="/admin?section=shop"
+                      <Link
+                        to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}
                         className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 hover:bg-amber-100"
-                        title="This track has no shop product — add a listing in Admin → Shop when it's ready to sell."
+                        title="This track has no shop product — open the Repurpose Request form prefilled with this track."
                       >
                         No shop listing — Add →
-                      </a>
+                      </Link>
                     )}
                   </div>
 
@@ -153,8 +167,9 @@ export default function ReleaseBoard({
                       <Button
                         size="sm"
                         className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                        disabled={t.noSocials}
+                        disabled={t.noSocials || t.isExclusive}
                         onClick={() => setVetting(t.requestId)}
+                        title={t.isExclusive ? 'Exclusive ownership — not for public sharing' : undefined}
                       >
                         <ListPlus className="h-3.5 w-3.5" /> Review & queue
                       </Button>
@@ -462,7 +477,7 @@ function VettingDialog({
             disabled={phase !== 'review' || !title.trim()}
             className="bg-[#1C0357] hover:bg-[#1C0357]/90"
           >
-            Approve & queue
+            {allowSocials ? 'Approve & queue' : 'Save as not for socials'}
           </Button>
         </DialogFooter>
       </DialogContent>
