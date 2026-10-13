@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getErrorMessage } from '@/lib/utils';
@@ -17,7 +18,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, FileText, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -508,6 +509,7 @@ function CardThumb({
   client,
   aspect = '16:9',
   className,
+  canvasRef,
 }: {
   song: string;
   show: string;
@@ -515,6 +517,7 @@ function CardThumb({
   client: string | null;
   aspect?: Aspect;
   className?: string;
+  canvasRef?: RefObject<HTMLCanvasElement>;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const dims = CARD_DIMS[aspect];
@@ -533,12 +536,36 @@ function CardThumb({
   }, [song, show, key, client, aspect]);
   return (
     <canvas
-      ref={ref}
+      ref={canvasRef ?? ref}
       width={dims.w}
       height={dims.h}
       className={cn('rounded-lg border border-gray-200 bg-[#1B0057]', className)}
     />
   );
+}
+
+// Save the reviewed title card as a print-ready A5 sheet — the same artefact the
+// queue's "Download PDF" produces, but generated straight from the live canvas.
+function downloadCardPdf(canvas: HTMLCanvasElement | null, title: string, aspect: Aspect, key: string) {
+  if (!canvas) return;
+  const landscape = aspect === '16:9';
+  const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', format: 'a5', unit: 'mm' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const margin = 8;
+  const maxW = pw - margin * 2;
+  const maxH = ph - margin * 2 - 10;
+  const scale = Math.min(maxW / canvas.width, maxH / canvas.height);
+  const w = canvas.width * scale;
+  const h = canvas.height * scale;
+  const x = (pw - w) / 2;
+  const y = (ph - (h + 8)) / 2;
+  doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, w, h);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(key ? `Key: ${key}` : 'Key: see card', pw / 2, ph - 4, { align: 'center' });
+  const slug = (title || 'title-card').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'title-card';
+  doc.save(`${slug}-preview.pdf`);
 }
 
 // How the finished post will look on each platform, rendered from the same
@@ -698,6 +725,7 @@ function VettingDialog({
   const [key, setKey] = useState(track?.key ?? 'C Major (0)');
   const [allowSocials, setAllowSocials] = useState(!track?.noSocials);
   const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
+  const cardCanvasRef = useRef<HTMLCanvasElement>(null);
 
   if (requestId && !track) return null;
 
@@ -945,8 +973,18 @@ function VettingDialog({
 
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label>Title card</Label>
-                <CardThumb song={title} show={show} key={key} client={track.client} className="w-full" />
+                <div className="flex items-center justify-between">
+                  <Label>Title card</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => downloadCardPdf(cardCanvasRef.current, title, '16:9', keyForDisplay(key))}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Download PDF (A5)
+                  </Button>
+                </div>
+                <CardThumb song={title} show={show} key={key} client={track.client} canvasRef={cardCanvasRef} />
               </div>
               <div className="space-y-1.5">
                 <Label>YouTube description</Label>
