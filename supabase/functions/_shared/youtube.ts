@@ -100,21 +100,21 @@ export async function mintChannelAccessToken(
     );
   }
 
+  // channels?mine=true requires a read scope (youtube.readonly); an upload-only
+  // token (youtube.upload) is rejected by it even though uploads work. Only the
+  // Gmail fallback genuinely needs this check to catch gmail.send-only tokens —
+  // a dedicated youtube_tokens row is trusted and the upload itself surfaces
+  // any real access problem.
   const channelRes = await fetch(
     'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
     { headers: { Authorization: `Bearer ${tokenJson.access_token}` } }
   );
-  if (!channelRes.ok) {
-    // Distinguish "the channel was never connected" (we fell back to the Gmail
-    // token, which only has gmail.send) from "a channel token exists but was
-    // granted without the upload scope" (reconnect after adding the scope).
+  if (!channelRes.ok && source === 'gmail_tokens') {
     throw new Error(
-      source === 'gmail_tokens'
-        ? 'No YouTube channel token is stored yet — connect the channel in Admin → Settings → Integrations.'
-        : 'The stored channel token lacks YouTube upload access — reconnect the channel in Admin → Settings → Integrations.'
+      'No YouTube channel token is stored yet — connect the channel in Admin → Settings → Integrations.'
     );
   }
-  const channelJson = await channelRes.json();
+  const channelJson = channelRes.ok ? await channelRes.json() : {};
 
   return {
     access_token: tokenJson.access_token,

@@ -53,7 +53,9 @@ export const initiateYouTubeOAuth = () => {
 
   window.location.href = buildAuthUrl({
     clientId,
-    scopes: 'https://www.googleapis.com/auth/youtube.upload',
+    // youtube.readonly alongside upload so the connection can be verified and
+    // the channel name captured (channels?mine=true rejects upload-only tokens).
+    scopes: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
     state: 'youtube',
   });
 };
