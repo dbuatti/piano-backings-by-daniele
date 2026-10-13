@@ -17,9 +17,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Ban, ExternalLink, ListPlus, Music2, RotateCcw } from 'lucide-react';
-import { useActiveShopProducts, useDeliveredTracks } from '@/hooks/useDeliveredTracks';
+import { Ban, ExternalLink, ListPlus, Loader2, Music2, PlusCircle, RotateCcw } from 'lucide-react';
+import { useActiveShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
+import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS } from '@/utils/musicalKeys';
 import { captureCardSnapshot, defaultCardState, drawCard, loadCardLogo } from '@/utils/titleCard';
 import { recordCanvasClip } from '@/utils/canvasRecorder';
@@ -42,6 +43,50 @@ export default function ReleaseBoard({
   const { data: tracks, isLoading, error } = useDeliveredTracks();
   const { data: products = [] } = useActiveShopProducts();
   const [vetting, setVetting] = useState<string | null>(null);
+  const [listing, setListing] = useState<string | null>(null);
+
+  // One-click shop listing: create a sellable product from the delivered track
+  // with sensible defaults, ready to fine-tune in Admin → Shop afterwards.
+  const listProduct = async (t: DeliveredTrack) => {
+    if (listing) return;
+    setListing(t.requestId);
+    try {
+      const shownKey = formatKey(t.key ?? '');
+      const shownShow = t.show.replace(/^\s*from\s+/i, '').trim();
+      const description = [
+        `${t.song}${shownShow ? ` (from ${shownShow})` : ''} — a piano backing track by Piano Backings by Daniele.${shownKey ? ` Recorded in ${shownKey}.` : ''}`,
+        'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
+      ].join('\n\n');
+      const { error: e } = await supabase.from('products').insert([{
+        title: t.song,
+        artist_name: t.show || 'Various',
+        description,
+        price: 6.99,
+        currency: 'AUD',
+        image_url: '',
+        track_urls: [{ url: t.url, caption: t.song }],
+        is_active: true,
+        category: 'audition-cut',
+        track_type: 'polished',
+        key_signature: shownKey,
+        product_type: 'track',
+        vocal_ranges: [],
+        sheet_music_url: '',
+        show_sheet_music_url: true,
+        show_key_signature: true,
+        cut_description: '',
+        official_score_url: '',
+        master_download_link: '',
+      }]);
+      if (e) throw e;
+      await queryClient.invalidateQueries({ queryKey: ['active_shop_products'] });
+      toast({ title: 'Listed in the shop', description: `${t.song} is now in the shop — open Shop to fine-tune it.` });
+    } catch (e) {
+      toast({ title: "Couldn't list the track", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setListing(null);
+    }
+  };
 
   const pubsForTrack = (song: string, requestId: string, show: string) => {
     const songLc = song.trim().toLowerCase();
@@ -144,13 +189,28 @@ export default function ReleaseBoard({
                         Shop <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : (
-                      <Link
-                        to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 hover:bg-amber-100"
-                        title="This track has no shop product — open the Repurpose Request form prefilled with this track."
-                      >
-                        No shop listing — Add →
-                      </Link>
+                      <span className="inline-flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => listProduct(t)}
+                          disabled={listing !== null}
+                          className="h-7 rounded-full border-amber-200 bg-amber-50 px-2.5 font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                          title="Instantly list this track in the shop with sensible defaults, then fine-tune it in Admin → Shop."
+                        >
+                          {listing === t.requestId
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <PlusCircle className="h-3 w-3" />}
+                          Add to shop
+                        </Button>
+                        <Link
+                          to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}
+                          className="rounded-full px-2 py-1 font-medium text-gray-400 hover:text-[#1C0357]"
+                          title="Open the full Repurpose Request form prefilled with this track."
+                        >
+                          Edit details
+                        </Link>
+                      </span>
                     )}
                   </div>
 
