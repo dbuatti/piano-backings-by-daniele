@@ -11,7 +11,8 @@ function useTz(tz: string) {
     timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
   });
   const timeFmt = new Intl.DateTimeFormat('en-AU', { timeZone: tz, hour: 'numeric', minute: '2-digit' });
-  const dayFmt = new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' });
+  // Cells are anchored as local-midnight-as-UTC, so label them in UTC.
+  const dayFmt = new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
   const keyOf = (d: Date) => keyFmt.format(d); // en-CA → YYYY-MM-DD local to tz
   const timeOf = (d: Date) => timeFmt.format(d);
   const labelOf = (d: Date) => dayFmt.format(d);
@@ -42,17 +43,17 @@ export default function UpcomingCalendar({
     });
 
     // Anchor at local-midnight-as-UTC so weekday math matches the tz calendar.
-    const [y, m, d] = keyOf(new Date()).split('-').map(Number);
+    // Cell keys are the anchor's own UTC date (== the local date), not a
+    // re-format (re-formatting a UTC midnight in a zone behind UTC shifts a day).
+    const todayKey = keyOf(new Date());
+    const [y, m, d] = todayKey.split('-').map(Number);
     const anchor = new Date(Date.UTC(y, m - 1, d));
     const mondayOffset = ((anchor.getUTCDay() + 6) % 7) * DAY_MS;
     const monday = new Date(anchor.getTime() - mondayOffset);
     const cells = Array.from({ length: 42 }, (_, i) => {
       const date = new Date(monday.getTime() + i * DAY_MS);
-      return {
-        date,
-        key: keyOf(date),
-        today: keyOf(date) === keyOf(new Date()),
-      };
+      const key = date.toISOString().slice(0, 10);
+      return { date, key, today: key === todayKey };
     });
     return { cells, byKey };
   }, [queue, keyOf]);
