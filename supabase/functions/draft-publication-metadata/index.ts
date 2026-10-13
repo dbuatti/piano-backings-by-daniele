@@ -67,37 +67,50 @@ async function callGemini(apiKey, prompt) {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
   });
+  const deadline = Date.now() + 50000; // stay well under the function's wall-clock limit
   let lastError;
   for (const model of geminiModels()) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30000);
-    let res;
-    try {
-      res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal }
-      );
-    } catch (err) {
+    if (Date.now() > deadline) break;
+    // 503 means the model exists but is briefly overloaded, so retry the same
+    // name a couple of times before falling through to the next candidate.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (Date.now() > deadline) break;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.max(5000, Math.min(20000, deadline - Date.now())));
+      let res;
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal }
+        );
+      } catch (err) {
+        clearTimeout(timer);
+        lastError = new Error(
+          err?.name === 'AbortError' ? `Gemini request timed out on ${model}` : `Gemini request failed on ${model}: ${err?.message || err}`
+        );
+        break;
+      }
       clearTimeout(timer);
-      lastError = new Error(
-        err?.name === 'AbortError' ? `Gemini request timed out on ${model}` : `Gemini request failed on ${model}: ${err?.message || err}`
-      );
-      continue;
-    }
-    clearTimeout(timer);
 
-    if (res.ok) {
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '{}';
-      return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
-    }
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '{}';
+        return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
+      }
 
-    const detail = (await res.text()).slice(0, 200);
-    lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${detail}`);
-    console.error(`[draft-publication-metadata] model ${model} failed: ${res.status} ${detail}`);
-    // 404 = retired/ unavailable, 503 = overloaded — try the next name. Anything
-    // else (bad key, malformed request) won't be fixed by another model.
-    if (![404, 503].includes(res.status)) throw lastError;
+      const detail = (await res.text()).slice(0, 200);
+      lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${detail}`);
+      console.error(`[draft-publication-metadata] model ${model} failed (attempt ${attempt}): ${res.status} ${detail}`);
+
+      if (res.status === 503 && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 700 * attempt));
+        continue;
+      }
+      // 404 = retired/unavailable, 503 = overloaded — try the next name. Anything
+      // else (bad key, malformed request) won't be fixed by another model.
+      if ([404, 503].includes(res.status)) break;
+      throw lastError;
+    }
   }
   throw lastError || new Error('Gemini request failed.');
 }

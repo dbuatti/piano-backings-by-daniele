@@ -279,11 +279,11 @@ export default function ReleaseBoard({
               <div key={t.requestId} className="rounded-xl border border-gray-100 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[#1C0357]">
-                      {t.song}
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-[#1C0357]">
+                      <span className="truncate">{t.song}</span>
                       {t.isExclusive && (
                         <Badge
-                          className="ml-2 bg-purple-100 text-purple-700"
+                          className="bg-purple-100 text-purple-700"
                           variant="secondary"
                           title="Client bought exclusive ownership — this track shouldn't be shared publicly."
                         >
@@ -291,11 +291,11 @@ export default function ReleaseBoard({
                         </Badge>
                       )}
                       {t.noSocials && (
-                        <Badge className="ml-2 bg-gray-100 text-gray-500" variant="secondary">
+                        <Badge className="bg-gray-100 text-gray-500" variant="secondary">
                           Not for socials
                         </Badge>
                       )}
-                    </p>
+                    </div>
                     <p className="truncate text-xs text-gray-500">
                       {t.show ? `from ${t.show}` : 'Backing track'}
                       {t.key ? ` · ${t.key.replace(/ \([^)]*\)$/, '')}` : ''}
