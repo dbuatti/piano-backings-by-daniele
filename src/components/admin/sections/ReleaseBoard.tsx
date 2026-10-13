@@ -25,6 +25,29 @@ import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
 import { recordCanvasClip } from '@/utils/canvasRecorder';
 
+// The board's measurable filters: a clickable count of what's done and what's
+// still missing, so gaps (no shop listing, not on YouTube, no key) are obvious.
+type BoardFilter =
+  | 'all'
+  | 'in_shop'
+  | 'shop_draft'
+  | 'no_shop'
+  | 'on_youtube'
+  | 'not_on_youtube'
+  | 'not_for_socials'
+  | 'missing_key';
+
+const BOARD_STATS: { key: BoardFilter; label: string; hint: string }[] = [
+  { key: 'all', label: 'All delivered', hint: 'Every delivered track' },
+  { key: 'in_shop', label: 'In shop', hint: 'Live shop listings — the public shop page is reachable.' },
+  { key: 'shop_draft', label: 'Shop draft', hint: 'Saved to the shop but not activated — needs review.' },
+  { key: 'no_shop', label: 'No shop listing', hint: 'Not in the shop yet.' },
+  { key: 'on_youtube', label: 'On YouTube', hint: 'Confirmed public on YouTube.' },
+  { key: 'not_on_youtube', label: 'Not on YouTube', hint: 'No video queued, allowed on socials and not exclusive.' },
+  { key: 'not_for_socials', label: 'Not for socials', hint: 'Manually excluded from socials.' },
+  { key: 'missing_key', label: 'Missing key', hint: 'The request has no key recorded.' },
+];
+
 // Delivered tracks → one row each showing progress across every platform: is it
 // in the shop, what's up on YouTube, are teaser drafts queued for TikTok/IG,
 // and is it marked "never post". Review & queue opens the vetting dialog that
@@ -44,6 +67,7 @@ export default function ReleaseBoard({
   const { data: products = [] } = useShopProducts();
   const [vetting, setVetting] = useState<string | null>(null);
   const [listing, setListing] = useState<string | null>(null);
+  const [filter, setFilter] = useState<BoardFilter>('all');
 
   // One-click shop listing: create a DRAFT product from the delivered track with
   // sensible defaults. It stays inactive until the owner reviews and activates it
@@ -103,6 +127,44 @@ export default function ReleaseBoard({
     });
   };
 
+  // Everything a row needs, computed once: its publications per platform, its
+  // shop product/url, and whether YouTube already has it. Shared by the audit
+  // strip and the rendered rows.
+  const boardRows = (tracks ?? []).map((t) => {
+    const pubs = pubsForTrack(t.song, t.requestId, t.show);
+    const ytPub = pubs.find((p) => p.platform === 'youtube');
+    return {
+      t,
+      yt: ytPub,
+      tt: pubs.find((p) => p.platform === 'tiktok'),
+      ig: pubs.find((p) => p.platform === 'instagram'),
+      shopProduct: shopProductForTrack(products, { song: t.song, show: t.show }),
+      shopUrl: shopSongUrl(products, { song: t.song, show: t.show }),
+      queuedForYoutube: !!ytPub,
+    };
+  });
+
+  type BoardRow = (typeof boardRows)[number];
+  const rowMatches = (key: BoardFilter, row: BoardRow): boolean => {
+    switch (key) {
+      case 'in_shop': return row.shopProduct?.is_active === true;
+      case 'shop_draft': return !!row.shopProduct && row.shopProduct.is_active === false;
+      case 'no_shop': return !row.shopProduct;
+      case 'on_youtube': return row.yt?.status === 'published';
+      case 'not_on_youtube': return !row.yt && !row.t.noSocials && !row.t.isExclusive;
+      case 'not_for_socials': return row.t.noSocials;
+      case 'missing_key': return !row.t.key;
+      default: return true;
+    }
+  };
+
+  const audit = BOARD_STATS.reduce((acc, { key }) => {
+    acc[key] = boardRows.filter((row) => rowMatches(key, row)).length;
+    return acc;
+  }, {} as Record<BoardFilter, number>);
+
+  const visibleRows = boardRows.filter((row) => rowMatches(filter, row));
+
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;
     const { error: e } = await supabase.from('backing_requests').update({ no_socials: next }).eq('id', requestId);
@@ -128,7 +190,11 @@ export default function ReleaseBoard({
         <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
           <span>Release board — delivered tracks</span>
           <span className="text-xs font-normal text-gray-400">
-            {isLoading ? 'Loading tracks…' : `${tracks?.length ?? 0} delivered · newest first`}
+            {isLoading
+              ? 'Loading tracks…'
+              : filter === 'all'
+                ? `${tracks?.length ?? 0} delivered · newest first`
+                : `${visibleRows.length} of ${tracks?.length ?? 0} · ${BOARD_STATS.find((s) => s.key === filter)?.label}`}
           </span>
         </CardTitle>
       </CardHeader>
@@ -141,15 +207,45 @@ export default function ReleaseBoard({
             <span className="font-mono text-xs">tracks</span> bucket and it will appear here.
           </p>
         ) : (
-          tracks.map((t) => {
-            const pubs = pubsForTrack(t.song, t.requestId, t.show);
-            const yt = pubs.find((p) => p.platform === 'youtube');
-            const tt = pubs.find((p) => p.platform === 'tiktok');
-            const ig = pubs.find((p) => p.platform === 'instagram');
-            const shopProduct = shopProductForTrack(products, { song: t.song, show: t.show });
-            const shopUrl = shopSongUrl(products, { song: t.song, show: t.show });
-            const queuedForYoutube = !!yt; // any YouTube row exists → already in the pipeline
-            return (
+          <>
+            <div className="flex flex-wrap gap-1.5 pb-3">
+              {BOARD_STATS.map((s) => {
+                const active = filter === s.key;
+                const count = audit[s.key];
+                const isGap = !active && count > 0 && ['no_shop', 'not_on_youtube', 'missing_key'].includes(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setFilter(active && s.key !== 'all' ? 'all' : s.key)}
+                    title={s.hint}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                      active
+                        ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                        : isGap
+                          ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    )}
+                  >
+                    {s.label}
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 text-[11px] tabular-nums',
+                        active ? 'bg-white/20 text-white' : isGap ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {visibleRows.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-gray-400">Nothing here — try another filter.</p>
+            ) : (
+              visibleRows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
+                return (
               <div key={t.requestId} className="rounded-xl border border-gray-100 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                   <div className="min-w-0 flex-1">
@@ -260,8 +356,10 @@ export default function ReleaseBoard({
                   )}
                 </div>
               </div>
-            );
-          })
+                );
+              })
+            )}
+          </>
         )}
       </CardContent>
 
