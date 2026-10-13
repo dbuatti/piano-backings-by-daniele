@@ -44,13 +44,21 @@ const getText = async (url: string): Promise<string> => {
 };
 
 const loadProducts = async (): Promise<CatalogProduct[] | null> => {
-  if (!SUPABASE_URL || !ANON_KEY) return null;
+  if (!SUPABASE_URL || !ANON_KEY) {
+    console.error('[shop-product] Missing VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY in the serverless runtime.');
+    return null;
+  }
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/products?select=${PRODUCT_FIELDS}&is_active=eq.true`, {
       headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
     });
-    return response.ok ? ((await response.json()) as CatalogProduct[]) : null;
-  } catch {
+    if (!response.ok) {
+      console.error(`[shop-product] Supabase returned ${response.status}: ${(await response.text()).slice(0, 200)}`);
+      return null;
+    }
+    return (await response.json()) as CatalogProduct[];
+  } catch (error) {
+    console.error('[shop-product] Supabase request failed:', error);
     return null;
   }
 };
@@ -68,6 +76,9 @@ export default async function handler(req: Req, res: Res) {
 
   const products = await loadProducts();
   if (!products) {
+    // Don't let a transient (or misconfig-driven) failure get cached, or the shop
+    // stays down after the cause is fixed.
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Retry-After', '60');
     res.status(503).send('The shop is temporarily unavailable.');
     return;

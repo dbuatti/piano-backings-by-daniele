@@ -56,6 +56,9 @@ export default async function handler(
       'app_settings?select=is_service_closed,is_holiday_mode_active,holiday_mode_return_date&limit=1',
     ),
   ]);
+  if (!productRows) {
+    console.error('[sitemap] No products loaded — check VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY and Supabase reachability.');
+  }
   const songs = buildSongCatalog(productRows || []);
   const ordersOpen = areOrdersOpen(settingsRows?.[0]);
 

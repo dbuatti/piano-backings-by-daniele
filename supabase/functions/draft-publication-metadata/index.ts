@@ -3,6 +3,7 @@
 // publication row, flipping it to pending_approval. Called when a video is added
 // to the publishing queue. Requires a GEMINI_API_KEY secret.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { requireEnv, requireSupabaseEnv } from '../_shared/env.ts';
 import { shopSongUrlForTrack } from '../_shared/shop.ts';
 
 const corsHeaders = {
@@ -86,10 +87,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    );
+    const { url: supabaseUrl, serviceKey: supabaseServiceKey } = requireSupabaseEnv('draft-publication-metadata');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     if (!(await isAdmin(req, supabaseAdmin))) {
       return json({ error: 'Forbidden' }, 403);
     }
@@ -100,10 +99,7 @@ Deno.serve(async (req) => {
     }
     const platform = String(body.platform || 'youtube').toLowerCase();
 
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!apiKey) {
-      return json({ error: 'GEMINI_API_KEY is not set.' }, 500);
-    }
+    const apiKey = requireEnv(['GEMINI_API_KEY'], 'draft-publication-metadata').GEMINI_API_KEY;
 
     const { data: asset, error: assetErr } = await supabaseAdmin
       .from('content_assets')

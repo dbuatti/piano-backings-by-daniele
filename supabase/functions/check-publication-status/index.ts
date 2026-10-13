@@ -8,6 +8,7 @@
 // video has actually been promoted to public by YouTube, instead of trusting
 // the clock.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { requireGoogleCreds, requireSupabaseEnv } from '../_shared/env.ts';
 import { mintChannelAccessToken } from '../_shared/youtube.ts';
 
 const corsHeaders = {
@@ -27,15 +28,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const GMAIL_CLIENT_ID = Deno.env.get('GMAIL_CLIENT_ID');
-    const GMAIL_CLIENT_SECRET = Deno.env.get('GMAIL_CLIENT_SECRET');
+    const { url: supabaseUrl, serviceKey: supabaseServiceKey } = requireSupabaseEnv('check-publication-status');
+    const { clientId: GMAIL_CLIENT_ID, clientSecret: GMAIL_CLIENT_SECRET } = requireGoogleCreds('check-publication-status');
     const YT_ACCOUNT_EMAIL =
       Deno.env.get('YT_ACCOUNT_EMAIL') || 'pianobackingsbydaniele@gmail.com';
-    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
-      throw new Error('GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET must be set.');
-    }
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Admin-only: the gateway's verify_jwt merely requires a valid JWT, and the
