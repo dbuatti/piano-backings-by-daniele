@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Ban, ExternalLink, Eye, Heart, ListPlus, Loader2, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -673,6 +673,7 @@ function VettingDialog({
 
   if (requestId && !track) return null;
 
+  const shopMatch = shopProductForTrack(shopProducts, { song: title.trim(), show: show.trim() });
   const shopUrl = shopSongUrl(shopProducts, { song: title.trim(), show: show.trim() });
   const description = descriptionSkeleton({
     song: title.trim(),
@@ -681,6 +682,23 @@ function VettingDialog({
     firstName: firstNameOf(track?.client ?? ''),
     shopUrl,
   });
+
+  // Nudges for the details that make a post complete — surfaced right where the
+  // owner approves, so gaps get fixed instead of shipping.
+  const checklist: { label: string; ok: boolean; note: string }[] = [
+    { label: 'Song title', ok: !!title.trim(), note: 'Needed for the card and title' },
+    { label: 'Show / Artist', ok: !!show.trim(), note: 'Shown as “from …”' },
+    { label: 'Key', ok: !!key, note: 'Recorded on the card and description' },
+    {
+      label: 'Shop listing',
+      ok: shopMatch?.is_active === true,
+      note: shopMatch
+        ? shopMatch.is_active === false
+          ? 'Draft — activate it in Shop to link it'
+          : 'Linked'
+        : 'No listing — the description points to the order form',
+    },
+  ];
 
   const approve = async () => {
     if (!track || !title.trim()) {
@@ -875,6 +893,25 @@ function VettingDialog({
               <div className="flex h-9 items-center gap-2">
                 <Switch checked={allowSocials} onCheckedChange={setAllowSocials} />
                 <Label className="font-normal">Allow on socials</Label>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="mb-2 text-xs font-semibold text-gray-500">Before you queue</p>
+                <ul className="space-y-1.5">
+                  {checklist.map((item) => (
+                    <li key={item.label} className="flex items-start gap-2 text-xs">
+                      {item.ok ? (
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600" />
+                      ) : (
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                      )}
+                      <span>
+                        <span className={cn('font-medium', item.ok ? 'text-gray-600' : 'text-gray-800')}>{item.label}</span>
+                        <span className="text-gray-400"> — {item.note}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
