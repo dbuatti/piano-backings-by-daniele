@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,10 +19,10 @@ import {
 } from '@/components/ui/dialog';
 import { Ban, ExternalLink, ListPlus, Loader2, Music2, PlusCircle, RotateCcw } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
-import { shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
+import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
-import { KEY_OPTIONS } from '@/utils/musicalKeys';
-import { captureCardSnapshot, defaultCardState, drawCard, loadCardLogo } from '@/utils/titleCard';
+import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
+import { captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
 import { recordCanvasClip } from '@/utils/canvasRecorder';
 
 // Delivered tracks → one row each showing progress across every platform: is it
@@ -319,6 +319,77 @@ function PlatformChip({
   );
 }
 
+// The description the AI drafts follows this fixed skeleton (mirrors the prompt
+// in supabase/functions/draft-publication-metadata). Showing it here lets the
+// final title/key/shop link be checked before the video is queued.
+function descriptionSkeleton({
+  song,
+  show,
+  key,
+  firstName,
+  shopUrl,
+}: {
+  song: string;
+  show: string;
+  key: string;
+  firstName: string;
+  shopUrl: string | null;
+}): string {
+  const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
+  const titleLine = `${song || 'Song'} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+  const intro = [
+    `${titleLine}.`,
+    firstName ? `Prepared for ${firstName}.` : '',
+    key ? `Key: ${key}.` : '',
+  ].filter(Boolean).join(' ');
+  const pitch =
+    'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.';
+  const shop = shopUrl
+    ? `Get this track (instant download): ${shopUrl}\nOrder a custom cut in your key: ${SITE}/form-page`
+    : `Order yours (any song, your key): ${SITE}/form-page`;
+  const follow =
+    'Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/';
+  const tags = '#pianobackingtrack #backingtrack #auditioncut #musicaltheatre';
+  return [intro, pitch, shop, follow, tags].join('\n\n');
+}
+
+// Live 16:9 render of the title card the video will carry, drawn with the same
+// painting code as the recording so what's reviewed is what's posted.
+function CardThumb({
+  song,
+  show,
+  key,
+  client,
+}: {
+  song: string;
+  show: string;
+  key: string;
+  client: string | null;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const canvas = ref.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      const logo = await loadCardLogo();
+      if (cancelled) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCard(ctx, canvas.width, canvas.height, defaultCardState({ song, artist: show, client, key }), logo);
+    })();
+    return () => { cancelled = true; };
+  }, [song, show, key, client]);
+  return (
+    <canvas
+      ref={ref}
+      width={640}
+      height={360}
+      className="w-full rounded-lg border border-gray-200 bg-[#1B0057]"
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Vetting dialog: hear the track, confirm/correct title + key, mark it 'not for
 // socials' if needed, then approve → records the title card and queues it for
@@ -336,6 +407,7 @@ function VettingDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: tracks } = useDeliveredTracks();
+  const { data: shopProducts = [] } = useShopProducts();
   const track = tracks?.find((t) => t.requestId === requestId) ?? null;
 
   const [title, setTitle] = useState(track?.song ?? '');
@@ -345,6 +417,15 @@ function VettingDialog({
   const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
 
   if (requestId && !track) return null;
+
+  const shopUrl = shopSongUrl(shopProducts, { song: title.trim(), show: show.trim() });
+  const description = descriptionSkeleton({
+    song: title.trim(),
+    show,
+    key: keyForDisplay(key),
+    firstName: firstNameOf(track?.client ?? ''),
+    shopUrl,
+  });
 
   const approve = async () => {
     if (!track || !title.trim()) {
@@ -501,43 +582,63 @@ function VettingDialog({
 
   return (
     <Dialog open={!!requestId} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-[#1C0357]">Review & queue for YouTube</DialogTitle>
         </DialogHeader>
         {phase === 'review' && track && (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Listen back</Label>
-              <audio controls preload="none" src={track.url} className="h-10 w-full" />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Listen back</Label>
+                <audio controls preload="none" src={track.url} className="h-10 w-full" />
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Song title</Label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Show / Artist</Label>
+                  <Input value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Key</Label>
+                  <Select value={key} onValueChange={setKey}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {key && !KEY_OPTIONS.some((o) => o.value === key) && (
+                        <SelectItem value={key}>{key} — from the request</SelectItem>
+                      )}
+                      {KEY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex h-9 items-center gap-2">
+                <Switch checked={allowSocials} onCheckedChange={setAllowSocials} />
+                <Label className="font-normal">Allow on socials</Label>
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-4">
+
+            <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label>Song title</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song name" />
+                <Label>Title card</Label>
+                <CardThumb song={title} show={show} key={key} client={track.client} />
               </div>
               <div className="space-y-1.5">
-                <Label>Show / Artist</Label>
-                <Input value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
+                <Label>YouTube description</Label>
+                <pre className="max-h-52 overflow-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
+                  {description}
+                </pre>
+                <p className="text-[11px] text-gray-400">
+                  {shopUrl
+                    ? 'The AI writes the final wording but follows this structure — your live shop link is included.'
+                    : 'No active shop listing yet, so the description points to the custom-order form. Add this track to the shop to include a one-click buy link.'}
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Key</Label>
-                <Select value={key} onValueChange={setKey}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {key && !KEY_OPTIONS.some((o) => o.value === key) && (
-                      <SelectItem value={key}>{key} — from the request</SelectItem>
-                    )}
-                    {KEY_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex h-9 items-center gap-2">
-              <Switch checked={allowSocials} onCheckedChange={setAllowSocials} />
-              <Label className="font-normal">Allow on socials</Label>
             </div>
           </div>
         )}

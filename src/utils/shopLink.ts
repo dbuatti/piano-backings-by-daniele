@@ -43,7 +43,9 @@ export function shopProductForTrack(
 // The /shop/<slug> song page for a track (mirrors _shared/shop.ts).
 export function shopSongUrl(products: ShopProduct[], track: { song?: string | null; show?: string | null }): string | null {
   const match = shopProductForTrack(products, track);
-  if (!match) return null;
+  // Only live listings have a public page — a draft isn't reachable yet (parity
+  // with _shared/shop.ts, which filters is_active=eq.true).
+  if (!match || match.is_active === false) return null;
   const productShowSlug = slugify(match.artist_name);
   const songSlug = slugify(track.song);
   const slug =
