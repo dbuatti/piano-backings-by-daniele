@@ -136,10 +136,24 @@ const generateDescriptiveCaption = (request: BackingRequest, originalCaption: st
   return newCaption;
 };
 
+// Shared normalisation for a backing_requests row (completed list + deep-link).
+const normalizeRequest = (req: Record<string, unknown>): BackingRequest => ({
+  ...(req as unknown as BackingRequest),
+  backing_type: getSafeBackingTypes(req.backing_type as string | string[]),
+  song_key: String(req.song_key ?? ''),
+  additional_services: (req.additional_services as string[] | null) || [],
+  track_type: String(req.track_type ?? ''),
+  track_urls:
+    (req.track_urls as { url: string; caption?: unknown }[] | null)?.map((t) => ({
+      url: t.url,
+      caption: typeof t.caption === 'string' ? t.caption : String(t.caption ?? ''),
+    })) || [],
+});
+
 const RepurposeTrackToShop: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const requestParam = searchParams.get('request');
   const autoPrefillRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -172,27 +186,22 @@ const RepurposeTrackToShop: React.FC = () => {
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // A deep-linked request may not be 'completed' yet (audio delivered, workflow
+  // status still open), so include it by id when the param is a valid UUID.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const pinnedId = requestParam && UUID_RE.test(requestParam) ? requestParam : null;
+
   const { data: requests, isLoading: isLoadingRequests, isError: isErrorRequests, error: requestsError } = useQuery<BackingRequest[], Error>({
-    queryKey: ['completedBackingRequests'],
+    queryKey: ['completedBackingRequests', pinnedId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('backing_requests')
-        .select('*')
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false });
-      
+      let query = supabase.from('backing_requests').select('*');
+      query = pinnedId
+        ? query.or(`status.eq.completed,id.eq.${pinnedId}`)
+        : query.eq('status', 'completed');
+      const { data, error } = await query.order('created_at', { ascending: false });
+
       if (error) throw error;
-      return data?.map(req => ({
-        ...req,
-        backing_type: getSafeBackingTypes(req.backing_type),
-        song_key: req.song_key || '',
-        additional_services: req.additional_services || [],
-        track_type: req.track_type || '',
-        track_urls: req.track_urls?.map((t: { url: string; caption?: unknown }) => ({
-          url: t.url,
-          caption: typeof t.caption === 'string' ? t.caption : String(t.caption || '')
-        })) || [],
-      })) || [];
+      return (data ?? []).map((row) => normalizeRequest(row as Record<string, unknown>));
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -367,22 +376,17 @@ const RepurposeTrackToShop: React.FC = () => {
   useEffect(() => {
     if (autoPrefillRef.current || !requestParam || isLoadingRequests) return;
     autoPrefillRef.current = true;
-    // Consume the param so switching tabs (which unmounts this panel) can't
-    // re-trigger the prefill and clobber any edits the admin has made.
-    const sp = new URLSearchParams(searchParams);
-    sp.delete('request');
-    setSearchParams(sp, { replace: true });
     if (requests?.some(r => r.id === requestParam)) {
       setSelectedRequestIds([requestParam]);
       setIsFormPreFilled(true);
     } else {
       toast({
         title: 'Track not available',
-        description: 'That track isn\'t a completed request, so it can\'t be repurposed. Pick one from the list below.',
+        description: 'That track could not be found, so it can\'t be repurposed. Pick one from the list below.',
         variant: 'destructive',
       });
     }
-  }, [requestParam, isLoadingRequests, requests, toast, searchParams, setSearchParams]);
+  }, [requestParam, isLoadingRequests, requests, toast]);
 
   const handleToggleRequestSelection = (requestId: string) => {
     setSelectedRequestIds(prev => 
