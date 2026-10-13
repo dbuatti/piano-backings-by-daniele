@@ -1,7 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { jsPDF } from 'jspdf';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
@@ -18,7 +18,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, FileText, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -505,7 +505,7 @@ const CARD_DIMS: Record<Aspect, { w: number; h: number }> = {
 function CardThumb({
   song,
   show,
-  key,
+  musicalKey: key,
   client,
   aspect = '16:9',
   className,
@@ -513,7 +513,9 @@ function CardThumb({
 }: {
   song: string;
   show: string;
-  key: string;
+  // Named `musicalKey` (not `key`) — `key` is reserved by React and never
+  // reaches a component as a prop.
+  musicalKey: string;
   client: string | null;
   aspect?: Aspect;
   className?: string;
@@ -542,30 +544,6 @@ function CardThumb({
       className={cn('rounded-lg border border-gray-200 bg-[#1B0057]', className)}
     />
   );
-}
-
-// Save the reviewed title card as a print-ready A5 sheet — the same artefact the
-// queue's "Download PDF" produces, but generated straight from the live canvas.
-function downloadCardPdf(canvas: HTMLCanvasElement | null, title: string, aspect: Aspect, key: string) {
-  if (!canvas) return;
-  const landscape = aspect === '16:9';
-  const doc = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', format: 'a5', unit: 'mm' });
-  const pw = doc.internal.pageSize.getWidth();
-  const ph = doc.internal.pageSize.getHeight();
-  const margin = 8;
-  const maxW = pw - margin * 2;
-  const maxH = ph - margin * 2 - 10;
-  const scale = Math.min(maxW / canvas.width, maxH / canvas.height);
-  const w = canvas.width * scale;
-  const h = canvas.height * scale;
-  const x = (pw - w) / 2;
-  const y = (ph - (h + 8)) / 2;
-  doc.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, w, h);
-  doc.setFontSize(9);
-  doc.setTextColor(120);
-  doc.text(key ? `Key: ${key}` : 'Key: see card', pw / 2, ph - 4, { align: 'center' });
-  const slug = (title || 'title-card').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'title-card';
-  doc.save(`${slug}-preview.pdf`);
 }
 
 // How the finished post will look on each platform, rendered from the same
@@ -646,7 +624,7 @@ function YouTubeMock({ track, description }: { track: DeliveredTrack; descriptio
   const title = `${track.song} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
   return (
     <div className="w-full max-w-sm overflow-hidden rounded-xl border border-gray-200 bg-white text-left">
-      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="16:9" className="w-full rounded-none border-0" />
+      <CardThumb song={track.song} show={track.show} musicalKey={track.key ?? ''} client={track.client} aspect="16:9" className="w-full rounded-none border-0" />
       <div className="space-y-1.5 p-3">
         <p className="text-sm font-semibold leading-snug text-gray-900">{title}</p>
         <p className="text-xs text-gray-500">Piano Backings by Daniele · 0 views · just now</p>
@@ -661,7 +639,7 @@ function YouTubeMock({ track, description }: { track: DeliveredTrack; descriptio
 function TikTokMock({ track, caption }: { track: DeliveredTrack; caption: string }) {
   return (
     <div className="relative w-[260px] overflow-hidden rounded-2xl border-4 border-black bg-black">
-      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="9:16" className="w-full rounded-none border-0" />
+      <CardThumb song={track.song} show={track.show} musicalKey={track.key ?? ''} client={track.client} aspect="9:16" className="w-full rounded-none border-0" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
         <p className="text-xs font-semibold text-white">@pianobackingsbydaniele</p>
         <p className="mt-0.5 whitespace-pre-line text-[11px] leading-snug text-white/95">{caption}</p>
@@ -685,7 +663,7 @@ function InstagramMock({ track, caption }: { track: DeliveredTrack; caption: str
         <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#F538BC] to-[#1C0357]" />
         <p className="text-xs font-semibold text-gray-900">pianobackingsbydaniele</p>
       </div>
-      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="1:1" className="w-full rounded-none border-0" />
+      <CardThumb song={track.song} show={track.show} musicalKey={track.key ?? ''} client={track.client} aspect="1:1" className="w-full rounded-none border-0" />
       <div className="flex items-center gap-3 p-2.5">
         <Heart className="h-5 w-5 text-gray-800" />
         <MessageCircle className="h-5 w-5 text-gray-800" />
@@ -973,18 +951,15 @@ function VettingDialog({
 
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>Title card</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => downloadCardPdf(cardCanvasRef.current, title, '16:9', keyForDisplay(key))}
-                  >
-                    <FileText className="h-3.5 w-3.5" /> Download PDF (A5)
-                  </Button>
-                </div>
-                <CardThumb song={title} show={show} key={key} client={track.client} canvasRef={cardCanvasRef} />
+                <Label>Title card</Label>
+                <CardThumb
+                  song={title}
+                  show={show}
+                  musicalKey={key}
+                  client={track.client}
+                  canvasRef={cardCanvasRef}
+                  className="w-full rounded-none border-0"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>YouTube description</Label>

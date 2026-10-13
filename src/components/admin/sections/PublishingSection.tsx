@@ -316,7 +316,7 @@ function MetadataDialog({
               previewPath={publication.content_assets?.preview_path ?? null}
               title={publication.content_assets?.title ?? null}
               show={publication.content_assets?.show ?? null}
-              key={publication.content_assets?.key ?? null}
+              musicalKey={publication.content_assets?.key ?? null}
               aspect={publication.content_assets?.aspect ?? null}
             />
           </div>
@@ -652,7 +652,7 @@ function QueueRow({
             previewPath={asset?.preview_path ?? null}
             title={asset?.title ?? null}
             show={asset?.show ?? null}
-            key={asset?.key ?? null}
+            musicalKey={asset?.key ?? null}
             aspect={asset?.aspect ?? null}
             maxWidth={320}
             enabled={showPreview}
@@ -869,7 +869,12 @@ const PublishingSection = () => {
       <Card className="bg-white border-none shadow-sm rounded-2xl">
         <CardHeader>
           <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
-            <span>Approval queue</span>
+            <span>
+              Publishing queue
+              <span className="mt-1 block text-xs font-normal text-gray-400">
+                Everything from drafted → scheduled → publishing. A row leaves the list only once it's live.
+              </span>
+            </span>
             <span className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={draftAll} disabled={isLoading || bulkDrafting}>
                 <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
