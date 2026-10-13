@@ -526,7 +526,9 @@ function CardThumb({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const canvas = ref.current;
+      // The canvas attaches to the caller's ref when one is passed in, so read
+      // from whichever ref actually holds the element.
+      const canvas = (canvasRef ?? ref).current;
       const ctx = canvas?.getContext('2d');
       if (!canvas || !ctx) return;
       const logo = await loadCardLogo();
@@ -535,7 +537,7 @@ function CardThumb({
       drawCard(ctx, canvas.width, canvas.height, { ...defaultCardState({ song, artist: show, client, key }), aspect }, logo);
     })();
     return () => { cancelled = true; };
-  }, [song, show, key, client, aspect]);
+  }, [song, show, key, client, aspect, canvasRef]);
   return (
     <canvas
       ref={canvasRef ?? ref}
