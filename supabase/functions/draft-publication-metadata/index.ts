@@ -175,6 +175,7 @@ Deno.serve(async (req) => {
 
     return json({ publication_id: pub.id, metadata });
   } catch (error) {
+    console.error('[draft-publication-metadata] failed:', error?.message || error);
     return json({ error: error?.message || 'Unknown error' }, 500);
   }
 });
