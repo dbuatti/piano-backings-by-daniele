@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
     // `scheduled` and get re-checked on the next run.
     const { data: due, error: dueErr } = await supabaseAdmin
       .from('publications')
-      .select('id, platform_post_id, url, metadata, content_assets(title, song_title)')
+      .select('id, platform_post_id, url, scheduled_for, metadata, content_assets(title, song_title)')
       .eq('platform', 'youtube')
       .eq('status', 'scheduled')
       .lte('scheduled_for', nowIso)
@@ -212,34 +212,50 @@ Deno.serve(async (req) => {
 
     if (dueErr) throw dueErr;
 
+    // Set to true when YouTube's Videos API can't confirm status (e.g. an
+    // upload-only channel token without read scope). Confirmation then falls
+    // back to the schedule: a video whose slot passed a grace period ago is
+    // taken as live, since YouTube publishes at `publishAt` on its own.
+    let confirmationDegraded = false;
+
     if ((due ?? []).length) {
-      const token = await mintChannelAccessToken(supabaseAdmin, {
-        clientId: GMAIL_CLIENT_ID,
-        clientSecret: GMAIL_CLIENT_SECRET,
-        accountEmail: YT_ACCOUNT_EMAIL,
-      });
-      const ids = due.map((p) => p.platform_post_id);
-      const listRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?id=${ids.join(',')}&part=status`,
-        { headers: { Authorization: `Bearer ${token.access_token}` } }
-      );
-      if (!listRes.ok) {
-        throw new Error(
-          listRes.status === 403
-            ? 'YouTube videos.list was denied (403) — the channel token lacks read access. Reconnect the channel in Admin → Settings → Integrations.'
-            : `YouTube videos.list failed (${listRes.status}).`
+      let publicIds: Set<string> | null = null;
+      try {
+        const token = await mintChannelAccessToken(supabaseAdmin, {
+          clientId: GMAIL_CLIENT_ID,
+          clientSecret: GMAIL_CLIENT_SECRET,
+          accountEmail: YT_ACCOUNT_EMAIL,
+        });
+        const ids = due.map((p) => p.platform_post_id);
+        const listRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?id=${ids.join(',')}&part=status`,
+          { headers: { Authorization: `Bearer ${token.access_token}` } }
         );
+        if (listRes.ok) {
+          const list = await listRes.json();
+          publicIds = new Set<string>();
+          for (const item of list.items ?? []) {
+            const privacy = item?.status?.privacyStatus;
+            if (privacy === 'public' || privacy === 'unlisted') publicIds.add(item.id);
+          }
+        } else {
+          confirmationDegraded = true;
+          console.warn(`[run-publish-queue] videos.list ${listRes.status} — confirming by schedule instead.`);
+        }
+      } catch (e) {
+        // Never let a confirmation failure block uploads, retention or the run.
+        confirmationDegraded = true;
+        console.warn('[run-publish-queue] confirmation via videos.list failed:', e?.message || e);
       }
-      const list = await listRes.json();
 
-      const publicIds = new Set<string>();
-      for (const item of list.items ?? []) {
-        const privacy = item?.status?.privacyStatus;
-        if (privacy === 'public' || privacy === 'unlisted') publicIds.add(item.id);
-      }
-
+      const graceMs = Number(Deno.env.get('PUBLISH_CONFIRM_GRACE_MINUTES') || 60) * 60_000;
       for (const row of due ?? []) {
-        if (!publicIds.has(row.platform_post_id)) continue;
+        const confirmed = publicIds ? publicIds.has(row.platform_post_id) : false;
+        const slotPassed =
+          !!row.scheduled_for && new Date(row.scheduled_for).getTime() <= Date.now() - graceMs;
+        // Promote when YouTube confirms it, or when its slot has clearly passed
+        // and we simply can't ask YouTube today.
+        if (!confirmed && !(publicIds === null && slotPassed)) continue;
         await supabaseAdmin
           .from('publications')
           .update({ status: 'published', published_at: nowIso })
@@ -286,7 +302,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ processed: results.length, results });
+    return json({ processed: results.length, confirmationDegraded, results });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }

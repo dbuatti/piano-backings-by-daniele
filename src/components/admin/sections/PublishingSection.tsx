@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
 import ReleaseBoard from '@/components/admin/sections/ReleaseBoard';
 import UpcomingCalendar from '@/components/admin/sections/UpcomingCalendar';
@@ -746,6 +746,9 @@ const PublishingSection = () => {
   // Number of delivered tracks the board still can't see a YouTube video for,
   // reported up so the cadence card can forecast when the backlog finishes.
   const [backlog, setBacklog] = useState(0);
+  // True when the last queue run couldn't read video status from YouTube, so
+  // "published" is being inferred from the schedule rather than confirmed.
+  const [confirmDegraded, setConfirmDegraded] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -804,13 +807,22 @@ const PublishingSection = () => {
   }, {});
 
   const runQueue = async () => {
-    const { error } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+    const { data, error } = await supabase.functions.invoke('run-publish-queue', { body: {} });
     if (error) {
       toast({ title: 'Queue run failed', description: await getFunctionErrorMessage(error), variant: 'destructive' });
-    } else {
-      toast({ title: 'Publishing pass complete' });
-      refetch();
+      return;
     }
+    if (data?.confirmationDegraded) {
+      setConfirmDegraded(true);
+      toast({
+        title: 'Publishing pass complete',
+        description: "Couldn't read video status from YouTube — live confirmations are falling back to the schedule. Reconnect the channel in Admin → Settings → Integrations to restore exact checks.",
+      });
+    } else {
+      setConfirmDegraded(false);
+      toast({ title: 'Publishing pass complete' });
+    }
+    refetch();
   };
 
   // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
@@ -907,6 +919,20 @@ const PublishingSection = () => {
           <Rocket className="h-4 w-4" /> Run due now
         </Button>
       </div>
+
+      {confirmDegraded && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">YouTube status checks are unavailable</p>
+            <p className="text-amber-700">
+              The channel connection can't read video status, so videos are being marked live from their
+              schedule (about an hour after their slot) instead of confirmed. Reconnect the channel in
+              Admin → Settings → Integrations to restore exact confirmation.
+            </p>
+          </div>
+        </div>
+      )}
 
       <SlotSettings pendingCount={backlog + active.length} existingSlots={existingDates} />
 
