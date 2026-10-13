@@ -17,12 +17,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Ban, ExternalLink, ListPlus, Loader2, Music2, PlusCircle, RotateCcw } from 'lucide-react';
+import { Ban, ExternalLink, Eye, Heart, ListPlus, Loader2, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
-import { captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
+import { type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
 import { recordCanvasClip } from '@/utils/canvasRecorder';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -68,6 +68,7 @@ export default function ReleaseBoard({
   const [vetting, setVetting] = useState<string | null>(null);
   const [listing, setListing] = useState<string | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
+  const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
 
   // One-click shop listing: create a DRAFT product from the delivered track with
   // sensible defaults. It stays inactive until the owner reviews and activates it
@@ -325,6 +326,14 @@ export default function ReleaseBoard({
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => setPreviewing(t)}
+                      title="Preview how this will look on YouTube, TikTok and Instagram."
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => toggleNoSocials(t.requestId, t.noSocials)}
                       title={t.noSocials ? 'Allow this track on socials again' : 'Never upload this track to socials'}
                     >
@@ -370,6 +379,10 @@ export default function ReleaseBoard({
           onClose={() => setVetting(null)}
           onQueued={onMutation}
         />
+      )}
+
+      {previewing && (
+        <PlatformPreview track={previewing} onClose={() => setPreviewing(null)} />
       )}
     </Card>
   );
@@ -451,20 +464,32 @@ function descriptionSkeleton({
   return [intro, pitch, shop, follow, tags].join('\n\n');
 }
 
-// Live 16:9 render of the title card the video will carry, drawn with the same
-// painting code as the recording so what's reviewed is what's posted.
+// Live render of the title card the video will carry, drawn with the same
+// painting code as the recording so what's reviewed is what's posted. The aspect
+// matches the destination (16:9 YouTube, 9:16 TikTok, 1:1 Instagram).
+const CARD_DIMS: Record<Aspect, { w: number; h: number }> = {
+  '16:9': { w: 640, h: 360 },
+  '9:16': { w: 405, h: 720 },
+  '1:1': { w: 640, h: 640 },
+};
+
 function CardThumb({
   song,
   show,
   key,
   client,
+  aspect = '16:9',
+  className,
 }: {
   song: string;
   show: string;
   key: string;
   client: string | null;
+  aspect?: Aspect;
+  className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const dims = CARD_DIMS[aspect];
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -474,17 +499,149 @@ function CardThumb({
       const logo = await loadCardLogo();
       if (cancelled) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawCard(ctx, canvas.width, canvas.height, defaultCardState({ song, artist: show, client, key }), logo);
+      drawCard(ctx, canvas.width, canvas.height, { ...defaultCardState({ song, artist: show, client, key }), aspect }, logo);
     })();
     return () => { cancelled = true; };
-  }, [song, show, key, client]);
+  }, [song, show, key, client, aspect]);
   return (
     <canvas
       ref={ref}
-      width={640}
-      height={360}
-      className="w-full rounded-lg border border-gray-200 bg-[#1B0057]"
+      width={dims.w}
+      height={dims.h}
+      className={cn('rounded-lg border border-gray-200 bg-[#1B0057]', className)}
     />
+  );
+}
+
+// How the finished post will look on each platform, rendered from the same
+// title card and the same description/caption skeletons the pipeline produces.
+// This is the "check it before it goes out" view for YouTube, TikTok, Instagram.
+const PLATFORM_META = {
+  youtube: { label: 'YouTube', aspect: '16:9' as Aspect },
+  tiktok: { label: 'TikTok', aspect: '9:16' as Aspect },
+  instagram: { label: 'Instagram', aspect: '1:1' as Aspect },
+} as const;
+
+function PlatformPreview({ track, onClose }: { track: DeliveredTrack; onClose: () => void }) {
+  const { data: products = [] } = useShopProducts();
+  const [platform, setPlatform] = useState<'youtube' | 'tiktok' | 'instagram'>('youtube');
+  const shopUrl = shopSongUrl(products, { song: track.song, show: track.show });
+  const cleanedShow = track.show.replace(/^\s*from\s+/i, '').trim();
+  const caption = [
+    `${track.song} — piano backing track${cleanedShow ? ` (from ${cleanedShow})` : ''}`,
+    shopUrl ? `Download: ${shopUrl}` : `Order yours (any song, your key): ${SITE}/form-page`,
+    'Follow @pianobackingsbydaniele',
+    '#pianobackingtrack #backingtrack #auditioncut',
+  ].join('\n');
+  const description = descriptionSkeleton({
+    song: track.song,
+    show: track.show,
+    key: keyForDisplay(track.key ?? ''),
+    firstName: firstNameOf(track.client),
+    shopUrl,
+  });
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-[#1C0357]">Preview — {track.song}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex gap-1.5">
+          {(['youtube', 'tiktok', 'instagram'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPlatform(p)}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                platform === p
+                  ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              )}
+            >
+              {PLATFORM_META[p].label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex justify-center py-1">
+          {platform === 'youtube' && <YouTubeMock track={track} description={description} />}
+          {platform === 'tiktok' && <TikTokMock track={track} caption={caption} />}
+          {platform === 'instagram' && <InstagramMock track={track} caption={caption} />}
+        </div>
+
+        <p className="text-[11px] text-gray-400">
+          {shopUrl
+            ? 'Your live shop link is included. The AI writes the final wording to this structure.'
+            : 'No active shop listing — captions point to the custom-order form. Add it to the shop for a one-click buy link.'}
+        </p>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function YouTubeMock({ track, description }: { track: DeliveredTrack; description: string }) {
+  const cleanedShow = track.show.replace(/^\s*from\s+/i, '').trim();
+  const title = `${track.song} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+  return (
+    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-gray-200 bg-white text-left">
+      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="16:9" className="w-full rounded-none border-0" />
+      <div className="space-y-1.5 p-3">
+        <p className="text-sm font-semibold leading-snug text-gray-900">{title}</p>
+        <p className="text-xs text-gray-500">Piano Backings by Daniele · 0 views · just now</p>
+        <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2.5 text-[11px] leading-relaxed text-gray-700">
+          {description}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+function TikTokMock({ track, caption }: { track: DeliveredTrack; caption: string }) {
+  return (
+    <div className="relative w-[260px] overflow-hidden rounded-2xl border-4 border-black bg-black">
+      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="9:16" className="w-full rounded-none border-0" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8">
+        <p className="text-xs font-semibold text-white">@pianobackingsbydaniele</p>
+        <p className="mt-0.5 whitespace-pre-line text-[11px] leading-snug text-white/95">{caption}</p>
+        <p className="mt-1.5 flex items-center gap-1 text-[10px] text-white/80">
+          <Music2 className="h-3 w-3" /> original sound — Piano Backings by Daniele
+        </p>
+      </div>
+      <div className="pointer-events-none absolute bottom-20 right-2 flex flex-col items-center gap-4 text-white">
+        <Heart className="h-5 w-5" />
+        <MessageCircle className="h-5 w-5" />
+        <Send className="h-5 w-5" />
+      </div>
+    </div>
+  );
+}
+
+function InstagramMock({ track, caption }: { track: DeliveredTrack; caption: string }) {
+  return (
+    <div className="w-full max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white text-left">
+      <div className="flex items-center gap-2 p-2.5">
+        <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#F538BC] to-[#1C0357]" />
+        <p className="text-xs font-semibold text-gray-900">pianobackingsbydaniele</p>
+      </div>
+      <CardThumb song={track.song} show={track.show} key={track.key ?? ''} client={track.client} aspect="1:1" className="w-full rounded-none border-0" />
+      <div className="flex items-center gap-3 p-2.5">
+        <Heart className="h-5 w-5 text-gray-800" />
+        <MessageCircle className="h-5 w-5 text-gray-800" />
+        <Send className="h-5 w-5 text-gray-800" />
+      </div>
+      <div className="px-2.5 pb-3">
+        <p className="whitespace-pre-line text-xs leading-snug text-gray-700">
+          <span className="font-semibold text-gray-900">pianobackingsbydaniele</span> {caption}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -724,7 +881,7 @@ function VettingDialog({
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label>Title card</Label>
-                <CardThumb song={title} show={show} key={key} client={track.client} />
+                <CardThumb song={title} show={show} key={key} client={track.client} className="w-full" />
               </div>
               <div className="space-y-1.5">
                 <Label>YouTube description</Label>
