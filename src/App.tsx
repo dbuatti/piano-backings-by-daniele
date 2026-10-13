@@ -16,7 +16,7 @@ import { CanonicalLink } from './components/Seo';
 
 import {
   FormPage, Shop, SongPage, Pricing, AboutServices, Login, NotFound, Terms, Privacy,
-  UserDashboard, GmailOAuthCallback, AdminDashboard, ClientTrackView, PurchaseConfirmation,
+  UserDashboard, GmailOAuthCallback, SocialOAuthCallback, AdminDashboard, ClientTrackView, PurchaseConfirmation,
 } from './routes';
 
 const PageFallback = () => (
@@ -74,6 +74,7 @@ function App() {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/gmail-oauth-callback" element={<GmailOAuthCallback />} />
+                <Route path="/social-oauth-callback" element={<SocialOAuthCallback />} />
 
                 {/* Admin shell — kept routes, render in-shell */}
                 <Route path="/admin" element={<AdminDashboard />} />

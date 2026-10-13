@@ -13,6 +13,7 @@ export const Privacy = lazyWithPreload(() => import('./pages/Privacy'));
 
 export const UserDashboard = lazyWithPreload(() => import('./pages/UserDashboard'));
 export const GmailOAuthCallback = lazyWithPreload(() => import('./pages/GmailOAuthCallback'));
+export const SocialOAuthCallback = lazyWithPreload(() => import('./pages/SocialOAuthCallback'));
 export const AdminDashboard = lazyWithPreload(() => import('./pages/AdminDashboard'));
 export const ClientTrackView = lazyWithPreload(() => import('./pages/ClientTrackView'));
 export const PurchaseConfirmation = lazyWithPreload(() => import('./pages/PurchaseConfirmation'));

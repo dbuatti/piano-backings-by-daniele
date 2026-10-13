@@ -14,6 +14,7 @@ import NotificationRecipientsManager from '@/components/NotificationRecipientsMa
 import DropboxMonitor from '@/pages/DropboxMonitor';
 import GmailOAuthButton from '@/components/GmailOAuthButton';
 import YouTubeOAuthButton from '@/components/YouTubeOAuthButton';
+import SocialOAuthButtons from '@/components/SocialOAuthButtons';
 import DataImporter from '@/pages/DataImporter';
 import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
@@ -111,6 +112,19 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
                 which stays authorised separately for email.
               </p>
               <YouTubeOAuthButton />
+            </CardContent>
+          </Card>
+          <Card className="bg-white border-none shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-[#1C0357]">Social — Teaser Posts</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-gray-500">
+                Connect the TikTok and Instagram accounts used for short teaser clips. Once connected,
+                the release board can post teasers alongside the YouTube upload. Requires the app
+                credentials and (for public TikTok posts) a passed Content Posting audit.
+              </p>
+              <SocialOAuthButtons />
             </CardContent>
           </Card>
         </div>
