@@ -177,6 +177,14 @@ export default function ReleaseBoard({
     .map((row) => row.t.requestId);
   const [bulkVet, setBulkVet] = useState<{ ids: string[]; index: number } | null>(null);
 
+  // At-a-glance progress: how much of the catalogue is live, queued and listed.
+  const totalDelivered = boardRows.length;
+  const queuedYt = boardRows.filter((row) => row.yt && row.yt.status !== 'published').length;
+  const nextUpload = queue
+    .filter((p) => p.platform === 'youtube' && p.status === 'scheduled' && p.scheduled_for)
+    .map((p) => p.scheduled_for as string)
+    .sort()[0];
+
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;
     const { error: e } = await supabase.from('backing_requests').update({ no_socials: next }).eq('id', requestId);
@@ -272,6 +280,41 @@ export default function ReleaseBoard({
           </p>
         ) : (
           <>
+            <div className="grid grid-cols-2 gap-2 pb-3 lg:grid-cols-4">
+              <StatTile
+                label="On YouTube"
+                value={`${audit.on_youtube}/${totalDelivered}`}
+                hint="Published and public"
+                pct={totalDelivered ? (audit.on_youtube / totalDelivered) * 100 : 0}
+                tone="green"
+              />
+              <StatTile
+                label="Queued to publish"
+                value={queuedYt}
+                hint={nextUpload ? `Next: ${whenLabel(nextUpload, tz)}` : 'Nothing scheduled yet'}
+                pct={totalDelivered ? (queuedYt / totalDelivered) * 100 : 0}
+                tone="pink"
+              />
+              <StatTile
+                label="In the shop"
+                value={`${audit.in_shop}/${totalDelivered}`}
+                hint={
+                  audit.shop_draft > 0
+                    ? `${audit.shop_draft} draft listing${audit.shop_draft === 1 ? '' : 's'} to activate`
+                    : 'No drafts waiting'
+                }
+                pct={totalDelivered ? (audit.in_shop / totalDelivered) * 100 : 0}
+                tone="amber"
+              />
+              <StatTile
+                label="Not on YouTube"
+                value={notOnYoutubeIds.length}
+                hint="Allowed on socials, no video yet"
+                pct={totalDelivered ? (notOnYoutubeIds.length / totalDelivered) * 100 : 0}
+                tone="gray"
+                onClick={() => setFilter('not_on_youtube')}
+              />
+            </div>
             <div className="flex flex-wrap gap-1.5 pb-3">
               {BOARD_STATS.map((s) => {
                 const active = filter === s.key;
@@ -517,6 +560,52 @@ export default function ReleaseBoard({
         <PlatformPreview track={previewing} onClose={() => setPreviewing(null)} />
       )}
     </Card>
+  );
+}
+
+const TILE_BARS = {
+  green: 'bg-emerald-500',
+  pink: 'bg-[#F538BC]',
+  amber: 'bg-amber-400',
+  gray: 'bg-gray-300',
+} as const;
+
+// One tile in the board's at-a-glance progress strip.
+function StatTile({
+  label,
+  value,
+  hint,
+  pct,
+  tone,
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  hint: string;
+  pct: number;
+  tone: keyof typeof TILE_BARS;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={cn(
+        'rounded-xl border border-gray-100 bg-gray-50/60 p-3',
+        onClick && 'cursor-pointer transition-colors hover:border-gray-300'
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+        <span className="text-lg font-bold tabular-nums text-[#1C0357]">{value}</span>
+      </div>
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+        <div className={cn('h-full rounded-full', TILE_BARS[tone])} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-gray-400">{hint}</p>
+    </div>
   );
 }
 
