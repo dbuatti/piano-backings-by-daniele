@@ -154,16 +154,3 @@ export function allocatePublishingSlots(
   }
   return slots;
 }
-
-// Next occurrence of the weekly slot in the configured timezone, strictly after
-// `from`. Falls back to the same wall time on the following day if `from` is
-// already past today's slot.
-export function nextWeeklySlot(
-  settings: Pick<PublishingSettings, 'weekly_dow' | 'weekly_time' | 'timezone'>,
-  from: Date = new Date()
-): Date {
-  return nextPublishingSlot(
-    { ...settings, schedule_mode: 'weekly', interval_days: null },
-    from
-  );
-}

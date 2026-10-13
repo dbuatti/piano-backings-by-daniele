@@ -211,7 +211,9 @@ Deno.serve(async (req) => {
       .eq('platform', 'youtube')
       .eq('status', 'scheduled')
       .lte('scheduled_for', nowIso)
-      .not('platform_post_id', 'is', null);
+      .not('platform_post_id', 'is', null)
+      // videos.list accepts at most 50 ids per call; the next run picks up the rest.
+      .limit(50);
 
     if (dueErr) throw dueErr;
 

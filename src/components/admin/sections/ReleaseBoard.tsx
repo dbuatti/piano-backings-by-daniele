@@ -454,6 +454,9 @@ function VettingDialog({
                 <Select value={key} onValueChange={setKey}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    {key && !KEY_OPTIONS.some((o) => o.value === key) && (
+                      <SelectItem value={key}>{key} — from the request</SelectItem>
+                    )}
                     {KEY_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                     ))}
