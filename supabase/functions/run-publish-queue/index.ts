@@ -76,10 +76,20 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     const results: Array<Record<string, unknown>> = [];
 
+    // Requests the owner marked "never post to socials" — any of their rows are
+    // skipped outright, even if an approval already slipped through.
+    const { data: noSocialRows, error: noSocialErr } = await supabaseAdmin
+      .from('backing_requests')
+      .select('id')
+      .eq('no_socials', true)
+      .limit(1000);
+    if (noSocialErr) throw noSocialErr;
+    const noSocialIds = new Set((noSocialRows ?? []).map((r) => String(r.id)));
+
     // 1) Upload approved rows immediately, scheduling them through publishAt.
     const { data: toUpload, error: uploadErr } = await supabaseAdmin
       .from('publications')
-      .select('id, asset_id, platform, metadata, scheduled_for, attempts, content_assets(storage_path, mime_type, title, song_title, show, key)')
+      .select('id, asset_id, platform, metadata, scheduled_for, attempts, content_assets(storage_path, mime_type, title, song_title, show, key, request_id)')
       .eq('platform', 'youtube')
       .eq('status', 'approved')
       .not('scheduled_for', 'is', null)
@@ -89,6 +99,18 @@ Deno.serve(async (req) => {
     if (uploadErr) throw uploadErr;
 
     for (const pub of toUpload ?? []) {
+      const asset = (pub.content_assets || {}) as Record<string, unknown>;
+
+      // Never upload a track the owner excluded from socials.
+      if (asset.request_id && noSocialIds.has(String(asset.request_id))) {
+        await supabaseAdmin
+          .from('publications')
+          .update({ status: 'skipped', scheduled_for: null, error: 'Marked as not for socials.' })
+          .eq('id', pub.id);
+        results.push({ id: pub.id, status: 'skipped', error: 'Marked as not for socials.' });
+        continue;
+      }
+
       // Claim it — only one worker wins the transition from approved -> publishing.
       const { data: claimed } = await supabaseAdmin
         .from('publications')
@@ -100,7 +122,6 @@ Deno.serve(async (req) => {
       if (!claimed) continue;
 
       try {
-        const asset = pub.content_assets || {};
         if (!asset.storage_path) throw new Error('Asset is missing a storage path.');
 
         const { data: file, error: dlErr } = await supabaseAdmin.storage

@@ -1,0 +1,447 @@
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { cn, getErrorMessage } from '@/lib/utils';
+import { PLATFORM_LABELS, STATUS_LABELS, type PublicationWithAsset } from '@/types/publishing';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Ban, ExternalLink, ListPlus, Music2, RotateCcw } from 'lucide-react';
+import { useActiveShopProducts, useDeliveredTracks } from '@/hooks/useDeliveredTracks';
+import { shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
+import { KEY_OPTIONS } from '@/utils/musicalKeys';
+import { captureCardSnapshot, defaultCardState, drawCard, loadCardLogo } from '@/utils/titleCard';
+import { recordCanvasClip } from '@/utils/canvasRecorder';
+
+// Delivered tracks → one row each showing progress across every platform: is it
+// in the shop, what's up on YouTube, are teaser drafts queued for TikTok/IG,
+// and is it marked "never post". Review & queue opens the vetting dialog that
+// records the title card with the verified title/key before queuing.
+export default function ReleaseBoard({
+  queue,
+  tz,
+  onMutation,
+}: {
+  queue: PublicationWithAsset[];
+  tz: string;
+  onMutation: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: tracks, isLoading, error } = useDeliveredTracks();
+  const { data: products = [] } = useActiveShopProducts();
+  const [vetting, setVetting] = useState<string | null>(null);
+
+  const pubsForTrack = (song: string, requestId: string) =>
+    queue.filter((p) => {
+      const a = p.content_assets;
+      return (
+        a &&
+        (a.request_id === requestId ||
+          (a.song_title || '').trim().toLowerCase() === song.trim().toLowerCase())
+      );
+    });
+
+  const toggleNoSocials = async (requestId: string, current: boolean) => {
+    const next = !current;
+    const { error: e } = await supabase.from('backing_requests').update({ no_socials: next }).eq('id', requestId);
+    if (e) {
+      toast({ title: 'Could not save the flag', description: getErrorMessage(e), variant: 'destructive' });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
+    toast({ title: next ? 'Marked as not for socials' : 'Allowed on socials again' });
+  };
+
+  if (error) {
+    return (
+      <Card className="bg-white border-none shadow-sm rounded-2xl">
+        <CardContent className="p-6 text-sm text-red-600">{getErrorMessage(error)}</CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-white border-none shadow-sm rounded-2xl">
+      <CardHeader>
+        <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
+          <span>Release board — delivered tracks</span>
+          <span className="text-xs font-normal text-gray-400">
+            {isLoading ? 'Loading tracks…' : `${tracks?.length ?? 0} delivered · newest first`}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-0.5">
+        {isLoading || !tracks ? (
+          <p className="px-4 py-6 text-sm text-gray-400">Loading tracks…</p>
+        ) : tracks.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-gray-400">
+            No delivered backing tracks yet — upload a finished recording into the{' '}
+            <span className="font-mono text-xs">tracks</span> bucket and it will appear here.
+          </p>
+        ) : (
+          tracks.map((t) => {
+            const pubs = pubsForTrack(t.song, t.requestId);
+            const yt = pubs.find((p) => p.platform === 'youtube');
+            const tt = pubs.find((p) => p.platform === 'tiktok');
+            const ig = pubs.find((p) => p.platform === 'instagram');
+            const shopProduct = shopProductForTrack(products, { song: t.song, show: t.show });
+            const shopUrl = shopSongUrl(products, { song: t.song, show: t.show });
+            const queuedForYoutube = !!yt; // any YouTube row exists → already in the pipeline
+            return (
+              <div key={t.requestId} className="rounded-xl border border-gray-100 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[#1C0357]">
+                      {t.song}
+                      {t.noSocials && (
+                        <Badge className="ml-2 bg-gray-100 text-gray-500" variant="secondary">
+                          Not for socials
+                        </Badge>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      {t.show ? `from ${t.show}` : 'Backing track'}
+                      {t.key ? ` · ${t.key.replace(/ \([^)]*\)$/, '')}` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <PlatformChip label="YouTube" pub={yt} tz={tz} />
+                    <PlatformChip label="TikTok" pub={tt} tz={tz} />
+                    <PlatformChip label="Instagram" pub={ig} tz={tz} />
+                    {shopProduct ? (
+                      <a
+                        href={shopUrl ?? '/shop'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 hover:bg-green-100"
+                      >
+                        Shop <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <a
+                        href="/admin?section=shop"
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 hover:bg-amber-100"
+                        title="This track has no shop product — add a listing in Admin → Shop when it's ready to sell."
+                      >
+                        No shop listing — Add →
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleNoSocials(t.requestId, t.noSocials)}
+                      title={t.noSocials ? 'Allow this track on socials again' : 'Never upload this track to socials'}
+                    >
+                      {t.noSocials ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+                    </Button>
+                    {!queuedForYoutube && (
+                      <Button
+                        size="sm"
+                        className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                        disabled={t.noSocials}
+                        onClick={() => setVetting(t.requestId)}
+                      >
+                        <ListPlus className="h-3.5 w-3.5" /> Review & queue
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                  <Music2 className="h-3.5 w-3.5 shrink-0" />
+                  <audio controls preload="none" src={t.url} className="h-9 w-full max-w-[320px]" />
+                  {queuedForYoutube && yt && (
+                    <span className="truncate">
+                      {STATUS_LABELS[yt.status]}
+                      {yt.scheduled_for ? ` · ${whenLabel(yt.scheduled_for, tz)}` : ''}
+                      {yt.platform_post_id ? ` · youtu.be/${yt.platform_post_id}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+
+      <VettingDialog
+        requestId={vetting}
+        tz={tz}
+        onClose={() => setVetting(null)}
+        onQueued={onMutation}
+      />
+    </Card>
+  );
+}
+
+function whenLabel(iso: string, tz: string) {
+  const dtf = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return dtf.format(new Date(iso));
+}
+
+function PlatformChip({
+  label,
+  pub,
+  tz,
+}: {
+  label: string;
+  pub: PublicationWithAsset | undefined;
+  tz: string;
+}) {
+  if (!pub) {
+    return (
+      <span
+        className="rounded-full bg-gray-50 px-2.5 py-1 text-gray-400"
+        title={label === 'YouTube' ? 'No video yet' : `No teaser queued — ${label} posting arrives with the integration.`}
+      >
+        {label}: —
+      </span>
+    );
+  }
+  return (
+    <Badge
+      variant={pub.status === 'published' ? 'default' : 'outline'}
+      className={cn(pub.status === 'published' && 'bg-green-100 text-green-700')}
+      title={`${label} · ${PLATFORM_LABELS[pub.platform]} ${STATUS_LABELS[pub.status]} ${pub.scheduled_for ? whenLabel(pub.scheduled_for, tz) : ''}`}
+    >
+      {label}: {STATUS_LABELS[pub.status]}
+    </Badge>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Vetting dialog: hear the track, confirm/correct title + key, mark it 'not for
+// socials' if needed, then approve → records the title card and queues it for
+// the YouTube approval pipeline.
+// ---------------------------------------------------------------------------
+function VettingDialog({
+  requestId,
+  tz,
+  onClose,
+  onQueued,
+}: {
+  requestId: string | null;
+  tz: string;
+  onClose: () => void;
+  onQueued: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: tracks } = useDeliveredTracks();
+  const track = tracks?.find((t) => t.requestId === requestId) ?? null;
+
+  const [title, setTitle] = useState(track?.song ?? '');
+  const [show, setShow] = useState(track?.show ?? '');
+  const [key, setKey] = useState(track?.key ?? 'C Major (0)');
+  const [allowSocials, setAllowSocials] = useState(!track?.noSocials);
+  const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
+
+  if (requestId && !track) return null;
+
+  const approve = async () => {
+    if (!track || !title.trim()) {
+      toast({ title: 'Add a song title first', variant: 'destructive' });
+      return;
+    }
+    setPhase('recording');
+    try {
+      // Record a fresh title card with the verified title/show/key.
+      const card = defaultCardState({ song: title.trim(), artist: show.trim(), client: track.client, key });
+      const logoImg = await loadCardLogo();
+      await Promise.allSettled([
+        document.fonts.ready,
+        ...[
+          '400 32px "Arcade Gamer"',
+          '400 32px "Press Start 2P"',
+          '400 32px "VT323"',
+          'italic 400 32px "Baskervville"',
+          '400 32px "Inter"',
+        ].map((f) => document.fonts.load(f)),
+      ]);
+
+      const cv = document.createElement('canvas');
+      cv.width = 1920;
+      cv.height = 1080;
+      const cvCtx = cv.getContext('2d');
+
+      const context = new AudioContext();
+      if (context.state === 'suspended') await context.resume();
+      const response = await fetch(track.url);
+      if (!response.ok) {
+        await context.close();
+        throw new Error(`Couldn't load the backing track (${response.status}).`);
+      }
+      const decoded = await context.decodeAudioData(await response.arrayBuffer());
+      const source = context.createBufferSource();
+      source.buffer = decoded;
+      source.connect(context.destination);
+
+      setPhase('recording');
+      const fade = 1.1;
+      const blob = await recordCanvasClip({
+        canvas: cv,
+        duration: decoded.duration || 6,
+        audio: { context, source },
+        fps: 30,
+        drawFrame: (elapsed) => {
+          if (!cvCtx) return;
+          drawCard(cvCtx, 1920, 1080, card, logoImg);
+          const p = Math.min(elapsed / fade, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+          cvCtx.fillRect(0, 0, 1920, 1080);
+        },
+      });
+      if (!blob) throw new Error('Recording failed in this browser.');
+
+      setPhase('uploading');
+      const { data: user } = await supabase.auth.getUser();
+      const id = crypto.randomUUID();
+      const path = `content/${id}.webm`;
+      const previewPath = `content/${id}.preview.png`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('content')
+        .upload(path, blob, { contentType: 'video/webm', upsert: false });
+      if (uploadErr) throw uploadErr;
+
+      const previewBlob = await captureCardSnapshot(cv);
+      if (previewBlob) {
+        const { error: previewErr } = await supabase.storage
+          .from('content')
+          .upload(previewPath, previewBlob, { contentType: 'image/png', upsert: false });
+        if (previewErr) throw previewErr;
+      }
+
+      const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
+      const titleCore = `${title.trim()} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+
+      const { data: asset, error: assetErr } = await supabase
+        .from('content_assets')
+        .insert({
+          storage_path: path,
+          preview_path: previewBlob ? previewPath : null,
+          mime_type: 'video/webm',
+          title: titleCore,
+          song_title: title.trim(),
+          show: cleanedShow || null,
+          key: key || null,
+          dedication: track.client ? `prepared for ${track.client.trim().split(/\s+/)[0]}` : null,
+          request_id: track.requestId,
+          duration_seconds: null,
+          aspect: '16:9',
+          created_by: user.user?.id ?? null,
+        })
+        .select('id')
+        .single();
+      if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+
+      const { data: pub, error: pubErr } = await supabase
+        .from('publications')
+        .insert({ asset_id: asset.id, platform: 'youtube', status: 'draft' })
+        .select('id')
+        .single();
+      if (pubErr || !pub) throw new Error(pubErr?.message || "Couldn't create the publication.");
+
+      setPhase('drafting');
+      const { error: draftErr } = await supabase.functions.invoke('draft-publication-metadata', {
+        body: { asset_id: asset.id, platform: 'youtube' },
+      });
+      if (draftErr) throw draftErr;
+
+      // Owner marked it "not for socials" while vetting? Re-apply the flag so a
+      // queue row that slipped through the request check stays blocked anyway.
+      if (!allowSocials) {
+        const me = track.client.trim().split(/\s+/)[0];
+        await supabase.from('backing_requests').update({ no_socials: true }).eq('id', track.requestId);
+        await supabase.from('publications').update({ status: 'skipped' }).eq('id', pub.id);
+        await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
+      }
+
+      onQueued();
+      onClose();
+      toast({ title: `${pub.status === 'skipped' ? 'Queued but marked not for socials' : 'Queued for YouTube — needs approval'}` });
+    } catch (e) {
+      setPhase('review');
+      toast({ title: 'Could not queue this track', description: getErrorMessage(e), variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Dialog open={!!requestId} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-[#1C0357]">Review & queue for YouTube</DialogTitle>
+        </DialogHeader>
+        {phase === 'review' && track && (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Listen back</Label>
+              <audio controls preload="none" src={track.url} className="h-10 w-full" />
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1.5">
+                <Label>Song title</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song name" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Show / Artist</Label>
+                <Input value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Key</Label>
+                <Select value={key} onValueChange={setKey}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {KEY_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex h-9 items-center gap-2">
+              <Switch checked={allowSocials} onCheckedChange={setAllowSocials} />
+              <Label className="font-normal">Allow on socials</Label>
+            </div>
+          </div>
+        )}
+        {phase === 'recording' && <p className="py-6 text-sm text-[#F538BC]">Recording the title card…</p>}
+        {phase === 'uploading' && <p className="py-6 text-sm text-[#F538BC]">Uploading the video…</p>}
+        {phase === 'drafting' && <p className="py-6 text-sm text-[#F538BC]">Drafting AI metadata…</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={phase !== 'review'}>Cancel</Button>
+          <Button
+            onClick={approve}
+            disabled={phase !== 'review' || !title.trim()}
+            className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+          >
+            Approve & queue
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

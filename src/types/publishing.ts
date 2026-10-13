@@ -61,6 +61,8 @@ export interface PublicationWithAsset extends Publication {
 
 export interface PublishingSettings {
   id: number;
+  schedule_mode: 'weekly' | 'interval' | string;
+  interval_days: number | null;
   weekly_dow: number;
   weekly_time: string;
   timezone: string;

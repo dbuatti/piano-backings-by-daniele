@@ -153,7 +153,7 @@ The **Video Title Cards** tool has two queue destinations:
 
 Nothing is posted until approved. Both use the background-safe recorder, so you can start a recording and navigate away — it finishes and saves itself.
 
-**Flow:** generate → save to queue → AI drafts metadata → **Admin → Publishing** review/edit → **Approve & schedule** → uploaded to YouTube **now** as a `private` video → YouTube itself promotes it to public exactly at the weekly slot → the queue confirms via YouTube and emails you.
+**Flow:** generate (or vet a delivered track) → AI drafts metadata → **Admin → Publishing** review/edit → **Approve & schedule** → uploaded to YouTube **now** as a `private` video → YouTube itself promotes it to public exactly at the cadence slot → the queue confirms via YouTube and emails you.
 
 **One-off setup:**
 1.  **Apply the migrations** in the Supabase SQL editor, in order (after `0034`):
@@ -161,9 +161,10 @@ Nothing is posted until approved. Both use the background-safe recorder, so you 
     - `0036_publishing_cron.sql` — calls `run-publish-queue` every 15 minutes (to upload anything not client-triggered and to flip/verify statuses). Apply **after** the function is deployed.
     - `0037_add_card_preview.sql` — `preview_path` column for the PDF key preview.
     - `0038_make_content_storage_path_nullable.sql` — lets the retention cleanup clear `content_assets.storage_path` (the queue deletes old source webms after `CONTENT_RETENTION_DAYS`).
+    - `0039_review_and_cadence.sql` — `backing_requests.no_socials` flag ("never post to socials") and the cadence columns on `publishing_settings` (`schedule_mode` weekly|interval, `interval_days`).
 2.  **Set the Gemini secret:** Supabase → Settings → API → Secrets: `GEMINI_API_KEY` (server-side only).
-3.  **Deploy the functions** (push to `main` and the Action deploys all): `run-publish-queue`, `draft-publication-metadata`, `check-publication-status`.
-4.  **Set the slot:** Admin → **Publishing** → weekly slot (day, time, timezone, auto-schedule). The timezone matters — scheduling converts wall time to UTC.
+3.  **Deploy the functions** (push to `main` and the Action deploys all): `run-publish-queue`, `draft-publication-metadata`, `check-publication-status`, `update-youtube-video`.
+4.  **Set the cadence:** Admin → **Publishing** → Publishing cadence (once a week, or every N days, plus time, timezone, auto-schedule). The timezone matters — scheduling converts wall time to UTC.
 5.  **Connect the YouTube channel** (Admin → Settings → Integrations) if not done — publishing uses the same server-side channel token as the "Publish" button.
 
 **How it works:**
@@ -177,6 +178,12 @@ Nothing is posted until approved. Both use the background-safe recorder, so you 
 - **Shop links in descriptions:** the AI drafter (and the default description) link to the track's shop page (`/shop/<slug>`) when the track is an active shop product; videos that aren't in the shop still publish fine — their description just points at the custom-order form instead.
 - **Storage retention:** source webms in the `content` bucket are deleted `CONTENT_RETENTION_DAYS` (default **30**) after their YouTube publication goes live — the row, URL and PDF preview are kept. Set the env in Supabase secrets to change the window.
 - **Duplicate guard:** saving the same song to the YouTube queue twice is blocked at the generator page.
+- **Cadence:** the Publishing cadence card sets either a **weekly** slot (day/time) or an **every-N-days** interval (1–90), plus timezone + auto-schedule. `Approve & schedule` and **Schedule all ready** book the next free slots from that cadence, sliding past anything already scheduled so two videos never collide.
+- **Schedule all ready:** bulk-assigns the next free cadence slots to every vetted YouTube row that has drafted metadata and no slot yet, then runs the queue. Rows without a description are skipped (use Re-draft AI / Edit first).
+- **Upcoming schedule calendar:** the 6-week grid at the top of Publishing shows every approved/scheduled row on its local calendar day (timezone-aware), so you can see exactly which song goes out when.
+- **Release board:** every delivered backing track in one row with its progress across platforms — YouTube status/link, TikTok/IG teaser state, and whether it has a **shop listing** (missing listings show an amber “No shop listing — Add →” link to Admin → Shop). Use **Review & queue** to record a fresh title card for a track with the verified title/show/key and drop it into the queue; use the ban/restore button to flip **Not for socials**.
+- **Not for socials (`no_socials`):** a per-track flag on `backing_requests`. Marked tracks are excluded from the queue and `run-publish-queue` skips any of their rows (`skipped`, with the reason), so they can never be posted to YouTube/TikTok/IG.
+- **Delete (trash) on any row:** removes the publication from the catalogue (and the asset + files when nothing else references them). It never deletes the YouTube video — use it to clear ghost rows after removing a video on YouTube directly.
 
 **Operating (weekly, ~2 min):**
 1. Check you got the **"Now live on YouTube"** email for last week (or that the badge is `Published`).

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getErrorMessage } from '@/lib/utils';
-import { nextWeeklySlot } from '@/utils/nextWeeklySlot';
+import { allocatePublishingSlots } from '@/utils/nextWeeklySlot';
 import {
   PLATFORM_LABELS,
   STATUS_LABELS,
@@ -33,7 +33,8 @@ import {
 } from '@/components/ui/dialog';
 import { CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
-import QueueMoreTracks from '@/components/admin/sections/QueueMoreTracks';
+import ReleaseBoard from '@/components/admin/sections/ReleaseBoard';
+import UpcomingCalendar from '@/components/admin/sections/UpcomingCalendar';
 
 const TIMEZONES = [
   'Australia/Sydney',
@@ -96,26 +97,36 @@ function SlotSettings() {
     },
   });
 
+  const [mode, setMode] = useState<'weekly' | 'interval' | null>(null);
+  const [days, setDays] = useState<string | null>(null);
   const [dow, setDow] = useState<number | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [timezone, setTimezone] = useState<string | null>(null);
   const [auto, setAuto] = useState<boolean | null>(null);
 
-  const final = (key: 'weekly_dow' | 'weekly_time' | 'timezone' | 'auto_schedule') =>
-    key === 'weekly_dow'
-      ? dow !== null
-        ? dow
-        : settings?.weekly_dow ?? 2
-      : key === 'weekly_time'
-        ? time ?? settings?.weekly_time ?? '09:00'
-        : key === 'timezone'
-          ? timezone ?? settings?.timezone ?? 'Australia/Sydney'
-          : auto ?? settings?.auto_schedule ?? true;
+  const final = (key: 'schedule_mode' | 'interval_days' | 'weekly_dow' | 'weekly_time' | 'timezone' | 'auto_schedule') =>
+    key === 'schedule_mode'
+      ? mode ?? settings.schedule_mode ?? 'weekly'
+      : key === 'interval_days'
+        ? days !== null
+          ? Math.min(Math.max(Number(days), 1), 90)
+          : settings.interval_days ?? 3
+        : key === 'weekly_dow'
+          ? dow !== null
+            ? dow
+            : settings.weekly_dow ?? 2
+          : key === 'weekly_time'
+            ? time ?? settings.weekly_time ?? '09:00'
+            : key === 'timezone'
+              ? timezone ?? settings.timezone ?? 'Australia/Sydney'
+              : auto ?? settings.auto_schedule ?? true;
 
   const save = async () => {
     const { error } = await supabase
       .from('publishing_settings')
       .update({
+        schedule_mode: final('schedule_mode'),
+        interval_days: final('schedule_mode') === 'interval' ? final('interval_days') : null,
         weekly_dow: final('weekly_dow'),
         weekly_time: final('weekly_time'),
         timezone: final('timezone'),
@@ -126,7 +137,7 @@ function SlotSettings() {
       toast({ title: "Couldn't save settings", description: getErrorMessage(error), variant: 'destructive' });
       return;
     }
-    toast({ title: 'Weekly slot saved' });
+    toast({ title: 'Publishing settings saved' });
     queryClient.invalidateQueries({ queryKey: ['publishing_settings'] });
   };
 
@@ -134,30 +145,55 @@ function SlotSettings() {
     return <Card className="bg-white border-none shadow-sm rounded-2xl"><CardContent className="p-6 text-sm text-gray-400">Loading settings…</CardContent></Card>;
   }
 
+  const isInterval = final('schedule_mode') === 'interval';
+
   return (
     <Card className="bg-white border-none shadow-sm rounded-2xl">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center gap-2">
-          <CalendarClock className="h-5 w-5" /> Weekly publishing slot
+          <CalendarClock className="h-5 w-5" /> Publishing cadence
         </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-gray-500 mb-4">
-          Approved videos are scheduled into the next free weekly slot. Publishing runs every 15 minutes,
-          so this is roughly when they'll appear.
+          Approved videos are scheduled into the next free slot — every day, every few days or once a
+          week. Publishing runs every 15 minutes, so this is roughly when they'll appear.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
-            <Label>Day</Label>
-            <Select value={String(final('weekly_dow'))} onValueChange={(v) => setDow(Number(v))}>
+            <Label>Frequency</Label>
+            <Select value={final('schedule_mode')} onValueChange={(v) => setMode(v as 'weekly' | 'interval')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {WEEKDAYS.map((d, i) => (
-                  <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                ))}
+                <SelectItem value="weekly">Once a week</SelectItem>
+                <SelectItem value="interval">Every N days</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {isInterval ? (
+            <div className="space-y-1.5">
+              <Label>Every (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={90}
+                value={days ?? String(settings.interval_days ?? 3)}
+                onChange={(e) => setDays(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Day</Label>
+              <Select value={String(final('weekly_dow'))} onValueChange={(v) => setDow(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WEEKDAYS.map((d, i) => (
+                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Time</Label>
             <Input type="time" value={final('weekly_time')} onChange={(e) => setTime(e.target.value)} />
@@ -173,7 +209,7 @@ function SlotSettings() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5 flex flex-col justify-end">
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-4 flex">
             <div className="flex h-9 items-center gap-2">
               <Switch checked={final('auto_schedule')} onCheckedChange={setAuto} />
               <Label className="font-normal">Auto-schedule on approval</Label>
@@ -181,7 +217,7 @@ function SlotSettings() {
           </div>
         </div>
         <div className="mt-4 flex justify-end">
-          <Button onClick={save} className="bg-[#1C0357] hover:bg-[#1C0357]/90">Save slot</Button>
+          <Button onClick={save} className="bg-[#1C0357] hover:bg-[#1C0357]/90">Save settings</Button>
         </div>
       </CardContent>
     </Card>
@@ -330,10 +366,14 @@ function MetadataDialog({
 function QueueRow({
   publication,
   tz,
+  nextSlot,
+  autoSchedule,
   onMutation,
 }: {
   publication: PublicationWithAsset;
   tz: string;
+  nextSlot: () => Date;
+  autoSchedule: boolean;
   onMutation: () => void;
 }) {
   const { toast } = useToast();
@@ -387,13 +427,8 @@ function QueueRow({
         error: null,
         attempts: 0,
       };
-      const { data: settings } = await supabase
-        .from('publishing_settings')
-        .select('*')
-        .eq('id', 1)
-        .maybeSingle();
-      if (settings?.auto_schedule) {
-        patch.scheduled_for = nextWeeklySlot(settings).toISOString();
+      if (autoSchedule) {
+        patch.scheduled_for = nextSlot().toISOString();
       }
       const { error } = await supabase.from('publications').update(patch).eq('id', publication.id);
       if (error) throw error;
@@ -466,13 +501,13 @@ function QueueRow({
     }, 'schedule', 'Scheduled — uploading to YouTube');
   };
 
-  // Remove a row from the queue. Deletes the publication row; when no other
+  // Remove a row from the catalogue. Deletes the publication row; when no other
   // platform row references the asset (e.g. a TikTok/IG draft of the same
-  // video), the asset and its archived files go too. YouTube history is
+  // video), the asset and its archived files go too. YouTube's history is
   // untouched — this only cleans our publishing catalogue.
   const removeRow = () => {
     if (!window.confirm(
-      'Delete this queued video?\n\nIt is removed from the publishing catalogue. The video is NOT deleted from YouTube itself. This cannot be undone.'
+      'Delete this video from the catalogue?\n\nIt is removed from the publishing catalogue (this admin). The video is NOT deleted from YouTube itself.\n\nThis cannot be undone.'
     )) return;
     return run(async () => {
       const { data: sibling, error: sibErr } = await supabase
@@ -597,11 +632,9 @@ function QueueRow({
                 {busy === 'refresh' ? '…' : 'Check'}
               </Button>
             )}
-          {publication.status !== 'published' && (
-            <Button variant="outline" size="sm" onClick={removeRow} disabled={busy !== null}>
-              {busy === 'delete' ? '…' : <Trash2 className="h-3.5 w-3.5" />}
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={removeRow} disabled={busy !== null}>
+            {busy === 'delete' ? '…' : <Trash2 className="h-3.5 w-3.5" />}
+          </Button>
         </div>
       </div>
       {showPreview && (
@@ -698,6 +731,18 @@ const PublishingSection = () => {
   const active = queue.filter((p) => p.status !== 'skipped' && p.status !== 'published');
   const published = queue.filter((p) => p.status === 'published');
 
+  const existingDates = queue
+    .map((p) => p.scheduled_for)
+    .filter((s): s is string => !!s)
+    .map((s) => new Date(s));
+
+  const nextSlot = () =>
+    allocatePublishingSlots(
+      settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
+      1,
+      existingDates
+    )[0];
+
   const counts = queue.reduce<Record<string, number>>((acc, p) => {
     acc[p.status] = (acc[p.status] ?? 0) + 1;
     return acc;
@@ -713,14 +758,56 @@ const PublishingSection = () => {
     }
   };
 
+  // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
+  // slot in one go, then kick the queue so the first upload begins now.
+  const scheduleAll = async () => {
+    const ready = active.filter(
+      (p) =>
+        p.platform === 'youtube' &&
+        ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status) &&
+        !!p.metadata?.description?.trim() &&
+        !p.scheduled_for
+    );
+    if (ready.length === 0) {
+      toast({ title: 'Nothing ready to schedule', description: 'Rows need drafted metadata (Re-draft AI / Edit) and no existing slot.' });
+      return;
+    }
+    if (!window.confirm(`Assign the next ${ready.length} free slot${ready.length === 1 ? '' : 's'} to ${ready.length} approved video${ready.length === 1 ? '' : 's'} and start uploading?`)) return;
+
+    const existing = active
+      .map((p) => p.scheduled_for)
+      .filter((s): s is string => !!s)
+      .map((s) => new Date(s));
+    const slots = allocatePublishingSlots(
+      settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
+      ready.length,
+      existing
+    );
+    for (let i = 0; i < ready.length; i++) {
+      const { error } = await supabase
+        .from('publications')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          scheduled_for: slots[i].toISOString(),
+          error: null,
+          attempts: 0,
+        })
+        .eq('id', ready[i].id);
+      if (error) throw error;
+    }
+    await runQueue();
+    toast({ title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}` });
+  };
+
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1C0357]">Publishing</h2>
           <p className="text-sm text-gray-500">
-            Generated videos → approval → weekly slot → channel. YouTube is live; TikTok and Instagram
-            will follow once their apps are approved.
+            Queue → approve → cadence slot → channel. Track each song's shop listing, YouTube video and
+            teased TikTok/Instagram drafts on the release board below.
           </p>
         </div>
         <Button variant="outline" onClick={runQueue}>
@@ -730,12 +817,19 @@ const PublishingSection = () => {
 
       <SlotSettings />
 
+      <UpcomingCalendar queue={queue} tz={tz} />
+
       <Card className="bg-white border-none shadow-sm rounded-2xl">
         <CardHeader>
           <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
             <span>Approval queue</span>
-            <span className="text-xs font-normal text-gray-400">
-              {Object.entries(counts).map(([s, n]) => `${STATUS_LABELS[s as keyof typeof STATUS_LABELS]} ${n}`).join(' · ')}
+            <span className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={scheduleAll} disabled={isLoading}>
+                <CalendarClock className="h-3.5 w-3.5" /> Schedule all ready
+              </Button>
+              <span className="text-xs font-normal text-gray-400">
+                {Object.entries(counts).map(([s, n]) => `${STATUS_LABELS[s as keyof typeof STATUS_LABELS]} ${n}`).join(' · ')}
+              </span>
             </span>
           </CardTitle>
         </CardHeader>
@@ -744,20 +838,26 @@ const PublishingSection = () => {
             <p className="px-4 py-6 text-sm text-gray-400">Loading queue…</p>
           ) : active.length === 0 ? (
             <p className="px-4 py-6 text-sm text-gray-400">
-              Nothing in the queue. Generate a video and choose “Save to publishing queue” in the Video
-              Title Cards tool to start the folder.
+              Nothing in the queue. Use a row's “Review & queue” button below to vet a track into the
+              queue.
             </p>
           ) : (
             active.map((p) => (
               <div key={p.id} className="rounded-xl border border-gray-100 first:mt-0">
-                <QueueRow publication={p} tz={tz} onMutation={() => refetch()} />
+                <QueueRow
+                  publication={p}
+                  tz={tz}
+                  nextSlot={nextSlot}
+                  autoSchedule={settings?.auto_schedule ?? true}
+                  onMutation={() => refetch()}
+                />
               </div>
             ))
           )}
         </CardContent>
       </Card>
 
-      <QueueMoreTracks queue={queue} onQueued={() => refetch()} />
+      <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} />
 
       {published.length > 0 && (
         <Card className="bg-white border-none shadow-sm rounded-2xl">
@@ -767,7 +867,13 @@ const PublishingSection = () => {
           <CardContent className="space-y-0.5">
             {published.map((p) => (
               <div key={p.id} className="rounded-xl border border-gray-100">
-                <QueueRow publication={p} tz={tz} onMutation={() => refetch()} />
+                <QueueRow
+                  publication={p}
+                  tz={tz}
+                  nextSlot={nextSlot}
+                  autoSchedule={settings?.auto_schedule ?? true}
+                  onMutation={() => refetch()}
+                />
               </div>
             ))}
           </CardContent>
