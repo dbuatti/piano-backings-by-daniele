@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -24,7 +24,8 @@ import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
-import { recordCanvasClip } from '@/utils/canvasRecorder';
+import { recordCanvasClip, type ClipProgress } from '@/utils/canvasRecorder';
+import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
 // still missing, so gaps (no shop listing, not on YouTube, no key) are obvious.
@@ -519,6 +520,12 @@ export default function ReleaseBoard({
   );
 }
 
+// mm:ss for the recording progress readout.
+function fmtClock(seconds: number) {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 function whenLabel(iso: string, tz: string) {
   const dtf = new Intl.DateTimeFormat('en-AU', {
     timeZone: tz,
@@ -604,6 +611,13 @@ const CARD_DIMS: Record<Aspect, { w: number; h: number }> = {
   '1:1': { w: 640, h: 640 },
 };
 
+// The queueing steps shown while a reviewed track records, uploads and drafts.
+const QUEUE_STEP_LABELS: Record<'recording' | 'uploading' | 'drafting', string> = {
+  recording: 'Record',
+  uploading: 'Upload',
+  drafting: 'Draft metadata',
+};
+
 function CardThumb({
   song,
   show,
@@ -611,7 +625,6 @@ function CardThumb({
   client,
   aspect = '16:9',
   className,
-  canvasRef,
 }: {
   song: string;
   show: string;
@@ -621,32 +634,39 @@ function CardThumb({
   client: string | null;
   aspect?: Aspect;
   className?: string;
-  canvasRef?: RefObject<HTMLCanvasElement>;
 }) {
-  const ref = useRef<HTMLCanvasElement>(null);
   const dims = CARD_DIMS[aspect];
+  // Painted onto an offscreen canvas and shown as an image: this sidesteps any
+  // ref-attachment timing (a stray `key`-less ref left the card blank) and gives
+  // a crisp, DPI-independent preview in both the modals and the platform mocks.
+  const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      // The canvas attaches to the caller's ref when one is passed in, so read
-      // from whichever ref actually holds the element.
-      const canvas = (canvasRef ?? ref).current;
-      const ctx = canvas?.getContext('2d');
-      if (!canvas || !ctx) return;
-      const logo = await loadCardLogo();
+    const canvas = document.createElement('canvas');
+    canvas.width = dims.w;
+    canvas.height = dims.h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const card = { ...defaultCardState({ song, artist: show, client, key }), aspect };
+    const paint = (logo: HTMLImageElement | null) => {
       if (cancelled) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawCard(ctx, canvas.width, canvas.height, { ...defaultCardState({ song, artist: show, client, key }), aspect }, logo);
-    })();
+      try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawCard(ctx, canvas.width, canvas.height, card, logo);
+        setSrc(canvas.toDataURL('image/png'));
+      } catch {
+        // If a font/roundRect is unsupported, fall back to the navy placeholder.
+      }
+    };
+    paint(null);
+    loadCardLogo().then((logo) => paint(logo)).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [song, show, key, client, aspect, canvasRef]);
-  return (
-    <canvas
-      ref={canvasRef ?? ref}
-      width={dims.w}
-      height={dims.h}
-      className={cn('rounded-lg border border-gray-200 bg-[#1B0057]', className)}
-    />
+  }, [song, show, key, client, aspect, dims.w, dims.h]);
+  const ratio = aspect === '16:9' ? '16 / 9' : aspect === '9:16' ? '9 / 16' : '1 / 1';
+  return src ? (
+    <img src={src} alt={`${song} title card`} className={cn('rounded-lg border border-gray-200', className)} />
+  ) : (
+    <div className={cn('rounded-lg border border-gray-200 bg-[#1B0057]', className)} style={{ aspectRatio: ratio }} />
   );
 }
 
@@ -813,7 +833,7 @@ function VettingDialog({
   const [key, setKey] = useState(track?.key ?? 'C Major (0)');
   const [allowSocials, setAllowSocials] = useState(!track?.noSocials);
   const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
-  const cardCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [recording, setRecording] = useState<ClipProgress | null>(null);
 
   if (requestId && !track) return null;
 
@@ -916,6 +936,7 @@ function VettingDialog({
       source.buffer = decoded;
       source.connect(context.destination);
 
+      setRecording({ loaded: 0, total: decoded.duration || 6 });
       setPhase('recording');
       const fade = 1.1;
       const blob = await recordCanvasClip({
@@ -923,6 +944,7 @@ function VettingDialog({
         duration: decoded.duration || 6,
         audio: { context, source },
         fps: 30,
+        onProgress: setRecording,
         drawFrame: (elapsed) => {
           if (!cvCtx) return;
           drawCard(cvCtx, 1920, 1080, card, logoImg);
@@ -1082,7 +1104,6 @@ function VettingDialog({
                   show={show}
                   musicalKey={key}
                   client={track.client}
-                  canvasRef={cardCanvasRef}
                   className="w-full rounded-none border-0"
                 />
               </div>
@@ -1100,9 +1121,63 @@ function VettingDialog({
             </div>
           </div>
         )}
-        {phase === 'recording' && <p className="py-6 text-sm text-[#F538BC]">Recording the title card…</p>}
-        {phase === 'uploading' && <p className="py-6 text-sm text-[#F538BC]">Uploading the video…</p>}
-        {phase === 'drafting' && <p className="py-6 text-sm text-[#F538BC]">Drafting AI metadata…</p>}
+        {phase !== 'review' && (
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2">
+              {(['recording', 'uploading', 'drafting'] as const).map((step, i) => {
+                const order = ['recording', 'uploading', 'drafting'];
+                const current = order.indexOf(phase);
+                const state = i < current ? 'done' : i === current ? 'active' : 'todo';
+                return (
+                  <div key={step} className="flex flex-1 items-center gap-2">
+                    <span
+                      className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold',
+                        state === 'done' && 'bg-[#1C0357] text-white',
+                        state === 'active' && 'bg-[#F538BC] text-white',
+                        state === 'todo' && 'bg-gray-200 text-gray-500',
+                      )}
+                    >
+                      {state === 'done' ? '✓' : i + 1}
+                    </span>
+                    <span className={cn('text-xs font-medium', state === 'active' ? 'text-[#1C0357]' : 'text-gray-400')}>
+                      {QUEUE_STEP_LABELS[step]}
+                    </span>
+                    {i < 2 && <span className="h-px min-w-2 flex-1 bg-gray-200" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {phase === 'recording' && (
+              <>
+                <Progress value={recording && recording.total ? (recording.loaded / recording.total) * 100 : 0} />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>
+                    Recording the title card
+                    {recording && recording.total
+                      ? ` — ${Math.round((recording.loaded / recording.total) * 100)}%`
+                      : '…'}
+                  </span>
+                  {recording && recording.total > 0 && (
+                    <span className="tabular-nums">
+                      {fmtClock(recording.loaded)} / {fmtClock(recording.total)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  The card is recorded over the full track length in real time. Keep this open — it finishes on its own.
+                </p>
+              </>
+            )}
+            {phase === 'uploading' && (
+              <p className="text-sm text-gray-500">Uploading the recorded video to storage…</p>
+            )}
+            {phase === 'drafting' && (
+              <p className="text-sm text-gray-500">Drafting the AI metadata for YouTube, TikTok and Instagram…</p>
+            )}
+          </div>
+        )}
         <DialogFooter>
           {onNext && (
             <Button variant="ghost" onClick={onNext} disabled={phase !== 'review'}>
