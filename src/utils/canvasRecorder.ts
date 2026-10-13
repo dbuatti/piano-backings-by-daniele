@@ -23,6 +23,8 @@ export interface RecordCanvasClipOptions {
   /** Optional audio mixed into the clip (decoded track, not yet started). */
   audio?: RecordingAudio;
   fps?: number;
+  /** Human label for a global "recording…" indicator (e.g. the song title). */
+  label?: string;
   onProgress?: (progress: ClipProgress) => void;
 }
 
@@ -30,6 +32,7 @@ type Listener = (progress: ClipProgress | null) => void;
 
 const listeners = new Set<Listener>();
 let activeProgress: ClipProgress | null = null;
+let activeLabel: string | null = null;
 let recording = false;
 
 export function isRecordingActive(): boolean {
@@ -38,6 +41,10 @@ export function isRecordingActive(): boolean {
 
 export function getActiveRecordingProgress(): ClipProgress | null {
   return activeProgress;
+}
+
+export function getActiveRecordingLabel(): string | null {
+  return activeLabel;
 }
 
 /** Subscribe to background-recording state; returns an unsubscribe function. */
@@ -61,6 +68,7 @@ export async function recordCanvasClip(
   // Guard survives component unmounts so a background recording is never
   // accidentally doubled up by a freshly mounted page.
   if (recording) throw new Error('A recording is already in progress.');
+  activeLabel = options.label ?? null;
 
   const canvasCtx = canvas.getContext('2d');
   if (!canvasCtx) return null;
@@ -134,6 +142,7 @@ export async function recordCanvasClip(
   } finally {
     recording = false;
     activeProgress = null;
+    activeLabel = null;
     emit();
   }
 }

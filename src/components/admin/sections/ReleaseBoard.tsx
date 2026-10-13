@@ -1057,6 +1057,7 @@ function VettingDialog({
         duration: decoded.duration || 6,
         audio: { context, source },
         fps: 30,
+        label: title.trim() || track.song,
         onProgress: setRecording,
         drawFrame: (elapsed) => {
           if (!cvCtx) return;

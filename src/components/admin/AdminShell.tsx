@@ -20,6 +20,7 @@ import ClientsSection from './sections/ClientsSection';
 import SettingsSection from './sections/SettingsSection';
 import ReportsSection from './sections/ReportsSection';
 import PublishingSection from './sections/PublishingSection';
+import RecordingIndicator from './RecordingIndicator';
 
 export type AdminSection = 'requests' | 'shop' | 'clients' | 'reports' | 'publishing' | 'settings';
 
@@ -103,6 +104,7 @@ const AdminShell = () => {
   return (
     <div className="min-h-screen bg-[#F8F9FC]">
       <Header />
+      <RecordingIndicator />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-24 pb-10">
         {/* Section rail */}
         <nav className="flex items-center gap-2 mb-6 overflow-x-auto">
