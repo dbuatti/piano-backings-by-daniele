@@ -69,9 +69,14 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
   await visit('tracks/', null, 1);
 
   const tracks: DeliveredTrack[] = [];
+  const seen = new Set<string>();
   files.forEach((f) => {
     const meta = f.folder ? requests.get(f.folder) : undefined;
     if (!meta || !meta.song) return;
+    // One row per request: folders can hold several audio files (takes,
+    // exports); the master take is the first one listed.
+    if (seen.has(f.folder!)) return;
+    seen.add(f.folder!);
     const { data } = supabase.storage.from('tracks').getPublicUrl(f.path);
     if (!data?.publicUrl) return;
     tracks.push({ requestId: f.folder!, ...meta, url: data.publicUrl });

@@ -77,14 +77,20 @@ Deno.serve(async (req) => {
     const results: Array<Record<string, unknown>> = [];
 
     // Requests the owner marked "never post to socials" — any of their rows are
-    // skipped outright, even if an approval already slipped through.
-    const { data: noSocialRows, error: noSocialErr } = await supabaseAdmin
-      .from('backing_requests')
-      .select('id')
-      .eq('no_socials', true)
-      .limit(1000);
-    if (noSocialErr) throw noSocialErr;
-    const noSocialIds = new Set((noSocialRows ?? []).map((r) => String(r.id)));
+    // skipped outright, even if an approval already slipped through. Tolerated
+    // pre-migration (column absent) so publishing keeps working either way.
+    const noSocialIds = new Set<string>();
+    try {
+      const { data: noSocialRows, error: noSocialErr } = await supabaseAdmin
+        .from('backing_requests')
+        .select('id')
+        .eq('no_socials', true)
+        .limit(1000);
+      if (noSocialErr) throw noSocialErr;
+      (noSocialRows ?? []).forEach((r) => noSocialIds.add(String(r.id)));
+    } catch (e) {
+      console.warn('no_socials lookup skipped:', e);
+    }
 
     // 1) Upload approved rows immediately, scheduling them through publishAt.
     const { data: toUpload, error: uploadErr } = await supabaseAdmin

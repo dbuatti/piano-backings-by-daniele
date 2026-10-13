@@ -179,12 +179,14 @@ export default function ReleaseBoard({
         )}
       </CardContent>
 
-      <VettingDialog
-        requestId={vetting}
-        tz={tz}
-        onClose={() => setVetting(null)}
-        onQueued={onMutation}
-      />
+      {vetting && (
+        <VettingDialog
+          key={vetting}
+          requestId={vetting}
+          onClose={() => setVetting(null)}
+          onQueued={onMutation}
+        />
+      )}
     </Card>
   );
 }
@@ -238,12 +240,10 @@ function PlatformChip({
 // ---------------------------------------------------------------------------
 function VettingDialog({
   requestId,
-  tz,
   onClose,
   onQueued,
 }: {
   requestId: string | null;
-  tz: string;
   onClose: () => void;
   onQueued: () => void;
 }) {
@@ -263,6 +263,39 @@ function VettingDialog({
   const approve = async () => {
     if (!track || !title.trim()) {
       toast({ title: 'Add a song title first', variant: 'destructive' });
+      return;
+    }
+    // "Allow on socials" unticked means: don't queue anything — just record the
+    // exclusion so no future pipeline run can post this track.
+    if (!allowSocials) {
+      const { error } = await supabase
+        .from('backing_requests')
+        .update({ no_socials: true })
+        .eq('id', track.requestId);
+      if (error) {
+        toast({ title: 'Could not save the flag', description: getErrorMessage(error), variant: 'destructive' });
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
+      onClose();
+      toast({ title: 'Marked as not for socials — nothing was queued' });
+      return;
+    }
+    // Duplicate guard: never queue a second video for a song already in the
+    // pipeline (draft → published).
+    const { data: existingRow } = await supabase
+      .from('publications')
+      .select('id, content_assets!inner(request_id)')
+      .eq('content_assets.request_id', track.requestId)
+      .in('status', ['draft', 'pending_approval', 'approved', 'scheduled', 'publishing', 'published'])
+      .limit(1)
+      .maybeSingle();
+    if (existingRow) {
+      toast({
+        title: 'Already in the pipeline',
+        description: 'This track already has a video in the queue or on the channel. Remove that row first if you want to re-record it.',
+        variant: 'destructive',
+      });
       return;
     }
     setPhase('recording');
@@ -371,18 +404,9 @@ function VettingDialog({
       });
       if (draftErr) throw draftErr;
 
-      // Owner marked it "not for socials" while vetting? Re-apply the flag so a
-      // queue row that slipped through the request check stays blocked anyway.
-      if (!allowSocials) {
-        const me = track.client.trim().split(/\s+/)[0];
-        await supabase.from('backing_requests').update({ no_socials: true }).eq('id', track.requestId);
-        await supabase.from('publications').update({ status: 'skipped' }).eq('id', pub.id);
-        await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
-      }
-
       onQueued();
       onClose();
-      toast({ title: `${pub.status === 'skipped' ? 'Queued but marked not for socials' : 'Queued for YouTube — needs approval'}` });
+      toast({ title: 'Queued for YouTube — needs approval' });
     } catch (e) {
       setPhase('review');
       toast({ title: 'Could not queue this track', description: getErrorMessage(e), variant: 'destructive' });
