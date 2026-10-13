@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
 import { PLATFORM_LABELS, STATUS_LABELS, type PublicationWithAsset } from '@/types/publishing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -191,7 +191,7 @@ export default function ReleaseBoard({
         description: `${data?.not_on_youtube?.length ?? 0} not on YouTube · ${data?.no_shop?.length ?? 0} missing from the shop.`,
       });
     } catch (e) {
-      toast({ title: "Couldn't run the audit", description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: "Couldn't run the audit", description: await getFunctionErrorMessage(e), variant: 'destructive' });
     } finally {
       setEmailing(false);
     }
@@ -905,7 +905,7 @@ function VettingDialog({
       toast({ title: 'Queued for YouTube — needs approval' });
     } catch (e) {
       setPhase('review');
-      toast({ title: 'Could not queue this track', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: 'Could not queue this track', description: await getFunctionErrorMessage(e), variant: 'destructive' });
     }
   };
 

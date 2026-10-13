@@ -99,7 +99,11 @@ Deno.serve(async (req) => {
     }
     const platform = String(body.platform || 'youtube').toLowerCase();
 
-    const apiKey = requireEnv(['GEMINI_API_KEY'], 'draft-publication-metadata').GEMINI_API_KEY;
+    // Accept either the server-only secret name or the VITE_-prefixed one (which
+    // the browser bundle already carries), so the draft works regardless of how
+    // the key was added. Still fails loudly if neither is set.
+    const apiKey = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('VITE_GEMINI_API_KEY') || '';
+    if (!apiKey) requireEnv(['GEMINI_API_KEY'], 'draft-publication-metadata');
 
     const { data: asset, error: assetErr } = await supabaseAdmin
       .from('content_assets')

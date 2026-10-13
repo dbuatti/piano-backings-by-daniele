@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
 import { allocatePublishingSlots } from '@/utils/nextWeeklySlot';
 import {
   PLATFORM_LABELS,
@@ -401,7 +401,7 @@ function QueueRow({
       toast({ title: done });
       onMutation();
     } catch (e) {
-      toast({ title: 'Action failed', description: getErrorMessage(e), variant: 'destructive' });
+      toast({ title: 'Action failed', description: await getFunctionErrorMessage(e), variant: 'destructive' });
     } finally {
       setBusy(null);
     }
@@ -760,7 +760,7 @@ const PublishingSection = () => {
   const runQueue = async () => {
     const { error } = await supabase.functions.invoke('run-publish-queue', { body: {} });
     if (error) {
-      toast({ title: 'Queue run failed', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: 'Queue run failed', description: await getFunctionErrorMessage(error), variant: 'destructive' });
     } else {
       toast({ title: 'Publishing pass complete' });
       refetch();
@@ -785,6 +785,7 @@ const PublishingSection = () => {
     setBulkDrafting(true);
     let ok = 0;
     let failed = 0;
+    let lastError = '';
     for (const p of missing) {
       try {
         const { error } = await supabase.functions.invoke('draft-publication-metadata', {
@@ -792,15 +793,16 @@ const PublishingSection = () => {
         });
         if (error) throw error;
         ok += 1;
-      } catch {
+      } catch (e) {
         failed += 1;
+        lastError = await getFunctionErrorMessage(e);
       }
     }
     setBulkDrafting(false);
     refetch();
     toast({
       title: `Drafted ${ok} of ${missing.length}`,
-      description: failed ? `${failed} failed — retry those rows individually.` : undefined,
+      description: failed ? `${failed} failed — ${lastError}` : undefined,
       variant: failed ? 'destructive' : 'default',
     });
   };
