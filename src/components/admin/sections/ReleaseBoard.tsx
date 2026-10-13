@@ -58,10 +58,14 @@ export default function ReleaseBoard({
   queue,
   tz,
   onMutation,
+  onBacklog,
 }: {
   queue: PublicationWithAsset[];
   tz: string;
   onMutation: () => void;
+  // Reports how many delivered tracks still have no YouTube video, so the
+  // cadence card above can forecast when the backlog will finish.
+  onBacklog?: (count: number) => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -184,6 +188,10 @@ export default function ReleaseBoard({
     .filter((p) => p.platform === 'youtube' && p.status === 'scheduled' && p.scheduled_for)
     .map((p) => p.scheduled_for as string)
     .sort()[0];
+
+  useEffect(() => {
+    onBacklog?.(notOnYoutubeIds.length);
+  }, [notOnYoutubeIds.length, onBacklog]);
 
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;

@@ -80,7 +80,16 @@ function formatWhen(iso: string | null, tz: string): string {
 // ---------------------------------------------------------------------------
 // Weekly slot settings
 // ---------------------------------------------------------------------------
-function SlotSettings() {
+function SlotSettings({
+  pendingCount = 0,
+  existingSlots = [],
+}: {
+  // How many uploads still need a slot (the not-on-YouTube backlog + anything
+  // already queued but not published) and the slots already booked — used for
+  // the live "when will this finish?" forecast under the controls.
+  pendingCount?: number;
+  existingSlots?: Date[];
+}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -155,6 +164,23 @@ function SlotSettings() {
 
   const isInterval = final('schedule_mode') === 'interval';
 
+  // Forecast from the values currently on screen (including unsaved edits), so
+  // switching frequency or interval immediately shows when the backlog lands.
+  const previewSettings = {
+    schedule_mode: final('schedule_mode'),
+    interval_days: final('interval_days'),
+    weekly_dow: final('weekly_dow'),
+    weekly_time: final('weekly_time'),
+    timezone: final('timezone'),
+  };
+  let forecast: { next: Date; last: Date | null } | null = null;
+  try {
+    const slots = allocatePublishingSlots(previewSettings, Math.max(pendingCount, 1), existingSlots);
+    forecast = { next: slots[0], last: pendingCount > 0 ? slots[slots.length - 1] : null };
+  } catch {
+    forecast = null;
+  }
+
   return (
     <Card className="bg-white border-none shadow-sm rounded-2xl">
       <CardHeader>
@@ -167,6 +193,19 @@ function SlotSettings() {
           Approved videos are scheduled into the next free slot — every day, every few days or once a
           week. Publishing runs every 15 minutes, so this is roughly when they'll appear.
         </p>
+        {forecast && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm">
+            <span className="text-gray-500">
+              Next upload <span className="font-semibold text-[#1C0357]">{formatWhen(forecast.next.toISOString(), final('timezone'))}</span>
+            </span>
+            {forecast.last && (
+              <span className="text-gray-500">
+                {pendingCount} queued · last lands{' '}
+                <span className="font-semibold text-[#1C0357]">{formatWhen(forecast.last.toISOString(), final('timezone'))}</span>
+              </span>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
             <Label>Frequency</Label>
@@ -704,6 +743,9 @@ function QueueRow({
 const PublishingSection = () => {
   const { toast } = useToast();
   const [bulkDrafting, setBulkDrafting] = useState(false);
+  // Number of delivered tracks the board still can't see a YouTube video for,
+  // reported up so the cadence card can forecast when the backlog finishes.
+  const [backlog, setBacklog] = useState(0);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -866,7 +908,7 @@ const PublishingSection = () => {
         </Button>
       </div>
 
-      <SlotSettings />
+      <SlotSettings pendingCount={backlog + active.length} existingSlots={existingDates} />
 
       <UpcomingCalendar queue={youtubeQueue} tz={tz} />
 
@@ -917,7 +959,7 @@ const PublishingSection = () => {
         </CardContent>
       </Card>
 
-      <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} />
+      <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} onBacklog={setBacklog} />
 
       {published.length > 0 && (
         <Card className="bg-white border-none shadow-sm rounded-2xl">
