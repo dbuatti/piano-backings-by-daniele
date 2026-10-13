@@ -56,13 +56,19 @@ export async function shopSongUrlForTrack(
 // drafted metadata (approved in a hurry, or the draft failed) so a video never
 // goes out with an empty description. Includes the song's shop page only when
 // the track is actually a shop product.
+// Keys are stored with their accidental count ("C Major (0)", "G Major (1♯)").
+// That parenthetical is internal shorthand — strip it for anything public.
+const keyForDisplay = (value: unknown) =>
+  clean(value).replace(/\s*\(\d+[♯♭]?\)\s*$/, '').trim();
+
 export function defaultYouTubeDescription(
   track: { title?: string | null; song_title?: string | null; show?: string | null; key?: string | null },
   productUrl: string | null
 ): string {
   const title = clean(track.title) || clean(track.song_title) || 'This piano backing track';
   const from = clean(track.show) ? ` from ${clean(track.show)}` : '';
-  const key = clean(track.key) ? ` Recorded in ${clean(track.key)}.` : '';
+  const displayKey = keyForDisplay(track.key);
+  const key = displayKey ? ` Recorded in ${displayKey}.` : '';
   const lines = [
     `${title}${from} — a piano backing track by Piano Backings by Daniele.${key}`,
     'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
