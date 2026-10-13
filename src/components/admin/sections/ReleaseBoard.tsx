@@ -170,6 +170,12 @@ export default function ReleaseBoard({
 
   const visibleRows = boardRows.filter((row) => rowMatches(filter, row));
 
+  // The not-on-YouTube backlog, in board order, for the "vett backlog" walkthrough.
+  const notOnYoutubeIds = boardRows
+    .filter((row) => rowMatches('not_on_youtube', row))
+    .map((row) => row.t.requestId);
+  const [bulkVet, setBulkVet] = useState<{ ids: string[]; index: number } | null>(null);
+
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;
     const { error: e } = await supabase.from('backing_requests').update({ no_socials: next }).eq('id', requestId);
@@ -297,6 +303,16 @@ export default function ReleaseBoard({
                   </button>
                 );
               })}
+              {notOnYoutubeIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBulkVet({ ids: notOnYoutubeIds, index: 0 })}
+                  title="Step through every delivered track that isn't on YouTube yet, one at a time."
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#1C0357] px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#2D0B8C]"
+                >
+                  <ListPlus className="h-3 w-3" /> Vett backlog ({notOnYoutubeIds.length})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={emailAudit}
@@ -475,6 +491,24 @@ export default function ReleaseBoard({
           requestId={vetting}
           onClose={() => setVetting(null)}
           onQueued={onMutation}
+        />
+      )}
+
+      {bulkVet && bulkVet.ids[bulkVet.index] && (
+        <VettingDialog
+          key={bulkVet.ids[bulkVet.index]}
+          requestId={bulkVet.ids[bulkVet.index]}
+          onClose={() => setBulkVet(null)}
+          onQueued={onMutation}
+          progress={{ index: bulkVet.index, total: bulkVet.ids.length }}
+          onNext={() => {
+            setBulkVet((v) => {
+              if (!v) return v;
+              const next = v.index + 1;
+              return next >= v.ids.length ? null : { ...v, index: next };
+            });
+            onMutation();
+          }}
         />
       )}
 
@@ -757,10 +791,16 @@ function VettingDialog({
   requestId,
   onClose,
   onQueued,
+  progress,
+  onNext,
 }: {
   requestId: string | null;
   onClose: () => void;
   onQueued: () => void;
+  // Set only in "vett backlog" mode: shows the position in the walkthrough and
+  // advances to the next track after each queue instead of closing.
+  progress?: { index: number; total: number };
+  onNext?: () => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -821,7 +861,8 @@ function VettingDialog({
         return;
       }
       await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
-      onClose();
+      if (onNext) onNext();
+      else onClose();
       toast({ title: 'Marked as not for socials — nothing was queued' });
       return;
     }
@@ -955,7 +996,8 @@ function VettingDialog({
       }
 
       onQueued();
-      onClose();
+      if (onNext) onNext();
+      else onClose();
       toast({ title: 'Queued for YouTube + TikTok/Instagram teasers — needs approval' });
     } catch (e) {
       setPhase('review');
@@ -967,7 +1009,14 @@ function VettingDialog({
     <Dialog open={!!requestId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="text-[#1C0357]">Review & queue for YouTube</DialogTitle>
+          <DialogTitle className="text-[#1C0357]">
+            Review & queue for YouTube
+            {progress && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                {progress.index + 1} of {progress.total}
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
         {phase === 'review' && track && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -1055,13 +1104,20 @@ function VettingDialog({
         {phase === 'uploading' && <p className="py-6 text-sm text-[#F538BC]">Uploading the video…</p>}
         {phase === 'drafting' && <p className="py-6 text-sm text-[#F538BC]">Drafting AI metadata…</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={phase !== 'review'}>Cancel</Button>
+          {onNext && (
+            <Button variant="ghost" onClick={onNext} disabled={phase !== 'review'}>
+              Skip this track
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClose} disabled={phase !== 'review'}>
+            {onNext ? 'Stop vetting' : 'Cancel'}
+          </Button>
           <Button
             onClick={approve}
             disabled={phase !== 'review' || !title.trim()}
             className="bg-[#1C0357] hover:bg-[#1C0357]/90"
           >
-            {allowSocials ? 'Approve & queue' : 'Save as not for socials'}
+            {allowSocials ? (onNext ? 'Approve & next' : 'Approve & queue') : 'Save as not for socials'}
           </Button>
         </DialogFooter>
       </DialogContent>
