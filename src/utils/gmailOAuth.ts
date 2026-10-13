@@ -53,9 +53,13 @@ export const initiateYouTubeOAuth = () => {
 
   window.location.href = buildAuthUrl({
     clientId,
-    // youtube.readonly alongside upload so the connection can be verified and
-    // the channel name captured (channels?mine=true rejects upload-only tokens).
-    scopes: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
+    // upload (publishing), readonly (status checks / channel name) and
+    // force-ssl (updating an uploaded video's metadata after an edit), because
+    // read/update endpoints reject upload-only tokens.
+    scopes:
+      'https://www.googleapis.com/auth/youtube.upload ' +
+      'https://www.googleapis.com/auth/youtube.readonly ' +
+      'https://www.googleapis.com/auth/youtube.force-ssl',
     state: 'youtube',
   });
 };

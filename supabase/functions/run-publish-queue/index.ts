@@ -13,6 +13,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { mintChannelAccessToken, uploadVideoToYouTube } from '../_shared/youtube.ts';
 import { escapeHtml, safeLink, sendEmail } from '../_shared/email.ts';
+import { defaultYouTubeDescription, shopSongUrlForTrack } from '../_shared/shop.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
     // 1) Upload approved rows immediately, scheduling them through publishAt.
     const { data: toUpload, error: uploadErr } = await supabaseAdmin
       .from('publications')
-      .select('id, asset_id, platform, metadata, scheduled_for, attempts, content_assets(storage_path, mime_type, title, song_title)')
+      .select('id, asset_id, platform, metadata, scheduled_for, attempts, content_assets(storage_path, mime_type, title, song_title, show, key)')
       .eq('platform', 'youtube')
       .eq('status', 'approved')
       .not('scheduled_for', 'is', null)
@@ -116,13 +117,25 @@ Deno.serve(async (req) => {
 
         const meta = pub.metadata || {};
         const fallbackTitle = asset.title || asset.song_title || 'Piano backing track';
+        // Never upload without a description: fall back to a deterministic one
+        // (with the track's shop page when it's a shop product).
+        const description =
+          meta.description && String(meta.description).trim()
+            ? meta.description
+            : defaultYouTubeDescription(
+                asset,
+                await shopSongUrlForTrack(supabaseAdmin, {
+                  song_title: asset.song_title,
+                  show: asset.show,
+                })
+              );
         const publishAt =
           pub.scheduled_for && new Date(pub.scheduled_for).getTime() > Date.now()
             ? pub.scheduled_for
             : undefined;
         const videoId = await uploadVideoToYouTube(token.access_token, bytes, {
           title: meta.title || fallbackTitle,
-          description: meta.description || '',
+          description,
           tags: Array.isArray(meta.tags) ? meta.tags : [],
           privacy: publishAt ? 'private' : meta.privacy || 'unlisted',
           publishAt,
@@ -186,7 +199,13 @@ Deno.serve(async (req) => {
         `https://www.googleapis.com/youtube/v3/videos?id=${ids.join(',')}&part=status`,
         { headers: { Authorization: `Bearer ${token.access_token}` } }
       );
-      if (!listRes.ok) throw new Error(`YouTube videos.list failed (${listRes.status}).`);
+      if (!listRes.ok) {
+        throw new Error(
+          listRes.status === 403
+            ? 'YouTube videos.list was denied (403) — the channel token lacks read access. Reconnect the channel in Admin → Settings → Integrations.'
+            : `YouTube videos.list failed (${listRes.status}).`
+        );
+      }
       const list = await listRes.json();
 
       const publicIds = new Set<string>();

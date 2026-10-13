@@ -120,7 +120,7 @@ The **Publish to YouTube** button on the Video Title Cards tool (`/admin` → Sh
 
 **One-off Google Cloud + Supabase setup:**
 1.  **Enable the API:** APIs & Services → Library → **YouTube Data API v3** → Enable.
-2.  **Add the scope:** Google Auth Platform → **Data access** → Add or remove scopes → `https://www.googleapis.com/auth/youtube.upload` → Update → Save.
+2.  **Add the scopes:** Google Auth Platform → **Data access** → Add or remove scopes → add `https://www.googleapis.com/auth/youtube.upload` (publishing), `https://www.googleapis.com/auth/youtube.readonly` (status checks / channel name) and `https://www.googleapis.com/auth/youtube.force-ssl` (updating an uploaded video's metadata after an edit) → Update → Save. Read/update endpoints reject upload-only tokens, so all three are needed.
 3.  **Origins (only needed for the fallback popup):** Google Auth Platform → **Clients** → open the **Web application** client whose ID matches `VITE_GMAIL_CLIENT_ID` → under **Authorized JavaScript origins** add:
     *   `http://localhost:8080` — local dev (`server.port` in `vite.config.ts`)
     *   `https://pianobackings.danielebuatti.com` — production (`VITE_SITE_URL`)
@@ -172,7 +172,9 @@ Nothing is posted until approved. Both use the background-safe recorder, so you 
 - **Publish now** sets the slot to now and uploads immediately (`unlisted` by default).
 - **run-publish-queue** claims `approved` rows one at a time (`publishing`), downloads from `content`, uploads to YouTube with `publishAt`. Failures retry up to 3 times, then go `failed` with an **email alert**. It also confirms with YouTube (`videos.list`) that a slot that has passed actually went public before labelling it `published` (with a **"now live" email**).
 - **Check** re-syncs one row against YouTube's real state any time (via `check-publication-status`).
-- **Re-draft AI / Edit** regenerate or hand-edit the metadata.
+- **Re-draft AI / Edit** regenerate or hand-edit the metadata. On rows already uploaded to YouTube, saving (or re-drafting) also pushes the new title/description/tags to the live video via `update-youtube-video` (needs the channel connected with the `youtube.force-ssl` scope — reconnect once in Settings → Integrations if the stored token predates it).
+- **Metadata guardrail:** Approve & schedule / Publish now / Schedule… are blocked on rows with no drafted description, so a video never goes out looking unfinished. As a backstop the queue uploads a deterministic default description if metadata is somehow missing.
+- **Shop links in descriptions:** the AI drafter (and the default description) link to the track's shop page (`/shop/<slug>`) when the track is an active shop product; videos that aren't in the shop still publish fine — their description just points at the custom-order form instead.
 - **Storage retention:** source webms in the `content` bucket are deleted `CONTENT_RETENTION_DAYS` (default **30**) after their YouTube publication goes live — the row, URL and PDF preview are kept. Set the env in Supabase secrets to change the window.
 - **Duplicate guard:** saving the same song to the YouTube queue twice is blocked at the generator page.
 

@@ -226,12 +226,32 @@ function MetadataDialog({
       .from('publications')
       .update({ metadata: next })
       .eq('id', publication.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast({ title: "Couldn't save metadata", description: getErrorMessage(error), variant: 'destructive' });
       return;
     }
-    toast({ title: 'Metadata saved' });
+    // Already uploaded? Push the edited metadata to the live YouTube video.
+    if (publication.platform === 'youtube' && publication.platform_post_id) {
+      const { error: syncError } = await supabase.functions.invoke('update-youtube-video', {
+        body: { publication_id: publication.id },
+      });
+      setSaving(false);
+      if (syncError) {
+        toast({
+          title: 'Metadata saved locally',
+          description: `The YouTube video wasn't updated: ${getErrorMessage(syncError)}`,
+          variant: 'destructive',
+        });
+        onOpenChange(false);
+        onSaved();
+        return;
+      }
+      toast({ title: 'Metadata saved and synced to YouTube' });
+    } else {
+      setSaving(false);
+      toast({ title: 'Metadata saved' });
+    }
     onOpenChange(false);
     onSaved();
   };
@@ -341,8 +361,23 @@ function QueueRow({
   // Approve & schedule = mark approved, assign the next weekly slot (if auto),
   // then kick the queue so the video is uploaded to YouTube immediately as a
   // private video that YouTube itself publishes at `scheduled_for`.
-  const approve = () =>
-    run(async () => {
+  // Requires drafted metadata: a video going out with an empty description
+  // looks broken on the channel.
+  const needsDraft = !publication.metadata?.description?.trim();
+  const guardDrafted = () => {
+    if (!needsDraft) return true;
+    toast({
+      title: 'Draft the metadata first',
+      description:
+        'This video has no description yet — use Re-draft AI or Edit before approving, so the upload carries proper metadata (and its shop link).',
+      variant: 'destructive',
+    });
+    return false;
+  };
+
+  const approve = () => {
+    if (!guardDrafted()) return;
+    return run(async () => {
       const { data: user } = await supabase.auth.getUser();
       const patch: Record<string, unknown> = {
         status: 'approved',
@@ -364,10 +399,12 @@ function QueueRow({
       const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
       if (invokeError) throw invokeError;
     }, 'approve', 'Approved — uploading to YouTube');
+  };
 
   // Publish now = upload immediately (no publishAt), via the same queue path.
-  const publishNow = () =>
-    run(async () => {
+  const publishNow = () => {
+    if (!guardDrafted()) return;
+    return run(async () => {
       const { error } = await supabase
         .from('publications')
         .update({
@@ -381,6 +418,7 @@ function QueueRow({
       const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
       if (invokeError) throw invokeError;
     }, 'publish', 'Published');
+  };
 
   const redraft = () =>
     run(async () => {
@@ -388,12 +426,26 @@ function QueueRow({
         body: { asset_id: publication.asset_id, platform: publication.platform },
       });
       if (error) throw error;
+      // Already uploaded? Push the regenerated metadata to the live video too.
+      if (publication.platform_post_id) {
+        const { error: syncError } = await supabase.functions.invoke('update-youtube-video', {
+          body: { publication_id: publication.id },
+        });
+        if (syncError) {
+          toast({
+            title: 'Metadata regenerated',
+            description: `Saved to the queue, but the YouTube video wasn't updated: ${getErrorMessage(syncError)}`,
+            variant: 'destructive',
+          });
+        }
+      }
     }, 'draft', 'Metadata regenerated');
 
   // Manual slot: lets a publish time be chosen even when auto_schedule is off
   // (or to override the auto slot for one video). Uploads via the same queue.
-  const scheduleManual = () =>
-    run(async () => {
+  const scheduleManual = () => {
+    if (!guardDrafted()) return;
+    return run(async () => {
       const when = new Date(manualWhen);
       if (Number.isNaN(when.getTime())) throw new Error('Choose a publish time first.');
       const { error } = await supabase
@@ -411,6 +463,7 @@ function QueueRow({
       setScheduleOpen(false);
       setManualWhen('');
     }, 'schedule', 'Scheduled — uploading to YouTube');
+  };
 
   // Live state from YouTube (promotion to public, processed status, failures)
   // rather than trusting the DB's assumption that the slot has come and gone.
@@ -483,7 +536,7 @@ function QueueRow({
               </Button>
             )}
           {publication.platform === 'youtube' &&
-            ['draft', 'pending_approval', 'failed'].includes(publication.status) && (
+            ['draft', 'pending_approval', 'scheduled', 'failed'].includes(publication.status) && (
               <Button variant="outline" size="sm" onClick={redraft} disabled={busy !== null}>
                 <RefreshCw className="h-3.5 w-3.5" /> Re-draft AI
               </Button>

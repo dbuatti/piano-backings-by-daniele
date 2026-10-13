@@ -3,6 +3,7 @@
 // publication row, flipping it to pending_approval. Called when a video is added
 // to the publishing queue. Requires a GEMINI_API_KEY secret.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { shopSongUrlForTrack } from '../_shared/shop.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,8 +18,13 @@ const json = (body, status = 200) =>
 
 const SITE = 'https://pianobackings.danielebuatti.com';
 
-function buildPrompt({ song, show, dedication, key, title }) {
+function buildPrompt({ song, show, dedication, key, title, productUrl }) {
   const firstName = (dedication || '').split(/\s+/)[0] || '';
+  // The track's shop page appears only when the track is actually a shop
+  // product; otherwise the description points at the custom-order form only.
+  const shopLine = productUrl
+    ? `"Get this track (instant download): ${productUrl}" and "Order a custom cut in your key: ${SITE}/form-page"`
+    : `"Order yours (any song, your key): ${SITE}/form-page"`;
   return `You write YouTube metadata for solo piano backing tracks made by a small independent musician.
 
 Song: ${song || 'unknown song'}
@@ -33,7 +39,7 @@ Return ONLY JSON (no markdown) with this shape:
   "description": string, // paragraphs separated by blank lines:
                          //  1. "Song — Banner (from Show)" + "Prepared for <firstName>." + "Key: X."
                          //  2. One line pitching custom piano backing tracks (auditions, performances, practice; arranged & recorded in the key you choose; delivered fast).
-                         //  3. "Order yours: ${SITE}/form-page" and "Browse ready-made cuts: ${SITE}/shop"
+                         //  3. ${shopLine}
                          //  4. "Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/"
                          //  5. 3-4 hashtags like "#pianobackingtrack #backingtrack #auditioncut #musicaltheatre"
   "tags": string[],      // 5-8 lowercase tags: song, show, piano, piano backing track, backing track, audition, musical theatre, key (e.g. "key of C major")
@@ -122,6 +128,10 @@ Deno.serve(async (req) => {
       dedication: String(reqRow.name || '').trim(),
       key: key || null,
       title: fallbackTitle,
+      productUrl: await shopSongUrlForTrack(supabaseAdmin, {
+        song_title: asset.song_title,
+        show: asset.show,
+      }),
     }));
 
     const metadata = {
@@ -131,12 +141,31 @@ Deno.serve(async (req) => {
       hashtags: Array.isArray(drafted.hashtags) ? drafted.hashtags.slice(0, 6).map(String) : [],
     };
 
-    const { data: pub, error: pubErr } = await supabaseAdmin
+    // Only not-yet-approved rows move to pending_approval — a scheduled
+    // (uploaded, waiting on its slot) or pending row keeps its status; only
+    // its metadata is refreshed so a re-draft never un-schedules a video.
+    const { data: existing, error: existingErr } = await supabaseAdmin
       .from('publications')
-      .update({ metadata, status: 'pending_approval', error: null })
+      .select('id, status')
       .eq('asset_id', body.asset_id)
       .eq('platform', platform)
       .in('status', ['draft', 'pending_approval', 'scheduled', 'failed'])
+      .maybeSingle();
+    if (existingErr) throw existingErr;
+    if (!existing) {
+      return json({ error: `No ${platform} publication exists for this asset.` }, 400);
+    }
+
+    const { data: pub, error: pubErr } = await supabaseAdmin
+      .from('publications')
+      .update({
+        metadata,
+        error: null,
+        ...(['draft', 'failed'].includes(existing.status)
+          ? { status: 'pending_approval' }
+          : {}),
+      })
+      .eq('id', existing.id)
       .select('id')
       .maybeSingle();
     if (pubErr) throw pubErr;

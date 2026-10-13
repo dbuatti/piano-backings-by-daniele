@@ -76,7 +76,13 @@ Deno.serve(async (req) => {
       `https://www.googleapis.com/youtube/v3/videos?id=${ids.join(',')}&part=status`,
       { headers: { Authorization: `Bearer ${token.access_token}` } }
     );
-    if (!res.ok) throw new Error(`YouTube videos.list failed (${res.status}).`);
+    if (!res.ok) {
+      throw new Error(
+        res.status === 403
+          ? 'YouTube videos.list was denied (403) — the channel token lacks read access. Reconnect the channel in Admin → Settings → Integrations.'
+          : `YouTube videos.list failed (${res.status}).`
+      );
+    }
     const list = await res.json();
 
     const byId = new Map<string, { privacyStatus?: string; uploadStatus?: string }>();
