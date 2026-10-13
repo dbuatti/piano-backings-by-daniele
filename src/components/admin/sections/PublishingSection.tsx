@@ -527,11 +527,12 @@ function QueueRow({
         .maybeSingle();
       if (sibErr) throw sibErr;
 
-      await supabase.storage.from('content').remove(
-        [asset?.storage_path, asset?.preview_path].filter((p): p is string => !!p)
-      );
-
+      // Only retire the shared asset + its files when no other publication
+      // (e.g. a TikTok/IG draft) still references them.
       if (!sibling) {
+        await supabase.storage.from('content').remove(
+          [asset?.storage_path, asset?.preview_path].filter((p): p is string => !!p)
+        );
         const { error: assetErr } = await supabase
           .from('content_assets')
           .delete()
