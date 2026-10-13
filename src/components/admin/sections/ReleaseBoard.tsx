@@ -23,7 +23,7 @@ import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hook
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
-import { type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
+import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
 import { recordCanvasClip, type ClipProgress } from '@/utils/canvasRecorder';
 import { Progress } from '@/components/ui/progress';
 
@@ -92,13 +92,35 @@ export default function ReleaseBoard({
         `${t.song}${shownShow ? ` (from ${shownShow})` : ''} — a piano backing track by Piano Backings by Daniele.${shownKey ? ` Recorded in ${shownKey}.` : ''}`,
         'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
       ].join('\n\n');
+
+      // Render the same title card as the product image so the listing isn't
+      // blank; a render/upload failure just leaves it empty for a manual add.
+      let imageUrl = '';
+      try {
+        const cardBlob = await renderCardToBlob(
+          { song: t.song, artist: t.show, client: t.client, key: t.key },
+          '1:1'
+        );
+        if (cardBlob) {
+          const path = `product-images/card-${t.requestId}-${Date.now()}.png`;
+          const { error: upErr } = await supabase.storage
+            .from('product-images')
+            .upload(path, cardBlob, { contentType: 'image/png', upsert: false });
+          if (!upErr) {
+            imageUrl = supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+          }
+        }
+      } catch {
+        // Non-fatal: the draft is still created without an image.
+      }
+
       const { error: e } = await supabase.from('products').insert([{
         title: t.song,
         artist_name: t.show || 'Various',
         description,
         price: 6.99,
         currency: 'AUD',
-        image_url: '',
+        image_url: imageUrl,
         track_urls: [{ url: t.url, caption: t.song }],
         is_active: false,
         category: 'audition-cut',
@@ -702,12 +724,6 @@ function descriptionSkeleton({
 // Live render of the title card the video will carry, drawn with the same
 // painting code as the recording so what's reviewed is what's posted. The aspect
 // matches the destination (16:9 YouTube, 9:16 TikTok, 1:1 Instagram).
-const CARD_DIMS: Record<Aspect, { w: number; h: number }> = {
-  '16:9': { w: 640, h: 360 },
-  '9:16': { w: 405, h: 720 },
-  '1:1': { w: 640, h: 640 },
-};
-
 // The queueing steps shown while a reviewed track records, uploads and drafts.
 const QUEUE_STEP_LABELS: Record<'recording' | 'uploading' | 'drafting', string> = {
   recording: 'Record',

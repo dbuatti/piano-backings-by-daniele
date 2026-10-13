@@ -34,6 +34,13 @@ function setTracking(ctx: CanvasRenderingContext2D, px: number) {
 // ---------- Sizes ----------
 export type Aspect = "16:9" | "9:16" | "1:1";
 
+// Preview/record dimensions per aspect (kept modest so thumbnail work is light).
+export const CARD_DIMS: Record<Aspect, { w: number; h: number }> = {
+  "16:9": { w: 640, h: 360 },
+  "9:16": { w: 405, h: 720 },
+  "1:1": { w: 640, h: 640 },
+};
+
 export type CardState = {
   banner: string;
   title: string;
@@ -279,4 +286,21 @@ export function captureCardSnapshot(
   if (!tctx) return Promise.resolve(null);
   tctx.drawImage(canvas, 0, 0, sw, sh);
   return new Promise((res) => tmp.toBlob((b) => res(b), "image/png"));
+}
+
+// Render a fresh card straight to a PNG blob — used to give a shop draft a real
+// product image without any recording or canvas-ref juggling.
+export async function renderCardToBlob(
+  meta: { song?: string | null; artist?: string | null; client?: string | null; key?: string | null },
+  aspect: Aspect = "1:1"
+): Promise<Blob | null> {
+  const dims = CARD_DIMS[aspect];
+  const canvas = document.createElement("canvas");
+  canvas.width = dims.w;
+  canvas.height = dims.h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const logo = await loadCardLogo();
+  drawCard(ctx, canvas.width, canvas.height, { ...defaultCardState(meta), aspect }, logo);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
 }
