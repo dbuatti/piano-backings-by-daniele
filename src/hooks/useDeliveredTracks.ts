@@ -22,11 +22,24 @@ const isAudioFile = (name: string, metadata: unknown) => {
 };
 
 async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
-  const { data: reqData, error: reqError } = await supabase
+  const selectWithFlag =
+    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, no_socials, created_at';
+  const selectWithoutFlag =
+    'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, created_at';
+  // no_socials arrives with migration 0039; fall back so the board still loads
+  // (tracks just show as allowed) if it hasn't been applied yet.
+  let { data: reqData, error: reqError } = await supabase
     .from('backing_requests')
-    .select('id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, no_socials, created_at')
+    .select(selectWithFlag)
     .order('created_at', { ascending: false })
     .limit(400);
+  if (reqError) {
+    ({ data: reqData, error: reqError } = await supabase
+      .from('backing_requests')
+      .select(selectWithoutFlag)
+      .order('created_at', { ascending: false })
+      .limit(400));
+  }
   if (reqError) throw reqError;
 
   const requests = new Map<string, Omit<DeliveredTrack, 'requestId' | 'url'>>(
