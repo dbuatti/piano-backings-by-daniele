@@ -129,6 +129,17 @@ const matchScore = (a: string, b: string) => {
   return shared / Math.max(1, Math.min(A.size, B.size));
 };
 
+// Client names are private — the card and the descriptions only ever surface a
+// client's first name. Auto-filled dedications carry the full client name, so
+// reduce anything written with the "prepared for" prefix to the first name;
+// hand-typed dedications that don't use that prefix are left as the user wrote
+// them.
+const firstNameOf = (name: string) => (name || "").trim().split(/\s+/)[0] || "";
+const cardDedication = (raw: string) => {
+  const m = raw.match(/^\s*prepared\s+for\s+(.+?)\s*$/i);
+  return m ? `prepared for ${firstNameOf(m[1])}` : raw;
+};
+
 const AUDIO_EXT = /\.(mp3|wav|m4a|aac|ogg|opus|flac|webm)$/i;
 
 const isAudioFile = (name: string, metadata: unknown) => {
@@ -253,7 +264,8 @@ function drawCard(
   setTracking(ctx, Math.max(1, Math.round(U * 0.0009)));
 
   const textMaxW = W - M * 2;
-  const lines = [s.title, s.show, s.dedication];
+  const dedicationDisplay = cardDedication(s.dedication);
+  const lines = [s.title, s.show, dedicationDisplay];
   for (const t of lines) {
     ctx.font = `italic 400 ${lineSize}px ${FONT_SCRIPT}`;
     const w = ctx.measureText(t).width;
@@ -277,7 +289,7 @@ function drawCard(
   };
   const tSize = fit(s.title);
   const sSize = fit(s.show);
-  const dSize = fit(s.dedication);
+  const dSize = fit(dedicationDisplay);
 
   const blockH = lineSize * 0.78 + lead * 2 + lineSize * 0.16;
   const tY = areaCenter - blockH / 2 + lineSize * 0.78;
@@ -289,7 +301,7 @@ function drawCard(
   ctx.font = `italic 400 ${sSize}px ${FONT_SCRIPT}`;
   ctx.fillText(s.show, W / 2, sY);
   ctx.font = `italic 400 ${dSize}px ${FONT_SCRIPT}`;
-  ctx.fillText(s.dedication, W / 2, dY);
+  ctx.fillText(dedicationDisplay, W / 2, dY);
 
   setTracking(ctx, 0);
 
@@ -793,7 +805,7 @@ export default function TitleCardGenerator() {
           if (m.artist && untouched(prev.show, DEFAULT_STATE.show))
             patch.show = `from ${m.artist}`;
           if (m.client && untouched(prev.dedication, DEFAULT_STATE.dedication))
-            patch.dedication = `prepared for ${m.client}`;
+            patch.dedication = `prepared for ${firstNameOf(m.client)}`;
           return Object.keys(patch).length ? { ...prev, ...patch } : prev;
         });
       }
@@ -831,7 +843,7 @@ export default function TitleCardGenerator() {
     set({
       title: meta.song,
       show: meta.artist ? `from ${meta.artist}` : state.show,
-      dedication: meta.client ? `prepared for ${meta.client}` : state.dedication,
+      dedication: meta.client ? `prepared for ${firstNameOf(meta.client)}` : state.dedication,
       key: meta.key || state.key,
     });
     const t = tracks.find((x) => x.requestId === id);
