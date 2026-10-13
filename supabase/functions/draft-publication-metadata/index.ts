@@ -49,25 +49,51 @@ Return ONLY JSON (no markdown) with this shape:
 No emojis. Write like a friendly professional, never hype.`;
 }
 
+// Google retires model names over time, and access varies by key age (a newer
+// key can lose access to an older model). Try an ordered list and use the first
+// one that answers, so a retired/overloaded name doesn't take the pipeline down.
+// Override the whole list with the GEMINI_MODEL secret if needed.
+function geminiModels() {
+  const override = Deno.env.get('GEMINI_MODEL');
+  return [...new Set([override, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash'].filter(Boolean))];
+}
+
 async function callGemini(apiKey, prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
-      }),
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
+  });
+  let lastError;
+  for (const model of geminiModels()) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    let res;
+    try {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal }
+      );
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = new Error(
+        err?.name === 'AbortError' ? `Gemini request timed out on ${model}` : `Gemini request failed on ${model}: ${err?.message || err}`
+      );
+      continue;
     }
-  );
-  if (!res.ok) {
-    throw new Error(`Gemini request failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '{}';
+      return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
+    }
+
+    lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${(await res.text()).slice(0, 200)}`);
+    // 404 = retired/ unavailable, 503 = overloaded — try the next name. Anything
+    // else (bad key, malformed request) won't be fixed by another model.
+    if (![404, 503].includes(res.status)) throw lastError;
   }
-  const data = await res.json();
-  const text =
-    data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '{}';
-  return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
+  throw lastError || new Error('Gemini request failed.');
 }
 
 async function isAdmin(req, supabaseAdmin) {
