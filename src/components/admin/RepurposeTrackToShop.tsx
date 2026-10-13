@@ -136,6 +136,27 @@ const generateDescriptiveCaption = (request: BackingRequest, originalCaption: st
   return newCaption;
 };
 
+const EMPTY_PRODUCT_FORM: ProductForm = {
+  title: '',
+  description: '',
+  price: '',
+  currency: 'AUD',
+  image_url: '',
+  track_urls: [],
+  is_active: true,
+  artist_name: '',
+  category: '',
+  vocal_ranges: [],
+  sheet_music_url: '',
+  key_signature: '',
+  show_sheet_music_url: true,
+  show_key_signature: true,
+  cut_description: '',
+  official_score_url: '',
+  track_type: '',
+  master_download_link: '',
+};
+
 // Shared normalisation for a backing_requests row (completed list + deep-link).
 const normalizeRequest = (req: Record<string, unknown>): BackingRequest => ({
   ...(req as unknown as BackingRequest),
@@ -162,26 +183,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const [useFilenameCaption, setUseFilenameCaption] = useState(true);
   const [assignmentFilter, setAssignmentFilter] = useState('all');
   
-  const [productForm, setProductForm] = useState<ProductForm>({
-    title: '',
-    description: '',
-    price: '',
-    currency: 'AUD',
-    image_url: '',
-    track_urls: [],
-    is_active: true,
-    artist_name: '',
-    category: '',
-    vocal_ranges: [],
-    sheet_music_url: '',
-    key_signature: '',
-    show_sheet_music_url: true,
-    show_key_signature: true,
-    cut_description: '',
-    official_score_url: '',
-    track_type: '',
-    master_download_link: '',
-  });
+  const [productForm, setProductForm] = useState<ProductForm>(EMPTY_PRODUCT_FORM);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -399,11 +401,7 @@ const RepurposeTrackToShop: React.FC = () => {
   const handleClearSourceRequest = () => {
     setSelectedRequestIds([]);
     setIsFormPreFilled(false);
-    setProductForm({
-      title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-      artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true, cut_description: '', official_score_url: '',
-      track_type: '', master_download_link: '',
-    });
+    setProductForm({ ...EMPTY_PRODUCT_FORM });
     setImageFile(null);
     setSheetMusicFile(null);
     toast({
@@ -582,16 +580,13 @@ const RepurposeTrackToShop: React.FC = () => {
       });
       setSelectedRequestIds([]);
       setIsFormPreFilled(false);
-      setProductForm({
-        title: '', description: '', price: '', currency: 'AUD', image_url: '', track_urls: [], is_active: true,
-        artist_name: '', category: '', vocal_ranges: [], sheet_music_url: '', key_signature: '', show_key_signature: true, show_sheet_music_url: true, cut_description: '', official_score_url: '',
-        track_type: '', master_download_link: '',
-      });
+      setProductForm({ ...EMPTY_PRODUCT_FORM });
       setImageFile(null);
       setSheetMusicFile(null);
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] });
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
+      queryClient.invalidateQueries({ queryKey: ['active_shop_products'] });
     },
     onError: (err: unknown) => {
       toast({
