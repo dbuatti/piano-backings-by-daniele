@@ -55,7 +55,11 @@ No emojis. Write like a friendly professional, never hype.`;
 // Override the whole list with the GEMINI_MODEL secret if needed.
 function geminiModels() {
   const override = Deno.env.get('GEMINI_MODEL');
-  return [...new Set([override, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash'].filter(Boolean))];
+  return [
+    ...new Set(
+      [override, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-2.5-flash'].filter(Boolean)
+    ),
+  ];
 }
 
 async function callGemini(apiKey, prompt) {
@@ -88,7 +92,9 @@ async function callGemini(apiKey, prompt) {
       return JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
     }
 
-    lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${(await res.text()).slice(0, 200)}`);
+    const detail = (await res.text()).slice(0, 200);
+    lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${detail}`);
+    console.error(`[draft-publication-metadata] model ${model} failed: ${res.status} ${detail}`);
     // 404 = retired/ unavailable, 503 = overloaded — try the next name. Anything
     // else (bad key, malformed request) won't be fixed by another model.
     if (![404, 503].includes(res.status)) throw lastError;
