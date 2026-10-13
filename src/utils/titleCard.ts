@@ -254,12 +254,12 @@ export function drawCard(
 let logoPromise: Promise<HTMLImageElement | null> | null = null;
 export function loadCardLogo(): Promise<HTMLImageElement | null> {
   if (!logoPromise) {
-    logoPromise = new Promise((resolve) => {
+    logoPromise = new Promise<HTMLImageElement | null>((resolve) => {
       const img = new Image();
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
       img.src = LOGO_SRC;
-    }).then((img) => img).catch(() => null);
+    }).catch(() => null);
   }
   return logoPromise;
 }

@@ -28,11 +28,13 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
     'id, song_title, musical_or_artist, name, song_key, different_key, key_for_track, created_at';
   // no_socials arrives with migration 0039; fall back so the board still loads
   // (tracks just show as allowed) if it hasn't been applied yet.
-  let { data: reqData, error: reqError } = await supabase
+  let reqData: Record<string, unknown>[] | null = null;
+  let reqError: { message?: string } | null = null;
+  ({ data: reqData, error: reqError } = await supabase
     .from('backing_requests')
     .select(selectWithFlag)
     .order('created_at', { ascending: false })
-    .limit(400);
+    .limit(400));
   if (reqError) {
     ({ data: reqData, error: reqError } = await supabase
       .from('backing_requests')

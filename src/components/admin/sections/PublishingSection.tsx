@@ -104,22 +104,30 @@ function SlotSettings() {
   const [timezone, setTimezone] = useState<string | null>(null);
   const [auto, setAuto] = useState<boolean | null>(null);
 
-  const final = (key: 'schedule_mode' | 'interval_days' | 'weekly_dow' | 'weekly_time' | 'timezone' | 'auto_schedule') =>
-    key === 'schedule_mode'
-      ? mode ?? settings.schedule_mode ?? 'weekly'
-      : key === 'interval_days'
-        ? days !== null
+  function final(key: 'schedule_mode'): 'weekly' | 'interval';
+  function final(key: 'interval_days' | 'weekly_dow'): number;
+  function final(key: 'weekly_time' | 'timezone'): string;
+  function final(key: 'auto_schedule'): boolean;
+  function final(key: string): string | number | boolean {
+    switch (key) {
+      case 'schedule_mode':
+        return (mode ?? settings?.schedule_mode ?? 'weekly') as 'weekly' | 'interval';
+      case 'interval_days':
+        return days !== null
           ? Math.min(Math.max(Number(days), 1), 90)
-          : settings.interval_days ?? 3
-        : key === 'weekly_dow'
-          ? dow !== null
-            ? dow
-            : settings.weekly_dow ?? 2
-          : key === 'weekly_time'
-            ? time ?? settings.weekly_time ?? '09:00'
-            : key === 'timezone'
-              ? timezone ?? settings.timezone ?? 'Australia/Sydney'
-              : auto ?? settings.auto_schedule ?? true;
+          : settings?.interval_days ?? 3;
+      case 'weekly_dow':
+        return dow !== null ? dow : settings?.weekly_dow ?? 2;
+      case 'weekly_time':
+        return time ?? settings?.weekly_time ?? '09:00';
+      case 'timezone':
+        return timezone ?? settings?.timezone ?? 'Australia/Sydney';
+      case 'auto_schedule':
+        return auto ?? settings?.auto_schedule ?? true;
+      default:
+        throw new Error(`Unknown setting: ${key}`);
+    }
+  }
 
   const save = async () => {
     const { error } = await supabase
@@ -694,7 +702,6 @@ function QueueRow({
 // ---------------------------------------------------------------------------
 const PublishingSection = () => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
