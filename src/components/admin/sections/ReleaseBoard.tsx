@@ -18,7 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Ban, ExternalLink, ListPlus, Loader2, Music2, PlusCircle, RotateCcw } from 'lucide-react';
-import { useActiveShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
+import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS } from '@/utils/musicalKeys';
@@ -41,12 +41,13 @@ export default function ReleaseBoard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: tracks, isLoading, error } = useDeliveredTracks();
-  const { data: products = [] } = useActiveShopProducts();
+  const { data: products = [] } = useShopProducts();
   const [vetting, setVetting] = useState<string | null>(null);
   const [listing, setListing] = useState<string | null>(null);
 
-  // One-click shop listing: create a sellable product from the delivered track
-  // with sensible defaults, ready to fine-tune in Admin → Shop afterwards.
+  // One-click shop listing: create a DRAFT product from the delivered track with
+  // sensible defaults. It stays inactive until the owner reviews and activates it
+  // in Admin → Shop, so nothing goes public without a look.
   const listProduct = async (t: DeliveredTrack) => {
     if (listing) return;
     setListing(t.requestId);
@@ -65,7 +66,7 @@ export default function ReleaseBoard({
         currency: 'AUD',
         image_url: '',
         track_urls: [{ url: t.url, caption: t.song }],
-        is_active: true,
+        is_active: false,
         category: 'audition-cut',
         track_type: 'polished',
         key_signature: shownKey,
@@ -79,8 +80,8 @@ export default function ReleaseBoard({
         master_download_link: '',
       }]);
       if (e) throw e;
-      await queryClient.invalidateQueries({ queryKey: ['active_shop_products'] });
-      toast({ title: 'Listed in the shop', description: `${t.song} is now in the shop — open Shop to fine-tune it.` });
+      await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+      toast({ title: 'Saved as a shop draft', description: `${t.song} is ready for review — open Shop to check it and activate the listing.` });
     } catch (e) {
       toast({ title: "Couldn't list the track", description: getErrorMessage(e), variant: 'destructive' });
     } finally {
@@ -180,14 +181,24 @@ export default function ReleaseBoard({
                     <PlatformChip label="TikTok" pub={tt} tz={tz} />
                     <PlatformChip label="Instagram" pub={ig} tz={tz} />
                     {shopProduct ? (
-                      <a
-                        href={shopUrl ?? '/shop'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 hover:bg-green-100"
-                      >
-                        Shop <ExternalLink className="h-3 w-3" />
-                      </a>
+                      shopProduct.is_active ? (
+                        <a
+                          href={shopUrl ?? '/shop'}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 hover:bg-green-100"
+                        >
+                          Shop <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <Link
+                          to="/admin?section=shop"
+                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 hover:bg-amber-100"
+                          title="Saved as a draft — review and activate it in Admin → Shop."
+                        >
+                          Shop draft — review
+                        </Link>
+                      )
                     ) : (
                       <span className="inline-flex items-center gap-1">
                         <Button
@@ -196,7 +207,7 @@ export default function ReleaseBoard({
                           onClick={() => listProduct(t)}
                           disabled={listing !== null}
                           className="h-7 rounded-full border-amber-200 bg-amber-50 px-2.5 font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                          title="Instantly list this track in the shop with sensible defaults, then fine-tune it in Admin → Shop."
+                          title="Create a draft shop listing from this track — review and activate it in Admin → Shop."
                         >
                           {listing === t.requestId
                             ? <Loader2 className="h-3 w-3 animate-spin" />

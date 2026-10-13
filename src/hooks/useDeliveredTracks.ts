@@ -119,16 +119,23 @@ export function useDeliveredTracks() {
   });
 }
 
-// Active shop products, mirrored by the release board's shop-gap column.
-export type ShopProductRow = { id: string; title: string; artist_name: string; product_type: string | null };
-export function useActiveShopProducts() {
+// Every shop product (active and draft), mirrored by the release board's
+// shop column so a freshly-created draft listing shows as "draft" until the
+// owner reviews and activates it.
+export type ShopProductRow = {
+  id: string;
+  title: string;
+  artist_name: string;
+  product_type: string | null;
+  is_active: boolean;
+};
+export function useShopProducts() {
   return useQuery({
-    queryKey: ['active_shop_products'],
+    queryKey: ['shop_products'],
     queryFn: async (): Promise<ShopProductRow[]> => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, title, artist_name, product_type')
-        .eq('is_active', true);
+        .select('id, title, artist_name, product_type, is_active');
       if (error) throw error;
       return (data || []) as ShopProductRow[];
     },

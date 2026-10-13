@@ -586,7 +586,7 @@ const RepurposeTrackToShop: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['completedBackingRequests'] });
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
-      queryClient.invalidateQueries({ queryKey: ['active_shop_products'] });
+      queryClient.invalidateQueries({ queryKey: ['shop_products'] });
     },
     onError: (err: unknown) => {
       toast({

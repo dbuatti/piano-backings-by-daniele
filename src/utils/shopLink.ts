@@ -7,6 +7,7 @@ export type ShopProduct = {
   title: string;
   artist_name: string;
   product_type: string | null;
+  is_active?: boolean;
 };
 
 export const slugify = (value: string | null | undefined) =>
