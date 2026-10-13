@@ -31,8 +31,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Video } from 'lucide-react';
+import { CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
+import QueueMoreTracks from '@/components/admin/sections/QueueMoreTracks';
 
 const TIMEZONES = [
   'Australia/Sydney',
@@ -336,7 +337,7 @@ function QueueRow({
   onMutation: () => void;
 }) {
   const { toast } = useToast();
-  const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'refresh' | 'draft' | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'refresh' | 'draft' | 'delete' | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -465,6 +466,43 @@ function QueueRow({
     }, 'schedule', 'Scheduled — uploading to YouTube');
   };
 
+  // Remove a row from the queue. Deletes the publication row; when no other
+  // platform row references the asset (e.g. a TikTok/IG draft of the same
+  // video), the asset and its archived files go too. YouTube history is
+  // untouched — this only cleans our publishing catalogue.
+  const removeRow = () => {
+    if (!window.confirm(
+      'Delete this queued video?\n\nIt is removed from the publishing catalogue. The video is NOT deleted from YouTube itself. This cannot be undone.'
+    )) return;
+    return run(async () => {
+      const { data: sibling, error: sibErr } = await supabase
+        .from('publications')
+        .select('id')
+        .eq('asset_id', publication.asset_id)
+        .neq('id', publication.id)
+        .limit(1)
+        .maybeSingle();
+      if (sibErr) throw sibErr;
+
+      await supabase.storage.from('content').remove(
+        [asset?.storage_path, asset?.preview_path].filter((p): p is string => !!p)
+      );
+
+      if (!sibling) {
+        const { error: assetErr } = await supabase
+          .from('content_assets')
+          .delete()
+          .eq('id', publication.asset_id);
+        if (assetErr) throw assetErr;
+      }
+      const { error: pubErr } = await supabase
+        .from('publications')
+        .delete()
+        .eq('id', publication.id);
+      if (pubErr) throw pubErr;
+    }, 'delete', 'Queued video deleted');
+  };
+
   // Live state from YouTube (promotion to public, processed status, failures)
   // rather than trusting the DB's assumption that the slot has come and gone.
   const checkStatus = () =>
@@ -559,6 +597,11 @@ function QueueRow({
                 {busy === 'refresh' ? '…' : 'Check'}
               </Button>
             )}
+          {publication.status !== 'published' && (
+            <Button variant="outline" size="sm" onClick={removeRow} disabled={busy !== null}>
+              {busy === 'delete' ? '…' : <Trash2 className="h-3.5 w-3.5" />}
+            </Button>
+          )}
         </div>
       </div>
       {showPreview && (
@@ -713,6 +756,8 @@ const PublishingSection = () => {
           )}
         </CardContent>
       </Card>
+
+      <QueueMoreTracks queue={queue} onQueued={() => refetch()} />
 
       {published.length > 0 && (
         <Card className="bg-white border-none shadow-sm rounded-2xl">
