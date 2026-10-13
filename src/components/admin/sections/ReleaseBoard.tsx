@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -69,6 +69,7 @@ export default function ReleaseBoard({
   const [listing, setListing] = useState<string | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
+  const [emailing, setEmailing] = useState(false);
 
   // One-click shop listing: create a DRAFT product from the delivered track with
   // sensible defaults. It stays inactive until the owner reviews and activates it
@@ -177,6 +178,24 @@ export default function ReleaseBoard({
     toast({ title: next ? 'Marked as not for socials' : 'Allowed on socials again' });
   };
 
+  // Runs the server-side audit (same rules, authoritative) and emails the digest.
+  const emailAudit = async () => {
+    setEmailing(true);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('audit-social-gaps', { body: {} });
+      if (invokeError) throw invokeError;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: 'Audit emailed',
+        description: `${data?.not_on_youtube?.length ?? 0} not on YouTube · ${data?.no_shop?.length ?? 0} missing from the shop.`,
+      });
+    } catch (e) {
+      toast({ title: "Couldn't run the audit", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setEmailing(false);
+    }
+  };
+
   if (error) {
     return (
       <Card className="bg-white border-none shadow-sm rounded-2xl">
@@ -241,6 +260,15 @@ export default function ReleaseBoard({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={emailAudit}
+                disabled={emailing}
+                title="Email yourself a digest of what's missing — not on YouTube, not in the shop."
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-gray-300 disabled:opacity-60"
+              >
+                <Mail className="h-3 w-3" /> {emailing ? 'Sending…' : 'Email audit'}
+              </button>
             </div>
             {visibleRows.length === 0 ? (
               <p className="px-4 py-6 text-sm text-gray-400">Nothing here — try another filter.</p>
