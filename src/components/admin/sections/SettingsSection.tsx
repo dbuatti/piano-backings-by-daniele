@@ -15,6 +15,7 @@ import DropboxMonitor from '@/pages/DropboxMonitor';
 import GmailOAuthButton from '@/components/GmailOAuthButton';
 import YouTubeOAuthButton from '@/components/YouTubeOAuthButton';
 import SocialOAuthButtons from '@/components/SocialOAuthButtons';
+import SocialConnectionStatus from '@/components/SocialConnectionStatus';
 import DataImporter from '@/pages/DataImporter';
 import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
@@ -122,8 +123,9 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
               <p className="text-sm text-gray-500">
                 Connect the TikTok and Instagram accounts used for short teaser clips. Once connected,
                 the release board can post teasers alongside the YouTube upload. Requires the app
-                credentials and (for public TikTok posts) a passed Content Posting audit.
+                credentials and (for public TikTok posts) a passed Content Posting                 audit.
               </p>
+              <SocialConnectionStatus />
               <SocialOAuthButtons />
             </CardContent>
           </Card>
