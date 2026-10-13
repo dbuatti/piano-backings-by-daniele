@@ -71,6 +71,8 @@ export default function ReleaseBoard({
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
   const [emailing, setEmailing] = useState(false);
+  const [activating, setActivating] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   // One-click shop listing: create a DRAFT product from the delivered track with
   // sensible defaults. It stays inactive until the owner reviews and activates it
@@ -177,6 +179,40 @@ export default function ReleaseBoard({
     }
     await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
     toast({ title: next ? 'Marked as not for socials' : 'Allowed on socials again' });
+  };
+
+  // Publish a draft shop listing straight from the board, so a one-click "Add to
+  // shop" never stalls waiting on a separate review pass.
+  const activateProduct = async (id: string | undefined, song: string) => {
+    if (!id || activating) return;
+    setActivating(id);
+    try {
+      const { error: e } = await supabase.from('products').update({ is_active: true }).eq('id', id);
+      if (e) throw e;
+      await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+      toast({ title: 'Shop listing activated', description: `${song} is now live in the shop.` });
+    } catch (e) {
+      toast({ title: "Couldn't activate the listing", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setActivating(null);
+    }
+  };
+
+  // Record a missing musical key without leaving the board — the card and the
+  // description pick it up next time the track is queued.
+  const saveKey = async (requestId: string, value: string) => {
+    if (!value || savingKey) return;
+    setSavingKey(requestId);
+    try {
+      const { error: e } = await supabase.from('backing_requests').update({ song_key: value }).eq('id', requestId);
+      if (e) throw e;
+      await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
+      toast({ title: 'Key saved', description: `${value.replace(/\s*\([^)]*\)\s*$/, '')} recorded on the request.` });
+    } catch (e) {
+      toast({ title: "Couldn't save the key", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setSavingKey(null);
+    }
   };
 
   // Runs the server-side audit (same rules, authoritative) and emails the digest.
@@ -300,6 +336,25 @@ export default function ReleaseBoard({
                       {t.show ? `from ${t.show}` : 'Backing track'}
                       {t.key ? ` · ${t.key.replace(/ \([^)]*\)$/, '')}` : ''}
                     </p>
+                    {!t.key && (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-[11px] font-medium text-amber-600">No key recorded</span>
+                        <Select
+                          value=""
+                          onValueChange={(value) => saveKey(t.requestId, value)}
+                          disabled={savingKey !== null}
+                        >
+                          <SelectTrigger className="h-7 w-[150px] text-xs">
+                            <SelectValue placeholder={savingKey === t.requestId ? 'Saving…' : 'Set key'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {KEY_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -317,13 +372,26 @@ export default function ReleaseBoard({
                           Shop <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <Link
-                          to="/admin?section=shop"
-                          className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 hover:bg-amber-100"
-                          title="Saved as a draft — review and activate it in Admin → Shop."
-                        >
-                          Shop draft — review
-                        </Link>
+                        <span className="inline-flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => activateProduct(shopProduct.id, t.song)}
+                            disabled={activating !== null}
+                            className="h-7 rounded-full border-amber-200 bg-amber-50 px-2.5 font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                            title="Publish this draft listing to the shop now — it becomes reachable at its public URL."
+                          >
+                            <CheckCircle2 className="h-3 w-3" />{' '}
+                            {activating === shopProduct.id ? 'Activating…' : 'Shop draft — activate'}
+                          </Button>
+                          <Link
+                            to="/admin?section=shop"
+                            className="rounded-full px-1.5 text-amber-700/70 hover:underline"
+                            title="Open Shop to review the details first."
+                          >
+                            review
+                          </Link>
+                        </span>
                       )
                     ) : (
                       <span className="inline-flex items-center gap-1">
@@ -867,22 +935,28 @@ function VettingDialog({
         .single();
       if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
 
-      const { data: pub, error: pubErr } = await supabase
+      // Queue YouTube as the primary video and track TikTok/Instagram teasers
+      // alongside it so the board shows progress on every platform. The teasers
+      // stay as drafts — posting them waits on the platform integrations.
+      const platforms = ['youtube', 'tiktok', 'instagram'] as const;
+      const { error: pubErr } = await supabase
         .from('publications')
-        .insert({ asset_id: asset.id, platform: 'youtube', status: 'draft' })
-        .select('id')
-        .single();
-      if (pubErr || !pub) throw new Error(pubErr?.message || "Couldn't create the publication.");
+        .insert(platforms.map((platform) => ({ asset_id: asset.id, platform, status: 'draft' })));
+      if (pubErr) throw new Error(pubErr.message || "Couldn't create the publications.");
 
       setPhase('drafting');
-      const { error: draftErr } = await supabase.functions.invoke('draft-publication-metadata', {
-        body: { asset_id: asset.id, platform: 'youtube' },
-      });
-      if (draftErr) throw draftErr;
+      // Draft each platform's caption. Only the YouTube row is required — a
+      // missing teaser caption shouldn't block the video being queued.
+      for (const platform of ['youtube', 'tiktok', 'instagram'] as const) {
+        const { error: draftErr } = await supabase.functions.invoke('draft-publication-metadata', {
+          body: { asset_id: asset.id, platform },
+        });
+        if (draftErr && platform === 'youtube') throw draftErr;
+      }
 
       onQueued();
       onClose();
-      toast({ title: 'Queued for YouTube — needs approval' });
+      toast({ title: 'Queued for YouTube + TikTok/Instagram teasers — needs approval' });
     } catch (e) {
       setPhase('review');
       toast({ title: 'Could not queue this track', description: await getFunctionErrorMessage(e), variant: 'destructive' });

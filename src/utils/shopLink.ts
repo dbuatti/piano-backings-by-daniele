@@ -4,6 +4,7 @@
 export const SITE = 'https://pianobackings.danielebuatti.com';
 
 export type ShopProduct = {
+  id?: string;
   title: string;
   artist_name: string;
   product_type: string | null;

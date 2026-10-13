@@ -737,8 +737,12 @@ const PublishingSection = () => {
 
   const tz = settings?.timezone ?? 'Australia/Sydney';
 
-  const active = queue.filter((p) => p.status !== 'skipped' && p.status !== 'published');
-  const published = queue.filter((p) => p.status === 'published');
+  // The approval queue is YouTube-only: it's the one platform with an uploader.
+  // TikTok/Instagram teaser drafts are tracked on the release board instead, so
+  // they never sit in the queue waiting for an approval that can't publish them.
+  const youtubeQueue = queue.filter((p) => p.platform === 'youtube');
+  const active = youtubeQueue.filter((p) => p.status !== 'skipped' && p.status !== 'published');
+  const published = youtubeQueue.filter((p) => p.status === 'published');
 
   const existingDates = queue
     .map((p) => p.scheduled_for)
@@ -752,7 +756,7 @@ const PublishingSection = () => {
       existingDates
     )[0];
 
-  const counts = queue.reduce<Record<string, number>>((acc, p) => {
+  const counts = youtubeQueue.reduce<Record<string, number>>((acc, p) => {
     acc[p.status] = (acc[p.status] ?? 0) + 1;
     return acc;
   }, {});
@@ -864,7 +868,7 @@ const PublishingSection = () => {
 
       <SlotSettings />
 
-      <UpcomingCalendar queue={queue} tz={tz} />
+      <UpcomingCalendar queue={youtubeQueue} tz={tz} />
 
       <Card className="bg-white border-none shadow-sm rounded-2xl">
         <CardHeader>

@@ -73,12 +73,17 @@ Deno.serve(async (req) => {
   try {
     const { url, serviceKey } = requireSupabaseEnv('audit-social-gaps');
     const supabaseAdmin = createClient(url, serviceKey);
-    if (!(await isAdmin(req, supabaseAdmin))) {
-      return json({ error: 'Forbidden' }, 403);
-    }
 
     const body = await req.json().catch(() => ({}));
-    const shouldEmail = body.email !== false;
+    const isScheduled = body?.scheduled === true;
+    const admin = await isAdmin(req, supabaseAdmin);
+    // Interactive calls must be an admin; the weekly pg_cron job calls with the
+    // public anon key plus `scheduled: true`. That path always emails the fixed
+    // owner addresses and only ever returns counts, never the raw gap lists.
+    if (!admin && !isScheduled) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+    const shouldEmail = admin ? body.email !== false : true;
 
     const ids = await deliveredRequestIds(supabaseAdmin);
     if (!ids.length) {
@@ -139,6 +144,16 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.error('[audit-social-gaps] email failed:', err?.message || err);
       }
+    }
+
+    if (!admin) {
+      // Scheduled/cron caller: report counts only.
+      return json({
+        delivered: ids.length,
+        not_on_youtube: notOnYouTube.length,
+        no_shop: noShop.length,
+        emailed: shouldEmail,
+      });
     }
 
     return json({
