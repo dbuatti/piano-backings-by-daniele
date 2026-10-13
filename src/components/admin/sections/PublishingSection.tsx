@@ -83,12 +83,18 @@ function formatWhen(iso: string | null, tz: string): string {
 function SlotSettings({
   pendingCount = 0,
   existingSlots = [],
+  onRespace,
+  respaceCount = 0,
+  respacing = false,
 }: {
   // How many uploads still need a slot (the not-on-YouTube backlog + anything
   // already queued but not published) and the slots already booked — used for
   // the live "when will this finish?" forecast under the controls.
   pendingCount?: number;
   existingSlots?: Date[];
+  onRespace?: () => void;
+  respaceCount?: number;
+  respacing?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -263,7 +269,14 @@ function SlotSettings({
             </div>
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          {onRespace && (
+            <Button variant="outline" onClick={onRespace} disabled={respacing || respaceCount === 0}>
+              {respacing
+                ? 'Re-spacing…'
+                : `Re-space ${respaceCount} queued video${respaceCount === 1 ? '' : 's'} to this cadence`}
+            </Button>
+          )}
           <Button onClick={save} className="bg-[#1C0357] hover:bg-[#1C0357]/90">Save settings</Button>
         </div>
       </CardContent>
@@ -749,6 +762,7 @@ const PublishingSection = () => {
   // True when the last queue run couldn't read video status from YouTube, so
   // "published" is being inferred from the schedule rather than confirmed.
   const [confirmDegraded, setConfirmDegraded] = useState(false);
+  const [respacing, setRespacing] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -805,6 +819,55 @@ const PublishingSection = () => {
     acc[p.status] = (acc[p.status] ?? 0) + 1;
     return acc;
   }, {});
+
+  // Rows on the schedule (or approved and waiting for one) that a cadence change
+  // can re-book — everything not yet live and not manually skipped.
+  const respaceableCount = youtubeQueue.filter(
+    (p) => p.status === 'approved' || p.status === 'scheduled'
+  ).length;
+
+  // Re-books every pending row onto fresh cadence slots, oldest first, then
+  // nudges the already-uploaded YouTube videos to the same dates.
+  const respace = async () => {
+    const rows = youtubeQueue
+      .filter((p) => p.status === 'approved' || p.status === 'scheduled')
+      .sort((a, b) => ((a.scheduled_for ?? a.created_at) < (b.scheduled_for ?? b.created_at) ? -1 : 1));
+    if (rows.length === 0) {
+      toast({ title: 'Nothing to re-space', description: 'No approved or scheduled videos in the queue.' });
+      return;
+    }
+    if (!window.confirm(`Re-book ${rows.length} queued video${rows.length === 1 ? '' : 's'} onto the current cadence?`)) return;
+    setRespacing(true);
+    try {
+      const slots = allocatePublishingSlots(
+        settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
+        rows.length,
+        []
+      );
+      for (let i = 0; i < rows.length; i++) {
+        const { error } = await supabase
+          .from('publications')
+          .update({ scheduled_for: slots[i].toISOString() })
+          .eq('id', rows[i].id);
+        if (error) throw error;
+      }
+      await refetch();
+      const { data, error: fnErr } = await supabase.functions.invoke('sync-youtube-schedule', { body: {} });
+      if (fnErr) throw fnErr;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: `Re-spaced ${rows.length} video${rows.length === 1 ? '' : 's'}`,
+        description: data?.failed
+          ? `${data.synced} moved on YouTube, ${data.failed} couldn't be moved — reconnect the channel if it persists.`
+          : undefined,
+        variant: data?.failed ? 'destructive' : 'default',
+      });
+    } catch (e) {
+      toast({ title: "Couldn't re-space the queue", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setRespacing(false);
+    }
+  };
 
   const runQueue = async () => {
     const { data, error } = await supabase.functions.invoke('run-publish-queue', { body: {} });
@@ -934,7 +997,13 @@ const PublishingSection = () => {
         </div>
       )}
 
-      <SlotSettings pendingCount={backlog + active.length} existingSlots={existingDates} />
+      <SlotSettings
+        pendingCount={backlog + active.length}
+        existingSlots={existingDates}
+        onRespace={respace}
+        respaceCount={respaceableCount}
+        respacing={respacing}
+      />
 
       <UpcomingCalendar queue={youtubeQueue} tz={tz} />
 
