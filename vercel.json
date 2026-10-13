@@ -19,7 +19,7 @@
     { "source": "/about", "destination": "/seo/about.html" },
     { "source": "/terms", "destination": "/seo/terms.html" },
     { "source": "/privacy", "destination": "/seo/privacy.html" },
-    { "source": "/(login|user-dashboard|gmail-oauth-callback|purchase-confirmation|admin|ig|email-generator)", "destination": "/index.html" },
+    { "source": "/(login|user-dashboard|gmail-oauth-callback|social-oauth-callback|purchase-confirmation|admin|ig|email-generator)", "destination": "/index.html" },
     { "source": "/(test-email|test-email-notification|test-backings|test-dropbox|test-dropbox-credentials)", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/email-generator/:id", "destination": "/index.html" },
