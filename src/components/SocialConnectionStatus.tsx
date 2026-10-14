@@ -12,6 +12,8 @@ interface PlatformStatus {
   connected: boolean;
   account?: string | null;
   expiresAt?: string | null;
+  /** Which Edge Function secrets are set for this platform (booleans only). */
+  configured?: Record<string, boolean>;
 }
 
 interface SocialStatus {
@@ -137,7 +139,14 @@ const SocialConnectionStatus = () => {
                 </button>
               </>
             ) : (
-              <Badge variant="outline" className="text-gray-400">Not connected</Badge>
+              <>
+                <Badge variant="outline" className="text-gray-400">Not connected</Badge>
+                {status?.configured && Object.values(status.configured).some((v) => !v) ? (
+                  <span className="text-[11px] text-amber-600">
+                    credentials not configured yet
+                  </span>
+                ) : null}
+              </>
             )}
           </li>
         );

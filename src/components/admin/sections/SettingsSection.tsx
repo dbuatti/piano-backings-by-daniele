@@ -16,6 +16,7 @@ import GmailOAuthButton from '@/components/GmailOAuthButton';
 import YouTubeOAuthButton from '@/components/YouTubeOAuthButton';
 import SocialOAuthButtons from '@/components/SocialOAuthButtons';
 import SocialConnectionStatus from '@/components/SocialConnectionStatus';
+import PlatformSetupGuide from '@/components/PlatformSetupGuide';
 import DataImporter from '@/pages/DataImporter';
 import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
@@ -122,27 +123,15 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
             <CardContent className="space-y-2">
               <p className="text-sm text-gray-500">
                 Connect the accounts used for the short teaser clips. Once connected, the
-                release board and the 15-minute worker can post teasers alongside the
-                YouTube upload.
+                release board and the 15-minute worker post teasers alongside the YouTube
+                upload. Step-by-step setup, and what each platform can and cannot do
+                automatically, is in the guide below.
               </p>
-              <ul className="list-disc pl-5 text-sm text-gray-500 space-y-1">
-                <li>
-                  <strong className="text-gray-600">TikTok</strong> — posts land as{' '}
-                  <em>Only me</em> until the app passes TikTok's Content Posting audit, and
-                  that audit is unlikely to pass a single-owner, unattended tool. Treat
-                  public TikTok posts as a manual step.
-                </li>
-                <li>
-                  <strong className="text-gray-600">Instagram</strong> — needs a{' '}
-                  <em>professional</em> (Business or Creator) account and a Meta app with
-                  Instagram Business Login. No Facebook Page is required. The token lasts
-                  60 days and is refreshed automatically.
-                </li>
-              </ul>
               <SocialConnectionStatus />
               <SocialOAuthButtons />
             </CardContent>
           </Card>
+          <PlatformSetupGuide />
         </div>
       )}
 

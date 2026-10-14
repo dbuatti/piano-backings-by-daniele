@@ -17,13 +17,30 @@ const json = (body: unknown, status = 200) =>
 
 const ADMIN_EMAILS = ['daniele.buatti@gmail.com', 'pianobackingsbydaniele@gmail.com'];
 
-function summarize(row) {
-  if (!row?.access_token) return { connected: false };
+// Which Edge Function secrets each platform's OAuth exchange needs. Only whether
+// each is set is reported — never the value. The browser cannot see these, so
+// this is the only way the in-app setup guide can tick them off.
+const REQUIRED_SECRETS: Record<string, Record<string, string>> = {
+  tiktok: { clientKey: 'TIKTOK_CLIENT_KEY', clientSecret: 'TIKTOK_CLIENT_SECRET' },
+  instagram: { clientId: 'INSTAGRAM_CLIENT_ID', clientSecret: 'INSTAGRAM_CLIENT_SECRET' },
+};
+
+function configuredFor(platform: string) {
+  const wanted = REQUIRED_SECRETS[platform] ?? {};
+  const out: Record<string, boolean> = {};
+  for (const [label, name] of Object.entries(wanted)) out[label] = !!Deno.env.get(name);
+  return out;
+}
+
+function summarize(row, platform: string) {
   return {
-    connected: true,
-    account: row.display_name ?? null,
-    externalId: row.external_id ?? null,
-    expiresAt: row.expires_at ?? null,
+    connected: !!row?.access_token,
+    account: row?.display_name ?? null,
+    externalId: row?.external_id ?? null,
+    expiresAt: row?.expires_at ?? null,
+    scope: row?.scope ?? null,
+    // False here means the Connect button cannot possibly succeed yet.
+    configured: configuredFor(platform),
   };
 }
 
@@ -46,7 +63,10 @@ Deno.serve(async (req) => {
       getSocialToken(supabaseAdmin, 'instagram'),
     ]);
 
-    return json({ tiktok: summarize(tiktok), instagram: summarize(instagram) });
+    return json({
+      tiktok: summarize(tiktok, 'tiktok'),
+      instagram: summarize(instagram, 'instagram'),
+    });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }
