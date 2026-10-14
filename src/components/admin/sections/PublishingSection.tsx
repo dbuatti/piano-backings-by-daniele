@@ -767,6 +767,7 @@ const PublishingSection = () => {
   const [postingTeasers, setPostingTeasers] = useState(false);
   const [composerId, setComposerId] = useState<string | null>(null);
   const [openingComposer, setOpeningComposer] = useState(false);
+  const [checkingTikTok, setCheckingTikTok] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -890,6 +891,42 @@ const PublishingSection = () => {
       toast({ title: 'Publishing pass complete' });
     }
     refetch();
+  };
+
+  // Asks TikTok what happened to a post that is still "publishing" on our side.
+  const checkTikTok = async () => {
+    setCheckingTikTok(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from('publications')
+        .select('id')
+        .eq('platform', 'tiktok')
+        .eq('status', 'publishing')
+        .not('platform_post_id', 'is', null)
+        .limit(1);
+      if (error) throw error;
+      const id = rows?.[0]?.id;
+      if (!id) {
+        toast({ title: 'No TikTok post is waiting on TikTok' });
+        return;
+      }
+      const { data, error: fnErr } = await supabase.functions.invoke('check-publication-status', {
+        body: { publication_id: id },
+      });
+      if (fnErr) throw fnErr;
+      const result = (data?.results ?? [])[0] as { status?: string; fail_reason?: string | null; error?: string } | undefined;
+      const failed = result?.status === 'FAILED' || !!result?.error;
+      toast({
+        title: result?.status ? `TikTok says: ${result.status}` : 'TikTok status unavailable',
+        description: result?.fail_reason ?? result?.error ?? undefined,
+        variant: failed ? 'destructive' : 'default',
+      });
+      refetch();
+    } catch (e) {
+      toast({ title: "Couldn't check TikTok", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setCheckingTikTok(false);
+    }
   };
 
   // Opens the TikTok compose dialog for the next teaser awaiting a post. TikTok
@@ -1045,6 +1082,9 @@ const PublishingSection = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={checkTikTok} disabled={checkingTikTok}>
+            <RefreshCw className="h-4 w-4" /> {checkingTikTok ? 'Checking…' : 'Check TikTok status'}
+          </Button>
           <Button variant="outline" onClick={openComposer} disabled={openingComposer}>
             <Share2 className="h-4 w-4" /> Compose TikTok post
           </Button>
