@@ -77,7 +77,7 @@ cp .env.example .env          # fill SUPABASE_SERVICE_ROLE_KEY
 npm install && npx playwright install chromium
 # 1) create the session (see "Log in once" below)
 # 2) then install it as a launch agent:
-bash deploy/deploy/install-macos.sh   # note: path is deploy/install-macos.sh
+bash deploy/install-macos.sh
 ```
 `install-macos.sh` writes a `LaunchAgent` that starts the poster at login and
 restarts it if it dies, wrapped in `caffeinate -s` so the Mac won't idle-sleep
@@ -91,17 +91,27 @@ Two things to set on the Mac Mini:
   `tools/tiktok-browser-poster/.auth/profile` on that machine.
 
 ### Logging in without a screen
-The login step needs a visible browser, but the Mac Mini may be headless. Two
-options:
-- **Simplest:** log in on another Mac **on the same network** (same public IP),
-  then copy the profile over:
-  ```bash
-  rsync -a --delete ~/…/tools/tiktok-browser-poster/.auth/profile/ \
-    mac-mini.local:~/…/tools/tiktok-browser-poster/.auth/profile/
-  ```
-  Same public IP is the point — TikTok shouldn't see a host jump.
-- Or enable Screen Sharing on the Mac Mini and run `HEADLESS=0 npm run login`
-  over VNC.
+The login step needs a visible browser, but the Mac Mini may be headless.
+
+**Do not copy the `.auth/profile` folder between Macs.** macOS encrypts
+Chromium's cookie database with a per-machine Keychain key, so a copied profile
+silently comes up logged out. Move the session as plaintext instead:
+
+```bash
+# on the Mac you logged in on:
+cd tools/tiktok-browser-poster
+npm run export-state                 # writes .auth/state.json (plaintext cookies)
+
+# copy just that file over (same LAN = same public IP):
+scp .auth/state.json mac-mini.local:~/…/tools/tiktok-browser-poster/.auth/state.json
+```
+
+On its first run the mini seeds a fresh profile from `.auth/state.json` and
+persists the cookies from then on; `index.ts` refreshes the file each pass so it
+stays in step with the live profile. The poster also re-exports it for you.
+
+(Alternatively, enable Screen Sharing on the mini and run
+`HEADLESS=0 npm run login` over VNC.)
 
 ## Other hosts
 - **Fly.io**: `fly launch` (uses the Dockerfile), mount a volume at `/data`.
