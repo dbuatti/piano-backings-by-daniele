@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -18,53 +19,62 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   instagram: 'Instagram',
 };
 
+// A single exchange runs per visit. The provider code is one-shot, so re-running
+// it on a re-render would fail with "code already used" *after* a success and
+// make a good connection look broken.
+type Phase = 'working' | 'done' | 'error';
+
 const SocialOAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAdmin, isLoading: isAuthLoading, user } = useAdmin();
-  const [status, setStatus] = useState('Processing OAuth callback...');
+  const { isAdmin, isLoading, user } = useAdmin();
+  const [phase, setPhase] = useState<Phase>('working');
+  const [status, setStatus] = useState('Working…');
   const [error, setError] = useState<unknown>(null);
+  const startedRef = useRef(false);
 
-  const state = searchParams.get('state');
-  const platform: SocialPlatform = state === 'instagram' ? 'instagram' : 'tiktok';
+  const platform: SocialPlatform = searchParams.get('state') === 'instagram' ? 'instagram' : 'tiktok';
   const platformLabel = PLATFORM_LABELS[platform];
 
   useEffect(() => {
-    const handleOAuthCallback = async () => {
-      if (isAuthLoading) return;
+    if (isLoading || startedRef.current) return;
+    startedRef.current = true;
 
-      const code = searchParams.get('code');
-      const errorParam = searchParams.get('error');
-      const errorDescription = searchParams.get('error_description');
+    const fail = (err: unknown, message: string) => {
+      console.error('Error in social OAuth callback:', err);
+      setPhase('error');
+      setStatus(message);
+      setError(err);
+      toast({ title: 'Connection failed', description: message, variant: 'destructive' });
+    };
 
-      if (errorParam) {
-        const message = errorDescription || `Authorization failed (${errorParam}).`;
-        setStatus(message);
-        setError(new Error(message));
-        toast({ title: 'OAuth Error', description: message, variant: 'destructive' });
-        return;
-      }
-
-      if (!code) {
-        const message = 'No authorization code found in callback';
-        setStatus(message);
-        setError(new Error(message));
-        toast({ title: 'OAuth Error', description: message, variant: 'destructive' });
-        return;
-      }
-
+    const run = async () => {
       try {
-        setStatus('Exchanging authorization code for tokens...');
+        const code = searchParams.get('code');
+        const providerError = searchParams.get('error');
+        const providerDescription = searchParams.get('error_description');
 
-        if (!user) {
-          throw new Error('You must be logged into the application as an admin to complete this OAuth flow');
+        if (providerError) {
+          fail(
+            new Error(providerDescription || providerError),
+            providerDescription || `${platformLabel} refused the request (${providerError}).`,
+          );
+          return;
         }
-        if (!isAdmin) {
-          throw new Error('Unauthorized: Only an admin can connect a social account');
+        if (!code) {
+          fail(new Error('Missing ?code'), `${platformLabel} did not return an authorization code.`);
+          return;
+        }
+        if (!user || !isAdmin) {
+          fail(
+            new Error('Not an admin session'),
+            'Sign in as an admin first, then press Connect again.',
+          );
+          return;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
+        setStatus(`Exchanging the authorization code with ${platformLabel}…`);
         const redirectUri = `${window.location.origin}/social-oauth-callback`;
         const codeVerifier = platform === 'tiktok' ? takeStoredPkceVerifier() : null;
 
@@ -74,33 +84,44 @@ const SocialOAuthCallback = () => {
         if (fnError) throw fnError;
         if (data?.error) throw new Error(data.error);
 
-        setStatus(`${platformLabel} connected!`);
+        setPhase('done');
+        setStatus(
+          data?.account
+            ? `${platformLabel} connected as “${data.account}”.`
+            : `${platformLabel} connected.`,
+        );
         toast({
-          title: 'Success',
+          title: 'Connected',
           description: data?.account
-            ? `${platformLabel} connected as "${data.account}".`
-            : `${platformLabel} connected successfully.`,
+            ? `${platformLabel} is linked as “${data.account}”.`
+            : `${platformLabel} is linked.`,
         });
 
-        setTimeout(() => navigate('/admin?section=settings&sub=integrations'), 2000);
-      } catch (err: unknown) {
-        console.error('Error in social OAuth callback:', err);
-        setStatus(`Error: ${getErrorMessage(err)}`);
-        setError(err);
-        toast({
-          title: 'Error',
-          description: `Failed to complete OAuth: ${getErrorMessage(err)}`,
-          variant: 'destructive',
-        });
+        // Leave the confirmation on screen for a beat before returning to where
+        // the Connect button lives.
+        window.setTimeout(() => navigate('/admin?section=settings&sub=integrations'), 2000);
+      } catch (err) {
+        fail(
+          err,
+          `Could not finish the ${platformLabel} connection: ${getErrorMessage(err)}`,
+        );
       }
     };
 
-    handleOAuthCallback();
-  }, [searchParams, navigate, toast, isAdmin, isAuthLoading, user, platform, platformLabel]);
+    void run();
+    // searchParams is intentionally omitted: this must run once per mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isAdmin, user, platform, platformLabel, navigate, toast]);
+
+  const heading = phase === 'working' ? 'Connecting' : phase === 'done' ? 'Connected' : 'Failed';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
-      <Seo title={`Connecting ${platformLabel} | Piano Backings by Daniele`} description={`Finishing the ${platformLabel} connection.`} noindex />
+      <Seo
+        title={`Connecting ${platformLabel} | Piano Backings by Daniele`}
+        description={`Finishing the ${platformLabel} connection.`}
+        noindex
+      />
       <Header />
 
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6">
@@ -111,15 +132,24 @@ const SocialOAuthCallback = () => {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl text-[#1C0357]">Processing Authorization</CardTitle>
+            <CardTitle className="text-2xl text-[#1C0357]">
+              {platformLabel} — {heading}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1C0357] mb-4"></div>
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              {phase === 'working' && (
+                <div className="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-[#1C0357]" />
+              )}
+              {phase === 'done' && <CheckCircle2 className="h-12 w-12 text-emerald-600" />}
+              {phase === 'error' && <XCircle className="h-12 w-12 text-red-500" />}
               <p className="text-lg">{status}</p>
+              {phase === 'done' && (
+                <p className="text-sm text-gray-500">Returning to Settings…</p>
+              )}
             </div>
 
-            {error && (
+            {error != null && (
               <div className="mt-6">
                 <ErrorDisplay error={error} title="OAuth Error" />
               </div>
