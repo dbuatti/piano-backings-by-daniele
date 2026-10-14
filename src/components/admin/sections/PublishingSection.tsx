@@ -900,6 +900,7 @@ const PublishingSection = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const results = (data?.results ?? []) as { ok: boolean; platform: string; error?: string }[];
+      const created = (data?.created ?? 0) as number;
       const ok = results.filter((r) => r.ok).length;
       const failed = results.filter((r) => !r.ok);
       refetch();
@@ -907,7 +908,11 @@ const PublishingSection = () => {
         title: results.length
           ? `Posted ${ok} teaser${ok === 1 ? '' : 's'}`
           : 'No teasers ready to post',
-        description: failed.length ? `${failed.length} failed — ${failed[0]?.error}` : undefined,
+        description: failed.length
+          ? `${failed.length} failed — ${failed[0]?.error}`
+          : created
+            ? `Created ${created} teaser row${created === 1 ? '' : 's'} for approved videos.`
+            : undefined,
         variant: failed.length ? 'destructive' : 'default',
       });
     } catch (e) {

@@ -95,28 +95,61 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const assetIdFilter = body?.assetId ?? null;
 
-    // YouTube is the approval gate: only assets whose YouTube row has advanced.
+    // YouTube is the approval gate: only assets whose YouTube row has advanced
+    // past review. We also create the TikTok/Instagram teaser rows for any such
+    // track that lacks them (videos queued before the teaser pipeline existed),
+    // reusing the same recorded asset — no re-recording needed.
     const { data: ytRows } = await supabaseAdmin
       .from('publications')
-      .select('asset_id')
+      .select('asset_id, metadata')
       .eq('platform', 'youtube')
       .in('status', ['approved', 'scheduled', 'publishing', 'published']);
-    const approvedAssets = new Set((ytRows || []).map((r) => r.asset_id));
-    if (approvedAssets.size === 0) {
-      return json({ processed: 0, results: [], note: 'No approved tracks yet.' });
+    const approvedYt = (ytRows || []).filter((r) => r.asset_id);
+    if (approvedYt.length === 0) {
+      return json({ created: 0, processed: 0, results: [], note: 'No approved tracks yet.' });
     }
 
+    const { data: existingTeasers } = await supabaseAdmin
+      .from('publications')
+      .select('asset_id, platform')
+      .in('platform', ['tiktok', 'instagram'])
+      .in('asset_id', approvedYt.map((r) => r.asset_id));
+    const haveTeaser = new Set((existingTeasers || []).map((r) => `${r.asset_id}:${r.platform}`));
+
+    const newRows = [];
+    for (const yt of approvedYt) {
+      const meta = (yt.metadata || {}) as Record<string, unknown>;
+      for (const platform of ['tiktok', 'instagram']) {
+        if (haveTeaser.has(`${yt.asset_id}:${platform}`)) continue;
+        newRows.push({
+          asset_id: yt.asset_id,
+          platform,
+          status: 'pending_approval',
+          // Seed the teaser caption from the approved YouTube metadata.
+          metadata: { title: meta.title ?? null, hashtags: meta.hashtags ?? [] },
+        });
+      }
+    }
+    let created = 0;
+    if (newRows.length) {
+      const { error: insErr } = await supabaseAdmin.from('publications').insert(newRows);
+      if (insErr) throw insErr;
+      created = newRows.length;
+    }
+
+    // Post both freshly-created and previously-drafted teasers.
     let query = supabaseAdmin
       .from('publications')
       .select('*, content_assets(*)')
       .in('platform', ['tiktok', 'instagram'])
-      .eq('status', 'draft')
+      .in('status', ['draft', 'pending_approval'])
       .limit(BATCH_LIMIT);
     if (assetIdFilter) query = query.eq('asset_id', assetIdFilter);
 
     const { data: rows, error: rowsErr } = await query;
     if (rowsErr) throw rowsErr;
 
+    const approvedAssets = new Set(approvedYt.map((r) => r.asset_id));
     const eligible = (rows || []).filter((r) => approvedAssets.has(r.asset_id));
     const results = [];
 
@@ -182,7 +215,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ processed: results.length, results });
+    return json({ created, processed: results.length, results });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }
