@@ -15,12 +15,27 @@ LABEL="com.pianobackings.tiktok-poster"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
-NODE_BIN="$(command -v node || true)"
-NPM_BIN="$(command -v npm || true)"
-if [[ -z "$NODE_BIN" || ! -x "$NPM_BIN" ]]; then
-  echo "Couldn't find node/npm on PATH. Install Node (e.g. via Homebrew) first." >&2
+# Node detection: pick a modern Node (18+). Homebrew's node can be shadowed by
+# an older /usr/local/bin/node, so probe the common locations and take the first
+# that is new enough — otherwise the agent would run an ancient Node and die.
+NODE_BIN=""
+NODE_DIR=""
+for candidate in /opt/homebrew/bin/node /usr/local/bin/node "$(command -v node || true)"; do
+  [[ -n "$candidate" && -x "$candidate" ]] || continue
+  major="$("$candidate" -v 2>/dev/null | sed 's/^v//' | cut -d. -f1)"
+  [[ "$major" =~ ^[0-9]+$ ]] || continue
+  if (( major >= 18 )); then
+    NODE_BIN="$candidate"
+    NODE_DIR="$(dirname "$candidate")"
+    break
+  fi
+done
+if [[ -z "$NODE_BIN" ]]; then
+  echo "No Node 18+ found (looked at /opt/homebrew/bin/node and /usr/local/bin/node)." >&2
+  echo "Install one with: brew install node" >&2
   exit 1
 fi
+
 if [[ ! -f "$HERE/.env" ]]; then
   echo "Missing $HERE/.env — copy .env.example and fill in SUPABASE_SERVICE_ROLE_KEY first." >&2
   exit 1
@@ -50,13 +65,13 @@ cat > "$PLIST" <<PLIST_EOF
     <string>/usr/bin/caffeinate</string>
     <string>-s</string>
     <string>$NODE_BIN</string>
-    <string>$HERE/node_modules/.bin/tsx</string>
+    <string>$HERE/node_modules/tsx/dist/cli.mjs</string>
     <string>src/index.ts</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>$(dirname "$NODE_BIN"):/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>$NODE_DIR:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>HEADLESS</key>
     <string>1</string>
   </dict>
@@ -72,9 +87,18 @@ cat > "$PLIST" <<PLIST_EOF
 </plist>
 PLIST_EOF
 
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl unload "$PLIST" 2>/dev/null || true
-launchctl load "$PLIST"
+if ! launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null; then
+  launchctl load "$PLIST" 2>/dev/null || true
+fi
+launchctl kickstart -k "gui/$(id -u)/$LABEL" 2>/dev/null || true
 
-echo "Installed and started: $LABEL"
+if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+  echo "Installed and running: $LABEL"
+else
+  echo "Installed $LABEL, but it isn't running yet."
+  echo "Over SSH with no desktop session? Enable auto-login on the mini so the agent can start."
+fi
 echo "Logs:   tail -f \"$HERE/.launchd.out.log\" \"$HERE/.launchd.err.log\""
 echo "Stop:   launchctl unload \"$PLIST\""

@@ -59,6 +59,12 @@ export async function checkLoggedIn(ctx: BrowserContext): Promise<boolean> {
   }
 }
 
+/** True once TikTok has issued us a real logged-in session cookie. */
+export async function hasSessionCookie(ctx: BrowserContext): Promise<boolean> {
+  const cookies = await ctx.cookies('https://www.tiktok.com');
+  return cookies.some((c) => c.name === 'sessionid' || c.name === 'sid_tt');
+}
+
 export async function screenshotOnFailure(page: Page, tag: string): Promise<void> {
   const fs = await import('node:fs/promises');
   await fs.mkdir(config.screenshotsDir, { recursive: true });

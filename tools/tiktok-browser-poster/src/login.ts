@@ -1,37 +1,42 @@
-import { openContext, UPLOAD_URL, checkLoggedIn } from './browser.js';
+import { openContext, hasSessionCookie, UPLOAD_URL } from './browser.js';
 import { config } from './config.js';
 import { log } from './logger.js';
 
 // One-time (occasional) interactive login. Run this on the SAME machine/IP the
 // poster runs on, so TikTok doesn't see the session jump hosts later.
 //
-//   Desktop:  HEADLESS=0 pnpm login
-//   Server:   run with a virtual display, e.g.  xvfb-run -a pnpm login
-//             (or use a VNC/remote-desktop into the container and HEADLESS=0)
+//   Desktop:  HEADLESS=0 npm run login
+//   Server:   connect over Screen Sharing / VNC and double-click login.command
 //
-// Log in by hand (including any 2FA / CAPTCHA), then come back and press Enter.
+// Log in by hand (including any 2FA / CAPTCHA). You don't need to press anything:
+// this finishes on its own the moment the login is detected.
+const TIMEOUT_MIN = Number(process.env.LOGIN_TIMEOUT_MINUTES ?? 20);
 
 async function main(): Promise<void> {
   const ctx = await openContext();
   const page = await ctx.newPage();
   await page.goto(UPLOAD_URL, { waitUntil: 'domcontentloaded' }).catch(() => {});
 
-  log.info('A browser window is open. Log into TikTok by hand (2FA included).');
-  log.info('When the upload page is showing, come back here and press Enter.');
+  log.info('A browser window is open. Log into TikTok by hand (2FA / CAPTCHA included).');
+  log.info(`Waiting up to ${TIMEOUT_MIN} minutes. It finishes on its own once you are logged in.`);
 
-  await new Promise<void>((resolve) => {
-    process.stdin.resume();
-    process.stdin.once('data', () => resolve());
-  });
+  const deadline = Date.now() + TIMEOUT_MIN * 60_000;
+  let ok = false;
+  while (Date.now() < deadline) {
+    if (await hasSessionCookie(ctx).catch(() => false)) {
+      ok = true;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 4000));
+  }
 
-  const ok = await checkLoggedIn(ctx);
-  await page.close();
+  await page.close().catch(() => {});
   await ctx.close(); // persists the profile to disk (config.userDataDir)
 
   if (ok) {
-    log.info(`Session saved to ${config.userDataDir}. You can now run the poster.`);
+    log.info(`Session saved to ${config.userDataDir}. You can run the poster now.`);
   } else {
-    log.error('Login not detected — the upload page did not load logged in. Try again.');
+    log.error('Timed out before a login was detected. Try again.');
     process.exit(1);
   }
 }
