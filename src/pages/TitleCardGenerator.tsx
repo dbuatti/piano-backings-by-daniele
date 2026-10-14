@@ -270,8 +270,10 @@ const formatClock = (seconds: number) => {
   return `${m}:${String(s % 60).padStart(2, "0")}`;
 };
 
-// Teasers for TikTok / Instagram: the same card for ~30s with a "Full version
-// on YouTube" footer band pointing viewers to the full-length channel upload.
+// Teasers for TikTok / Instagram: the same card over the full track, with a
+// "Full version on YouTube" footer band. The full length matters — a duet copies
+// the whole audio track, so a trimmed clip would hand collaborators a fragment.
+// TEASER_SECONDS is only the length of a silent card when no track is loaded.
 const TEASER_SECONDS = 30;
 
 // ---------- Page ----------
@@ -954,13 +956,13 @@ export default function TitleCardGenerator() {
     }
   }, [recording, publishing, queuing, recordClip, captureCardPreview, state, selectedTrack, linkedRequest]);
 
-  // 30s teaser aimed at TikTok / Instagram: same background, a "Full version on
-  // YouTube" footer band, and at most ~30s of the track. Same background-safe
-  // recorder, so it too completes even if the user navigates away.
+  // Teaser aimed at TikTok / Instagram: same background, a "Full version on
+  // YouTube" footer band, and the whole track so duets inherit the full audio.
+  // Same background-safe recorder, so it too completes if the user navigates away.
   const recordTeaser = useCallback(
     async (
       onProgress?: (loaded: number, total: number) => void
-    ): Promise<Blob | null> => {
+    ): Promise<{ blob: Blob; duration: number } | null> => {
       const cv = canvasRef.current;
       if (!cv || typeof MediaRecorder === "undefined") return null;
 
@@ -975,7 +977,7 @@ export default function TitleCardGenerator() {
           throw new Error(`Couldn't load the backing track (${response.status}).`);
         }
         const decoded = await context.decodeAudioData(await response.arrayBuffer());
-        duration = Math.min(decoded.duration, TEASER_SECONDS);
+        duration = decoded.duration;
         const source = context.createBufferSource();
         source.buffer = decoded;
         source.connect(context.destination);
@@ -1005,12 +1007,12 @@ export default function TitleCardGenerator() {
       });
 
       paint();
-      return blob;
+      return blob ? { blob, duration } : null;
     },
     [dims.w, dims.h, state, logoImg, paint, audioUrl]
   );
 
-  // Save a 30s teaser (TikTok + Instagram) into the publishing catalogue without
+  // Save a teaser (TikTok + Instagram) into the publishing catalogue without
   // posting: uploads the clip, creates one asset + a tiktok + an instagram draft,
   // then AI-drafts each platform's caption and flags them for approval.
   const addTeaserToQueue = useCallback(async () => {
@@ -1020,10 +1022,11 @@ export default function TitleCardGenerator() {
     setQueueResult(null);
     setQueueError(null);
     try {
-      const blob = await recordTeaser((loaded, total) =>
+      const recorded = await recordTeaser((loaded, total) =>
         setPublishProgress({ loaded, total })
       );
-      if (!blob) throw new Error("Recording failed in this browser.");
+      if (!recorded) throw new Error("Recording failed in this browser.");
+      const { blob, duration: recordedDuration } = recorded;
       setQueueStep("uploading");
       setPublishProgress({ loaded: 0, total: blob.size });
 
@@ -1062,7 +1065,7 @@ export default function TitleCardGenerator() {
           dedication:
             state.dedication.trim() || (linkedRequest?.client ?? null) || null,
           request_id: selectedTrack?.requestId ?? null,
-          duration_seconds: TEASER_SECONDS,
+          duration_seconds: recordedDuration,
           aspect: state.aspect,
           created_by: user.user?.id ?? null,
         })
@@ -1091,7 +1094,7 @@ export default function TitleCardGenerator() {
       setQueueResult(
         draftsFailed
           ? "Teaser saved for TikTok & Instagram, but the AI caption draft failed. Re-draft or edit it in Admin → Publishing."
-          : "30s teaser saved for TikTok & Instagram with AI-drafted captions. Review them in Admin → Publishing."
+          : "Teaser saved for TikTok & Instagram with AI-drafted captions. Review them in Admin → Publishing."
       );
     } catch (e) {
       setQueueError(e instanceof Error ? e.message : "Failed to save the teaser.");
@@ -1471,8 +1474,9 @@ export default function TitleCardGenerator() {
             Save teaser (TikTok & IG)
           </button>
           <p className="mt-2 text-[11px] text-gray-400">
-            30-second teaser that points to the full version on YouTube — approved
-            captions appear under TikTok & Instagram in Admin → Publishing.
+            Full-length teaser that points to the full version on YouTube — so a
+            duet carries the whole backing track. Approved captions appear under
+            TikTok & Instagram in Admin → Publishing.
           </p>
           {queuing && queueStep === "recording" && publishProgress && (
             <p className="mt-2 text-[11px] text-gray-500">

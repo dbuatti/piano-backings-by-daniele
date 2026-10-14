@@ -1146,8 +1146,8 @@ function VettingDialog({
           key: key || null,
           dedication: track.client ? `prepared for ${track.client.trim().split(/\s+/)[0]}` : null,
           request_id: track.requestId,
-          duration_seconds: null,
-          aspect: '16:9',
+          duration_seconds: decoded.duration || null,
+          aspect: teaserOnly ? '9:16' : '16:9',
           created_by: user.user?.id ?? null,
         })
         .select('id')
