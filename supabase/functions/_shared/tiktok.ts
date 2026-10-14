@@ -126,7 +126,11 @@ export async function publishTikTokVideo(
   const publishId = initData?.data?.publish_id;
   const uploadUrl = initData?.data?.upload_url;
   if (!initRes.ok || !publishId || !uploadUrl) {
-    throw new Error(initData?.error?.message || `TikTok init failed (${initRes.status})`);
+    const code = initData?.error?.code;
+    const detail = initData?.error?.message;
+    throw new Error(
+      `TikTok init failed (${initRes.status})${code ? ` [${code}]` : ''}: ${detail || 'no detail'}`
+    );
   }
 
   const contentType = meta.mimeType || 'video/webm';
