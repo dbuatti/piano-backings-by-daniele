@@ -1125,7 +1125,10 @@ function VettingDialog({
 
       setRecording({ loaded: 0, total: decoded.duration || 6 });
       setPhase('recording');
-      const fade = 1.1;
+      // Teasers open straight on the card: TikTok's first second decides the
+      // scroll, and the pink fade-in spent it on a blank frame. YouTube keeps the
+      // fade, where an intro reads as intentional.
+      const fade = teaserOnly ? 0 : 1.1;
       const blob = await recordCanvasClip({
         canvas: cv,
         duration: decoded.duration || 6,
@@ -1136,10 +1139,12 @@ function VettingDialog({
         drawFrame: (elapsed) => {
           if (!cvCtx) return;
           drawCard(cvCtx, cw, ch, card, logoImg);
-          const p = Math.min(elapsed / fade, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
-          cvCtx.fillRect(0, 0, cw, ch);
+          if (fade > 0) {
+            const p = Math.min(elapsed / fade, 1);
+            const ease = 1 - Math.pow(1 - p, 3);
+            cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+            cvCtx.fillRect(0, 0, cw, ch);
+          }
         },
 
       });

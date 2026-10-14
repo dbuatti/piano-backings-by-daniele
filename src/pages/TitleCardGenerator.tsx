@@ -972,8 +972,8 @@ export default function TitleCardGenerator() {
       const cvCtx = cv.getContext("2d");
       const W = dims.w;
       const H = dims.h;
-      const fade = 1.1;
 
+      // No fade: a teaser should open on the card, not on a blank pink frame.
       const blob = await recordCanvasClip({
         canvas: cv,
         duration,
@@ -982,10 +982,6 @@ export default function TitleCardGenerator() {
         drawFrame: (elapsed) => {
           if (!cvCtx) return;
           drawCard(cvCtx, W, H, state, logoImg);
-          const p = Math.min(elapsed / fade, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
-          cvCtx.fillRect(0, 0, W, H);
         },
         onProgress: (p) => onProgress?.(p.loaded, p.total),
       });
