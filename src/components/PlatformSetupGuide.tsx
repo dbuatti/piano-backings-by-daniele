@@ -242,16 +242,17 @@ const PlatformSetupGuide = () => {
                   <Field value="INSTAGRAM_CLIENT_ID" /> <Field value="INSTAGRAM_CLIENT_SECRET" />
                 </li>
                 <li>
-                  Frontend environment (build-time):{' '}
-                  <Field value="VITE_INSTAGRAM_CLIENT_ID" /> (same value as the app ID)
+                  Frontend environment: <Field value="VITE_INSTAGRAM_CLIENT_ID" /> (same value as
+                  the app ID) — Vercel → Settings → Environment Variables.
                 </li>
               </ul>
             </Step>
             <Step n={5}>
               <p>
-                Redeploy the frontend — a <code className="text-[11px]">VITE_</code> value is
-                baked in at build time, so editing the env alone changes nothing until the next
-                build. The Edge secrets are picked up on the next call.
+                Redeploy the frontend (Vercel → Deployments → Redeploy) — a{' '}
+                <code className="text-[11px]">VITE_</code> value is baked in at build time, so
+                editing the env alone changes nothing until the next build. The Edge secrets are
+                picked up on the next call.
               </p>
             </Step>
             <Step n={6}>
@@ -313,7 +314,8 @@ const PlatformSetupGuide = () => {
                   <Field value="TIKTOK_CLIENT_SECRET" />
                 </li>
                 <li>
-                  Frontend environment (build-time): <Field value="VITE_TIKTOK_CLIENT_KEY" />
+                  Frontend environment (Vercel → Settings → Environment Variables):{' '}
+                  <Field value="VITE_TIKTOK_CLIENT_KEY" />
                 </li>
               </ul>
             </Step>
