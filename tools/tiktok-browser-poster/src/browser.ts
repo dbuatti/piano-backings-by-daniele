@@ -68,15 +68,17 @@ export async function checkLoggedIn(ctx: BrowserContext): Promise<boolean> {
   const page = await ctx.newPage();
   try {
     await page.goto(UPLOAD_URL, { waitUntil: 'domcontentloaded', timeout: 45_000 });
-    await page.waitForTimeout(4_000);
-    const url = page.url();
-    const blocked = /login|signup|verify|captcha/i.test(url);
-    // The file input is visually hidden, so check for presence, not visibility.
-    const uploaderCount = await page
+    // A stale session bounces to a login/signup/verify page.
+    await page.waitForTimeout(2_000);
+    if (/\/(login|signup|verify)|captcha/i.test(page.url())) return false;
+    // The uploader is a React app that mounts a little after DOMContentLoaded,
+    // and its file input is visually hidden — wait until it is attached rather
+    // than counting it immediately (which raced and gave false negatives).
+    await page
       .locator('input[type="file"]')
-      .count()
-      .catch(() => 0);
-    return !blocked && uploaderCount > 0;
+      .first()
+      .waitFor({ state: 'attached', timeout: 25_000 });
+    return true;
   } catch (err) {
     log.warn('login check failed:', (err as Error).message);
     return false;
