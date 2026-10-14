@@ -79,6 +79,12 @@ export interface TikTokPostOptions {
   brandOrganic?: boolean;
   brandContent?: boolean;
   mimeType?: string;
+  /**
+   * Frame used as the post's cover, in milliseconds. Without it TikTok uses the
+   * first frame — for these cards that is the blank pink of the fade-in, so the
+   * cover would carry none of the title.
+   */
+  videoCoverTimestampMs?: number;
 }
 
 // Initialise a direct post, upload the single/first chunk, then wait for TikTok
@@ -128,6 +134,9 @@ export async function publishTikTokVideo(
         // Commercial content disclosure (guideline §3).
         brand_organic_toggle: meta.brandOrganic ?? false,
         brand_content_toggle: meta.brandContent ?? false,
+        ...(meta.videoCoverTimestampMs != null
+          ? { video_cover_timestamp_ms: meta.videoCoverTimestampMs }
+          : {}),
       },
       source_info: {
         source: 'FILE_UPLOAD',

@@ -13,6 +13,10 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+// Frame used as the post's cover. The recording fades the card in over 1.1s, so
+// the first frame is flat pink with no text on it.
+const COVER_TIMESTAMP_MS = 1500;
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -104,6 +108,9 @@ Deno.serve(async (req) => {
         brandOrganic,
         brandContent,
         mimeType: asset.mime_type,
+        // Use the card itself as the cover: the first ~1.1s is the pink fade-in,
+        // and TikTok defaults the cover to the very first frame.
+        videoCoverTimestampMs: COVER_TIMESTAMP_MS,
       });
 
       const row = await getSocialToken(supabaseAdmin, 'tiktok');
@@ -120,6 +127,7 @@ Deno.serve(async (req) => {
             ...(pub.metadata || {}),
             tiktok_post: {
               privacyLevel,
+              videoCoverTimestampMs: COVER_TIMESTAMP_MS,
               disableComment: !!disableComment,
               disableDuet: !!disableDuet,
               disableStitch: !!disableStitch,
