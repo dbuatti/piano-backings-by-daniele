@@ -75,31 +75,37 @@ function TeaserNeeds({
 
   return (
     <div className="space-y-1.5 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5">
-      {lines.map(({ platform, pub, note, action }) => (
-        <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
-          <span className={cn('min-w-0 flex-1', action === 'retry' ? 'text-red-600' : 'text-gray-500')}>
-            {note}
-          </span>
-          {action === 'record' ? (
-            group.requestId ? (
-              <Button size="sm" variant="outline" onClick={() => onRecord(group.requestId as string)}>
-                Record teaser
+      {lines.map(({ platform, pub, note, action }) => {
+        // Only TikTok has a compose flow, and re-recording is the one fix that
+        // helps both platforms. Anything else on Instagram waits on its
+        // connection in Settings → Integrations.
+        const igBlocked = platform === 'instagram' && action !== 'record';
+        return (
+          <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
+            <span className={cn('min-w-0 flex-1', action === 'retry' ? 'text-red-600' : 'text-gray-500')}>
+              {igBlocked ? 'Instagram posting isn’t wired up yet.' : note}
+            </span>
+            {action === 'record' ? (
+              group.requestId ? (
+                <Button size="sm" variant="outline" onClick={() => onRecord(group.requestId as string)}>
+                  Record teaser
+                </Button>
+              ) : (
+                <span className="text-gray-400">Re-record it on the release board</span>
+              )
+            ) : igBlocked ? null : action === 'compose' ? (
+              <Button size="sm" variant="outline" onClick={() => onCompose(pub.id)}>
+                Post it
               </Button>
             ) : (
-              <span className="text-gray-400">Re-record it on the release board</span>
-            )
-          ) : action === 'compose' ? (
-            <Button size="sm" variant="outline" onClick={() => onCompose(pub.id)}>
-              Post it
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => onRetry(pub.id)}>
-              Retry
-            </Button>
-          )}
-        </div>
-      ))}
+              <Button size="sm" variant="outline" onClick={() => onRetry(pub.id)}>
+                Retry
+              </Button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
