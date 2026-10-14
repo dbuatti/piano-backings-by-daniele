@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       .from('publications')
       .select('*, content_assets(*)')
       .in('platform', ['tiktok', 'instagram'])
-      .in('status', ['draft', 'pending_approval'])
+      .in('status', ['draft', 'pending_approval', 'failed'])
       .limit(BATCH_LIMIT);
     if (assetIdFilter) query = query.eq('asset_id', assetIdFilter);
 
@@ -165,17 +165,27 @@ Deno.serve(async (req) => {
           .eq('id', pub.id);
 
         const accessToken = await freshAccessToken(supabaseAdmin, platform);
-        const { data: { publicUrl } } = supabaseAdmin.storage
+        // The `content` bucket is private, so hand out a short-lived signed URL
+        // (getPublicUrl returns a URL that 400s). TikTok downloads the bytes we
+        // fetch from it; Instagram fetches the URL itself before it expires.
+        const { data: signed, error: signErr } = await supabaseAdmin.storage
           .from('content')
-          .getPublicUrl(asset.storage_path);
+          .createSignedUrl(asset.storage_path, 3600);
+        if (signErr || !signed?.signedUrl) {
+          throw new Error(`Couldn't sign the teaser media URL: ${signErr?.message ?? 'no URL returned'}`);
+        }
+        const mediaUrl = signed.signedUrl;
         const caption = captionFor(pub);
 
         let platformPostId = null;
         let url = null;
         if (platform === 'tiktok') {
           const tokenRow = await getSocialToken(supabaseAdmin, 'tiktok');
-          const bytesRes = await fetch(publicUrl);
-          if (!bytesRes.ok) throw new Error(`Couldn't fetch teaser media (${bytesRes.status}).`);
+          const bytesRes = await fetch(mediaUrl);
+          if (!bytesRes.ok) {
+            const detail = (await bytesRes.text().catch(() => '')).slice(0, 200);
+            throw new Error(`Couldn't fetch teaser media (${bytesRes.status}) ${detail}`.trim());
+          }
           const bytes = new Uint8Array(await bytesRes.arrayBuffer());
           const posted = await publishTikTokVideo(accessToken, bytes, {
             caption,
@@ -186,7 +196,7 @@ Deno.serve(async (req) => {
         } else {
           const tokenRow = await getSocialToken(supabaseAdmin, 'instagram');
           const posted = await publishInstagramReel(accessToken, tokenRow?.external_id, {
-            videoUrl: publicUrl,
+            videoUrl: mediaUrl,
             caption,
             mimeType: asset.mime_type,
           });
@@ -207,6 +217,7 @@ Deno.serve(async (req) => {
         results.push({ id: pub.id, platform, ok: true });
       } catch (err) {
         const message = err?.message || String(err);
+        console.error(`[post-social-teasers] ${platform} failed for publication ${pub.id}:`, message);
         await supabaseAdmin
           .from('publications')
           .update({ status: 'failed', error: message, updated_at: new Date().toISOString() })
