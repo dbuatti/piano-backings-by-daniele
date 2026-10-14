@@ -59,6 +59,9 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [creator, setCreator] = useState<CreatorInfo | null>(null);
+  // What the teaser file actually is: platform playback is picky about both the
+  // container and the shape, so the composer says so before anything is posted.
+  const [asset, setAsset] = useState<{ aspect: string | null; mime: string | null } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
@@ -97,6 +100,14 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
         const meta = (pub?.metadata ?? {}) as Record<string, unknown>;
         setCaption(String(meta.caption || meta.title || pub?.content_assets?.title || ''));
         setCreator(creatorData as CreatorInfo);
+        setAsset(
+          pub?.content_assets
+            ? {
+                aspect: pub.content_assets.aspect ?? null,
+                mime: pub.content_assets.mime_type ?? null,
+              }
+            : null
+        );
 
         const storagePath = pub?.content_assets?.storage_path;
         if (storagePath) {
@@ -128,10 +139,15 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
   }, [selectablePrivacy, privacyLevel]);
 
   const disclosureIncomplete = disclosureOn && !brandOrganic && !brandContent;
+  // MP4/MOV only: TikTok's player rejects the older WebM recordings, so posting
+  // one is blocked rather than published and left unplayable.
+  const formatPlayable = !!asset?.mime && /^video\/(mp4|quicktime)$/.test(asset.mime);
+  const isVertical = asset?.aspect === '9:16';
   const canPost =
     !loading &&
     !posting &&
     !!creator &&
+    formatPlayable &&
     caption.trim().length > 0 &&
     privacyLevel !== '' &&
     !disclosureIncomplete;
@@ -209,6 +225,26 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
                 </p>
               </div>
             </div>
+
+            {!formatPlayable && (
+              <Alert className="border-red-200 bg-red-50 text-red-800">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This teaser is an older file format that TikTok can't play. Go to the release
+                  board, choose <strong>Reset teaser</strong>, then <strong>Re-record teaser</strong>,
+                  and post the new one.
+                </AlertDescription>
+              </Alert>
+            )}
+            {formatPlayable && !isVertical && (
+              <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This teaser is landscape, so TikTok will letterbox it. Re-record it from the
+                  release board for a full-screen vertical post.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* §5a: preview */}
             {previewUrl ? (
