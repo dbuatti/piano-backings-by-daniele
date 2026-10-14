@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Eye, RefreshCw, Rocket, Share2, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
 import ReleaseBoard from '@/components/admin/sections/ReleaseBoard';
 import UpcomingCalendar from '@/components/admin/sections/UpcomingCalendar';
@@ -763,6 +763,7 @@ const PublishingSection = () => {
   // "published" is being inferred from the schedule rather than confirmed.
   const [confirmDegraded, setConfirmDegraded] = useState(false);
   const [respacing, setRespacing] = useState(false);
+  const [postingTeasers, setPostingTeasers] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -888,6 +889,34 @@ const PublishingSection = () => {
     refetch();
   };
 
+  // Posts the TikTok/Instagram teaser rows whose track is already approved on
+  // YouTube. Nothing goes out until the video is approved, so this is safe to
+  // run any time; rows with no connected account (or a non-MP4 Instagram source)
+  // fail individually and report back.
+  const postTeasers = async () => {
+    setPostingTeasers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('post-social-teasers', { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const results = (data?.results ?? []) as { ok: boolean; platform: string; error?: string }[];
+      const ok = results.filter((r) => r.ok).length;
+      const failed = results.filter((r) => !r.ok);
+      refetch();
+      toast({
+        title: results.length
+          ? `Posted ${ok} teaser${ok === 1 ? '' : 's'}`
+          : 'No teasers ready to post',
+        description: failed.length ? `${failed.length} failed — ${failed[0]?.error}` : undefined,
+        variant: failed.length ? 'destructive' : 'default',
+      });
+    } catch (e) {
+      toast({ title: "Couldn't post teasers", description: await getFunctionErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setPostingTeasers(false);
+    }
+  };
+
   // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
   // slot in one go, then kick the queue so the first upload begins now.
   // Bulk recovery: (re)generate metadata for every active row that still has no
@@ -978,9 +1007,14 @@ const PublishingSection = () => {
             teased TikTok/Instagram drafts on the release board below.
           </p>
         </div>
-        <Button variant="outline" onClick={runQueue}>
-          <Rocket className="h-4 w-4" /> Run due now
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={postTeasers} disabled={postingTeasers}>
+            <Share2 className="h-4 w-4" /> {postingTeasers ? 'Posting…' : 'Post social teasers'}
+          </Button>
+          <Button variant="outline" onClick={runQueue}>
+            <Rocket className="h-4 w-4" /> Run due now
+          </Button>
+        </div>
       </div>
 
       {confirmDegraded && (
