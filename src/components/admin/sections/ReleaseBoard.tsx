@@ -146,6 +146,48 @@ export default function ReleaseBoard({
     }
   };
 
+  // A published teaser can't be re-recorded in place — the row still points at
+  // the post TikTok already holds. Resetting forgets that reference (and any
+  // failure note) so the track can be recorded and posted again. Nothing is
+  // deleted from TikTok itself; that has to happen in the app.
+  const resetTeaser = async (t: DeliveredTrack) => {
+    if (
+      !window.confirm(
+        `Reset the TikTok/Instagram teaser rows for "${t.song}"? You'll need to record and post them again. Anything already posted on TikTok is not deleted — remove it in the TikTok app.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const { data: rows, error } = await supabase
+        .from('publications')
+        .select('id, content_assets!inner(request_id)')
+        .eq('content_assets.request_id', t.requestId)
+        .in('platform', ['tiktok', 'instagram']);
+      if (error) throw error;
+      const ids = (rows ?? []).map((r) => r.id);
+      if (!ids.length) throw new Error('No TikTok or Instagram row found for this track.');
+      const { error: updErr } = await supabase
+        .from('publications')
+        .update({
+          status: 'pending_approval',
+          platform_post_id: null,
+          published_at: null,
+          error: null,
+        })
+        .in('id', ids);
+      if (updErr) throw updErr;
+      await queryClient.invalidateQueries({ queryKey: ['publications'] });
+      onMutation();
+      toast({
+        title: 'Teaser row reset',
+        description: `${t.song} can be re-recorded and posted again.`,
+      });
+    } catch (e) {
+      toast({ title: "Couldn't reset the teaser", description: getErrorMessage(e), variant: 'destructive' });
+    }
+  };
+
   const pubsForTrack = (song: string, requestId: string, show: string) => {
     const songLc = song.trim().toLowerCase();
     const showLc = show.trim().toLowerCase();
@@ -551,13 +593,24 @@ export default function ReleaseBoard({
                       {yt.platform_post_id ? ` · youtu.be/${yt.platform_post_id}` : ''}
                     </span>
                   )}
+                  {tt && tt.status === 'published' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 rounded-full px-2.5 text-xs"
+                      onClick={() => resetTeaser(t)}
+                      title="Clear the TikTok/Instagram post this row points at so the teaser can be recorded and posted again. Nothing is deleted from TikTok."
+                    >
+                      <RotateCcw className="h-3 w-3" /> Reset teaser
+                    </Button>
+                  )}
                   {tt && tt.status !== 'published' && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-7 shrink-0 rounded-full px-2.5 text-xs"
                       onClick={() => setReRecording(t.requestId)}
-                      title="Record a fresh 30fps teaser and point the TikTok/Instagram rows at it. The YouTube video is not changed."
+                      title="Record a fresh teaser (portrait MP4, full length) and point the TikTok/Instagram rows at it. The YouTube video is not changed."
                     >
                       <RefreshCw className="h-3 w-3" /> Re-record teaser
                     </Button>
