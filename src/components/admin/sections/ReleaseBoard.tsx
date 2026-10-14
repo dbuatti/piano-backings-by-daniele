@@ -23,8 +23,8 @@ import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hook
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
-import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
-import { recordCanvasClip, type ClipProgress } from '@/utils/canvasRecorder';
+import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, drawTeaserFooter, firstNameOf, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
+import { probeVideoBlob, recordCanvasClip, videoFileInfo, type ClipProgress } from '@/utils/canvasRecorder';
 import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -1058,9 +1058,13 @@ function VettingDialog({
         ].map((f) => document.fonts.load(f)),
       ]);
 
+      // TikTok and Instagram Reels are vertical: a teaser-only recording is
+      // captured 9:16 so it fills the phone screen instead of being letterboxed.
+      const cw = teaserOnly ? 1080 : 1920;
+      const ch = teaserOnly ? 1920 : 1080;
       const cv = document.createElement('canvas');
-      cv.width = 1920;
-      cv.height = 1080;
+      cv.width = cw;
+      cv.height = ch;
       const cvCtx = cv.getContext('2d');
 
       const context = new AudioContext();
@@ -1087,24 +1091,36 @@ function VettingDialog({
         onProgress: setRecording,
         drawFrame: (elapsed) => {
           if (!cvCtx) return;
-          drawCard(cvCtx, 1920, 1080, card, logoImg);
+          drawCard(cvCtx, cw, ch, card, logoImg);
           const p = Math.min(elapsed / fade, 1);
           const ease = 1 - Math.pow(1 - p, 3);
           cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
-          cvCtx.fillRect(0, 0, 1920, 1080);
+          cvCtx.fillRect(0, 0, cw, ch);
+          if (teaserOnly) drawTeaserFooter(cvCtx, cw, ch);
         },
+
       });
       if (!blob) throw new Error('Recording failed in this browser.');
+
+      // Refuse to publish a file the browser itself can't decode.
+      const probe = await probeVideoBlob(blob);
+      console.info('[release-board] recorded clip', blob.type, probe);
+      if (!probe || !probe.width || !probe.height) {
+        throw new Error(
+          "The recording couldn't be read back. Close other tabs, then try again — and use an up-to-date Chrome or Safari."
+        );
+      }
 
       setPhase('uploading');
       const { data: user } = await supabase.auth.getUser();
       const id = crypto.randomUUID();
-      const path = `content/${id}.webm`;
+      const file = videoFileInfo(blob.type);
+      const path = `content/${id}.${file.ext}`;
       const previewPath = `content/${id}.preview.png`;
 
       const { error: uploadErr } = await supabase.storage
         .from('content')
-        .upload(path, blob, { contentType: 'video/webm', upsert: false });
+        .upload(path, blob, { contentType: file.mime, upsert: false });
       if (uploadErr) throw uploadErr;
 
       const previewBlob = await captureCardSnapshot(cv);
@@ -1123,7 +1139,7 @@ function VettingDialog({
         .insert({
           storage_path: path,
           preview_path: previewBlob ? previewPath : null,
-          mime_type: 'video/webm',
+          mime_type: file.mime,
           title: titleCore,
           song_title: title.trim(),
           show: cleanedShow || null,
@@ -1167,6 +1183,10 @@ function VettingDialog({
           title: ids.length
             ? `Teaser re-recorded — ${ids.length} TikTok/Instagram row${ids.length === 1 ? '' : 's'} updated`
             : 'Teaser re-recorded — no open teaser rows to update',
+          description:
+            file.mime === 'video/mp4'
+              ? undefined
+              : 'This browser could only record WebM, which TikTok cannot play. Use the latest Chrome or Safari to record an MP4.',
         });
         return;
       }

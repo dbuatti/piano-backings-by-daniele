@@ -257,6 +257,26 @@ export function drawCard(
   }
 }
 
+// Footer band for teaser clips: points viewers at the full-length channel upload.
+export function drawTeaserFooter(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  const bandH = Math.round(H * 0.16);
+  const y = H - bandH;
+  ctx.fillStyle = NAVY;
+  ctx.fillRect(0, y, W, bandH);
+  ctx.fillStyle = KEY_YELLOW;
+  ctx.fillRect(0, y, W, Math.max(3, Math.round(H * 0.006)));
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = WHITE;
+  const fs = Math.max(12, Math.round(Math.min(W, H) * 0.05));
+  ctx.font = `700 ${fs}px ${FONT_SANS}`;
+  ctx.fillText("Full version on YouTube", W / 2, y + bandH * 0.36);
+  ctx.fillStyle = KEY_YELLOW;
+  const sub = Math.max(10, Math.round(fs * 0.55));
+  ctx.font = `400 ${sub}px ${FONT_SANS}`;
+  ctx.fillText("@pianobackingsbydaniele", W / 2, y + bandH * 0.72);
+}
+
 // Preloads the card logo once and shares it across every recording.
 let logoPromise: Promise<HTMLImageElement | null> | null = null;
 export function loadCardLogo(): Promise<HTMLImageElement | null> {

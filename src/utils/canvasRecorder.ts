@@ -14,6 +14,46 @@ export interface ClipProgress {
   total: number;
 }
 
+/** Container/extension for a recorded blob, normalised for platform uploads. */
+export function videoFileInfo(mimeType: string): { mime: string; ext: string } {
+  const base = (mimeType || '').split(';')[0].trim().toLowerCase();
+  if (base === 'video/mp4') return { mime: 'video/mp4', ext: 'mp4' };
+  if (base === 'video/quicktime') return { mime: 'video/quicktime', ext: 'mov' };
+  return { mime: 'video/webm', ext: 'webm' };
+}
+
+export interface VideoProbe {
+  width: number;
+  height: number;
+  duration: number;
+}
+
+// Reads the recorded blob back through a <video> element. If the browser itself
+// cannot open the file, no platform will — better to fail here than to publish
+// an unplayable post.
+export function probeVideoBlob(blob: Blob): Promise<VideoProbe | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const video = document.createElement('video');
+    let settled = false;
+    const done = (value: VideoProbe | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(url);
+      resolve(value);
+    };
+    const timer = setTimeout(() => done(null), 8000);
+    video.preload = 'metadata';
+    video.onloadedmetadata = () =>
+      done({ width: video.videoWidth, height: video.videoHeight, duration: video.duration });
+    video.onerror = () => done(null);
+    video.src = url;
+  });
+}
+
 export interface RecordCanvasClipOptions {
   canvas: HTMLCanvasElement;
   /** Recording length in seconds (the full track, or 6 for a silent card). */
@@ -87,11 +127,27 @@ export async function recordCanvasClip(
   }
 
   const stream = new MediaStream(audioTrack ? [videoTrack, audioTrack] : [videoTrack]);
-  const mimeType = [
-    audioTrack ? 'video/webm;codecs=vp9,opus' : 'video/webm;codecs=vp9',
-    audioTrack ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8',
-    'video/webm',
-  ].find((mime) => MediaRecorder.isTypeSupported(mime));
+  // MP4 (H.264 + AAC) first: that is the container and codec TikTok, Instagram
+  // and YouTube all play. WebM (VP8/VP9 + Opus) stays as the fallback — YouTube
+  // accepts it, but TikTok's player often shows "couldn't play video" for it.
+  const mimeCandidates = audioTrack
+    ? [
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+      ]
+    : [
+        'video/mp4;codecs=avc1.42E01E',
+        'video/mp4;codecs=avc1',
+        'video/mp4',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm',
+      ];
+  const mimeType = mimeCandidates.find((mime) => MediaRecorder.isTypeSupported(mime));
   const recorder = new MediaRecorder(
     stream,
     mimeType ? { mimeType, videoBitsPerSecond: 8_000_000 } : undefined
@@ -143,7 +199,9 @@ export async function recordCanvasClip(
     dest?.disconnect();
     await stopped;
     await audio?.context.close().catch(() => undefined);
-    return new Blob(chunks, { type: 'video/webm' });
+    // Tag with the container the recorder actually produced so uploads carry the
+    // right Content-Type (TikTok validates it).
+    return new Blob(chunks, { type: recorder.mimeType || mimeType || 'video/webm' });
   } finally {
     recording = false;
     activeProgress = null;

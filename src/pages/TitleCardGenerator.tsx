@@ -6,6 +6,7 @@ import {
   isRecordingActive,
   recordCanvasClip,
   subscribeRecording,
+  videoFileInfo,
   type RecordingAudio,
 } from "@/utils/canvasRecorder";
 import { KEY_OPTIONS, keyForDisplay } from "@/utils/musicalKeys";
@@ -18,12 +19,9 @@ import {
   type Aspect,
   type CardState,
   drawCard,
+  drawTeaserFooter,
   firstNameOf,
   LOGO_SRC,
-  NAVY,
-  KEY_YELLOW,
-  WHITE,
-  FONT_SANS,
 } from "@/utils/titleCard";
 
 // Video-game pixel options for the top banner (stand-ins until Arcade Gamer
@@ -230,7 +228,7 @@ async function uploadToYouTube(
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json; charset=UTF-8",
-        "X-Upload-Content-Type": "video/webm",
+        "X-Upload-Content-Type": videoFileInfo(blob.type).mime,
         "X-Upload-Content-Length": String(blob.size),
       },
       body: JSON.stringify(body),
@@ -243,7 +241,7 @@ async function uploadToYouTube(
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", session);
-    xhr.setRequestHeader("Content-Type", "video/webm");
+    xhr.setRequestHeader("Content-Type", videoFileInfo(blob.type).mime);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress?.(e.loaded, e.total);
     };
@@ -275,25 +273,6 @@ const formatClock = (seconds: number) => {
 // Teasers for TikTok / Instagram: the same card for ~30s with a "Full version
 // on YouTube" footer band pointing viewers to the full-length channel upload.
 const TEASER_SECONDS = 30;
-
-function drawTeaserFooter(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const bandH = Math.round(H * 0.16);
-  const y = H - bandH;
-  ctx.fillStyle = NAVY;
-  ctx.fillRect(0, y, W, bandH);
-  ctx.fillStyle = KEY_YELLOW;
-  ctx.fillRect(0, y, W, Math.max(3, Math.round(H * 0.006)));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = WHITE;
-  const fs = Math.max(12, Math.round(Math.min(W, H) * 0.05));
-  ctx.font = `700 ${fs}px ${FONT_SANS}`;
-  ctx.fillText("Full version on YouTube", W / 2, y + bandH * 0.36);
-  ctx.fillStyle = KEY_YELLOW;
-  const sub = Math.max(10, Math.round(fs * 0.55));
-  ctx.font = `400 ${sub}px ${FONT_SANS}`;
-  ctx.fillText("@pianobackingsbydaniele", W / 2, y + bandH * 0.72);
-}
 
 // ---------- Page ----------
 function Field({
@@ -735,7 +714,7 @@ export default function TitleCardGenerator() {
     setRecording(true);
     try {
       const blob = await recordClip();
-      if (blob) download(blob, "webm");
+      if (blob) download(blob, videoFileInfo(blob.type).ext);
     } finally {
       setRecording(false);
     }
@@ -907,11 +886,12 @@ export default function TitleCardGenerator() {
 
       const { data: user } = await supabase.auth.getUser();
       const id = crypto.randomUUID();
-      const path = `content/${id}.webm`;
+      const queueMime = videoFileInfo(blob.type);
+      const path = `content/${id}.${queueMime.ext}`;
       const previewPath = `content/${id}.preview.png`;
       const { error: uploadErr } = await supabase.storage
         .from("content")
-        .upload(path, blob, { contentType: "video/webm", upsert: false });
+        .upload(path, blob, { contentType: queueMime.mime, upsert: false });
       if (uploadErr) throw uploadErr;
 
       const previewBlob = await captureCardPreview();
@@ -931,7 +911,7 @@ export default function TitleCardGenerator() {
         .insert({
           storage_path: path,
           preview_path: previewBlob ? previewPath : null,
-          mime_type: blob.type || "video/webm",
+          mime_type: queueMime.mime,
           title: `${titleCore}${showText ? ` (from ${showText})` : ""}`,
           song_title: state.title.trim() || null,
           show: showText || null,
@@ -1049,11 +1029,12 @@ export default function TitleCardGenerator() {
 
       const { data: user } = await supabase.auth.getUser();
       const id = crypto.randomUUID();
-      const path = `content/${id}-teaser.webm`;
+      const teaserMime = videoFileInfo(blob.type);
+      const path = `content/${id}-teaser.${teaserMime.ext}`;
       const previewPath = `content/${id}-teaser.preview.png`;
       const { error: uploadErr } = await supabase.storage
         .from("content")
-        .upload(path, blob, { contentType: "video/webm", upsert: false });
+        .upload(path, blob, { contentType: teaserMime.mime, upsert: false });
       if (uploadErr) throw uploadErr;
 
       const previewBlob = await captureCardPreview();
@@ -1073,7 +1054,7 @@ export default function TitleCardGenerator() {
         .insert({
           storage_path: path,
           preview_path: previewBlob ? previewPath : null,
-          mime_type: blob.type || "video/webm",
+          mime_type: teaserMime.mime,
           title: `${titleCore}${showText ? ` (from ${showText})` : ""} (Teaser)`,
           song_title: state.title.trim() || null,
           show: showText || null,
