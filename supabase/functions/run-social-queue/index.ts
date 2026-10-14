@@ -80,13 +80,15 @@ Deno.serve(async (req) => {
     const isScheduled = body?.scheduled === true;
     if (!admin && !isScheduled) return json({ error: 'Forbidden' }, 403);
 
-    // Admin-only test hooks: run the post pass for a single platform so the
-    // pipeline can be exercised from the Publishing page.
+    // Admin-only test hooks: run the post pass for a single platform, or post a
+    // single teaser right now (ignoring its slot), so the pipeline can be
+    // proven from the Publishing page.
     const onlyPlatform: 'tiktok' | 'instagram' | null =
       body?.only_platform === 'tiktok' || body?.only_platform === 'instagram'
         ? body.only_platform
         : null;
-    if (onlyPlatform && !admin) return json({ error: 'Forbidden' }, 403);
+    const onlyId = typeof body?.publication_id === 'string' ? body.publication_id : null;
+    if ((onlyPlatform || onlyId) && !admin) return json({ error: 'Forbidden' }, 403);
 
     const { data: settings } = await supabaseAdmin
       .from('publishing_settings')
@@ -96,7 +98,8 @@ Deno.serve(async (req) => {
 
     // The automation switch. An admin can force one pass (used to test), but the
     // cron only ever acts when the setting is on.
-    const enabled = settings?.social_auto_post === true || (admin && body?.force === true);
+    const enabled =
+      settings?.social_auto_post === true || (admin && (body?.force === true || !!onlyId));
     const offsetMs = (settings?.social_offset_minutes ?? 0) * 60_000;
     const tikTokPrivacy = settings?.social_tiktok_privacy || 'SELF_ONLY';
     const nowIso = new Date().toISOString();
@@ -216,16 +219,27 @@ Deno.serve(async (req) => {
     // --- 3) Post the teasers whose slot has arrived. ---
     const posted: Array<Record<string, unknown>> = [];
     try {
-      const dueQuery = supabaseAdmin
+      let dueQuery = supabaseAdmin
         .from('publications')
         .select('*, content_assets(*)')
-        .in('platform', onlyPlatform ? [onlyPlatform] : ['tiktok', 'instagram'])
-        .eq('status', 'scheduled')
-        .lte('scheduled_for', nowIso);
+        .in('platform', onlyPlatform ? [onlyPlatform] : ['tiktok', 'instagram']);
+      if (onlyId) {
+        // Forced single-post: ignore the slot, but never re-post something live.
+        dueQuery = dueQuery.eq('id', onlyId).is('platform_post_id', null);
+      } else {
+        dueQuery = dueQuery.eq('status', 'scheduled').lte('scheduled_for', nowIso);
+      }
       const { data: due, error: dueErr } = await dueQuery
         .order('scheduled_for', { ascending: true })
-        .limit(onlyPlatform ? 20 : BATCH_LIMIT);
+        .limit(onlyId ? 1 : onlyPlatform ? 20 : BATCH_LIMIT);
       if (dueErr) throw dueErr;
+      if (onlyId && (due ?? []).length === 0) {
+        return json({
+          autoPost: enabled,
+          forced: onlyId,
+          note: 'Nothing to post for that teaser — it is missing, or already posted.',
+        });
+      }
 
       for (const pub of due ?? []) {
         const asset = (pub.content_assets || {}) as Record<string, unknown>;
@@ -240,14 +254,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Claim it so a concurrent run can't double-post.
-        const { data: claimed } = await supabaseAdmin
+        // Claim it so a concurrent run can't double-post. A forced single post
+        // skips the slot/status guard (that's the point of forcing it).
+        let claim = supabaseAdmin
           .from('publications')
           .update({ status: 'publishing', attempts: (pub.attempts ?? 0) + 1, updated_at: nowIso })
-          .eq('id', pub.id)
-          .eq('status', 'scheduled')
-          .select('id')
-          .maybeSingle();
+          .eq('id', pub.id);
+        if (!onlyId) claim = claim.eq('status', 'scheduled');
+        const { data: claimed } = await claim.select('id').maybeSingle();
         if (!claimed) continue;
 
         try {
@@ -282,14 +296,30 @@ Deno.serve(async (req) => {
             });
             const tokenRow = await getSocialToken(supabaseAdmin, 'tiktok');
             const completed = result.status === 'PUBLISH_COMPLETE';
+            // TikTok answers with SEND_TO_USER_INBOX when it will not post the
+            // video itself — for an unaudited app it drops it in the creator's
+            // drafts instead. Left alone this looked like an eternal "publishing"
+            // row, so call it out with the one thing that fixes it.
+            const toInbox = result.status === 'SEND_TO_USER_INBOX';
+            const rejected = result.status === 'FAILED';
+            const nextStatus = completed ? 'published' : toInbox || rejected ? 'failed' : 'publishing';
+            const outcomeError = completed
+              ? null
+              : toInbox
+                ? 'TikTok saved this to your drafts inbox instead of posting it — that is what an unaudited app does. Post the draft in TikTok by hand, or finish the Content Posting audit to let it post directly.'
+                : rejected
+                  ? 'TikTok rejected the post.'
+                  : null;
             await supabaseAdmin
               .from('publications')
               .update({
-                status: completed ? 'published' : 'publishing',
+                status: nextStatus,
+                error: outcomeError,
                 platform_post_id: result.publishId,
-                url: tokenRow?.display_name ? `https://www.tiktok.com/@${tokenRow.display_name}` : null,
+                url: tokenRow?.display_name
+                  ? `https://www.tiktok.com/@${tokenRow.display_name}`
+                  : null,
                 published_at: completed ? new Date().toISOString() : null,
-                error: null,
                 metadata: {
                   ...(pub.metadata || {}),
                   tiktok_post: {
@@ -330,7 +360,9 @@ Deno.serve(async (req) => {
         } catch (err) {
           const message = err?.message || String(err);
           const attempts = (pub.attempts ?? 0) + 1;
-          const finalStatus = attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled';
+          // A forced post is a deliberate one-off, so surface the failure right
+          // away instead of quietly returning it to the queue.
+          const finalStatus = onlyId || attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled';
           console.error(`[run-social-queue] ${platform} failed for ${pub.id} (attempt ${attempts}):`, message);
           await supabaseAdmin
             .from('publications')

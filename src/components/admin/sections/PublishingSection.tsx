@@ -1269,6 +1269,42 @@ const PublishingSection = () => {
     }
   };
 
+  // The three buttons above only post something that is already due. This one
+  // posts a teaser that is waiting, right now, so a real TikTok/Instagram post
+  // can be checked end to end without waiting for a slot to come round.
+  const forcePostNext = async (platform: 'tiktok' | 'instagram') => {
+    const candidates = queue.filter(
+      (p) =>
+        p.platform === platform &&
+        !p.platform_post_id &&
+        !['publishing', 'published', 'skipped'].includes(p.status)
+    );
+    // Prefer one that already has a caption, so the test exercises posting and
+    // not the "teaser has no caption" guard.
+    const row = candidates.find((p) => p.metadata?.caption || p.metadata?.title) ?? candidates[0];
+    if (!row) {
+      toast({ title: `No ${platform} teaser waiting to post` });
+      return;
+    }
+    setTesting(platform);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('run-social-queue', {
+        body: { force: true, publication_id: row.id },
+      });
+      if (error) throw error;
+      setTestResult(JSON.stringify(data, null, 2));
+      toast({ title: `Posted “${row.metadata?.title || 'teaser'}” to ${platform}` });
+      refetch();
+    } catch (e) {
+      const message = await getFunctionErrorMessage(e);
+      setTestResult(message);
+      toast({ title: `${platform} post failed`, description: message, variant: 'destructive' });
+    } finally {
+      setTesting(null);
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1514,6 +1550,25 @@ const PublishingSection = () => {
               disabled={testing !== null}
             >
               <Instagram className="h-3.5 w-3.5" /> {testing === 'instagram' ? 'Running…' : 'Run Instagram'}
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+            <span className="text-xs text-gray-500">Post one now, without waiting for its slot:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => forcePostNext('tiktok')}
+              disabled={testing !== null}
+            >
+              <ListChecks className="h-3.5 w-3.5" /> Post next TikTok teaser
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => forcePostNext('instagram')}
+              disabled={testing !== null}
+            >
+              <Instagram className="h-3.5 w-3.5" /> Post next Instagram teaser
             </Button>
           </div>
           {testResult && (

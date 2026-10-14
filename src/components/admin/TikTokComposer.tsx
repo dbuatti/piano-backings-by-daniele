@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertTriangle, Loader2, Upload } from 'lucide-react';
+import TeaserCoverFrame from '@/components/admin/TeaserCoverFrame';
 
 // TikTok's own privacy codes, in human wording.
 const PRIVACY_LABELS: Record<string, string> = {
@@ -248,7 +249,10 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
 
             {/* §5a: preview */}
             {previewUrl ? (
-              <video src={previewUrl} controls className="w-full rounded-xl bg-black" />
+              <>
+                <video src={previewUrl} controls className="w-full rounded-xl bg-black" />
+                <TeaserCoverFrame src={previewUrl} />
+              </>
             ) : (
               <div className="rounded-xl bg-gray-100 p-6 text-center text-sm text-gray-500">
                 No preview available
