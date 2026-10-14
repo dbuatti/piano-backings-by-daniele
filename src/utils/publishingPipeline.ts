@@ -120,6 +120,19 @@ export function hasPendingWork(group: TrackGroup): boolean {
   );
 }
 
+// A row the worker claimed as `publishing` but never finished — its invocation
+// died mid-post. The reconciler recovers it, but until then it must not sit in
+// "Booked" as if all is well. Matches the server's STUCK_PUBLISHING_MS.
+export const STUCK_PUBLISHING_MS = 15 * 60_000;
+export function isStuckPublishing(
+  pub: PublicationWithAsset | undefined,
+  now = Date.now()
+): boolean {
+  if (!pub || pub.status !== 'publishing') return false;
+  const t = pub.updated_at ? new Date(pub.updated_at).getTime() : 0;
+  return Number.isFinite(t) && now - t > STUCK_PUBLISHING_MS;
+}
+
 // True when pressing "Publish this song" would actually do something: book the
 // video, or run a pass over a row that is not terminal yet. Shared so the button,
 // the bar's helper text, and the song page can never disagree about whether there
@@ -138,6 +151,8 @@ export function needsAttention(group: TrackGroup, autoOn: boolean): boolean {
     // moved the slot.
     if (yt.status === 'approved' && !yt.scheduled_for) return true;
   }
+  // A post the worker claimed but never finished must not read as "booked".
+  if (isStuckPublishing(group.tt) || isStuckPublishing(group.ig)) return true;
   for (const teaser of [group.tt, group.ig]) {
     if (!teaser) continue;
     if (teaser.status === 'failed') return true;
@@ -156,6 +171,9 @@ export function teaserProblem(
   group: TrackGroup,
   autoOn: boolean
 ): { note: string; action: 'record' | 'compose' | 'retry' } | null {
+  if (isStuckPublishing(teaser)) {
+    return { note: 'The worker stopped mid-post. Retry to run it again.', action: 'retry' };
+  }
   if (teaser.status === 'failed') {
     return { note: teaser.error || 'It failed to post.', action: 'retry' };
   }

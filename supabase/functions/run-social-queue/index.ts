@@ -20,7 +20,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { requireSupabaseEnv } from '../_shared/env.ts';
 import { getFreshSocialAccessToken, getSocialToken } from '../_shared/social.ts';
 import { fetchTikTokPublishStatus, publishTikTokVideo } from '../_shared/tiktok.ts';
-import { publishInstagramReel } from '../_shared/instagram.ts';
+import {
+  createInstagramContainer,
+  instagramContainerStatus,
+  publishInstagramContainer,
+  waitForInstagramContainer,
+} from '../_shared/instagram.ts';
 import { escapeHtml, safeLink, sendEmail } from '../_shared/email.ts';
 
 const corsHeaders = {
@@ -41,6 +46,10 @@ const ADMIN_URL = 'https://pianobackings.danielebuatti.com/admin?section=publish
 const COVER_TIMESTAMP_MS = 1500;
 const BATCH_LIMIT = 5;
 const MAX_ATTEMPTS = 3;
+// A row claimed as `publishing` but untouched for this long is treated as
+// abandoned by the invocation that claimed it, and is recovered by the
+// reconciler instead of sitting stuck forever.
+const STUCK_PUBLISHING_MS = 15 * 60_000;
 // Only these containers are playable on TikTok and Instagram.
 const POSTABLE_MIME = /^(video\/(mp4|quicktime)|video\/x-m4v)$/i;
 
@@ -161,6 +170,88 @@ Deno.serve(async (req) => {
       }
     } catch (err) {
       console.error('[run-social-queue] tiktok reconcile failed:', err?.message || err);
+    }
+
+    // --- 1b) Reconcile Instagram. Unlike TikTok, the post is two API calls with
+    //     a container in between; the container id is stored, so a run that dies
+    //     mid-poll is finished here instead of leaving the row stuck at
+    //     `publishing` with nothing to resume from. ---
+    try {
+      const { data: pendingIg } = await supabaseAdmin
+        .from('publications')
+        .select('id, metadata, updated_at')
+        .eq('platform', 'instagram')
+        .eq('status', 'publishing')
+        .limit(20);
+      if (pendingIg?.length) {
+        const accessToken = await getFreshSocialAccessToken(supabaseAdmin, 'instagram');
+        const tokenRow = await getSocialToken(supabaseAdmin, 'instagram');
+        const igUserId = tokenRow?.external_id;
+        for (const row of pendingIg) {
+          const meta = (row.metadata || {}) as Record<string, unknown>;
+          const igPost = (meta.instagram_post || {}) as Record<string, unknown>;
+          const containerId = typeof igPost.containerId === 'string' ? igPost.containerId : null;
+          try {
+            if (containerId && igUserId) {
+              const status = await instagramContainerStatus(accessToken, containerId);
+              if (status === 'FINISHED') {
+                const mediaId = await publishInstagramContainer(accessToken, igUserId, containerId);
+                await supabaseAdmin
+                  .from('publications')
+                  .update({
+                    status: 'published',
+                    platform_post_id: mediaId,
+                    published_at: nowIso,
+                    error: null,
+                    metadata: {
+                      ...meta,
+                      instagram_post: { ...igPost, automated: true, postedAt: nowIso, resumed: true },
+                    },
+                    updated_at: nowIso,
+                  })
+                  .eq('id', row.id)
+                  .eq('status', 'publishing');
+                reconciled.push({ id: row.id, platform: 'instagram', status: 'published' });
+              } else if (status === 'ERROR' || status === 'EXPIRED') {
+                await supabaseAdmin
+                  .from('publications')
+                  .update({
+                    status: 'failed',
+                    error: `Instagram could not process the video (${status}). Record it again.`,
+                    updated_at: nowIso,
+                  })
+                  .eq('id', row.id)
+                  .eq('status', 'publishing');
+                reconciled.push({ id: row.id, platform: 'instagram', status });
+              } else {
+                // Still processing — leave it; the next pass finishes it.
+                reconciled.push({ id: row.id, platform: 'instagram', status: status.toLowerCase() });
+              }
+            } else {
+              // Died before a container existed. Release it back to the queue once
+              // it is clearly abandoned, so it is retried rather than stuck.
+              const age = Date.now() - new Date(row.updated_at).getTime();
+              if (age > STUCK_PUBLISHING_MS) {
+                await supabaseAdmin
+                  .from('publications')
+                  .update({
+                    status: 'scheduled',
+                    scheduled_for: nowIso,
+                    error: 'Recovered a stuck Instagram post and requeued it.',
+                    updated_at: nowIso,
+                  })
+                  .eq('id', row.id)
+                  .eq('status', 'publishing');
+                reconciled.push({ id: row.id, platform: 'instagram', status: 'requeued' });
+              }
+            }
+          } catch (err) {
+            reconciled.push({ id: row.id, platform: 'instagram', error: err?.message || String(err) });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[run-social-queue] instagram reconcile failed:', err?.message || err);
     }
 
     if (!enabled) {
@@ -288,14 +379,20 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Claim it so a concurrent run can't double-post. A forced single post
-        // skips the slot/status guard (that's the point of forcing it).
-        let claim = supabaseAdmin
+        // Claim it so a concurrent run can't double-post. Even a forced single
+        // post keeps a status guard: without one, a row the cron had already
+        // claimed as `publishing` could be claimed again and posted twice.
+        const claimable = onlyId
+          ? ['draft', 'pending_approval', 'approved', 'scheduled', 'failed', 'skipped']
+          : ['scheduled'];
+        const { data: claimed } = await supabaseAdmin
           .from('publications')
           .update({ status: 'publishing', attempts: (pub.attempts ?? 0) + 1, updated_at: nowIso })
-          .eq('id', pub.id);
-        if (!onlyId) claim = claim.eq('status', 'scheduled');
-        const { data: claimed } = await claim.select('id').maybeSingle();
+          .eq('id', pub.id)
+          .in('status', claimable)
+          .is('platform_post_id', null)
+          .select('id')
+          .maybeSingle();
         if (!claimed) continue;
 
         try {
@@ -333,6 +430,8 @@ Deno.serve(async (req) => {
               caption,
               privacyLevel: tikTokPrivacy,
               mimeType: asset.mime_type,
+              durationSeconds:
+                typeof asset.duration_seconds === 'number' ? asset.duration_seconds : undefined,
               videoCoverTimestampMs: COVER_TIMESTAMP_MS,
             });
             const tokenRow = await getSocialToken(supabaseAdmin, 'tiktok');
@@ -377,21 +476,58 @@ Deno.serve(async (req) => {
           } else {
             const accessToken = await getFreshSocialAccessToken(supabaseAdmin, 'instagram');
             const tokenRow = await getSocialToken(supabaseAdmin, 'instagram');
-            const result = await publishInstagramReel(accessToken, tokenRow?.external_id, {
-              videoUrl: signed.signedUrl,
-              caption,
-              mimeType: asset.mime_type,
-            });
+            const igUserId = tokenRow?.external_id;
+            const priorMeta = (pub.metadata || {}) as Record<string, unknown>;
+            const priorIg = (priorMeta.instagram_post || {}) as Record<string, unknown>;
+
+            // Resume a container from an earlier attempt when one exists.
+            let containerId =
+              typeof priorIg.containerId === 'string' ? (priorIg.containerId as string) : null;
+            if (!containerId) {
+              containerId = await createInstagramContainer(accessToken, igUserId, {
+                videoUrl: signed.signedUrl,
+                caption,
+                mimeType: asset.mime_type,
+              });
+              // Persist the container id *before* waiting, so a run that dies
+              // here is finished by the reconciler instead of stuck at publishing.
+              await supabaseAdmin
+                .from('publications')
+                .update({
+                  metadata: {
+                    ...priorMeta,
+                    instagram_post: { ...priorIg, containerId, startedAt: new Date().toISOString() },
+                  },
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', pub.id);
+            }
+
+            // Don't hold the invocation past the Edge wall clock. If the container
+            // is still cooking, leave the row `publishing` and let the reconciler
+            // publish it on the next pass.
+            const status = await waitForInstagramContainer(accessToken, containerId, 45_000);
+            if (status !== 'FINISHED') {
+              posted.push({ id: pub.id, platform, status: `instagram ${String(status).toLowerCase()}` });
+              continue;
+            }
+
+            const mediaId = await publishInstagramContainer(accessToken, igUserId, containerId);
             await supabaseAdmin
               .from('publications')
               .update({
                 status: 'published',
-                platform_post_id: result.mediaId,
+                platform_post_id: mediaId,
                 published_at: new Date().toISOString(),
                 error: null,
                 metadata: {
-                  ...(pub.metadata || {}),
-                  instagram_post: { automated: true, postedAt: new Date().toISOString() },
+                  ...priorMeta,
+                  instagram_post: {
+                    ...priorIg,
+                    containerId,
+                    automated: true,
+                    postedAt: new Date().toISOString(),
+                  },
                 },
                 updated_at: new Date().toISOString(),
               })
@@ -401,9 +537,11 @@ Deno.serve(async (req) => {
         } catch (err) {
           const message = err?.message || String(err);
           const attempts = (pub.attempts ?? 0) + 1;
-          // A forced post is a deliberate one-off, so surface the failure right
-          // away instead of quietly returning it to the queue.
-          const finalStatus = onlyId || attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled';
+          // Over-length is terminal — the same file can never succeed. A forced
+          // post is a deliberate one-off, so it surfaces its failure right away
+          // instead of quietly returning to the queue.
+          const terminal = onlyId || err?.name === 'UnsupportedDuration';
+          const finalStatus = terminal || attempts >= MAX_ATTEMPTS ? 'failed' : 'scheduled';
           console.error(`[run-social-queue] ${platform} failed for ${pub.id} (attempt ${attempts}):`, message);
           await supabaseAdmin
             .from('publications')

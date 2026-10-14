@@ -7,10 +7,13 @@ import {
   Clapperboard,
   Download,
   ExternalLink,
+  Instagram,
   Loader2,
+  Music2,
   RefreshCw,
   Rocket,
   Sparkles,
+  Youtube,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -94,6 +97,70 @@ function Panel({ title, children }: { title?: string; children: ReactNode }) {
       ) : null}
       {children}
     </div>
+  );
+}
+
+// Where one platform actually stands, shown on *every* step so "is this uploaded
+// yet?" is never a step hunt. "Uploaded" means live (`published`); "Booked" means
+// it will go out on its slot. A missing row reads plainly as "Not uploaded".
+function PlatformStatus({
+  platform,
+  pub,
+  tz,
+}: {
+  platform: PublicationPlatform;
+  pub?: PublicationWithAsset;
+  tz: string;
+}) {
+  const name = PLATFORM_LABELS[platform];
+  const Icon = platform === 'youtube' ? Youtube : platform === 'tiktok' ? Music2 : Instagram;
+
+  if (!pub) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 px-2.5 py-1.5 text-[11px] text-gray-400">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium text-gray-500">{name}</span>
+        <span className="ml-auto">Not uploaded</span>
+      </div>
+    );
+  }
+
+  const uploaded = pub.status === 'published';
+  const stateLabel = uploaded
+    ? 'Uploaded'
+    : pub.status === 'scheduled'
+      ? 'Booked'
+      : pub.status === 'publishing'
+        ? 'Publishing…'
+        : pub.status === 'failed'
+          ? 'Failed'
+          : pub.status === 'skipped'
+            ? 'Skipped'
+            : 'Not uploaded';
+  const stamp = uploaded ? pub.published_at : pub.scheduled_for;
+  const canOpen = uploaded && !!pub.url;
+
+  return (
+    <a
+      href={uploaded ? pub.url ?? undefined : undefined}
+      target={uploaded && pub.url ? '_blank' : undefined}
+      rel="noopener noreferrer"
+      title={pub.error || (canOpen ? `Open on ${name}` : undefined)}
+      className={cn(
+        'flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-[11px]',
+        CHIP[pub.status] ?? CHIP.draft,
+        uploaded && pub.url && 'hover:underline'
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="font-medium">{name}</span>
+      <span className="ml-auto flex items-center gap-1">
+        {uploaded ? <CheckCircle2 className="h-3 w-3" /> : null}
+        <span className="font-medium">{stateLabel}</span>
+        {stamp ? <span className="font-normal opacity-70">· {when(stamp, tz)}</span> : null}
+        {uploaded && pub.url ? <ExternalLink className="h-3 w-3 opacity-70" /> : null}
+      </span>
+    </a>
   );
 }
 
@@ -511,6 +578,14 @@ export default function TrackDetail({
               {i < STEPS.length - 1 ? <span className="h-px min-w-2 flex-1 bg-gray-200" /> : null}
             </button>
           ))}
+        </div>
+
+        {/* Where the song stands on each platform — visible on every step, so
+            "is it uploaded yet?" is answered without changing steps. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <PlatformStatus platform="youtube" pub={group.yt} tz={tz} />
+          <PlatformStatus platform="tiktok" pub={group.tt} tz={tz} />
+          <PlatformStatus platform="instagram" pub={group.ig} tz={tz} />
         </div>
 
         {step === 0 && (

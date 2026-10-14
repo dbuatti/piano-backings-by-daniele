@@ -9,6 +9,7 @@ import {
   PLATFORM_LABELS,
   STATUS_LABELS,
   WEEKDAYS,
+  type PublicationMetadata,
   type PublicationWithAsset,
   type PublishingSettings,
 } from '@/types/publishing';
@@ -62,6 +63,15 @@ const PUBLISHING_TABS: { id: PublishingTab; label: string; icon: typeof ListChec
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ];
 
+// A retry or reset must start from a clean slate. If a half-finished Instagram
+// container id survives in metadata, the worker resumes it instead of recording a
+// fresh post — which can republish a Reel that already went out.
+function withoutInstagramContainer(meta: PublicationMetadata | undefined): PublicationMetadata {
+  const next = { ...(meta ?? {}) } as Record<string, unknown>;
+  delete next.instagram_post;
+  return next as PublicationMetadata;
+}
+
 // The teaser side of a "needs you" row: one line per platform that can't move on
 // its own, with the single action that unblocks it.
 function TeaserNeeds({
@@ -95,9 +105,9 @@ function TeaserNeeds({
     <div className="space-y-1.5 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5">
       {lines.map(({ platform, pub, note, action }) => {
         // Only TikTok has a compose flow, and re-recording is the one fix that
-        // helps both platforms. Instagram has no manual button, so anything else
-        // on it waits on Auto-post (or on the account being connected).
-        const igBlocked = platform === 'instagram' && action !== 'record';
+        // helps both platforms. Instagram has no manual compose, but a stuck or
+        // failed Instagram row can still be retried here.
+        const igBlocked = platform === 'instagram' && action !== 'record' && action !== 'retry';
         return (
           <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
@@ -1066,23 +1076,47 @@ const PublishingSection = () => {
     },
   });
 
+  // One query, two reads: the newest rows for display, and *every* YouTube slot
+  // (without the display cap) so the "next free slot" can never collide with a
+  // row the 200-row display list has hidden. The two ride the same cache key, so
+  // every existing refetch() refreshes both.
+  const DISPLAY_LIMIT = 200;
   const {
-    data: queue = [],
+    data: queueData,
     isLoading,
     error: queueError,
     refetch,
-  } = useQuery<PublicationWithAsset[], Error>({
+  } = useQuery<{ queue: PublicationWithAsset[]; slots: string[]; truncated: boolean }, Error>({
     queryKey: ['publications_queue'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('publications')
-        .select('*, content_assets(*)')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return (data || []) as PublicationWithAsset[];
+      const [listRes, slotRes] = await Promise.all([
+        supabase
+          .from('publications')
+          .select('*, content_assets(*)')
+          .order('created_at', { ascending: false })
+          .limit(DISPLAY_LIMIT),
+        supabase
+          .from('publications')
+          .select('scheduled_for')
+          .eq('platform', 'youtube')
+          .not('scheduled_for', 'is', null)
+          .order('scheduled_for', { ascending: true })
+          .limit(1000),
+      ]);
+      if (listRes.error) throw listRes.error;
+      if (slotRes.error) throw slotRes.error;
+      const queue = (listRes.data || []) as PublicationWithAsset[];
+      return {
+        queue,
+        slots: (slotRes.data || [])
+          .map((r) => r.scheduled_for)
+          .filter((s): s is string => !!s),
+        truncated: queue.length >= DISPLAY_LIMIT,
+      };
     },
   });
+  const queue = useMemo(() => queueData?.queue ?? [], [queueData]);
+  const queueTruncated = queueData?.truncated ?? false;
 
   const tz = settings?.timezone ?? 'Australia/Sydney';
   // The automation switch. It decides whether a booked teaser will move on its
@@ -1108,12 +1142,8 @@ const PublishingSection = () => {
   // Slots the pipeline considers taken. YouTube rows only — that is what the
   // server's auto-book pass reads, and a teaser's slot mirrors its video's, so
   // including teasers here could preview a different "next slot" than the server
-  // would actually choose.
-  const existingDates = queue
-    .filter((p) => p.platform === 'youtube')
-    .map((p) => p.scheduled_for)
-    .filter((s): s is string => !!s)
-    .map((s) => new Date(s));
+  // would actually choose. Read from the uncapped slot query, not the display list.
+  const existingDates = (queueData?.slots ?? []).map((s) => new Date(s));
 
   const nextSlot = () =>
     allocatePublishingSlots(
@@ -1191,6 +1221,30 @@ const PublishingSection = () => {
           .eq('id', rows[i].id);
         if (error) throw error;
       }
+
+      // "Video and teasers ride the same slot" has to hold after a re-space too.
+      // A teaser already booked on the old slot is reset to pending_approval so
+      // the arm pass re-books it on the video's new slot and re-applies the
+      // configured offset — otherwise it posts on a slot its video isn't live on.
+      const respacedRequests = new Set(
+        rows.map((r) => r.content_assets?.request_id).filter((id): id is string => !!id)
+      );
+      const staleTeaserIds = queue
+        .filter(
+          (p) =>
+            (p.platform === 'tiktok' || p.platform === 'instagram') &&
+            p.status === 'scheduled' &&
+            !!p.content_assets?.request_id &&
+            respacedRequests.has(p.content_assets.request_id)
+        )
+        .map((p) => p.id);
+      if (staleTeaserIds.length) {
+        const { error } = await supabase
+          .from('publications')
+          .update({ status: 'pending_approval', scheduled_for: null })
+          .in('id', staleTeaserIds);
+        if (error) throw error;
+      }
       await refetch();
       const { data, error: fnErr } = await supabase.functions.invoke('sync-youtube-schedule', { body: {} });
       if (fnErr) throw fnErr;
@@ -1266,9 +1320,17 @@ const PublishingSection = () => {
   // pass so the worker retries it. With Auto-post off the row is just cleared so
   // it can be posted by hand — this used to force a pass behind the switch.
   const retryTeaser = async (id: string) => {
+    const row = queue.find((p) => p.id === id);
     const { error } = await supabase
       .from('publications')
-      .update({ status: 'pending_approval', attempts: 0, error: null, scheduled_for: null })
+      .update({
+        status: 'pending_approval',
+        attempts: 0,
+        error: null,
+        scheduled_for: null,
+        // Drop any half-finished Instagram container so the retry starts clean.
+        ...(row ? { metadata: withoutInstagramContainer(row.metadata) } : {}),
+      })
       .eq('id', id);
     if (error) {
       toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
@@ -1297,15 +1359,27 @@ const PublishingSection = () => {
     ) {
       return;
     }
-    const ids = [group.tt?.id, group.ig?.id].filter((id): id is string => !!id);
-    if (ids.length === 0) {
+    const rows = [group.tt, group.ig].filter((p): p is PublicationWithAsset => !!p);
+    if (rows.length === 0) {
       toast({ title: 'No teaser rows to reset', variant: 'destructive' });
       return;
     }
-    const { error } = await supabase
-      .from('publications')
-      .update({ status: 'pending_approval', scheduled_for: null, platform_post_id: null, published_at: null, error: null })
-      .in('id', ids);
+    const results = await Promise.all(
+      rows.map((pub) =>
+        supabase
+          .from('publications')
+          .update({
+            status: 'pending_approval',
+            scheduled_for: null,
+            platform_post_id: null,
+            published_at: null,
+            error: null,
+            metadata: withoutInstagramContainer(pub.metadata),
+          })
+          .eq('id', pub.id)
+      )
+    );
+    const error = results.find((r) => r.error)?.error;
     if (error) {
       toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
       return;
@@ -1679,6 +1753,12 @@ const PublishingSection = () => {
             <span className="font-semibold text-[#1C0357]">{liveGroups.length}</span> live
             {autoOn ? ' · teasers post automatically' : ' · teasers post by hand'}
           </p>
+          {queueTruncated ? (
+            <p className="mt-1 text-[11px] text-amber-600">
+              Showing the newest {DISPLAY_LIMIT} rows. Older ones are hidden here but still posted
+              by the worker.
+            </p>
+          ) : null}
         </div>
         <Button variant="outline" onClick={runNow} disabled={running}>
           <Rocket className="h-4 w-4" /> {running ? 'Running…' : 'Run now'}

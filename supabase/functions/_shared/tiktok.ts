@@ -80,6 +80,12 @@ export interface TikTokPostOptions {
   brandContent?: boolean;
   mimeType?: string;
   /**
+   * The teaser's own length. When set, the upload is refused up front if it is
+   * longer than the creator's limit — TikTok rejects an over-length file after
+   * the whole upload, so without this a too-long cut burns every retry.
+   */
+  durationSeconds?: number;
+  /**
    * Frame used as the post's cover, in milliseconds. Without it TikTok uses the
    * first frame — for these cards that is the blank pink of the fade-in, so the
    * cover would carry none of the title.
@@ -106,6 +112,17 @@ export async function publishTikTokVideo(
     : allowed.includes('SELF_ONLY')
       ? 'SELF_ONLY'
       : allowed[0] ?? 'SELF_ONLY';
+
+  // Refuse an over-length teaser before the upload. This is terminal: retrying
+  // the same file can never succeed, so the caller should not burn its attempts.
+  const maxSec = creator.max_video_post_duration_sec;
+  if (meta.durationSeconds && maxSec && meta.durationSeconds > maxSec) {
+    const err = new Error(
+      `This teaser is ${Math.round(meta.durationSeconds)}s, but your TikTok account allows up to ${maxSec}s. Trim the teaser and record it again.`
+    );
+    err.name = 'UnsupportedDuration';
+    throw err;
+  }
 
   const size = bytes.byteLength;
   // TikTok chunk rules: total_chunk_count = floor(video_size / chunk_size);
