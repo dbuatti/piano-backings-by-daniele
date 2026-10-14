@@ -1,10 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
-import { config } from './config.js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { config, requireSupabase } from './config.js';
 import { log } from './logger.js';
 
-export const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
-  auth: { persistSession: false },
-});
+// Built lazily so importing this module (e.g. via index.ts) doesn't require the
+// Supabase env vars until we actually talk to the database.
+let client: SupabaseClient | null = null;
+function db(): SupabaseClient {
+  if (!client) {
+    requireSupabase();
+    client = createClient(config.supabaseUrl, config.serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+  }
+  return client;
+}
 
 // Same budget the edge worker uses before it gives up on a teaser.
 const MAX_ATTEMPTS = 3;
@@ -40,7 +49,7 @@ function captionFor(row: Record<string, unknown>): string {
 /** Recover rows this service claimed but never finished (crash / restart). */
 export async function reclaimStale(): Promise<number> {
   const cutoff = new Date(Date.now() - STALE_MINUTES * 60_000).toISOString();
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('publications')
     .update({ status: 'scheduled', error: 'Browser poster restarted mid-post.', updated_at: new Date().toISOString() })
     .eq('platform', 'tiktok')
@@ -61,7 +70,7 @@ export async function reclaimStale(): Promise<number> {
 // so the two can never post the same row twice.
 export async function claimNextDue(): Promise<DueTeaser | null> {
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
+  const { data, error } = await db()
     .from('publications')
     .select('id, metadata, scheduled_for, attempts, content_assets!inner(storage_path, mime_type, title, song_title)')
     .eq('platform', 'tiktok')
@@ -88,7 +97,7 @@ export async function claimNextDue(): Promise<DueTeaser | null> {
     return null;
   }
 
-  const { data: claimed } = await supabase
+  const { data: claimed } = await db()
     .from('publications')
     .update({ status: 'publishing', attempts, updated_at: nowIso })
     .eq('id', data.id)
@@ -109,7 +118,7 @@ export async function claimNextDue(): Promise<DueTeaser | null> {
 }
 
 export async function markPublished(id: string, url: string | null): Promise<void> {
-  await supabase
+  await db()
     .from('publications')
     .update({
       status: 'published',
@@ -125,7 +134,7 @@ export async function markPublished(id: string, url: string | null): Promise<voi
 /** Retry on the first few failures (usually a flaky browser), then give up. */
 export async function recordFailure(id: string, attempts: number, message: string): Promise<void> {
   const terminal = attempts >= MAX_ATTEMPTS;
-  await supabase
+  await db()
     .from('publications')
     .update({
       status: terminal ? 'failed' : 'scheduled',
@@ -137,7 +146,7 @@ export async function recordFailure(id: string, attempts: number, message: strin
 
 /** Put a row back without burning an attempt (used by DRY_RUN). */
 export async function requeue(id: string, message: string): Promise<void> {
-  await supabase
+  await db()
     .from('publications')
     .update({ status: 'scheduled', error: message, updated_at: new Date().toISOString() })
     .eq('id', id);
@@ -145,7 +154,7 @@ export async function requeue(id: string, message: string): Promise<void> {
 
 /** Download a teaser from Supabase Storage to a temp file. */
 export async function downloadTeaser(storagePath: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('content').createSignedUrl(storagePath, 3600);
+  const { data, error } = await db().storage.from('content').createSignedUrl(storagePath, 3600);
   if (error || !data?.signedUrl) throw new Error(`sign failed: ${error?.message ?? 'no url'}`);
   const res = await fetch(data.signedUrl);
   if (!res.ok) throw new Error(`download failed (${res.status})`);

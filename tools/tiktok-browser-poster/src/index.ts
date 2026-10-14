@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises';
 import { openContext, checkLoggedIn } from './browser.js';
-import { config, once } from './config.js';
+import { config, once, requireSupabase } from './config.js';
 import { log } from './logger.js';
 import { postTeaser } from './post.js';
 import { claimNextDue, downloadTeaser, markPublished, reclaimStale, recordFailure, requeue } from './queue.js';
@@ -50,6 +50,7 @@ async function runOnce(): Promise<number> {
 }
 
 async function main(): Promise<void> {
+  requireSupabase();
   log.info(
     `tiktok-browser-poster starting | headless=${config.headless} dryRun=${config.dryRun} once=${once}`
   );
