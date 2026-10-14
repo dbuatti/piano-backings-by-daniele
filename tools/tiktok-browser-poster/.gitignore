@@ -2,4 +2,6 @@ node_modules/
 .env
 .auth/
 .screenshots/
+.launchd.out.log
+.launchd.err.log
 *.tsbuildinfo
