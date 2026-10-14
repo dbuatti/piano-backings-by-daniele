@@ -70,11 +70,44 @@ Deno.serve(async (req) => {
     const asset = pub.content_assets;
     if (!asset?.storage_path) return json({ error: 'Teaser has no source media.' }, 400);
 
-    // Claim the row so a concurrent run can't double-post.
-    await supabaseAdmin
+    // The owner can exclude a request from socials entirely. The automated queues
+    // honour it; posting by hand has to as well, or the flag is only a suggestion.
+    if (asset.request_id) {
+      try {
+        const { data: request } = await supabaseAdmin
+          .from('backing_requests')
+          .select('no_socials')
+          .eq('id', asset.request_id)
+          .maybeSingle();
+        if (request?.no_socials) {
+          return json(
+            { error: 'This request is marked “no socials”, so its teasers are never posted.' },
+            400
+          );
+        }
+      } catch (e) {
+        console.warn('[post-tiktok-teaser] no_socials lookup skipped:', e);
+      }
+    }
+
+    // Claim the row so a concurrent run can't double-post. The status predicate is
+    // what makes it a claim: without it two invocations both matched, both updated,
+    // and both posted to TikTok. A row left on `publishing` after a crash has to be
+    // Reset on the song page first — double-posting is the worse outcome.
+    const { data: claimed } = await supabaseAdmin
       .from('publications')
-      .update({ status: 'publishing', attempts: (pub.attempts || 0) + 1, updated_at: new Date().toISOString() })
-      .eq('id', pub.id);
+      .update({
+        status: 'publishing',
+        attempts: (pub.attempts || 0) + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pub.id)
+      .in('status', ['draft', 'pending_approval', 'failed'])
+      .select('id')
+      .maybeSingle();
+    if (!claimed) {
+      return json({ error: 'This teaser is already posted or being posted.' }, 409);
+    }
 
     try {
       const accessToken = await getFreshSocialAccessToken(supabaseAdmin, 'tiktok');

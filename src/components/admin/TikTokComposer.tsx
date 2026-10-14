@@ -103,6 +103,20 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
     setAudioState('checking');
     setAudioSeconds(null);
     setExpectedSeconds(null);
+    // The dialog is reused for every teaser, so anything the owner chose for the
+    // previous one has to be cleared. A carried-over "Everyone" privacy choice
+    // would silently make the next post public, which is exactly what TikTok's
+    // no-default rule exists to prevent.
+    setCaption('');
+    setAssetId(null);
+    setAsset(null);
+    setPrivacyLevel('');
+    setAllowComment(false);
+    setAllowDuet(false);
+    setAllowStitch(false);
+    setDisclosureOn(false);
+    setBrandOrganic(false);
+    setBrandContent(false);
 
     (async () => {
       try {

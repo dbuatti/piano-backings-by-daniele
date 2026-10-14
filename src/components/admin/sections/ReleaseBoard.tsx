@@ -185,6 +185,9 @@ export default function ReleaseBoard({
           status: 'pending_approval',
           platform_post_id: null,
           published_at: null,
+          // Clear the slot too — the song page's reset does, and leaving a stale
+          // one behind made the row look booked until the next arming pass.
+          scheduled_for: null,
           error: null,
         })
         .in('id', ids);
@@ -1102,14 +1105,20 @@ export function VettingDialog({
       const clientName = track.client;
       const songTitle = track.song;
 
-      const context = new AudioContext();
-      if (context.state === 'suspended') await context.resume();
+      const decoder = new AudioContext();
+      if (decoder.state === 'suspended') await decoder.resume();
       const response = await fetch(trackUrl);
       if (!response.ok) {
-        await context.close();
+        await decoder.close();
         throw new Error(`Couldn't load the backing track (${response.status}).`);
       }
-      const decoded = await context.decodeAudioData(await response.arrayBuffer());
+      const decoded = await decoder.decodeAudioData(await response.arrayBuffer());
+      // AudioBuffer samples are context-independent, but the decoding context is
+      // finished with, and recordCanvasClip closes whatever context it is handed.
+      // Reusing this one left the second and third cuts (TikTok, Instagram) on a
+      // dead audio graph — the recording came out silent. Each pass below gets a
+      // fresh context instead.
+      await decoder.close().catch(() => undefined);
       const durationSecs = decoded.duration || 6;
 
       const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
@@ -1138,18 +1147,21 @@ export function VettingDialog({
         cv.width = opts.width;
         cv.height = opts.height;
         const cvCtx = cv.getContext('2d');
-        // An AudioBufferSourceNode can only be started once, so each pass needs
-        // its own source over the same decoded buffer.
-        const source = context.createBufferSource();
+        // Each pass needs its own AudioBufferSourceNode (a source can only start
+        // once) *and* its own AudioContext, because recordCanvasClip closes the
+        // context it is given when the pass finishes.
+        const passContext = new AudioContext();
+        if (passContext.state === 'suspended') await passContext.resume();
+        const source = passContext.createBufferSource();
         source.buffer = decoded;
-        source.connect(context.destination);
+        source.connect(passContext.destination);
 
         setRecording({ loaded: 0, total: recordSeconds });
         setPhase('recording');
         const blob = await recordCanvasClip({
           canvas: cv,
           duration: recordSeconds,
-          audio: { context, source },
+          audio: { context: passContext, source },
           // The card is a still image: a low frame rate looks identical and
           // leaves the main thread free to keep the audio muxer fed.
           fps: opts.fps,

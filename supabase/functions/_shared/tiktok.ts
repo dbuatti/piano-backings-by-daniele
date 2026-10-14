@@ -109,8 +109,10 @@ export async function publishTikTokVideo(
 
   const size = bytes.byteLength;
   // TikTok chunk rules: total_chunk_count = floor(video_size / chunk_size);
-  // chunks are 5–64MB except the final one (up to 128MB); videos under 5MB go as
-  // a single chunk whose chunk_size equals the whole file.
+  // chunks are 5–64MB except the FINAL one, which absorbs the remainder (up to
+  // 128MB). Clamping the last chunk to chunk_size instead silently dropped the
+  // tail of any file over 64MB — a full-song teaser at 3 Mbps is ~67MB, so the
+  // upload arrived truncated. `end` below is `size` for the final chunk.
   const chunkSize = size < MIN_CHUNK ? size : Math.min(MAX_CHUNK, size);
   const totalChunkCount = Math.max(1, Math.floor(size / chunkSize));
   console.log(
@@ -160,7 +162,8 @@ export async function publishTikTokVideo(
   const contentType = meta.mimeType || 'video/webm';
   for (let i = 0; i < totalChunkCount; i++) {
     const start = i * chunkSize;
-    const end = Math.min(start + chunkSize, size);
+    // The final chunk carries the remainder, not another chunk_size slice.
+    const end = i === totalChunkCount - 1 ? size : start + chunkSize;
     const chunk = bytes.slice(start, end);
     const putRes = await fetch(uploadUrl, {
       method: 'PUT',

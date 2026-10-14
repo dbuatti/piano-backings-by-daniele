@@ -94,10 +94,50 @@ export function willAutoPost(group: TrackGroup, autoOn: boolean): boolean {
   return yt.status === 'published';
 }
 
-const VIDEO_NEEDS_ACTION = ['draft', 'pending_approval', 'approved', 'failed'];
+// Instagram has no “post now” button, so when one of its teasers can't go out on
+// its own the reason matters. This returns the honest line for each case instead
+// of always blaming the connection.
+export function instagramWaitingNote(autoOn: boolean): string {
+  return autoOn
+    ? 'Instagram posts this automatically on the video’s slot — nothing to do here.'
+    : 'Instagram has no “post now” button yet. Turn on Auto-post in Settings → Integrations and it will post on the video’s slot.';
+}
+
+// A video row the pipeline can still act on. `failed` is always retryable: the
+// row keeps the slot from the attempt that failed, and that stale slot must not
+// read as "already booked" — otherwise a failed upload can never be retried.
+export function trackBookable(group: TrackGroup): boolean {
+  const yt = group.yt;
+  if (!yt) return false;
+  if (yt.status === 'failed') return true;
+  return ['draft', 'pending_approval', 'approved'].includes(yt.status) && !yt.scheduled_for;
+}
+
+// Rows with something left for the pipeline to do.
+export function hasPendingWork(group: TrackGroup): boolean {
+  return group.pubs.some((p) =>
+    ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status)
+  );
+}
+
+// True when pressing "Publish this song" would actually do something: book the
+// video, or run a pass over a row that is not terminal yet. Shared so the button,
+// the bar's helper text, and the song page can never disagree about whether there
+// is work waiting.
+export function trackActionable(group: TrackGroup): boolean {
+  return trackBookable(group) || hasPendingWork(group);
+}
 
 export function needsAttention(group: TrackGroup, autoOn: boolean): boolean {
-  if (group.yt && VIDEO_NEEDS_ACTION.includes(group.yt.status)) return true;
+  const yt = group.yt;
+  if (yt) {
+    if (yt.status === 'failed') return true;
+    if (yt.status === 'draft' || yt.status === 'pending_approval') return true;
+    // An approved row that already holds a slot is the upload pass's job, not the
+    // owner's — showing it under "Needs you" invited a re-approve that silently
+    // moved the slot.
+    if (yt.status === 'approved' && !yt.scheduled_for) return true;
+  }
   for (const teaser of [group.tt, group.ig]) {
     if (!teaser) continue;
     if (teaser.status === 'failed') return true;
@@ -178,13 +218,20 @@ export interface ReadinessContext {
 function teaserReadiness(
   pub: PublicationWithAsset | undefined,
   name: string
-): { ok: boolean; note: string } {
-  if (!pub) return { ok: false, note: `No ${name} row yet — record one.` };
+): { ok: boolean; note: string; advisory?: boolean } {
+  // Advisory: the pipeline can publish and book the video whether or not a
+  // teaser exists. A missing or unplayable cut is worth flagging on the song
+  // page, but the "Publish this song" bar and publishTrack do not stop for it,
+  // so treating it as a blocker here made the page disagree with the button.
+  if (!pub) return { ok: false, advisory: true, note: `No ${name} row yet — record one.` };
   const asset = pub.content_assets;
-  if (!asset?.storage_path) return { ok: false, note: 'The row has no recorded file.' };
+  if (!asset?.storage_path) {
+    return { ok: false, advisory: true, note: 'The row has no recorded file.' };
+  }
   if (!isPostable(pub)) {
     return {
       ok: false,
+      advisory: true,
       note: `${asset.aspect ?? 'Not portrait'} ${asset.mime_type || 'file'} — ${name} needs a portrait MP4.`,
     };
   }

@@ -42,9 +42,12 @@ import TrackDetail from '@/components/admin/sections/TrackDetail';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
 import {
   groupPublications,
+  instagramWaitingNote,
   isPostable,
   needsAttention,
   teaserProblem,
+  trackActionable,
+  trackBookable,
   type TrackGroup,
 } from '@/utils/publishingPipeline';
 
@@ -92,14 +95,14 @@ function TeaserNeeds({
     <div className="space-y-1.5 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5">
       {lines.map(({ platform, pub, note, action }) => {
         // Only TikTok has a compose flow, and re-recording is the one fix that
-        // helps both platforms. Anything else on Instagram waits on its
-        // connection in Settings → Integrations.
+        // helps both platforms. Instagram has no manual button, so anything else
+        // on it waits on Auto-post (or on the account being connected).
         const igBlocked = platform === 'instagram' && action !== 'record';
         return (
           <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
             <span className={cn('min-w-0 flex-1', action === 'retry' ? 'text-red-600' : 'text-gray-500')}>
-              {igBlocked ? 'Instagram isn’t connected yet (Settings → Integrations).' : note}
+              {igBlocked ? instagramWaitingNote(autoOn) : note}
             </span>
             {action === 'record' ? (
               group.requestId ? (
@@ -140,15 +143,15 @@ function PublishTrackBar({
   onPublish: () => void;
 }) {
   const yt = group.yt;
-  const bookable =
-    !!yt && ['draft', 'pending_approval', 'approved', 'failed'].includes(yt.status) && !yt.scheduled_for;
+  // trackBookable() is the shared rule — a failed row is always retryable even
+  // though it kept its old slot. Deriving this inline is how the bar and the song
+  // page drifted apart before.
+  const bookable = trackBookable(group);
+  const retrying = yt?.status === 'failed';
   const missingCopy = bookable && !yt?.metadata?.description?.trim();
   const teasers = [group.tt, group.ig].filter((t): t is PublicationWithAsset => !!t);
   const teasersReady = teasers.length > 0 && teasers.every((t) => isPostable(t));
-  const teaserWaiting = teasers.some(
-    (t) => t.status === 'draft' || t.status === 'pending_approval' || t.status === 'failed'
-  );
-  const nothingToDo = !bookable && !teaserWaiting;
+  const nothingToDo = !trackActionable(group);
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#1C0357]/5 bg-[#1C0357]/[0.03] px-4 py-2.5">
@@ -165,11 +168,15 @@ function PublishTrackBar({
           ? 'Write the YouTube description first — then this books the slot and posts the teasers on it.'
           : nothingToDo
             ? 'Everything here is already booked or live.'
-            : !teasersReady
-              ? 'Books the next free slot. The teasers still need a portrait MP4 before they can go out.'
-              : autoOn
-                ? 'Books the next free slot; the teasers post on it automatically.'
-                : 'Books the next free slot. Auto-post is off, so you post the teasers by hand.'}
+            : retrying
+              ? 'Re-books the upload that failed and runs the passes now.'
+              : !bookable
+                ? 'Runs the pipeline now — a row here is still waiting on a pass.'
+                : !teasersReady
+                ? 'Books the next free slot. The teasers still need a portrait MP4 before they can go out.'
+                : autoOn
+                  ? 'Books the next free slot; the teasers post on it automatically.'
+                  : 'Books the next free slot. Auto-post is off, so you post the teasers by hand.'}
       </span>
     </div>
   );
@@ -993,7 +1000,11 @@ function QueueRow({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Keyed so the form re-seeds from the row each time it opens — without it a
+          re-drafted row re-opened with the previous copy, and Cancel then reopen
+          showed discarded edits. */}
       <MetadataDialog
+        key={`${publication.id}:${publication.updated_at}`}
         publication={publication}
         open={editOpen}
         onOpenChange={setEditOpen}
@@ -1039,6 +1050,8 @@ const PublishingSection = () => {
   // being re-drafted from it.
   const [detailKey, setDetailKey] = useState<string | null>(null);
   const [draftingId, setDraftingId] = useState<string | null>(null);
+  // Bulk "schedule everything ready" run, so a double-click can't book twice.
+  const [scheduling, setScheduling] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -1092,7 +1105,12 @@ const PublishingSection = () => {
     (t) => !t.noSocials && !t.isExclusive && !queuedRequestIds.has(t.requestId)
   ).length;
 
+  // Slots the pipeline considers taken. YouTube rows only — that is what the
+  // server's auto-book pass reads, and a teaser's slot mirrors its video's, so
+  // including teasers here could preview a different "next slot" than the server
+  // would actually choose.
   const existingDates = queue
+    .filter((p) => p.platform === 'youtube')
     .map((p) => p.scheduled_for)
     .filter((s): s is string => !!s)
     .map((s) => new Date(s));
@@ -1337,6 +1355,7 @@ const PublishingSection = () => {
   };
 
   const scheduleAll = async () => {
+    if (scheduling) return;
     const ready = active.filter(
       (p) =>
         p.platform === 'youtube' &&
@@ -1350,38 +1369,47 @@ const PublishingSection = () => {
     }
     if (!window.confirm(`Assign the next ${ready.length} free slot${ready.length === 1 ? '' : 's'} to ${ready.length} approved video${ready.length === 1 ? '' : 's'} and start uploading?`)) return;
 
-    const existing = active
-      .map((p) => p.scheduled_for)
-      .filter((s): s is string => !!s)
-      .map((s) => new Date(s));
-    const slots = allocatePublishingSlots(
-      settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
-      ready.length,
-      existing
-    );
-    for (let i = 0; i < ready.length; i++) {
-      const { error } = await supabase
-        .from('publications')
-        .update({
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          scheduled_for: slots[i].toISOString(),
-          error: null,
-          attempts: 0,
-        })
-        .eq('id', ready[i].id);
-      if (error) throw error;
+    setScheduling(true);
+    try {
+      const slots = allocatePublishingSlots(
+        settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
+        ready.length,
+        existingDates
+      );
+      for (let i = 0; i < ready.length; i++) {
+        const { error } = await supabase
+          .from('publications')
+          .update({
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+            scheduled_for: slots[i].toISOString(),
+            error: null,
+            attempts: 0,
+          })
+          .eq('id', ready[i].id);
+        if (error) throw error;
+      }
+      // Booking is a YouTube job. The social worker is deliberately NOT run here:
+      // teasers are armed by the queue when Auto-post is on, or posted by hand.
+      // Running it here used to force-post teasers even with the switch off.
+      const { error: uploadError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+      await refetch();
+      toast({
+        title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}`,
+        description: uploadError
+          ? `Booked here, but the upload pass failed: ${await getFunctionErrorMessage(uploadError)}`
+          : 'Uploading starts shortly.',
+        variant: uploadError ? 'destructive' : 'default',
+      });
+    } catch (e) {
+      toast({
+        title: "Couldn't schedule these videos",
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setScheduling(false);
     }
-    // Booking is a YouTube job. The social worker is deliberately NOT run here:
-    // teasers are armed by the queue when Auto-post is on, or posted by hand.
-    // Running it here used to force-post teasers even with the switch off.
-    const { error: uploadError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
-    toast({
-      title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}`,
-      description: uploadError ? `Upload pass failed: ${await getFunctionErrorMessage(uploadError)}` : undefined,
-      variant: uploadError ? 'destructive' : 'default',
-    });
-    refetch();
   };
 
   // One song, one press: approve its video, give it the next free slot on the
@@ -1392,10 +1420,9 @@ const PublishingSection = () => {
     const yt = group.yt;
     setPublishingKey(group.key);
     try {
-      const bookable =
-        !!yt &&
-        ['draft', 'pending_approval', 'approved', 'failed'].includes(yt.status) &&
-        !yt.scheduled_for;
+      // Shared predicate: a row that failed its upload is bookable again (its old,
+      // stale slot must not stop the retry), matching the bar and the song page.
+      const bookable = trackBookable(group);
       if (yt && bookable && !yt.metadata?.description?.trim()) {
         throw new Error('Write the YouTube description first (Re-draft AI or Edit), then publish.');
       }
@@ -1433,6 +1460,10 @@ const PublishingSection = () => {
         .filter(Boolean)
         .join(' ');
 
+      // Refresh before announcing: the badge, the row's chip and the open song page
+      // all read the same query, and leaving it stale made a just-booked song look
+      // untouched (and handed a second publish the same slot).
+      await refetch();
       toast({
         title: bookable ? 'Song booked' : 'Passes finished',
         description: summary,
@@ -1516,6 +1547,40 @@ const PublishingSection = () => {
     toast({ title: 'Caption saved', description: 'The post will use this text.' });
   };
 
+  // Inline YouTube copy edit from the song page. Merges the jsonb rather than
+  // replacing it, then pushes the change to YouTube when the video is already
+  // live (the same call the board's edit path uses).
+  const saveCopy = async (
+    pub: PublicationWithAsset,
+    next: { title: string; description: string }
+  ) => {
+    const { error } = await supabase
+      .from('publications')
+      .update({
+        metadata: {
+          ...(pub.metadata ?? {}),
+          title: next.title || (pub.metadata?.title ?? ''),
+          description: next.description,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pub.id);
+    if (error) throw error;
+    if (pub.platform_post_id) {
+      const { error: syncError } = await supabase.functions.invoke('update-youtube-video', {
+        body: { publication_id: pub.id },
+      });
+      if (syncError) {
+        await refetch();
+        throw new Error(
+          `Saved here, but YouTube wasn’t updated: ${await getFunctionErrorMessage(syncError)}`
+        );
+      }
+    }
+    await refetch();
+    toast({ title: 'Copy saved' });
+  };
+
   // Runs one platform's pass on demand, ignoring the schedule, and prints the
   // worker's raw reply so it's obvious whether each side is wired up.
   const testPlatform = async (platform: 'youtube' | 'tiktok' | 'instagram') => {
@@ -1559,6 +1624,19 @@ const PublishingSection = () => {
     const row = candidates.find((p) => p.metadata?.caption || p.metadata?.title) ?? candidates[0];
     if (!row) {
       toast({ title: `No ${platform} teaser waiting to post` });
+      return;
+    }
+    // A live post that cannot be undone from here — name it before firing.
+    const label =
+      [row.content_assets?.song_title, row.content_assets?.show].filter(Boolean).join(' ') ||
+      row.content_assets?.title ||
+      'the next waiting teaser';
+    const channel = platform === 'tiktok' ? 'TikTok' : 'Instagram';
+    if (
+      !window.confirm(
+        `Post ${label} to ${channel} right now? This publishes for real, and can only be undone in the ${channel} app.`
+      )
+    ) {
       return;
     }
     setTesting(platform);
@@ -1702,7 +1780,7 @@ const PublishingSection = () => {
                 variant="outline"
                 size="sm"
                 onClick={scheduleAll}
-                disabled={isLoading || readyToBook === 0}
+                disabled={isLoading || readyToBook === 0 || scheduling}
                 title={
                   readyToBook === 0
                     ? 'No approved video is waiting for a slot.'
@@ -1932,6 +2010,7 @@ const PublishingSection = () => {
           onRetry={retryTeaser}
           onDownload={downloadPub}
           onSaveCaption={saveCaption}
+          onSaveCopy={saveCopy}
         />
       )}
 

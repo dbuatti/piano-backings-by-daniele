@@ -240,7 +240,9 @@ Deno.serve(async (req) => {
           const { error: updErr } = await supabaseAdmin
             .from('publications')
             .update({ status: 'scheduled', scheduled_for: target.slot, error: null, metadata: seeded })
-            .eq('id', teaser.id);
+            .eq('id', teaser.id)
+            // Only arm a row nobody else has claimed in the meantime.
+            .in('status', ['draft', 'pending_approval']);
           if (!updErr) armed += 1;
         }
       }
@@ -302,6 +304,13 @@ Deno.serve(async (req) => {
           if (!POSTABLE_MIME.test(String(asset.mime_type || ''))) {
             throw new Error(
               `Recorded as ${asset.mime_type || 'an unknown format'}, which ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} cannot play. Re-record the teaser in Chrome or Safari.`
+            );
+          }
+          // Vertical is not cosmetic: a 16:9 file posted here goes out letterboxed.
+          // The client's isPostable() requires 9:16, so enforce it here too.
+          if (String(asset.aspect || '') !== '9:16') {
+            throw new Error(
+              `Recorded at ${asset.aspect || 'an unknown aspect'}, but ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} needs a 9:16 vertical teaser. Re-record it.`
             );
           }
           const caption = captionFor(pub);
@@ -377,7 +386,7 @@ Deno.serve(async (req) => {
               .from('publications')
               .update({
                 status: 'published',
-                platform_post_id: result.mediaId || result.containerId,
+                platform_post_id: result.mediaId,
                 published_at: new Date().toISOString(),
                 error: null,
                 metadata: {

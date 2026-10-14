@@ -28,8 +28,11 @@ import type { DeliveredTrack, ShopProductRow } from '@/hooks/useDeliveredTracks'
 import {
   captionOf,
   formatSeconds,
+  instagramWaitingNote,
   isPostable,
   teaserProblem,
+  trackActionable,
+  trackBookable,
   trackReadiness,
   when,
   type ReadinessItem,
@@ -127,6 +130,108 @@ function assetLine(pub?: PublicationWithAsset): string {
   ].join(' · ');
 }
 
+// Inline YouTube copy editing. A missing description is the one hard blocker on
+// booking, so the song page lets it be fixed here rather than sending the owner
+// back to the release board. When the video is already on YouTube the edit is
+// pushed to the live video too (same call the board's edit uses).
+function CopyEditor({
+  pub,
+  title,
+  description,
+  onSave,
+}: {
+  pub: PublicationWithAsset;
+  title: string;
+  description: string;
+  onSave: (
+    pub: PublicationWithAsset,
+    next: { title: string; description: string }
+  ) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const start = () => {
+    setDraftTitle(title);
+    setDraftDescription(description);
+    setError(null);
+    setEditing(true);
+  };
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(pub, { title: draftTitle.trim(), description: draftDescription.trim() });
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the copy.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="mt-3 space-y-2">
+        <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          Video title
+        </span>
+        <input
+          value={draftTitle}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-medium text-[#1C0357] focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+        />
+        <span className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          Description
+        </span>
+        <textarea
+          value={draftDescription}
+          onChange={(e) => setDraftDescription(e.target.value)}
+          rows={8}
+          className="w-full rounded-lg border border-gray-200 p-2 text-[11px] leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+        />
+        {error ? <p className="text-[11px] text-red-600">{error}</p> : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save copy
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+            Cancel
+          </Button>
+          {pub.platform_post_id ? (
+            <span className="text-[11px] text-gray-400">Also updates the live video on YouTube.</span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Fact label="Video title">{title || '—'}</Fact>
+      {description ? (
+        <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2 text-[11px] leading-relaxed text-gray-600">
+          {description}
+        </pre>
+      ) : (
+        <p className="mt-3 text-[11px] text-gray-400">
+          No description yet — the pipeline can’t book it without one.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={start}
+        className="mt-1 text-[11px] font-medium text-[#F538BC] hover:underline"
+      >
+        {description ? 'Edit copy' : 'Write copy'}
+      </button>
+    </>
+  );
+}
+
 // One platform's teaser, with the single fix that unblocks it.
 function TeaserPanel({
   platform,
@@ -202,7 +307,7 @@ function TeaserPanel({
             problem.action === 'retry' ? 'text-red-600' : 'text-amber-600'
           )}
         >
-          {igBlocked ? 'Instagram isn’t connected yet (Settings → Integrations).' : problem.note}
+          {igBlocked ? instagramWaitingNote(autoOn) : problem.note}
         </p>
       ) : (
         <p className="mb-2 text-xs text-green-700">
@@ -308,6 +413,11 @@ export interface TrackDetailProps {
   onDownload: (pub: PublicationWithAsset) => void;
   /** Saves an edited caption onto the row the worker will post from. */
   onSaveCaption: (pub: PublicationWithAsset, caption: string) => Promise<void>;
+  /** Saves edited YouTube title/description, and pushes it to a live video. */
+  onSaveCopy: (
+    pub: PublicationWithAsset,
+    next: { title: string; description: string }
+  ) => Promise<void>;
 }
 
 export default function TrackDetail({
@@ -327,6 +437,7 @@ export default function TrackDetail({
   onRetry,
   onDownload,
   onSaveCaption,
+  onSaveCopy,
 }: TrackDetailProps) {
   const [step, setStep] = useState(0);
   const yt = group.yt;
@@ -339,10 +450,7 @@ export default function TrackDetail({
   const shopUrl = shopSongUrl(products, { song, show });
 
   const ytAssetAspect = yt?.content_assets?.aspect;
-  const bookable =
-    !!yt &&
-    ['draft', 'pending_approval', 'approved', 'failed'].includes(yt.status) &&
-    !yt.scheduled_for;
+  const bookable = trackBookable(group);
 
   const readiness = trackReadiness(group, {
     hasCopy: !!yt?.metadata?.description?.trim(),
@@ -352,10 +460,8 @@ export default function TrackDetail({
   const blockers = readiness.filter((i) => !i.ok && !i.advisory);
   const ready = blockers.length === 0;
 
-  const pendingRows = group.pubs.filter((p) =>
-    ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status)
-  );
-  const canPublish = ready && (bookable || pendingRows.length > 0);
+  // Same predicate the pipeline bar uses, so the button and its helper text agree.
+  const canPublish = ready && trackActionable(group);
 
   const description = String(yt?.metadata?.description ?? '').trim();
   const ytTitle = String(yt?.metadata?.title ?? '').trim();
@@ -476,15 +582,10 @@ export default function TrackDetail({
                     : 'Not booked'}
               </Fact>
               {yt?.error ? <Fact label="Last error">{yt.error}</Fact> : null}
-              <Fact label="Video title">{ytTitle || '—'}</Fact>
-              {description ? (
-                <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2 text-[11px] leading-relaxed text-gray-600">
-                  {description}
-                </pre>
+              {yt ? (
+                <CopyEditor pub={yt} title={ytTitle} description={description} onSave={onSaveCopy} />
               ) : (
-                <p className="mt-3 text-[11px] text-gray-400">
-                  No description yet — the pipeline can’t book it without one.
-                </p>
+                <Fact label="Video title">—</Fact>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {yt ? (

@@ -344,10 +344,16 @@ Deno.serve(async (req) => {
         // Promote when YouTube confirms it, or when its slot has clearly passed
         // and we simply can't ask YouTube today.
         if (!confirmed && !(publicIds === null && slotPassed)) continue;
-        await supabaseAdmin
+        // Compare-and-set: two overlapping runs used to both promote the row and
+        // both email. Only the run that actually moved it announces it.
+        const { data: promoted } = await supabaseAdmin
           .from('publications')
           .update({ status: 'published', published_at: nowIso })
-          .eq('id', row.id);
+          .eq('id', row.id)
+          .eq('status', 'scheduled')
+          .select('id')
+          .maybeSingle();
+        if (!promoted) continue;
         results.push({ id: row.id, status: 'published', url: row.url });
         const title = titleOf(row);
         await notifyAdmins(
@@ -373,13 +379,32 @@ Deno.serve(async (req) => {
       .not('published_at', 'is', null);
 
     if (staleErr) throw staleErr;
+    // An asset can back more than one row, so don't retire a source that any
+    // non-terminal publication still points at.
+    const staleAssetIds = [...new Set((stalePubs ?? []).map((p) => p.asset_id).filter(Boolean))];
+    const busyAssetIds = new Set<string>();
+    if (staleAssetIds.length) {
+      try {
+        const { data: liveRows } = await supabaseAdmin
+          .from('publications')
+          .select('asset_id')
+          .in('asset_id', staleAssetIds)
+          .not('status', 'in', '(published,failed,skipped)');
+        (liveRows ?? []).forEach((r) => r.asset_id && busyAssetIds.add(String(r.asset_id)));
+      } catch (e) {
+        console.warn('[run-publish-queue] retention in-use check skipped:', e?.message || e);
+      }
+    }
     const cleaned = new Set<string>();
     for (const pub of stalePubs ?? []) {
       const path = pub?.content_assets?.storage_path;
-      if (!path || cleaned.has(pub.asset_id)) continue;
+      if (!path || cleaned.has(pub.asset_id) || busyAssetIds.has(String(pub.asset_id))) continue;
       cleaned.add(pub.asset_id);
       try {
-        await supabaseAdmin.storage.from('content').remove([path]);
+        // remove() reports failures in `error` rather than throwing; nulling the
+        // pointer on a failed delete would orphan the object with no way to find it.
+        const { error: removeErr } = await supabaseAdmin.storage.from('content').remove([path]);
+        if (removeErr) throw removeErr;
         await supabaseAdmin
           .from('content_assets')
           .update({ storage_path: null })

@@ -182,20 +182,26 @@ export async function recordCanvasClip(
     recorder.start();
     audio?.source.start();
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       let tickTimer: ReturnType<typeof setTimeout>;
       const tick = () => {
-        const el = (performance.now() - startedAt) / 1000;
-        if (el < duration) {
-          drawFrame(el);
-          // Push the drawn frame into the stream at the target rate. Drawing
-          // less often than the stream's fps yields a low-frame-rate file.
-          (videoTrack as MediaStreamTrack & { requestFrame?: () => void }).requestFrame?.();
-          activeProgress = { loaded: Math.min(el, duration), total: duration };
-          emit();
-          tickTimer = setTimeout(tick, frameMs);
-        } else {
-          resolve();
+        try {
+          const el = (performance.now() - startedAt) / 1000;
+          if (el < duration) {
+            drawFrame(el);
+            // Push the drawn frame into the stream at the target rate. Drawing
+            // less often than the stream's fps yields a low-frame-rate file.
+            (videoTrack as MediaStreamTrack & { requestFrame?: () => void }).requestFrame?.();
+            activeProgress = { loaded: Math.min(el, duration), total: duration };
+            emit();
+            tickTimer = setTimeout(tick, frameMs);
+          } else {
+            resolve();
+          }
+        } catch (err) {
+          // A throw inside the timer would otherwise be uncaught, leaving this
+          // promise pending forever — and the recorder stuck "recording".
+          reject(err);
         }
       };
       tickTimer = setTimeout(tick, frameMs);
@@ -211,13 +217,24 @@ export async function recordCanvasClip(
       // Already ended.
     }
     await stopped;
+    // Tag with the container the recorder actually produced so uploads carry the
+    // right Content-Type (TikTok validates it).
+    const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'video/webm' });
+    // A zero-byte blob is not a recording; treat it as a miss so callers don't
+    // upload or queue an empty file.
+    return blob.size > 0 ? blob : null;
+  } finally {
+    // Tear the graph down on every path. A throw mid-record used to leave the
+    // canvas capture track live (a stuck "recording" tab indicator) and the
+    // AudioContext open.
+    try {
+      if (recorder.state !== 'inactive') recorder.stop();
+    } catch {
+      // Already stopped.
+    }
     stream.getTracks().forEach((track) => track.stop());
     dest?.disconnect();
     await audio?.context.close().catch(() => undefined);
-    // Tag with the container the recorder actually produced so uploads carry the
-    // right Content-Type (TikTok validates it).
-    return new Blob(chunks, { type: recorder.mimeType || mimeType || 'video/webm' });
-  } finally {
     recording = false;
     activeProgress = null;
     activeLabel = null;

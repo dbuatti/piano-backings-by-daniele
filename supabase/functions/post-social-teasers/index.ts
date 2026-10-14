@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
           caption,
           mimeType: asset.mime_type,
         });
-        const platformPostId = posted.mediaId || posted.containerId;
+        const platformPostId = posted.mediaId;
         const url = null;
 
         await supabaseAdmin

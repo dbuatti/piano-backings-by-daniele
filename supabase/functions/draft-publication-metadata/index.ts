@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
     // its metadata is refreshed so a re-draft never un-schedules a video.
     const { data: existing, error: existingErr } = await supabaseAdmin
       .from('publications')
-      .select('id, status')
+      .select('id, status, metadata')
       .eq('asset_id', body.asset_id)
       .eq('platform', platform)
       .in('status', ['draft', 'pending_approval', 'scheduled', 'failed'])
@@ -259,10 +259,18 @@ Deno.serve(async (req) => {
       return json({ error: `No ${platform} publication exists for this asset.` }, 400);
     }
 
+    // Merge over the existing jsonb rather than replacing it: a re-draft is about
+    // the title/description/tags, and wholesale replacement used to discard keys
+    // the draft doesn't know about (tiktok_post audit, manual captions, privacy).
+    const mergedMetadata = {
+      ...((existing.metadata as Record<string, unknown> | null) || {}),
+      ...metadata,
+    };
+
     const { data: pub, error: pubErr } = await supabaseAdmin
       .from('publications')
       .update({
-        metadata,
+        metadata: mergedMetadata,
         error: null,
         ...(['draft', 'failed'].includes(existing.status)
           ? { status: 'pending_approval' }
@@ -276,7 +284,7 @@ Deno.serve(async (req) => {
       return json({ error: `No ${platform} publication exists for this asset.` }, 400);
     }
 
-    return json({ publication_id: pub.id, metadata });
+    return json({ publication_id: pub.id, metadata: mergedMetadata });
   } catch (error) {
     console.error('[draft-publication-metadata] failed:', error?.message || error);
     return json({ error: error?.message || 'Unknown error' }, 500);

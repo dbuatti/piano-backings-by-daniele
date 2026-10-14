@@ -16,8 +16,9 @@ export const GRAPH_VERSION = 'v25.0';
 
 export interface InstagramPostResult {
   containerId: string;
-  mediaId: string | null;
-  status: string;
+  /** Always set: publishInstagramReel throws rather than returning an unpublished container. */
+  mediaId: string;
+  status: 'PUBLISHED';
 }
 
 // Long-lived tokens (~60 days) can be refreshed once they're at least 24h old.
@@ -71,7 +72,12 @@ export async function publishInstagramReel(
   // 2) Wait for the container to finish processing.
   const status = await waitForInstagramContainer(accessToken, containerId);
   if (status !== 'FINISHED') {
-    return { containerId, mediaId: null, status };
+    // Never hand back a container that did not publish: callers used to mark the
+    // row `published` regardless, so a Reel that failed to process read as live
+    // (with a container id stored as the post id) and was never retried.
+    throw new Error(
+      `Instagram could not finish processing the video (status: ${status}) — it was not published. Try again shortly.`
+    );
   }
 
   // 3) Publish the finished container.
