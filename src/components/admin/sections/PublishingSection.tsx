@@ -31,8 +31,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Eye, RefreshCw, Rocket, Share2, SlidersHorizontal, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Eye, Instagram, RefreshCw, Rocket, Share2, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
+import TikTokComposer from '@/components/admin/TikTokComposer';
 import ReleaseBoard from '@/components/admin/sections/ReleaseBoard';
 import UpcomingCalendar from '@/components/admin/sections/UpcomingCalendar';
 
@@ -764,6 +765,8 @@ const PublishingSection = () => {
   const [confirmDegraded, setConfirmDegraded] = useState(false);
   const [respacing, setRespacing] = useState(false);
   const [postingTeasers, setPostingTeasers] = useState(false);
+  const [composerId, setComposerId] = useState<string | null>(null);
+  const [openingComposer, setOpeningComposer] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -887,6 +890,35 @@ const PublishingSection = () => {
       toast({ title: 'Publishing pass complete' });
     }
     refetch();
+  };
+
+  // Opens the TikTok compose dialog for the next teaser awaiting a post. TikTok
+  // posting must go through this screen so it satisfies their required UX.
+  const openComposer = async () => {
+    setOpeningComposer(true);
+    try {
+      const { data, error } = await supabase
+        .from('publications')
+        .select('id')
+        .eq('platform', 'tiktok')
+        .in('status', ['draft', 'pending_approval', 'failed'])
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (error) throw error;
+      const id = data?.[0]?.id;
+      if (!id) {
+        toast({
+          title: 'No TikTok teasers waiting',
+          description: 'Vett and approve a track on the release board first — that creates its teaser rows.',
+        });
+        return;
+      }
+      setComposerId(id);
+    } catch (e) {
+      toast({ title: "Couldn't open the TikTok composer", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setOpeningComposer(false);
+    }
   };
 
   // Posts the TikTok/Instagram teaser rows whose track is already approved on
@@ -1013,8 +1045,11 @@ const PublishingSection = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={openComposer} disabled={openingComposer}>
+            <Share2 className="h-4 w-4" /> Compose TikTok post
+          </Button>
           <Button variant="outline" onClick={postTeasers} disabled={postingTeasers}>
-            <Share2 className="h-4 w-4" /> {postingTeasers ? 'Posting…' : 'Post social teasers'}
+            <Instagram className="h-4 w-4" /> {postingTeasers ? 'Posting…' : 'Post Instagram teasers'}
           </Button>
           <Button variant="outline" onClick={runQueue}>
             <Rocket className="h-4 w-4" /> Run due now
@@ -1115,6 +1150,12 @@ const PublishingSection = () => {
           </CardContent>
         </Card>
       )}
+
+      <TikTokComposer
+        publicationId={composerId}
+        onClose={() => setComposerId(null)}
+        onPosted={() => refetch()}
+      />
     </div>
   );
 };

@@ -11,9 +11,8 @@
 // source, not our webm recordings).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { requireSupabaseEnv } from '../_shared/env.ts';
-import { getSocialToken, saveSocialToken, type SocialPlatform } from '../_shared/social.ts';
-import { publishTikTokVideo, refreshTikTokToken } from '../_shared/tiktok.ts';
-import { publishInstagramReel, refreshInstagramToken } from '../_shared/instagram.ts';
+import { getSocialToken, getFreshSocialAccessToken } from '../_shared/social.ts';
+import { publishInstagramReel } from '../_shared/instagram.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,45 +35,6 @@ async function isAuthorized(req: Request, supabaseAdmin, serviceKey: string): Pr
   return !!user && ADMIN_EMAILS.includes(user.email || '');
 }
 
-// Returns a usable access token, refreshing + persisting it when expired.
-async function freshAccessToken(supabaseAdmin, platform: SocialPlatform): Promise<string> {
-  const row = await getSocialToken(supabaseAdmin, platform);
-  if (!row?.access_token) throw new Error(`No ${platform} account connected (Settings → Integrations).`);
-
-  const stillValid = row.expires_at ? new Date(row.expires_at).getTime() > Date.now() + 60_000 : true;
-  if (stillValid) return row.access_token;
-
-  if (platform === 'tiktok' && row.refresh_token) {
-    const data = await refreshTikTokToken(
-      Deno.env.get('TIKTOK_CLIENT_KEY'),
-      Deno.env.get('TIKTOK_CLIENT_SECRET'),
-      row.refresh_token
-    );
-    await saveSocialToken(supabaseAdmin, {
-      platform,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
-      externalId: row.external_id,
-      displayName: row.display_name,
-      scope: data.scope,
-    });
-    return data.access_token;
-  }
-  if (platform === 'instagram') {
-    const data = await refreshInstagramToken(row.access_token);
-    await saveSocialToken(supabaseAdmin, {
-      platform,
-      accessToken: data.access_token,
-      externalId: row.external_id,
-      displayName: row.display_name,
-      expiresIn: data.expires_in,
-      scope: row.scope,
-    });
-    return data.access_token;
-  }
-  return row.access_token;
-}
 
 function captionFor(pub): string {
   const meta = (pub.metadata || {}) as Record<string, unknown>;
@@ -137,11 +97,12 @@ Deno.serve(async (req) => {
       created = newRows.length;
     }
 
-    // Post both freshly-created and previously-drafted teasers.
+    // Post the Instagram teasers. TikTok is handled by the compose dialog
+    // (post-tiktok-teaser) so it goes through TikTok's required Direct Post UX.
     let query = supabaseAdmin
       .from('publications')
       .select('*, content_assets(*)')
-      .in('platform', ['tiktok', 'instagram'])
+      .eq('platform', 'instagram')
       .in('status', ['draft', 'pending_approval', 'failed'])
       .limit(BATCH_LIMIT);
     if (assetIdFilter) query = query.eq('asset_id', assetIdFilter);
@@ -164,10 +125,9 @@ Deno.serve(async (req) => {
           .update({ status: 'publishing', attempts: (pub.attempts || 0) + 1 })
           .eq('id', pub.id);
 
-        const accessToken = await freshAccessToken(supabaseAdmin, platform);
+        const accessToken = await getFreshSocialAccessToken(supabaseAdmin, platform);
         // The `content` bucket is private, so hand out a short-lived signed URL
-        // (getPublicUrl returns a URL that 400s). TikTok downloads the bytes we
-        // fetch from it; Instagram fetches the URL itself before it expires.
+        // (getPublicUrl returns a URL that 400s) for Instagram to fetch.
         const { data: signed, error: signErr } = await supabaseAdmin.storage
           .from('content')
           .createSignedUrl(asset.storage_path, 3600);
@@ -177,31 +137,14 @@ Deno.serve(async (req) => {
         const mediaUrl = signed.signedUrl;
         const caption = captionFor(pub);
 
-        let platformPostId = null;
-        let url = null;
-        if (platform === 'tiktok') {
-          const tokenRow = await getSocialToken(supabaseAdmin, 'tiktok');
-          const bytesRes = await fetch(mediaUrl);
-          if (!bytesRes.ok) {
-            const detail = (await bytesRes.text().catch(() => '')).slice(0, 200);
-            throw new Error(`Couldn't fetch teaser media (${bytesRes.status}) ${detail}`.trim());
-          }
-          const bytes = new Uint8Array(await bytesRes.arrayBuffer());
-          const posted = await publishTikTokVideo(accessToken, bytes, {
-            caption,
-            mimeType: asset.mime_type,
-          });
-          platformPostId = posted.publishId;
-          url = tokenRow?.display_name ? `https://www.tiktok.com/@${tokenRow.display_name}` : null;
-        } else {
-          const tokenRow = await getSocialToken(supabaseAdmin, 'instagram');
-          const posted = await publishInstagramReel(accessToken, tokenRow?.external_id, {
-            videoUrl: mediaUrl,
-            caption,
-            mimeType: asset.mime_type,
-          });
-          platformPostId = posted.mediaId || posted.containerId;
-        }
+        const tokenRow = await getSocialToken(supabaseAdmin, 'instagram');
+        const posted = await publishInstagramReel(accessToken, tokenRow?.external_id, {
+          videoUrl: mediaUrl,
+          caption,
+          mimeType: asset.mime_type,
+        });
+        const platformPostId = posted.mediaId || posted.containerId;
+        const url = null;
 
         await supabaseAdmin
           .from('publications')

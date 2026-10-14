@@ -4,6 +4,8 @@
 // and read by whatever posts the teasers. Every function here is service-role
 // only — the table has RLS on with no policies.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { refreshTikTokToken } from './tiktok.ts';
+import { refreshInstagramToken } from './instagram.ts';
 
 type Admin = ReturnType<typeof createClient>;
 
@@ -63,4 +65,50 @@ export async function getSocialToken(
     .eq('platform', platform)
     .maybeSingle();
   return (data as SocialTokenRow) ?? null;
+}
+
+// Returns a usable access token for the platform, refreshing and persisting it
+// when the stored one has expired. Shared by every function that posts.
+export async function getFreshSocialAccessToken(
+  supabaseAdmin: Admin,
+  platform: SocialPlatform
+): Promise<string> {
+  const row = await getSocialToken(supabaseAdmin, platform);
+  if (!row?.access_token) {
+    throw new Error(`No ${platform} account connected (Settings → Integrations).`);
+  }
+
+  const stillValid = row.expires_at ? new Date(row.expires_at).getTime() > Date.now() + 60_000 : true;
+  if (stillValid) return row.access_token;
+
+  if (platform === 'tiktok' && row.refresh_token) {
+    const data = await refreshTikTokToken(
+      Deno.env.get('TIKTOK_CLIENT_KEY'),
+      Deno.env.get('TIKTOK_CLIENT_SECRET'),
+      row.refresh_token
+    );
+    await saveSocialToken(supabaseAdmin, {
+      platform,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      externalId: row.external_id,
+      displayName: row.display_name,
+      scope: data.scope,
+    });
+    return data.access_token;
+  }
+  if (platform === 'instagram') {
+    const data = await refreshInstagramToken(row.access_token);
+    await saveSocialToken(supabaseAdmin, {
+      platform,
+      accessToken: data.access_token,
+      externalId: row.external_id,
+      displayName: row.display_name,
+      expiresIn: data.expires_in,
+      scope: row.scope,
+    });
+    return data.access_token;
+  }
+  return row.access_token;
 }

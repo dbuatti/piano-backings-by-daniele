@@ -42,6 +42,7 @@ export async function refreshTikTokToken(
 
 export interface TikTokCreatorInfo {
   creator_username?: string;
+  creator_avatar_url?: string;
   privacy_level_options?: string[];
   max_video_post_duration_sec?: number;
   comment_disabled?: boolean;
@@ -69,12 +70,23 @@ export async function queryTikTokCreatorInfo(accessToken: string): Promise<TikTo
   return (data?.data ?? {}) as TikTokCreatorInfo;
 }
 
+export interface TikTokPostOptions {
+  caption?: string;
+  privacyLevel?: string;
+  disableComment?: boolean;
+  disableDuet?: boolean;
+  disableStitch?: boolean;
+  brandOrganic?: boolean;
+  brandContent?: boolean;
+  mimeType?: string;
+}
+
 // Initialise a direct post, upload the single/first chunk, then wait for TikTok
 // to finish processing. Returns the publish id and final status.
 export async function publishTikTokVideo(
   accessToken: string,
   bytes: Uint8Array,
-  meta: { caption?: string; privacyLevel?: string; mimeType?: string }
+  meta: TikTokPostOptions
 ): Promise<TikTokPostResult> {
   // Required first step: read the creator's allowed privacy levels.
   const creator = await queryTikTokCreatorInfo(accessToken);
@@ -110,9 +122,12 @@ export async function publishTikTokVideo(
         title: meta.caption ?? '',
         // Unaudited apps are restricted to private regardless of this value.
         privacy_level: privacyLevel,
-        disable_duet: false,
-        disable_stitch: false,
-        disable_comment: false,
+        disable_duet: meta.disableDuet ?? false,
+        disable_stitch: meta.disableStitch ?? false,
+        disable_comment: meta.disableComment ?? false,
+        // Commercial content disclosure (guideline §3).
+        brand_organic_toggle: meta.brandOrganic ?? false,
+        brand_content_toggle: meta.brandContent ?? false,
       },
       source_info: {
         source: 'FILE_UPLOAD',
