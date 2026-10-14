@@ -109,9 +109,12 @@ Deno.serve(async (req) => {
     const onlyId = typeof body?.publication_id === 'string' ? body.publication_id : null;
     if ((onlyPlatform || onlyId) && !admin) return json({ error: 'Forbidden' }, 403);
 
+    // `*` (not an explicit column list) so a not-yet-applied migration 0045
+    // can't break the whole worker: social_tiktok_poster just reads as undefined
+    // and we fall back to the API path.
     const { data: settings } = await supabaseAdmin
       .from('publishing_settings')
-      .select('social_auto_post, social_offset_minutes, social_tiktok_privacy')
+      .select('*')
       .eq('id', 1)
       .maybeSingle();
 
@@ -344,10 +347,18 @@ Deno.serve(async (req) => {
     // --- 3) Post the teasers whose slot has arrived. ---
     const posted: Array<Record<string, unknown>> = [];
     try {
+      // When the browser poster owns TikTok (social_tiktok_poster='browser'), the
+      // API worker must not also post TikTok rows, or the two would race. Instagram
+      // always stays here. A forced single-post (`onlyId`) still runs, so an admin
+      // can deliberately test the API path.
+      const apiPlatforms: Array<'tiktok' | 'instagram'> =
+        settings?.social_tiktok_poster === 'browser'
+          ? ['instagram']
+          : ['tiktok', 'instagram'];
       let dueQuery = supabaseAdmin
         .from('publications')
         .select('*, content_assets(*)')
-        .in('platform', onlyPlatform ? [onlyPlatform] : ['tiktok', 'instagram']);
+        .in('platform', onlyPlatform ? [onlyPlatform] : apiPlatforms);
       if (onlyId) {
         // Forced single-post: ignore the slot, but never re-post something live.
         dueQuery = dueQuery.eq('id', onlyId).is('platform_post_id', null);

@@ -74,6 +74,8 @@ export interface PublishingSettings {
   /** Minutes after the YouTube slot that the teaser posts (same day by default). */
   social_offset_minutes: number | null;
   social_tiktok_privacy: string;
+  /** Who posts TikTok: the sanctioned API worker ('api') or the unofficial browser poster ('browser'). */
+  social_tiktok_poster: 'api' | 'browser';
   updated_at: string;
 }
 

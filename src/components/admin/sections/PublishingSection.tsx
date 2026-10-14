@@ -282,10 +282,12 @@ function SlotSettings({
   const [socialAuto, setSocialAuto] = useState<boolean | null>(null);
   const [socialOffset, setSocialOffset] = useState<string | null>(null);
   const [tikTokPrivacy, setTikTokPrivacy] = useState<string | null>(null);
+  const [tikTokPoster, setTikTokPoster] = useState<'api' | 'browser' | null>(null);
 
   function final(key: 'schedule_mode'): 'weekly' | 'interval';
   function final(key: 'interval_days' | 'weekly_dow' | 'social_offset_minutes'): number;
   function final(key: 'weekly_time' | 'timezone' | 'social_tiktok_privacy'): string;
+  function final(key: 'social_tiktok_poster'): 'api' | 'browser';
   function final(key: 'auto_schedule' | 'auto_book' | 'social_auto_post'): boolean;
   function final(key: string): string | number | boolean {
     switch (key) {
@@ -295,6 +297,8 @@ function SlotSettings({
         return Number(socialOffset ?? String(settings?.social_offset_minutes ?? 0)) || 0;
       case 'social_tiktok_privacy':
         return tikTokPrivacy ?? settings?.social_tiktok_privacy ?? 'SELF_ONLY';
+      case 'social_tiktok_poster':
+        return (tikTokPoster ?? settings?.social_tiktok_poster ?? 'api') as 'api' | 'browser';
       case 'schedule_mode':
         return (mode ?? settings?.schedule_mode ?? 'weekly') as 'weekly' | 'interval';
       case 'interval_days':
@@ -317,20 +321,26 @@ function SlotSettings({
   }
 
   const save = async () => {
+    const payload: Record<string, unknown> = {
+      schedule_mode: final('schedule_mode'),
+      interval_days: final('schedule_mode') === 'interval' ? final('interval_days') : null,
+      weekly_dow: final('weekly_dow'),
+      weekly_time: final('weekly_time'),
+      timezone: final('timezone'),
+      auto_schedule: final('auto_schedule'),
+      auto_book: final('auto_book'),
+      social_auto_post: final('social_auto_post'),
+      social_offset_minutes: final('social_offset_minutes'),
+      social_tiktok_privacy: final('social_tiktok_privacy'),
+    };
+    // Only write the poster column once migration 0045 has added it, so saving
+    // settings never breaks on a database that hasn't caught up.
+    if (settings && 'social_tiktok_poster' in settings) {
+      payload.social_tiktok_poster = final('social_tiktok_poster');
+    }
     const { error } = await supabase
       .from('publishing_settings')
-      .update({
-        schedule_mode: final('schedule_mode'),
-        interval_days: final('schedule_mode') === 'interval' ? final('interval_days') : null,
-        weekly_dow: final('weekly_dow'),
-        weekly_time: final('weekly_time'),
-        timezone: final('timezone'),
-        auto_schedule: final('auto_schedule'),
-        auto_book: final('auto_book'),
-        social_auto_post: final('social_auto_post'),
-        social_offset_minutes: final('social_offset_minutes'),
-        social_tiktok_privacy: final('social_tiktok_privacy'),
-      })
+      .update(payload)
       .eq('id', 1);
     if (error) {
       toast({ title: "Couldn't save settings", description: getErrorMessage(error), variant: 'destructive' });
@@ -508,6 +518,24 @@ function SlotSettings({
                 </Select>
                 <p className="text-[11px] text-gray-400">
                   An unaudited TikTok app is forced to <em>Only me</em> no matter what you pick here.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>How TikTok is posted</Label>
+                <Select
+                  value={final('social_tiktok_poster')}
+                  onValueChange={(v) => setTikTokPoster(v as 'api' | 'browser')}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="api">TikTok API — private until audited</SelectItem>
+                    <SelectItem value="browser">Browser poster — public (unofficial, risky)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-gray-400">
+                  {final('social_tiktok_poster') === 'browser'
+                    ? 'A separate always-on service posts through the web app as you. It can post publicly, but it breaks TikTok rules and risks the account.'
+                    : 'Uses the official API. While the app is unaudited this can only post privately.'}
                 </p>
               </div>
               <p className="text-[11px] leading-relaxed text-gray-500 sm:col-span-2">

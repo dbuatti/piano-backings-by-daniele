@@ -1,0 +1,24 @@
+{
+  "name": "tiktok-browser-poster",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "UNOFFICIAL TikTok poster for @pianobackingsbydaniele, driven by browser automation. Not sanctioned by TikTok. See README.md.",
+  "scripts": {
+    "login": "tsx src/login.ts",
+    "post:once": "tsx src/index.ts --once",
+    "start": "tsx src/index.ts",
+    "dry": "DRY_RUN=1 tsx src/index.ts --once",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
