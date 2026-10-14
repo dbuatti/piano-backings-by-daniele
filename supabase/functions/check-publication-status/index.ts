@@ -10,6 +10,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { requireGoogleCreds, requireSupabaseEnv } from '../_shared/env.ts';
 import { mintChannelAccessToken } from '../_shared/youtube.ts';
+import { getFreshSocialAccessToken } from '../_shared/social.ts';
+import { fetchTikTokPublishStatus } from '../_shared/tiktok.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,6 +51,51 @@ Deno.serve(async (req) => {
       publication_id?: string;
     };
 
+    // --- TikTok teasers: reconcile against the live publish status. ---
+    const tiktokResults: Array<Record<string, unknown>> = [];
+    try {
+      let tQuery = supabaseAdmin
+        .from('publications')
+        .select('id, platform_post_id, status')
+        .eq('platform', 'tiktok')
+        .not('platform_post_id', 'is', null);
+      if (body.publication_id) tQuery = tQuery.eq('id', body.publication_id);
+      else tQuery = tQuery.in('status', ['publishing', 'approved']);
+      const { data: tiktokPubs } = await tQuery;
+
+      if (tiktokPubs?.length) {
+        const accessToken = await getFreshSocialAccessToken(supabaseAdmin, 'tiktok');
+        for (const pub of tiktokPubs) {
+          try {
+            const status = await fetchTikTokPublishStatus(accessToken, pub.platform_post_id);
+            let nextStatus: string | null = null;
+            let error: string | null = null;
+            if (status.status === 'FAILED') {
+              nextStatus = 'failed';
+              error = status.fail_reason || 'TikTok rejected the post.';
+            } else if (status.status === 'PUBLISH_COMPLETE') {
+              nextStatus = 'published';
+            }
+            if (nextStatus && nextStatus !== pub.status) {
+              await supabaseAdmin
+                .from('publications')
+                .update({
+                  status: nextStatus,
+                  ...(nextStatus === 'published' ? { published_at: new Date().toISOString() } : {}),
+                  ...(error ? { error } : {}),
+                })
+                .eq('id', pub.id);
+            }
+            tiktokResults.push({ id: pub.id, status: status.status, fail_reason: status.fail_reason ?? null });
+          } catch (err) {
+            tiktokResults.push({ id: pub.id, error: err?.message || String(err) });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[check-publication-status] tiktok pass failed:', err?.message || err);
+    }
+
     const q = supabaseAdmin
       .from('publications')
       .select('id, platform_post_id, scheduled_for, status')
@@ -59,7 +106,7 @@ Deno.serve(async (req) => {
     if (qErr) throw qErr;
 
     const withVideo = (pubs ?? []).filter((p) => p.platform_post_id);
-    if (!withVideo.length) return json({ processed: 0, results: [] });
+    if (!withVideo.length) return json({ processed: tiktokResults.length, results: tiktokResults });
 
     const token = await mintChannelAccessToken(supabaseAdmin, {
       clientId: GMAIL_CLIENT_ID,
@@ -117,7 +164,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ processed: results.length, results });
+    return json({ processed: results.length + tiktokResults.length, results: [...results, ...tiktokResults] });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }

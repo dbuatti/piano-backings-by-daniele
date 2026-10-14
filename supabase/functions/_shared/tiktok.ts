@@ -168,10 +168,21 @@ export async function publishTikTokVideo(
   }
 
   const status = await waitForTikTokPublish(accessToken, publishId);
+  console.log(`[tiktok] publish ${publishId} status=${status}`);
   return { publishId, status };
 }
 
-async function fetchTikTokStatus(accessToken: string, publishId: string): Promise<string> {
+export interface TikTokPublishStatus {
+  status: string;
+  fail_reason?: string;
+  publicaly_available_post_id?: number[];
+}
+
+// Poll one publish task. `status` ends at PUBLISH_COMPLETE or FAILED.
+export async function fetchTikTokPublishStatus(
+  accessToken: string,
+  publishId: string
+): Promise<TikTokPublishStatus> {
   const res = await fetch(`${API}/post/publish/status/fetch/`, {
     method: 'POST',
     headers: {
@@ -182,7 +193,11 @@ async function fetchTikTokStatus(accessToken: string, publishId: string): Promis
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message || `TikTok status failed (${res.status})`);
-  return data?.data?.status ?? 'UNKNOWN';
+  return {
+    status: data?.data?.status ?? 'UNKNOWN',
+    fail_reason: data?.data?.fail_reason,
+    publicaly_available_post_id: data?.data?.publicaly_available_post_id,
+  };
 }
 
 async function waitForTikTokPublish(
@@ -191,7 +206,7 @@ async function waitForTikTokPublish(
   attempts = 20
 ): Promise<string> {
   for (let i = 0; i < attempts; i++) {
-    const status = await fetchTikTokStatus(accessToken, publishId);
+    const { status } = await fetchTikTokPublishStatus(accessToken, publishId);
     if (status === 'PUBLISH_COMPLETE' || status === 'FAILED' || status === 'SEND_TO_USER_INBOX') {
       return status;
     }
