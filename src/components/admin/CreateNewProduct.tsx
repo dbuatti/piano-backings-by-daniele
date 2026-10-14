@@ -4,14 +4,14 @@ import React, { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, UploadCloud, FileText, Key, MinusCircle, FileAudio } from 'lucide-react';
+import { Loader2, Link, PlusCircle, UploadCloud, FileText, Key, MinusCircle, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
@@ -41,7 +41,21 @@ interface ProductForm {
   credit_amount: number;
 }
 
-const CreateNewProduct: React.FC = () => {
+interface CreateNewProductProps {
+  /** Called after a product is saved, so the shell can return to the list. */
+  onCreated?: () => void;
+}
+
+// Shorten long storage URLs for display without losing both ends.
+const truncateUrl = (url: string | null, maxLength: number = 40) => {
+  if (!url) return 'N/A';
+  if (url.length <= maxLength) return url;
+  const start = url.substring(0, maxLength / 2 - 2);
+  const end = url.substring(url.length - maxLength / 2 + 2);
+  return `${start}...${end}`;
+};
+
+const CreateNewProduct: React.FC<CreateNewProductProps> = ({ onCreated }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,14 +84,6 @@ const CreateNewProduct: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sheetMusicFile, setSheetMusicFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
-  const truncateUrl = (url: string | null, maxLength: number = 40) => {
-    if (!url) return 'N/A';
-    if (url.length <= maxLength) return url;
-    const start = url.substring(0, maxLength / 2 - 2);
-    const end = url.substring(url.length - maxLength / 2 + 2);
-    return `${start}...${end}`;
-  };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -265,6 +271,7 @@ const CreateNewProduct: React.FC = () => {
       setSheetMusicFile(null);
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
+      onCreated?.();
     },
     onError: (err: unknown) => {
       toast({
@@ -346,17 +353,17 @@ const CreateNewProduct: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-lg bg-white">
-      <CardHeader>
-        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Create New Shop Product
+    <Card className="bg-white border-none shadow-sm rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center gap-2">
+          <PlusCircle className="h-5 w-5" />
+          Create product
         </CardTitle>
+        <CardDescription>
+          Add a single track or credit pack to the shop by hand. Prices default from the tier you pick.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-gray-600 mb-4">
-          Manually add a new product to your shop.
-        </p>
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -758,12 +765,12 @@ const CreateNewProduct: React.FC = () => {
                 {createProductMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Add Product
+                    Adding…
                   </>
                 ) : (
                   <>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add to Shop
+                    Add to shop
                   </>
                 )}
               </Button>

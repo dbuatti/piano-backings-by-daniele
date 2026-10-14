@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,13 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Music, DollarSign, Image, Link, PlusCircle, Search, CheckCircle, XCircle, MinusCircle, UploadCloud, FileText, Key } from 'lucide-react';
+import { Loader2, Music, Link, PlusCircle, Search, CheckCircle, MinusCircle, UploadCloud, FileText, Key, FileAudio } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { format } from 'date-fns';
 import { getSafeBackingTypes, TrackInfo } from '@/utils/helpers';
 import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
-import { FileAudio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -94,7 +93,7 @@ const getFilenameFromUrl = (url: string): string => {
     const filenameWithQuery = parts[parts.length - 1];
     const filename = filenameWithQuery.split('?')[0];
     return decodeURIComponent(filename);
-  } catch (e) {
+  } catch {
     return 'Unnamed Track';
   }
 };
@@ -171,7 +170,7 @@ const normalizeRequest = (req: Record<string, unknown>): BackingRequest => ({
     })) || [],
 });
 
-const RepurposeTrackToShop: React.FC = () => {
+const RepurposeTrackToShop: React.FC<{ onCreated?: () => void }> = ({ onCreated }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -587,6 +586,7 @@ const RepurposeTrackToShop: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
       queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
       queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+      onCreated?.();
     },
     onError: (err: unknown) => {
       toast({
@@ -676,17 +676,17 @@ const RepurposeTrackToShop: React.FC = () => {
   }
 
   return (
-    <Card className="shadow-lg bg-white">
-      <CardHeader>
-        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-          <Music className="mr-2 h-5 w-5" />
-          Repurpose Tracks to Shop
+    <Card className="bg-white border-none shadow-sm rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center gap-2">
+          <Music className="h-5 w-5" />
+          Repurpose a request
         </CardTitle>
+        <CardDescription>
+          Pick one or more delivered requests to publish them as a listing — pick more than one to build a bundle.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-gray-600 mb-4">
-          Select one or more completed backing track requests to create a new product or bundle for your shop.
-        </p>
 
         <div className="mb-6 border-b pb-6">
           <h3 className="font-semibold text-md text-[#1C0357] mb-2 flex items-center">
@@ -773,9 +773,9 @@ const RepurposeTrackToShop: React.FC = () => {
             </div>
           )}
           
-          <div className="mt-4 flex justify-between items-center">
+          <div className="mt-4 flex flex-wrap gap-3 justify-between items-center">
             <p className="text-sm text-gray-600">
-              {selectedRequestIds.length} request(s) selected.
+              {filteredRequests.length} of {requests?.length ?? 0} shown · {selectedRequestIds.length} selected
             </p>
             <div className="space-x-2">
               <Button 
@@ -1146,12 +1146,12 @@ const RepurposeTrackToShop: React.FC = () => {
                 {createProductMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Add Product
+                    Adding…
                   </>
                 ) : (
                   <>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add to Shop
+                    Add to shop
                   </>
                 )}
               </Button>

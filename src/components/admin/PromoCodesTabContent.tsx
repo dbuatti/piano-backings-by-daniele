@@ -20,9 +20,10 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
-  Tag, Plus, Loader2, Search, AlertCircle, RefreshCw, Edit, Trash2, CheckCircle2, XCircle, Clock, Calendar
+  Tag, Plus, Loader2, Search, AlertCircle, RefreshCw, Edit, Trash2, CheckCircle2, Clock, Calendar, DollarSign
 } from 'lucide-react';
 import type { PromoCode, PromoCodeRedemption } from '@/types/promo-code';
+import { getPromoCodeStatus, isPromoCodeExpired, isPromoCodeRedeemable } from '@/types/promo-code';
 import { getErrorMessage } from "@/lib/utils";
 
 export const PromoCodesTabContent: React.FC = () => {
@@ -104,24 +105,6 @@ export const PromoCodesTabContent: React.FC = () => {
       (code.description || '').toLowerCase().includes(searchLower)
     );
   });
-
-  const isCodeExpired = (code: PromoCode) => {
-    if (!code.expires_at) return false;
-    return new Date(code.expires_at) < new Date();
-  };
-
-  const isCodeUpcoming = (code: PromoCode) => {
-    if (!code.starts_at) return false;
-    return new Date(code.starts_at) > new Date();
-  };
-
-  const getCodeStatus = (code: PromoCode) => {
-    if (!code.is_active) return { label: 'Inactive', color: 'bg-gray-100 text-gray-600 border-gray-200' as const };
-    if (isCodeExpired(code)) return { label: 'Expired', color: 'bg-red-50 text-red-700 border-red-200' as const };
-    if (isCodeUpcoming(code)) return { label: 'Scheduled', color: 'bg-blue-50 text-blue-700 border-blue-200' as const };
-    if (code.max_uses !== null && code.current_uses >= code.max_uses) return { label: 'Fully Used', color: 'bg-orange-50 text-orange-700 border-orange-200' as const };
-    return { label: 'Active', color: 'bg-green-50 text-green-700 border-green-200' as const };
-  };
 
   const getRedemptionsForCode = (codeId: string) => {
     return redemptions.filter(r => r.promo_code_id === codeId);
@@ -235,61 +218,30 @@ export const PromoCodesTabContent: React.FC = () => {
   const totalRedemptions = redemptions.reduce((acc, r) => acc + r.discount_amount, 0);
 
   return (
-    <div className="space-y-8 py-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
-          <CardContent className="p-6 flex items-center space-x-4">
-            <div className="p-3 bg-purple-100 text-purple-700 rounded-xl">
-              <Tag className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Promo Codes</p>
-              <h3 className="text-2xl font-bold text-[#1C0357]">{promoCodes.length}</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {promoCodes.filter(c => c.is_active && !isCodeExpired(c) && !isCodeUpcoming(c)).length} active
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
-          <CardContent className="p-6 flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Redemptions</p>
-              <h3 className="text-2xl font-bold text-[#1C0357]">{redemptions.length}</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
-          <CardContent className="p-6 flex items-center space-x-4">
-            <div className="p-3 bg-green-100 text-green-700 rounded-xl">
-              <Calendar className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Discount Given</p>
-              <h3 className="text-2xl font-bold text-[#1C0357]">${totalRedemptions.toFixed(2)}</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
-          <CardContent className="p-6 flex items-center space-x-4">
-            <div className="p-3 bg-amber-100 text-amber-700 rounded-xl">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Expired Codes</p>
-              <h3 className="text-2xl font-bold text-[#1C0357]">
-                {promoCodes.filter(c => isCodeExpired(c)).length}
-              </h3>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {/* One overview strip instead of four stat cards — this tab has a table and
+          a dialog, not four separate features, so four big cards overstated it. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm shadow-sm">
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-purple-600" />
+          <span className="font-bold text-[#1C0357]">{promoCodes.length}</span>
+          <span className="text-gray-500">total</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <span className="font-bold text-[#1C0357]">{promoCodes.filter(c => isPromoCodeRedeemable(c)).length}</span>
+          <span className="text-gray-500">active</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-emerald-600" />
+          <span className="font-bold text-[#1C0357]">${totalRedemptions.toFixed(2)}</span>
+          <span className="text-gray-500">discount given</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-600" />
+          <span className="font-bold text-[#1C0357]">{promoCodes.filter(c => isPromoCodeExpired(c)).length}</span>
+          <span className="text-gray-500">expired</span>
+        </div>
       </div>
 
       <Card className="bg-white border-none shadow-sm rounded-2xl overflow-hidden">
@@ -299,7 +251,7 @@ export const PromoCodesTabContent: React.FC = () => {
               <CardTitle className="text-xl font-bold text-[#1C0357]">Promo Codes</CardTitle>
               <CardDescription>Create and manage discount codes for your store and services.</CardDescription>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
@@ -353,7 +305,7 @@ export const PromoCodesTabContent: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredCodes.map((code) => {
-                    const status = getCodeStatus(code);
+                    const status = getPromoCodeStatus(code);
                     const codeRedemptions = getRedemptionsForCode(code.id);
                     return (
                       <TableRow key={code.id} className="border-gray-100 hover:bg-gray-50/50">
@@ -368,7 +320,7 @@ export const PromoCodesTabContent: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`${status.color} border hover:${status.color}`}>
+                          <Badge className={`${status.color} border`}>
                             {status.label}
                           </Badge>
                         </TableCell>

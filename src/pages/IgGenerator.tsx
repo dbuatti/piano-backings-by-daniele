@@ -884,8 +884,8 @@ export default function IgGenerator() {
   const logos = allLogos(customLogos);
 
   return (
-    <div className="min-h-screen bg-[#FDFCF7] text-[#1C0357]">
-      <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="rounded-2xl border border-black/5 bg-[#FDFCF7] text-[#1C0357]">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <header className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight">IG Post Generator</h1>

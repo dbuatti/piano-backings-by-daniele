@@ -75,7 +75,7 @@ const ShopPreviewsCard: React.FC = () => {
   };
 
   return (
-    <Card className="border-2 border-[#F538BC]/30 shadow-sm rounded-2xl">
+    <Card className="border border-[#F538BC]/20 bg-white shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-black text-[#1C0357] flex items-center gap-2">
           <Music className="h-5 w-5 text-[#F538BC]" /> Shop previews needed ({missing.length})

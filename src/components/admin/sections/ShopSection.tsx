@@ -6,8 +6,10 @@ import {
   PlusCircle,
   RefreshCw,
   Megaphone,
+  Store,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
 
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
@@ -19,66 +21,74 @@ const IgGenerator = lazy(() => import('@/pages/IgGenerator'));
 
 type ShopSub = 'products' | 'promo' | 'marketing';
 
+// `view` is the sub-mode of the Products tab: absent means the product list.
 type ShopView = 'create' | 'repurpose';
 
 const SUBS: { id: ShopSub; label: string; icon: typeof Tag }[] = [
-  { id: 'products', label: 'Products', icon: PlusCircle },
+  { id: 'products', label: 'Products', icon: Store },
   { id: 'promo', label: 'Promo Codes', icon: Tag },
   { id: 'marketing', label: 'Marketing', icon: Megaphone },
 ];
 
+// One line of context per tab, shown in the page header so the section never
+// opens as a wall of controls with no framing.
+const SUB_DESCRIPTIONS: Record<ShopSub, string> = {
+  products: 'Everything for sale: listings, prices, artwork and preview clips.',
+  promo: 'Discount codes for the shop and custom work, with how often they have been used.',
+  marketing: 'Build and export Instagram carousels from what is already live in the shop.',
+};
+
 const IgGeneratorWrapper = () => (
-  <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading marketing tool…</div>}>
+  <Suspense fallback={<div className="p-8 text-center text-sm text-gray-400">Loading the Instagram tool…</div>}>
     <IgGenerator />
   </Suspense>
 );
 
-const MarketingPanel = () => (
+const MarketingPanel: React.FC = () => (
   <div className="space-y-4">
-    <div>
-      <h2 className="text-xl font-bold text-[#1C0357] flex items-center gap-2">
-        <Megaphone className="h-5 w-5" /> Instagram Marketing
-      </h2>
-      <p className="text-sm text-gray-500 mt-1">
-        Build carousel slides and export PNGs for Instagram. Saved campaigns sync to your account.
-      </p>
-    </div>
     <IgGeneratorWrapper />
-
-    <div className="pt-2 border-t border-gray-100 mt-2 text-xs text-gray-400">
-      Video title cards and teaser recordings now live under{' '}
+    <p className="text-xs text-gray-400">
+      Video title cards and teaser recordings live in{' '}
       <Link to="/admin?section=publishing" className="font-semibold text-[#1C0357] underline">
         Publishing
       </Link>
       .
-    </div>
+    </p>
   </div>
 );
 
 const ShopSection: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSub = searchParams.get('sub');
-  const sub: ShopSub = SUBS.some((item) => item.id === rawSub)
-    ? (rawSub as ShopSub)
-    : 'products';
-  const shopViewMode: ShopView = searchParams.get('view') === 'repurpose' ? 'repurpose' : 'create';
+  const sub: ShopSub = SUBS.some((item) => item.id === rawSub) ? (rawSub as ShopSub) : 'products';
+  const view: ShopView | null =
+    searchParams.get('view') === 'repurpose'
+      ? 'repurpose'
+      : searchParams.get('view') === 'create'
+        ? 'create'
+        : null;
 
-  const setShopViewMode = (next: string) => {
+  const setSub = (next: ShopSub) => {
     const sp = new URLSearchParams(searchParams);
-    if (next === 'repurpose') sp.set('view', 'repurpose');
+    if (next === 'products') sp.delete('sub');
+    else sp.set('sub', next);
+    // A creation mode only belongs to the Products tab.
+    if (next !== 'products') sp.delete('view');
+    setSearchParams(sp, { replace: false });
+  };
+
+  const setView = (next: string | null) => {
+    const sp = new URLSearchParams(searchParams);
+    if (next === 'create' || next === 'repurpose') sp.set('view', next);
     else sp.delete('view');
     setSearchParams(sp, { replace: true });
   };
 
-  const setSub = (next: ShopSub) => {
-    const sp = new URLSearchParams(searchParams);
-    if (next === 'products') sp.delete('sub'); else sp.set('sub', next);
-    setSearchParams(sp, { replace: false });
-  };
-
   return (
     <div className="w-full">
-      <div className="flex mb-6 gap-2 overflow-x-auto">
+      <AdminDashboardHeader title="Shop" description={SUB_DESCRIPTIONS[sub]} />
+
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
         {SUBS.map((item) => {
           const Icon = item.icon;
           const active = sub === item.id;
@@ -87,8 +97,10 @@ const ShopSection: React.FC = () => {
               key={item.id}
               onClick={() => setSub(item.id)}
               className={cn(
-                'flex items-center gap-2 px-4 h-10 rounded-xl font-bold text-sm whitespace-nowrap border transition-colors',
-                active ? 'bg-[#1C0357] text-white border-[#1C0357]' : 'bg-white text-[#1C0357] border-gray-200 hover:bg-gray-50'
+                'flex items-center gap-2 px-4 h-9 rounded-xl font-bold text-sm whitespace-nowrap transition-colors border',
+                active
+                  ? 'bg-[#1C0357] text-white border-[#1C0357] shadow-sm'
+                  : 'bg-white text-[#1C0357] border-gray-200 hover:bg-gray-50'
               )}
             >
               <Icon className="h-4 w-4" />
@@ -99,21 +111,30 @@ const ShopSection: React.FC = () => {
       </div>
 
       {sub === 'products' && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           <ShopPreviewsCard />
-          <Tabs value={shopViewMode} onValueChange={setShopViewMode} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100/50 p-1 rounded-xl">
+          <Tabs value={view ?? 'list'} onValueChange={(next) => setView(next)} className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-3 bg-gray-100/70 p-1 rounded-xl">
+              <TabsTrigger value="list" className="rounded-lg font-bold">
+                Products
+              </TabsTrigger>
               <TabsTrigger value="create" className="rounded-lg font-bold">
-                <PlusCircle className="mr-2 h-4 w-4" /> Create Product
+                <PlusCircle className="mr-1.5 h-4 w-4" /> Create
               </TabsTrigger>
               <TabsTrigger value="repurpose" className="rounded-lg font-bold">
-                <RefreshCw className="mr-2 h-4 w-4" /> Repurpose Request
+                <RefreshCw className="mr-1.5 h-4 w-4" /> Repurpose
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="create" className="mt-4"><CreateNewProduct /></TabsContent>
-            <TabsContent value="repurpose" className="mt-4"><RepurposeTrackToShop /></TabsContent>
+            <TabsContent value="list" className="mt-4">
+              <ProductManager />
+            </TabsContent>
+            <TabsContent value="create" className="mt-4">
+              <CreateNewProduct onCreated={() => setView(null)} />
+            </TabsContent>
+            <TabsContent value="repurpose" className="mt-4">
+              <RepurposeTrackToShop onCreated={() => setView(null)} />
+            </TabsContent>
           </Tabs>
-          <ProductManager />
         </div>
       )}
 

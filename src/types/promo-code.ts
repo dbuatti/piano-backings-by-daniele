@@ -27,3 +27,33 @@ export interface PromoCodeRedemption {
   metadata: Record<string, unknown> | null;
   created_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Derived status — the single source of truth for the badges and counts in the
+// admin table, so the list and the stat strip can never drift apart.
+// ---------------------------------------------------------------------------
+export type PromoCodeStatus = {
+  label: string;
+  /** Tailwind classes for the badge. */
+  color: string;
+};
+
+export const isPromoCodeExpired = (code: PromoCode, now: Date = new Date()) =>
+  !!code.expires_at && new Date(code.expires_at) < now;
+
+export const isPromoCodeUpcoming = (code: PromoCode, now: Date = new Date()) =>
+  !!code.starts_at && new Date(code.starts_at) > now;
+
+/** Live right now: active, already started and not yet expired. */
+export const isPromoCodeRedeemable = (code: PromoCode, now: Date = new Date()) =>
+  code.is_active && !isPromoCodeExpired(code, now) && !isPromoCodeUpcoming(code, now);
+
+export function getPromoCodeStatus(code: PromoCode, now: Date = new Date()): PromoCodeStatus {
+  if (!code.is_active) return { label: 'Inactive', color: 'bg-gray-100 text-gray-600 border-gray-200' };
+  if (isPromoCodeExpired(code, now)) return { label: 'Expired', color: 'bg-red-50 text-red-700 border-red-200' };
+  if (isPromoCodeUpcoming(code, now)) return { label: 'Scheduled', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+  if (code.max_uses !== null && code.current_uses >= code.max_uses) {
+    return { label: 'Fully used', color: 'bg-orange-50 text-orange-700 border-orange-200' };
+  }
+  return { label: 'Active', color: 'bg-green-50 text-green-700 border-green-200' };
+}

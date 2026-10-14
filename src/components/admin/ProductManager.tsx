@@ -4,14 +4,13 @@ import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -33,35 +32,13 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, DollarSign, Link, Image, CheckCircle, XCircle, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, User, FileText, Key, FileAudio, PlusCircle, Copy } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, Link, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, FileText, Key, FileAudio, PlusCircle, Copy, X } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
-import { generateProductDescriptionFromRequest } from '@/utils/productDescriptionGenerator';
 import { PRODUCT_WITH_FILES, withPrivateFiles } from '@/utils/productFiles';
 import { formatKey } from '../../../shared/song-catalog.mjs';
-
-interface ProductForm {
-  title: string;
-  description: string;
-  price: string;
-  currency: string;
-  image_url: string;
-  track_urls: TrackInfo[];
-  is_active: boolean;
-  artist_name: string;
-  category: string;
-  vocal_ranges: string[];
-  sheet_music_url: string;
-  key_signature: string;
-  show_sheet_music_url: boolean;
-  show_key_signature: boolean;
-  cut_description: string;
-  official_score_url: string;
-  track_type: string;
-  master_download_link: string;
-}
 
 interface Product {
   id: string;
@@ -149,8 +126,6 @@ const ProductManager: React.FC = () => {
   // State variables for filters and sorting
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [vocalRangeFilter, setVocalRangeFilter] = useState('all');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [sortOption, setSortOption] = useState('created_at_desc');
 
   // Helper to truncate URL for display
@@ -164,7 +139,7 @@ const ProductManager: React.FC = () => {
 
   // Fetch all products
   const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
-    queryKey: ['shopProducts', searchTerm, categoryFilter, vocalRangeFilter, priceRange, sortOption],
+    queryKey: ['shopProducts', searchTerm, categoryFilter, sortOption],
     queryFn: async () => {
       let query = supabase
         .from('products')
@@ -179,11 +154,7 @@ const ProductManager: React.FC = () => {
         query = query.eq('category', categoryFilter);
       }
 
-      if (vocalRangeFilter !== 'all') {
-        query = query.contains('vocal_ranges', [vocalRangeFilter]);
-      }
-
-      query = query.gte('price', priceRange[0]).lte('price', priceRange[1]);
+      query = query.gte('price', 0).lte('price', 100);
 
       switch (sortOption) {
         case 'price_asc':
@@ -203,9 +174,6 @@ const ProductManager: React.FC = () => {
           break;
         case 'artist_name_desc':
           query = query.order('artist_name', { ascending: false });
-          break;
-        case 'category_asc':
-          query = query.order('category', { ascending: true }).order('title', { ascending: true });
           break;
         case 'created_at_desc':
         default:
@@ -584,21 +552,25 @@ const ProductManager: React.FC = () => {
     );
   }
 
+  const filtersActive = !!searchTerm || categoryFilter !== 'all';
+  const productCount = products?.length ?? 0;
+
   return (
-    <Card className="shadow-lg bg-white">
-      <CardHeader>
-        <CardTitle className="text-2xl text-[#1C0357] flex items-center">
-          <Store className="mr-2 h-5 w-5" />
-          Manage Shop Products
+    <Card className="bg-white border-none shadow-sm rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center gap-2">
+          <Store className="h-5 w-5" />
+          In the shop
         </CardTitle>
+        <CardDescription>
+          {productCount} product{productCount === 1 ? '' : 's'}
+          {filtersActive ? ' matching your filters' : ''}. Edit a listing or remove it from the shop.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-gray-600 mb-4">
-          Edit or delete existing products in your shop.
-        </p>
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full sm:w-1/3">
+        <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Search products by title, artist, description..."
@@ -607,7 +579,7 @@ const ProductManager: React.FC = () => {
               className="pl-10"
               />
           </div>
-          <div className="relative w-full sm:w-1/3">
+          <div className="relative w-full sm:w-[190px]">
             <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="pl-10">
@@ -622,7 +594,7 @@ const ProductManager: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="relative w-full sm:w-1/3">
+          <div className="relative w-full sm:w-[190px]">
             <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Select value={sortOption} onValueChange={setSortOption}>
               <SelectTrigger className="pl-10">
@@ -639,6 +611,16 @@ const ProductManager: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          {filtersActive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearchTerm(''); setCategoryFilter('all'); }}
+              className="shrink-0 self-start sm:self-auto text-gray-500 hover:text-[#1C0357]"
+            >
+              <X className="mr-1 h-4 w-4" /> Clear
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
@@ -648,7 +630,7 @@ const ProductManager: React.FC = () => {
           </div>
         ) : products && products.length > 0 ? (
           <TooltipProvider>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-xl overflow-x-auto">
               <Table>
                 <TableHeader className="bg-[#D1AAF2]/20">
                   <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
@@ -659,8 +641,7 @@ const ProductManager: React.FC = () => {
                       <TableCell className="font-medium">{product.title}</TableCell>
                       <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell>
                       <TableCell>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                        <div className="whitespace-nowrap text-sm font-medium text-gray-900">
                           {product.currency} {product.price.toFixed(2)}
                         </div>
                       </TableCell>
@@ -761,9 +742,13 @@ const ProductManager: React.FC = () => {
         ) : (
           <div className="text-center py-12">
             <Store className="mx-auto h-16 w-16 text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No Products in Shop</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              {filtersActive ? 'No products match your filters' : 'Nothing in the shop yet'}
+            </h3>
             <p className="mt-1 text-gray-500">
-              Add products using the "Repurpose Tracks" section above or manually.
+              {filtersActive
+                ? 'Try a different search or clear the filters.'
+                : 'Use the Create or Repurpose tabs above to add your first product.'}
             </p>
           </div>
         )}
