@@ -67,6 +67,8 @@ export interface PublishingSettings {
   weekly_time: string;
   timezone: string;
   auto_schedule: boolean;
+  /** When true, the publishing worker books a reviewed-but-unscheduled video into the next free cadence slot by itself. */
+  auto_book: boolean;
   /** Post a track's TikTok/Instagram teasers on the same cadence slot as its YouTube video. */
   social_auto_post: boolean;
   /** Minutes after the YouTube slot that the teaser posts (same day by default). */

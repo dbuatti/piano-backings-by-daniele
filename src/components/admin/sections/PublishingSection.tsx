@@ -32,14 +32,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Clapperboard, Eye, Instagram, Library, ListChecks, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video, Youtube } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clapperboard, Eye, Instagram, Library, ListChecks, ListPlus, Loader2, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video, Youtube } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
 import TikTokComposer from '@/components/admin/TikTokComposer';
-import { useDeliveredTracks } from '@/hooks/useDeliveredTracks';
+import { useDeliveredTracks, useShopProducts } from '@/hooks/useDeliveredTracks';
 import ReleaseBoard, { VettingDialog } from '@/components/admin/sections/ReleaseBoard';
 import { Disclosure, TrackPipelineRow } from '@/components/admin/sections/PublishingBands';
+import TrackDetail from '@/components/admin/sections/TrackDetail';
+import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
 import {
   groupPublications,
+  isPostable,
   needsAttention,
   teaserProblem,
   type TrackGroup,
@@ -96,7 +99,7 @@ function TeaserNeeds({
           <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
             <span className={cn('min-w-0 flex-1', action === 'retry' ? 'text-red-600' : 'text-gray-500')}>
-              {igBlocked ? 'Instagram posting isn’t wired up yet.' : note}
+              {igBlocked ? 'Instagram isn’t connected yet (Settings → Integrations).' : note}
             </span>
             {action === 'record' ? (
               group.requestId ? (
@@ -118,6 +121,56 @@ function TeaserNeeds({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// The whole pipeline for one song in a single press: approve the video, give it
+// the next free slot on the cadence, and run both workers. This is the action
+// the per-song page is built around, so it lives here first.
+function PublishTrackBar({
+  group,
+  autoOn,
+  busy,
+  onPublish,
+}: {
+  group: TrackGroup;
+  autoOn: boolean;
+  busy: boolean;
+  onPublish: () => void;
+}) {
+  const yt = group.yt;
+  const bookable =
+    !!yt && ['draft', 'pending_approval', 'approved', 'failed'].includes(yt.status) && !yt.scheduled_for;
+  const missingCopy = bookable && !yt?.metadata?.description?.trim();
+  const teasers = [group.tt, group.ig].filter((t): t is PublicationWithAsset => !!t);
+  const teasersReady = teasers.length > 0 && teasers.every((t) => isPostable(t));
+  const teaserWaiting = teasers.some(
+    (t) => t.status === 'draft' || t.status === 'pending_approval' || t.status === 'failed'
+  );
+  const nothingToDo = !bookable && !teaserWaiting;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#1C0357]/5 bg-[#1C0357]/[0.03] px-4 py-2.5">
+      <Button size="sm" onClick={onPublish} disabled={busy || missingCopy || nothingToDo}>
+        {busy ? (
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+        ) : (
+          <ListPlus className="mr-1.5 h-4 w-4" />
+        )}
+        Publish this song
+      </Button>
+      <span className="min-w-0 flex-1 text-xs text-gray-500">
+        {missingCopy
+          ? 'Write the YouTube description first — then this books the slot and posts the teasers on it.'
+          : nothingToDo
+            ? 'Everything here is already booked or live.'
+            : !teasersReady
+              ? 'Books the next free slot. The teasers still need a portrait MP4 before they can go out.'
+              : autoOn
+                ? 'Books the next free slot; the teasers post on it automatically.'
+                : 'Books the next free slot. Auto-post is off, so you post the teasers by hand.'}
+      </span>
     </div>
   );
 }
@@ -189,7 +242,7 @@ function SlotSettings({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: settings, isLoading } = useQuery<PublishingSettings, Error>({
+  const { data: settings, isLoading, error: settingsError } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -208,6 +261,7 @@ function SlotSettings({
   const [time, setTime] = useState<string | null>(null);
   const [timezone, setTimezone] = useState<string | null>(null);
   const [auto, setAuto] = useState<boolean | null>(null);
+  const [autoBook, setAutoBook] = useState<boolean | null>(null);
   const [socialAuto, setSocialAuto] = useState<boolean | null>(null);
   const [socialOffset, setSocialOffset] = useState<string | null>(null);
   const [tikTokPrivacy, setTikTokPrivacy] = useState<string | null>(null);
@@ -215,7 +269,7 @@ function SlotSettings({
   function final(key: 'schedule_mode'): 'weekly' | 'interval';
   function final(key: 'interval_days' | 'weekly_dow' | 'social_offset_minutes'): number;
   function final(key: 'weekly_time' | 'timezone' | 'social_tiktok_privacy'): string;
-  function final(key: 'auto_schedule' | 'social_auto_post'): boolean;
+  function final(key: 'auto_schedule' | 'auto_book' | 'social_auto_post'): boolean;
   function final(key: string): string | number | boolean {
     switch (key) {
       case 'social_auto_post':
@@ -238,6 +292,8 @@ function SlotSettings({
         return timezone ?? settings?.timezone ?? 'Australia/Sydney';
       case 'auto_schedule':
         return auto ?? settings?.auto_schedule ?? true;
+      case 'auto_book':
+        return autoBook ?? settings?.auto_book ?? false;
       default:
         throw new Error(`Unknown setting: ${key}`);
     }
@@ -253,6 +309,7 @@ function SlotSettings({
         weekly_time: final('weekly_time'),
         timezone: final('timezone'),
         auto_schedule: final('auto_schedule'),
+        auto_book: final('auto_book'),
         social_auto_post: final('social_auto_post'),
         social_offset_minutes: final('social_offset_minutes'),
         social_tiktok_privacy: final('social_tiktok_privacy'),
@@ -265,6 +322,16 @@ function SlotSettings({
     toast({ title: 'Publishing settings saved' });
     queryClient.invalidateQueries({ queryKey: ['publishing_settings'] });
   };
+
+  if (settingsError) {
+    return (
+      <Card className="bg-white border-none shadow-sm rounded-2xl">
+        <CardContent className="p-6 text-sm text-red-600">
+          Couldn't load the publishing settings: {getErrorMessage(settingsError)}
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading || !settings) {
     return <Card className="bg-white border-none shadow-sm rounded-2xl"><CardContent className="p-6 text-sm text-gray-400">Loading settings…</CardContent></Card>;
@@ -364,11 +431,22 @@ function SlotSettings({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5 sm:col-span-2 lg:col-span-4 flex">
-            <div className="flex h-9 items-center gap-2">
-              <Switch checked={final('auto_schedule')} onCheckedChange={setAuto} />
-              <Label className="font-normal">Auto-schedule on approval</Label>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <div className="flex h-9 items-center gap-2">
+                <Switch checked={final('auto_schedule')} onCheckedChange={setAuto} />
+                <Label className="font-normal">Auto-schedule on approval</Label>
+              </div>
+              <div className="flex h-9 items-center gap-2">
+                <Switch checked={final('auto_book')} onCheckedChange={setAutoBook} />
+                <Label className="font-normal">Book new videos automatically</Label>
+              </div>
             </div>
+            <p className="text-[11px] text-gray-400">
+              {final('auto_book')
+                ? 'A video you queue on the release board is booked and uploaded on its own — that queue step is the approval.'
+                : 'Every queued video waits for you to book it (Pipeline → Book slots, or Publish this song).'}
+            </p>
           </div>
         </div>
 
@@ -584,12 +662,15 @@ function QueueRow({
   nextSlot,
   autoSchedule,
   onMutation,
+  onOpen,
 }: {
   publication: PublicationWithAsset;
   tz: string;
   nextSlot: () => Date;
   autoSchedule: boolean;
   onMutation: () => void;
+  /** Opens the per-song page for this row's track. */
+  onOpen?: () => void;
 }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'refresh' | 'draft' | 'delete' | null>(null);
@@ -787,7 +868,18 @@ function QueueRow({
           )}
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold text-[#1C0357]">{label}</p>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              title="Open the song page"
+              className="block max-w-full truncate text-left font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
+            >
+              {label}
+            </button>
+          ) : (
+            <p className="truncate font-bold text-[#1C0357]">{label}</p>
+          )}
           <p className="truncate text-xs text-gray-500">
             {asset?.title || '—'} {key ? `· ${key}` : ''}
             {publication.scheduled_for ? ` · ${formatWhen(publication.scheduled_for, tz)}` : ''}
@@ -799,7 +891,7 @@ function QueueRow({
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:flex-col lg:flex-row">
           <Badge className={STATUS_STYLE[publication.status]}>{STATUS_LABELS[publication.status]}</Badge>
-          <Badge variant="outline">{publication.platform}</Badge>
+          <Badge variant="outline">{PLATFORM_LABELS[publication.platform]}</Badge>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {['published', 'scheduled'].includes(publication.status) && publication.url && (
@@ -935,6 +1027,12 @@ const PublishingSection = () => {
   const [reRecordFor, setReRecordFor] = useState<string | null>(null);
   const [respacing, setRespacing] = useState(false);
   const [composerId, setComposerId] = useState<string | null>(null);
+  // The song currently being booked by "Publish this song".
+  const [publishingKey, setPublishingKey] = useState<string | null>(null);
+  // The per-song page: the group key whose page is open, and the publication row
+  // being re-drafted from it.
+  const [detailKey, setDetailKey] = useState<string | null>(null);
+  const [draftingId, setDraftingId] = useState<string | null>(null);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -952,6 +1050,7 @@ const PublishingSection = () => {
   const {
     data: queue = [],
     isLoading,
+    error: queueError,
     refetch,
   } = useQuery<PublicationWithAsset[], Error>({
     queryKey: ['publications_queue'],
@@ -979,6 +1078,7 @@ const PublishingSection = () => {
   // read back from the board, because the board only mounts once its disclosure
   // is opened — the hint and the cadence forecast need it either way.
   const { data: deliveredTracks = [] } = useDeliveredTracks();
+  const { data: shopProducts = [] } = useShopProducts();
   const queuedRequestIds = new Set(
     youtubeQueue.map((p) => p.content_assets?.request_id).filter((id): id is string => !!id)
   );
@@ -1013,6 +1113,13 @@ const PublishingSection = () => {
       !g.pubs.some((p) => p.status === 'scheduled' || p.status === 'publishing') &&
       g.pubs.some((p) => p.status === 'published')
   );
+
+  // The per-song page reads from the live groups, so it stays fresh after a
+  // refetch (re-recording, re-drafting) without closing.
+  const detailGroup = detailKey ? groups.find((g) => g.key === detailKey) ?? null : null;
+  const detailTrack = detailGroup?.requestId
+    ? deliveredTracks.find((t) => t.requestId === detailGroup.requestId)
+    : undefined;
 
   // Rows on the schedule (or approved and waiting for one) that a cadence change
   // can re-book — everything not yet live and not manually skipped.
@@ -1079,14 +1186,15 @@ const PublishingSection = () => {
   };
 
   // One button for the whole pipeline: drain the YouTube queue, then let the
-  // social worker reconcile / book / post teasers. force:true so an admin can
-  // run a pass even while the automation switch is off (used to test).
+  // social worker reconcile / book / post teasers. The social pass is *not*
+  // forced — when Auto-post is off the worker stands down and says so, so this
+  // button can never post a teaser behind the owner's back.
   const runNow = async () => {
     setRunning(true);
     try {
       const [yt, social] = await Promise.allSettled([
         supabase.functions.invoke('run-publish-queue', { body: {} }),
-        supabase.functions.invoke('run-social-queue', { body: { force: true } }),
+        supabase.functions.invoke('run-social-queue', { body: {} }),
       ]);
 
       if (yt.status === 'rejected' || yt.value.error) {
@@ -1095,38 +1203,59 @@ const PublishingSection = () => {
       } else {
         setConfirmDegraded(!!yt.value.data?.confirmationDegraded);
       }
+      // Hands-off booking (Settings → Book new videos automatically) reports how
+      // many rows it gave a slot, so the switch is visible in the run.
+      const autoBooked = yt.status === 'fulfilled' ? Number(yt.value.data?.autoBooked ?? 0) : 0;
 
       let teaserNote = 'Social worker unavailable';
       if (social.status === 'fulfilled' && !social.value.error) {
         const d = social.value.data ?? {};
-        const posted = (d.posted ?? []) as Array<{ status: string }>;
-        const ok = posted.filter((p) => p.status === 'published').length;
-        const failed = posted.filter((p) => p.status === 'failed').length;
-        teaserNote =
-          [
-            ok ? `${ok} teaser${ok === 1 ? '' : 's'} posted` : null,
-            d.armed ? `${d.armed} booked on the schedule` : null,
-            failed ? `${failed} failed` : null,
-          ]
-            .filter(Boolean)
-            .join(' · ') || 'no teasers due';
+        if (d.autoPost === false) {
+          teaserNote = 'teasers paused — Auto-post is off';
+        } else {
+          const posted = (d.posted ?? []) as Array<{ status: string }>;
+          const ok = posted.filter((p) => p.status === 'published').length;
+          const failed = posted.filter((p) => p.status === 'failed').length;
+          teaserNote =
+            [
+              ok ? `${ok} teaser${ok === 1 ? '' : 's'} posted` : null,
+              d.armed ? `${d.armed} booked on the schedule` : null,
+              failed ? `${failed} failed` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'no teasers due';
+        }
       }
-      toast({ title: 'Run complete', description: teaserNote });
+      toast({
+        title: 'Run complete',
+        description: [autoBooked ? `${autoBooked} booked automatically` : null, teaserNote]
+          .filter(Boolean)
+          .join(' · '),
+      });
       refetch();
     } finally {
       setRunning(false);
     }
   };
 
-  // Puts a failed teaser back in the queue and runs a pass so the worker retries
-  // it. A published video still needs a manual "Post it" on the row.
+  // Puts a failed teaser back in the queue and, when Auto-post is on, runs a
+  // pass so the worker retries it. With Auto-post off the row is just cleared so
+  // it can be posted by hand — this used to force a pass behind the switch.
   const retryTeaser = async (id: string) => {
     const { error } = await supabase
       .from('publications')
-      .update({ status: 'pending_approval', attempts: 0, error: null })
+      .update({ status: 'pending_approval', attempts: 0, error: null, scheduled_for: null })
       .eq('id', id);
     if (error) {
       toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
+      return;
+    }
+    if (!autoOn) {
+      await refetch();
+      toast({
+        title: 'Teaser cleared',
+        description: 'Auto-post is off — post it by hand with "Post it" on the row.',
+      });
       return;
     }
     toast({ title: 'Teaser queued to retry' });
@@ -1151,7 +1280,7 @@ const PublishingSection = () => {
     }
     const { error } = await supabase
       .from('publications')
-      .update({ status: 'pending_approval', platform_post_id: null, published_at: null, error: null })
+      .update({ status: 'pending_approval', scheduled_for: null, platform_post_id: null, published_at: null, error: null })
       .in('id', ids);
     if (error) {
       toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
@@ -1237,8 +1366,133 @@ const PublishingSection = () => {
         .eq('id', ready[i].id);
       if (error) throw error;
     }
-    await runNow();
-    toast({ title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}` });
+    // Booking is a YouTube job. The social worker is deliberately NOT run here:
+    // teasers are armed by the queue when Auto-post is on, or posted by hand.
+    // Running it here used to force-post teasers even with the switch off.
+    const { error: uploadError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+    toast({
+      title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}`,
+      description: uploadError ? `Upload pass failed: ${await getFunctionErrorMessage(uploadError)}` : undefined,
+      variant: uploadError ? 'destructive' : 'default',
+    });
+    refetch();
+  };
+
+  // One song, one press: approve its video, give it the next free slot on the
+  // cadence, then run both workers. The teasers ride the video's slot, and the
+  // social worker still obeys the Auto-post switch, so this can never post a
+  // teaser behind the owner's back — it only does what the cron would have done.
+  const publishTrack = async (group: TrackGroup) => {
+    const yt = group.yt;
+    setPublishingKey(group.key);
+    try {
+      const bookable =
+        !!yt &&
+        ['draft', 'pending_approval', 'approved', 'failed'].includes(yt.status) &&
+        !yt.scheduled_for;
+      if (yt && bookable && !yt.metadata?.description?.trim()) {
+        throw new Error('Write the YouTube description first (Re-draft AI or Edit), then publish.');
+      }
+      if (yt && bookable) {
+        const { error } = await supabase
+          .from('publications')
+          .update({
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+            scheduled_for: nextSlot().toISOString(),
+            error: null,
+            attempts: 0,
+          })
+          .eq('id', yt.id);
+        if (error) throw error;
+      }
+
+      const [ytPass, socialPass] = await Promise.allSettled([
+        supabase.functions.invoke('run-publish-queue', { body: {} }),
+        supabase.functions.invoke('run-social-queue', { body: {} }),
+      ]);
+      const ytErr = ytPass.status === 'rejected' ? ytPass.reason : ytPass.value.error;
+      const socialOk = socialPass.status === 'fulfilled' && !socialPass.value.error;
+      const socialData = socialOk ? socialPass.value.data : null;
+
+      const summary = [
+        bookable ? 'Video takes the next free slot.' : null,
+        ytErr ? `Upload pass: ${await getFunctionErrorMessage(ytErr)}` : null,
+        socialPass.status === 'rejected' || socialPass.value.error
+          ? 'Teaser pass failed — check Settings → Integrations.'
+          : socialData?.autoPost === false
+            ? 'Teasers are set to post by hand (Auto-post is off).'
+            : `${socialData?.armed ?? 0} teaser(s) armed, ${socialData?.posted?.length ?? 0} posted.`,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      toast({
+        title: bookable ? 'Song booked' : 'Passes finished',
+        description: summary,
+        variant: ytErr ? 'destructive' : 'default',
+      });
+    } catch (e) {
+      toast({ title: "Couldn't publish this song", description: getErrorMessage(e), variant: 'destructive' });
+    } finally {
+      setPublishingKey(null);
+    }
+  };
+
+  // Opens the per-song page for a group. Keyed by request so a re-recording (which
+  // can change a legacy group's asset id) keeps the page on the same song.
+  const openTrack = (group: TrackGroup) => setDetailKey(group.requestId ?? group.key);
+
+  // Opens it from a release-board row: find the group that row belongs to.
+  const openByPub = (pub: PublicationWithAsset) => {
+    const group = groups.find((g) => g.pubs.some((p) => p.id === pub.id));
+    if (group) setDetailKey(group.requestId ?? group.key);
+  };
+
+  // Re-drafts one row's copy — from the song page or the pipeline card. The bulk
+  // button stays on the pipeline card; this is the single-song version.
+  const draftOne = async (pub: PublicationWithAsset) => {
+    setDraftingId(pub.id);
+    try {
+      const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+        body: { asset_id: pub.asset_id, platform: pub.platform },
+      });
+      if (error) throw error;
+      await refetch();
+      toast({ title: 'Copy drafted' });
+    } catch (e) {
+      toast({
+        title: "Couldn't draft the copy",
+        description: await getFunctionErrorMessage(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setDraftingId(null);
+    }
+  };
+
+  // Saves the exact file a row will post, so its audio can be checked locally.
+  const downloadPub = async (pub: PublicationWithAsset) => {
+    const asset = pub.content_assets;
+    const label =
+      [asset?.song_title, asset?.show].filter(Boolean).join(' ') || asset?.title || 'track';
+    const suffix = pub.platform === 'youtube' ? 'video' : pub.platform === 'instagram' ? 'reel' : 'teaser';
+    try {
+      const url = await signedAssetDownloadUrl(pub, label, suffix);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = assetFilename(label, asset?.mime_type, suffix);
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      toast({
+        title: "Couldn't prepare the download",
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      });
+    }
   };
 
   // Runs one platform's pass on demand, ignoring the schedule, and prints the
@@ -1311,7 +1565,9 @@ const PublishingSection = () => {
         <div>
           <h2 className="text-2xl font-bold text-[#1C0357]">Publishing</h2>
           <p className="text-sm text-gray-500">
-            {needsYou.length > 0 ? (
+            {queueError ? (
+              <span className="font-semibold text-red-600">Couldn't load the queue</span>
+            ) : needsYou.length > 0 ? (
               <>
                 <span className="font-semibold text-amber-600">{needsYou.length}</span> need you
               </>
@@ -1364,6 +1620,19 @@ const PublishingSection = () => {
           );
         })}
       </div>
+
+      {queueError && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            The publishing queue didn't load, so this page can't tell you what needs doing:{' '}
+            {getErrorMessage(queueError)}
+          </span>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Try again
+          </Button>
+        </div>
+      )}
 
       {confirmDegraded && (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -1446,12 +1715,18 @@ const PublishingSection = () => {
                     nextSlot={nextSlot}
                     autoSchedule={settings?.auto_schedule ?? true}
                     onMutation={() => refetch()}
+                    onOpen={() => openTrack(group)}
                   />
                 ) : (
                   <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#1C0357]">
+                    <button
+                      type="button"
+                      onClick={() => openTrack(group)}
+                      title="Open the song page"
+                      className="min-w-0 flex-1 truncate text-left text-sm font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
+                    >
                       {group.label}
-                    </span>
+                    </button>
                     <span className="text-xs text-gray-400">
                       {group.yt?.status === 'published'
                         ? 'Video is live'
@@ -1468,6 +1743,12 @@ const PublishingSection = () => {
                   onCompose={setComposerId}
                   onRecord={setReRecordFor}
                   onRetry={retryTeaser}
+                />
+                <PublishTrackBar
+                  group={group}
+                  autoOn={autoOn}
+                  busy={publishingKey === group.key}
+                  onPublish={() => publishTrack(group)}
                 />
               </div>
             ))
@@ -1492,6 +1773,7 @@ const PublishingSection = () => {
                 key={group.key}
                 group={group}
                 tz={tz}
+                onOpen={openTrack}
                 onReRecord={setReRecordFor}
                 onResetTeaser={resetTeaserFor}
               />
@@ -1511,6 +1793,7 @@ const PublishingSection = () => {
                 key={group.key}
                 group={group}
                 tz={tz}
+                onOpen={openTrack}
                 onReRecord={setReRecordFor}
                 onResetTeaser={resetTeaserFor}
               />
@@ -1582,7 +1865,12 @@ const PublishingSection = () => {
       )}
 
       {tab === 'tracks' && (
-        <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} />
+        <ReleaseBoard
+          queue={queue}
+          tz={tz}
+          onMutation={() => refetch()}
+          onOpenTrack={openByPub}
+        />
       )}
 
       {tab === 'recorder' && (
@@ -1598,6 +1886,29 @@ const PublishingSection = () => {
           onRespace={respace}
           respaceCount={respaceableCount}
           respacing={respacing}
+        />
+      )}
+
+      {/* The per-song page. Rendered before the recorder and the composer so
+          those open on top of it, and the song page is still there underneath. */}
+      {detailGroup && (
+        <TrackDetail
+          key={detailGroup.key}
+          group={detailGroup}
+          track={detailTrack}
+          products={shopProducts}
+          tz={tz}
+          autoOn={autoOn}
+          publishing={publishingKey === detailGroup.key}
+          draftingId={draftingId}
+          nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
+          onClose={() => setDetailKey(null)}
+          onPublish={() => publishTrack(detailGroup)}
+          onDraft={draftOne}
+          onCompose={setComposerId}
+          onRecord={setReRecordFor}
+          onRetry={retryTeaser}
+          onDownload={downloadPub}
         />
       )}
 

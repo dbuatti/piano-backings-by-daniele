@@ -19,32 +19,86 @@ const json = (body, status = 200) =>
 
 const SITE = 'https://pianobackings.danielebuatti.com';
 
-function buildPrompt({ song, show, dedication, key, title, productUrl }) {
+function buildPrompt({ platform, song, show, dedication, key, title, productUrl }) {
   const firstName = (dedication || '').split(/\s+/)[0] || '';
   // The track's shop page appears only when the track is actually a shop
   // product; otherwise the description points at the custom-order form only.
   const shopLine = productUrl
     ? `"Get this track (instant download): ${productUrl}" and "Order a custom cut in your key: ${SITE}/form-page"`
     : `"Order yours (any song, your key): ${SITE}/form-page"`;
-  return `You write YouTube metadata for solo piano backing tracks made by a small independent musician.
 
-Song: ${song || 'unknown song'}
+  const facts = `Song: ${song || 'unknown song'}
 Show/film (optional): ${show || ''}
 Prepared for: ${firstName || 'a client'}
 Key: ${key || 'their chosen key'}
-Working title: ${title || ''}
+Working title: ${title || ''}`;
+
+  // TikTok and Instagram are fed a *caption*, not a description: no headings, no
+  // paragraph of marketing copy, and the hashtags live inside the text. That is
+  // the difference between a post that reads like a person and one that reads
+  // like a feed import.
+  if (platform === 'tiktok') {
+    return `You write TikTok captions for solo piano backing tracks, made one at a time by a small independent musician.
+
+${facts}
+
+The clip is the opening of a piano backing track that an auditioning singer performs over.
+
+Write a caption a performer scrolling TikTok would actually stop for.
+- The hook has to land in the first ~40 characters: TikTok hides everything after that behind "more".
+- Two to four short lines. Line breaks are good. No paragraphs.
+- Name the song, and the show if there is one, and make it obvious this is a piano backing track to audition or rehearse with.
+- One short plain sentence that it can be made in any key.
+- Finish with one easy invitation — comment the key they want, or link in bio for the full track. Never beg.
+- Four to six hashtags, at the very end. Mix broad ones (#pianobackingtrack, #auditioncut, #musicaltheatre) with the song or show when it is well known.
+- At most two tasteful emojis, or none. Never a wall of them, never ALL CAPS, never "🔥🔥🔥".
 
 Return ONLY JSON (no markdown) with this shape:
 {
-  "title": string,       // e.g. "Song — Banner (from Show)". Use the working title as-is if good; keep it short and searchable.
-  "description": string, // paragraphs separated by blank lines:
-                         //  1. "Song — Banner (from Show)" + "Prepared for <firstName>." + "Key: X."
-                         //  2. One line pitching custom piano backing tracks (auditions, performances, practice; arranged & recorded in the key you choose; delivered fast).
+  "title": string,      // short working title, e.g. "Song — Audition Cut (from Show)"
+  "caption": string,    // the whole caption, hashtags included, with real line breaks
+  "hashtags": string[]  // the hashtags alone, without the # symbol
+}`;
+  }
+
+  if (platform === 'instagram') {
+    return `You write Instagram Reels captions for solo piano backing tracks, made one at a time by a small independent musician.
+
+${facts}
+
+The clip is the opening of a piano backing track that an auditioning singer performs over.
+
+Write a caption for a Reel.
+- A hook as the first line, short enough to survive the two-line preview.
+- Then three to five short lines, with a blank line between thoughts.
+- Name the song, and the show if there is one, and make it obvious this is a piano backing track to audition or rehearse with.
+- One short plain sentence that it can be made in any key.
+- Invite a save or a share, and point at ordering a custom cut: ${SITE}/form-page
+- Then a blank line and a block of eight to twelve hashtags — broad ones (#pianobackingtrack, #auditioncut, #musicaltheatre, #pianomusic, #singersofinstagram) plus the song or show when well known.
+- At most two tasteful emojis, or none. Never a wall of them.
+
+Return ONLY JSON (no markdown) with this shape:
+{
+  "title": string,      // short working title, e.g. "Song — Audition Cut (from Show)"
+  "caption": string,    // the whole caption, hashtags included, with real line breaks
+  "hashtags": string[]  // the hashtags alone, without the # symbol
+}`;
+  }
+
+  return `You write YouTube metadata for solo piano backing tracks made by a small independent musician.
+
+${facts}
+
+Return ONLY JSON (no markdown) with this shape:
+{
+  "title": string,       // e.g. "Song — Audition Cut (from Show)". Use the working title as-is if good; keep it short and searchable.
+  "description": string, // four short paragraphs separated by blank lines:
+                         //   1. "Song — Audition Cut" and what it is; who it is for.
+                         //  2. Something true about the track: the key, the feel, what a singer can do with it.
                          //  3. ${shopLine}
-                         //  4. "Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/"
-                         //  5. 3-4 hashtags like "#pianobackingtrack #backingtrack #auditioncut #musicaltheatre"
-  "tags": string[],      // 5-8 lowercase tags: song, show, piano, piano backing track, backing track, audition, musical theatre, key (e.g. "key of C major")
-  "hashtags": string[]   // 3-4 hashtags without the # symbol
+                         //  4. A short subscribe invitation. No hashtags in the description.
+  "tags": string[],      // 8-12 search terms, no #: song title, show, "piano backing track", "audition cut", the key ("c major backing track"), "musical theatre audition"
+  "hashtags": string[]   // 3-4 without the # symbol, used for the Shorts caption
 }
 No emojis. Write like a friendly professional, never hype.`;
 }
@@ -168,6 +222,7 @@ Deno.serve(async (req) => {
       'Piano backing track';
 
     const drafted = await callGemini(apiKey, buildPrompt({
+      platform,
       song: String(reqRow.song_title || '').trim(),
       show: String(reqRow.musical_or_artist || '').trim(),
       dedication: String(reqRow.name || '').trim(),
@@ -182,8 +237,11 @@ Deno.serve(async (req) => {
     const metadata = {
       title: String(drafted.title || fallbackTitle).slice(0, 100),
       description: String(drafted.description || '').slice(0, 5000),
-      tags: Array.isArray(drafted.tags) ? drafted.tags.slice(0, 10).map(String) : [],
-      hashtags: Array.isArray(drafted.hashtags) ? drafted.hashtags.slice(0, 6).map(String) : [],
+      tags: Array.isArray(drafted.tags) ? drafted.tags.slice(0, 12).map(String) : [],
+      hashtags: Array.isArray(drafted.hashtags) ? drafted.hashtags.slice(0, 12).map(String) : [],
+      // TikTok and Instagram post a caption. run-social-queue and the composer
+      // both read `metadata.caption` first, then fall back to the title.
+      ...(drafted.caption ? { caption: String(drafted.caption).slice(0, 2200) } : {}),
     };
 
     // Only not-yet-approved rows move to pending_approval — a scheduled

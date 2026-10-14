@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Loader2, Upload } from 'lucide-react';
+import { AlertTriangle, Download, Loader2, Upload } from 'lucide-react';
 import TeaserCoverFrame from '@/components/admin/TeaserCoverFrame';
 
 // TikTok's own privacy codes, in human wording.
@@ -35,6 +35,12 @@ const PRIVACY_LABELS: Record<string, string> = {
 
 const MUSIC_NOTICE_HREF = 'https://www.tiktok.com/legal/page/global/music-usage-confirmation/en';
 const BRANDED_POLICY_HREF = 'https://www.tiktok.com/legal/page/global/bc-policy/en';
+
+// m:ss, for reading a file's length at a glance.
+function formatClock(seconds: number): string {
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
 
 interface CreatorInfo {
   creator_username: string | null;
@@ -65,7 +71,13 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
   const [asset, setAsset] = useState<{ aspect: string | null; mime: string | null } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // The very file that will be uploaded, with a Content-Disposition so the
+  // browser saves it rather than opening it. This is how the owner checks the
+  // audio of a teaser locally, outside our player and outside TikTok's.
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
+  const [assetId, setAssetId] = useState<string | null>(null);
+  const [redrafting, setRedrafting] = useState(false);
   const [privacyLevel, setPrivacyLevel] = useState(''); // no default on purpose
   const [allowComment, setAllowComment] = useState(false);
   const [allowDuet, setAllowDuet] = useState(false);
@@ -74,12 +86,23 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
   const [brandOrganic, setBrandOrganic] = useState(false);
   const [brandContent, setBrandContent] = useState(false);
   const [posting, setPosting] = useState(false);
+  // Whether the recorded file actually carries an audio track, and how long it
+  // is. A silent or truncated teaser is the artifact that matters most, and
+  // nothing else in the app can see it by looking at the file itself.
+  const [audioState, setAudioState] = useState<'checking' | 'ok' | 'missing' | 'short'>('checking');
+  const [audioSeconds, setAudioSeconds] = useState<number | null>(null);
+  const [expectedSeconds, setExpectedSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     if (!publicationId) return;
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
+    setPreviewUrl(null);
+    setDownloadUrl(null);
+    setAudioState('checking');
+    setAudioSeconds(null);
+    setExpectedSeconds(null);
 
     (async () => {
       try {
@@ -100,6 +123,8 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
 
         const meta = (pub?.metadata ?? {}) as Record<string, unknown>;
         setCaption(String(meta.caption || meta.title || pub?.content_assets?.title || ''));
+        setAssetId(pub?.asset_id ?? null);
+        setExpectedSeconds(pub?.content_assets?.duration_seconds ?? null);
         setCreator(creatorData as CreatorInfo);
         setAsset(
           pub?.content_assets
@@ -112,10 +137,24 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
 
         const storagePath = pub?.content_assets?.storage_path;
         if (storagePath) {
-          const { data: signed } = await supabase.storage
-            .from('content')
-            .createSignedUrl(storagePath, 3600);
-          if (!cancelled) setPreviewUrl(signed?.signedUrl ?? null);
+          const mime = pub?.content_assets?.mime_type ?? '';
+          const ext = /quicktime/.test(mime) ? 'mov' : /webm/.test(mime) ? 'webm' : 'mp4';
+          const slug =
+            (pub?.content_assets?.title ?? '')
+              .toString()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '') || 'teaser';
+          const [{ data: signed }, { data: dl }] = await Promise.all([
+            supabase.storage.from('content').createSignedUrl(storagePath, 3600),
+            supabase.storage
+              .from('content')
+              .createSignedUrl(storagePath, 3600, { download: `${slug}-teaser.${ext}` }),
+          ]);
+          if (!cancelled) {
+            setPreviewUrl(signed?.signedUrl ?? null);
+            setDownloadUrl(dl?.signedUrl ?? null);
+          }
         }
       } catch (err) {
         if (!cancelled) setLoadError(getErrorMessage(err));
@@ -153,8 +192,61 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
     privacyLevel !== '' &&
     !disclosureIncomplete;
 
+  // Ask the AI for a fresh caption for this teaser without leaving the dialog.
+  // The drafter writes to the row, so what you see here is what gets posted.
+  const redraftCaption = async () => {
+    if (!assetId || !publicationId || redrafting) return;
+    setRedrafting(true);
+    try {
+      const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+        body: { asset_id: assetId, platform: 'tiktok' },
+      });
+      if (error) throw error;
+      const { data } = await supabase
+        .from('publications')
+        .select('metadata')
+        .eq('id', publicationId)
+        .maybeSingle();
+      const meta = (data?.metadata ?? {}) as Record<string, unknown>;
+      setCaption(String(meta.caption || meta.title || ''));
+      onPosted();
+      toast({ title: 'New caption written', description: 'Edit it freely — it saves with the post.' });
+    } catch (err) {
+      toast({
+        title: "Couldn't write a new caption",
+        description: getErrorMessage(err),
+        variant: 'destructive',
+      });
+    } finally {
+      setRedrafting(false);
+    }
+  };
+
+  // The <audio> element is pointed at the same file as the preview: if Chrome can
+  // play it, the file carries an audio track and this is its length. If it
+  // errors, the upload would land silent.
+  const onAudioMetadata = (el: HTMLAudioElement) => {
+    const seconds = el.duration;
+    setAudioSeconds(Number.isFinite(seconds) ? seconds : null);
+    setAudioState(
+      Number.isFinite(seconds) && expectedSeconds != null && seconds < expectedSeconds - 1.5
+        ? 'short'
+        : 'ok'
+    );
+  };
+
   const post = async () => {
     if (!publicationId || !canPost) return;
+    // A silent post is worse than no post — but the audio probe is a heuristic,
+    // so ask rather than block.
+    if (
+      audioState === 'missing' &&
+      !window.confirm(
+        'This file looks like it has no audio track — TikTok would post it silent.\n\nPost it anyway?'
+      )
+    ) {
+      return;
+    }
     setPosting(true);
     try {
       const { data, error } = await supabase.functions.invoke('post-tiktok-teaser', {
@@ -252,6 +344,42 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
               <>
                 <video src={previewUrl} controls className="w-full rounded-xl bg-black" />
                 <TeaserCoverFrame src={previewUrl} />
+                {/* Read the audio track straight out of the same file. */}
+                <audio
+                  src={previewUrl}
+                  preload="metadata"
+                  className="hidden"
+                  onLoadedMetadata={(e) => onAudioMetadata(e.currentTarget)}
+                  onError={() => setAudioState('missing')}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                  <span>
+                    {asset?.mime ?? 'unknown format'}
+                    {asset?.aspect ? ` · ${asset.aspect}` : ''}
+                    {audioState === 'ok' && audioSeconds
+                      ? ` · audio ${formatClock(audioSeconds)}`
+                      : ''}
+                    {audioState === 'missing' ? (
+                      <strong className="text-red-600"> · no audio track in this file</strong>
+                    ) : null}
+                    {audioState === 'short' ? (
+                      <strong className="text-red-600">
+                        {' '}
+                        · audio stops at {formatClock(audioSeconds ?? 0)}
+                        {expectedSeconds ? ` of ${formatClock(expectedSeconds)}` : ''}
+                      </strong>
+                    ) : null}
+                    {' · the exact file that gets posted'}
+                  </span>
+                  {downloadUrl && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={downloadUrl} download>
+                        <Download className="mr-1.5 h-3.5 w-3.5" />
+                        Download
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </>
             ) : (
               <div className="rounded-xl bg-gray-100 p-6 text-center text-sm text-gray-500">
@@ -261,7 +389,20 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
 
             {/* §2a: editable caption */}
             <div className="space-y-1.5">
-              <Label htmlFor="tiktok-caption">Caption</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="tiktok-caption">Caption</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={redraftCaption}
+                  disabled={redrafting || !assetId}
+                >
+                  {redrafting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Rewrite with AI
+                </Button>
+              </div>
               <Textarea
                 id="tiktok-caption"
                 value={caption}

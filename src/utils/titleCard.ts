@@ -128,7 +128,10 @@ export function drawCard(
   W: number,
   H: number,
   s: CardState,
-  logoImg: HTMLImageElement | null
+  logoImg: HTMLImageElement | null,
+  // Instagram Reels draws its caption, username and audio bar over the bottom
+  // fifth of the frame, so the IG cut lifts the brand block clear of it.
+  opts?: { brandBottom?: number }
 ) {
   const bannerH = Math.round(H * 0.14);
   const M = Math.round(Math.min(W, H) * 0.045);
@@ -207,7 +210,7 @@ export function drawCard(
 
   // ---- logo geometry (referenced by both centering and drawing) ----
   const bySize = Math.round(U * 0.02);
-  const brandBottom = H * 0.94;
+  const brandBottom = H * (opts?.brandBottom ?? 0.94);
   const hasLogo = logoImg && logoImg.naturalWidth > 0 && logoImg.naturalHeight > 0;
   const logoH = hasLogo ? Math.round(U * 0.062) : Math.round(U * 0.05);
   const logoW = hasLogo

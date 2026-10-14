@@ -62,14 +62,17 @@ function PlatformCell({
 }
 
 // One song across all three platforms — the whole point of the regroup.
+// One song across all three platforms — the whole point of the regroup.
 export function TrackPipelineRow({
   group,
   tz,
+  onOpen,
   onReRecord,
   onResetTeaser,
 }: {
   group: TrackGroup;
   tz: string;
+  onOpen?: (group: TrackGroup) => void;
   onReRecord?: (requestId: string) => void;
   onResetTeaser?: (group: TrackGroup) => void;
 }) {
@@ -78,9 +81,20 @@ export function TrackPipelineRow({
   const showMenu = hasTeaser && !!(onReRecord || (onResetTeaser && canReset));
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 px-3 py-2">
-      <span className="min-w-[150px] flex-1 truncate text-sm font-medium text-[#1C0357]">
-        {group.label}
-      </span>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={() => onOpen(group)}
+          title="Open the song page"
+          className="min-w-[150px] flex-1 truncate text-left text-sm font-medium text-[#1C0357] hover:text-[#F538BC] hover:underline"
+        >
+          {group.label}
+        </button>
+      ) : (
+        <span className="min-w-[150px] flex-1 truncate text-sm font-medium text-[#1C0357]">
+          {group.label}
+        </span>
+      )}
       <PlatformCell platform="youtube" pub={group.yt} tz={tz} />
       <PlatformCell platform="tiktok" pub={group.tt} tz={tz} />
       <PlatformCell platform="instagram" pub={group.ig} tz={tz} />

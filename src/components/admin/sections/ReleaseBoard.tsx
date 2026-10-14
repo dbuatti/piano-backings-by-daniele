@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
-import { PLATFORM_LABELS, STATUS_LABELS, type PublicationWithAsset } from '@/types/publishing';
+import { PLATFORM_LABELS, STATUS_LABELS, type PublicationWithAsset, type PublishingSettings } from '@/types/publishing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,13 +25,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, Download, ExternalLink, Eye, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardFonts, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
 import { probeVideoBlob, recordCanvasClip, videoFileInfo, type ClipProgress } from '@/utils/canvasRecorder';
+import { IG_BRAND_BOTTOM, IG_TEASER_SECONDS } from '@/utils/publishingPipeline';
+import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
 import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -66,6 +68,7 @@ export default function ReleaseBoard({
   tz,
   onMutation,
   onBacklog,
+  onOpenTrack,
 }: {
   queue: PublicationWithAsset[];
   tz: string;
@@ -73,6 +76,8 @@ export default function ReleaseBoard({
   // Reports how many delivered tracks still have no YouTube video, so the
   // cadence card above can forecast when the backlog will finish.
   onBacklog?: (count: number) => void;
+  // Opens the per-song page for a track already in the queue.
+  onOpenTrack?: (pub: PublicationWithAsset) => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -184,7 +189,7 @@ export default function ReleaseBoard({
         })
         .in('id', ids);
       if (updErr) throw updErr;
-      await queryClient.invalidateQueries({ queryKey: ['publications'] });
+      await queryClient.invalidateQueries({ queryKey: ['publications_queue'] });
       onMutation();
       toast({
         title: 'Teaser row reset',
@@ -192,6 +197,27 @@ export default function ReleaseBoard({
       });
     } catch (e) {
       toast({ title: "Couldn't reset the teaser", description: getErrorMessage(e), variant: 'destructive' });
+    }
+  };
+
+  // Saves the exact teaser file to disk, so its audio can be checked in a real
+  // player rather than trusting the in-app preview (which is a re-render).
+  const downloadTeaser = async (pub: PublicationWithAsset, song: string) => {
+    try {
+      const url = await signedAssetDownloadUrl(pub, song);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = assetFilename(song, pub.content_assets?.mime_type);
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      toast({
+        title: "Couldn't prepare the download",
+        description: getErrorMessage(e),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -429,6 +455,11 @@ export default function ReleaseBoard({
               <p className="px-4 py-6 text-sm text-gray-400">Nothing here — try another filter.</p>
             ) : (
               visibleRows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
+                const teaserWithFile =
+                  (tt?.content_assets?.storage_path ? tt : null) ??
+                  (ig?.content_assets?.storage_path ? ig : null);
+                // Any row at all means the song has a page in the pipeline.
+                const anyPub = yt ?? tt ?? ig;
                 return (
               <div key={t.requestId} className="rounded-xl border border-gray-100 p-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -536,12 +567,22 @@ export default function ReleaseBoard({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-60">
+                        {anyPub && onOpenTrack ? (
+                          <DropdownMenuItem onSelect={() => onOpenTrack(anyPub)}>
+                            <Library className="h-3.5 w-3.5" /> Open song page
+                          </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem onSelect={() => setPreviewing(t)}>
                           <Eye className="h-3.5 w-3.5" /> Preview posts
                         </DropdownMenuItem>
                         {(tt || ig) && (
                           <DropdownMenuItem onSelect={() => setReRecording(t.requestId)}>
                             <RefreshCw className="h-3.5 w-3.5" /> Re-record teaser
+                          </DropdownMenuItem>
+                        )}
+                        {teaserWithFile && (
+                          <DropdownMenuItem onSelect={() => downloadTeaser(teaserWithFile, t.song)}>
+                            <Download className="h-3.5 w-3.5" /> Download teaser
                           </DropdownMenuItem>
                         )}
                         {tt && tt.status === 'published' && (
@@ -965,6 +1006,12 @@ export function VettingDialog({
   const { data: shopProducts = [] } = useShopProducts();
   const track = tracks?.find((t) => t.requestId === requestId) ?? null;
 
+  // The hands-off-booking switch decides what "queued" means for the owner: a
+  // video that will book itself, or one that waits for a press. Read from the
+  // cache the publishing page already filled, so this needs no extra fetch.
+  const bookAutomatically =
+    queryClient.getQueryData<PublishingSettings>(['publishing_settings'])?.auto_book === true;
+
   const [title, setTitle] = useState(track?.song ?? '');
   const [show, setShow] = useState(track?.show ?? '');
   const [key, setKey] = useState(track?.key ?? 'C Major (0)');
@@ -1047,120 +1094,170 @@ export function VettingDialog({
       const logoImg = await loadCardLogo();
       await loadCardFonts();
 
-      // TikTok and Instagram Reels are vertical: a teaser-only recording is
-      // captured 9:16 so it fills the phone screen instead of being letterboxed.
-      const cw = teaserOnly ? 1080 : 1920;
-      const ch = teaserOnly ? 1920 : 1080;
-      const cv = document.createElement('canvas');
-      cv.width = cw;
-      cv.height = ch;
-      const cvCtx = cv.getContext('2d');
+      const reqId = track.requestId;
+      const trackUrl = track.url;
+      const clientName = track.client;
+      const songTitle = track.song;
 
       const context = new AudioContext();
       if (context.state === 'suspended') await context.resume();
-      const response = await fetch(track.url);
+      const response = await fetch(trackUrl);
       if (!response.ok) {
         await context.close();
         throw new Error(`Couldn't load the backing track (${response.status}).`);
       }
       const decoded = await context.decodeAudioData(await response.arrayBuffer());
-      const source = context.createBufferSource();
-      source.buffer = decoded;
-      source.connect(context.destination);
-
-      setRecording({ loaded: 0, total: decoded.duration || 6 });
-      setPhase('recording');
-      // Teasers open straight on the card: TikTok's first second decides the
-      // scroll, and the pink fade-in spent it on a blank frame. YouTube keeps the
-      // fade, where an intro reads as intentional.
-      const fade = teaserOnly ? 0 : 1.1;
-      const blob = await recordCanvasClip({
-        canvas: cv,
-        duration: decoded.duration || 6,
-        audio: { context, source },
-        fps: 30,
-        label: title.trim() || track.song,
-        onProgress: setRecording,
-        drawFrame: (elapsed) => {
-          if (!cvCtx) return;
-          drawCard(cvCtx, cw, ch, card, logoImg);
-          if (fade > 0) {
-            const p = Math.min(elapsed / fade, 1);
-            const ease = 1 - Math.pow(1 - p, 3);
-            cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
-            cvCtx.fillRect(0, 0, cw, ch);
-          }
-        },
-
-      });
-      if (!blob) throw new Error('Recording failed in this browser.');
-
-      // Refuse to publish a file the browser itself can't decode.
-      const probe = await probeVideoBlob(blob);
-      console.info('[release-board] recorded clip', blob.type, probe);
-      if (!probe || !probe.width || !probe.height) {
-        throw new Error(
-          "The recording couldn't be read back. Close other tabs, then try again — and use an up-to-date Chrome or Safari."
-        );
-      }
-
-      setPhase('uploading');
-      const { data: user } = await supabase.auth.getUser();
-      const id = crypto.randomUUID();
-      const file = videoFileInfo(blob.type);
-      const path = `content/${id}.${file.ext}`;
-      const previewPath = `content/${id}.preview.png`;
-
-      const { error: uploadErr } = await supabase.storage
-        .from('content')
-        .upload(path, blob, { contentType: file.mime, upsert: false });
-      if (uploadErr) throw uploadErr;
-
-      const previewBlob = await captureCardSnapshot(cv);
-      if (previewBlob) {
-        const { error: previewErr } = await supabase.storage
-          .from('content')
-          .upload(previewPath, previewBlob, { contentType: 'image/png', upsert: false });
-        if (previewErr) throw previewErr;
-      }
+      const durationSecs = decoded.duration || 6;
 
       const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
       const titleCore = `${title.trim()} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+      const { data: user } = await supabase.auth.getUser();
 
-      const { data: asset, error: assetErr } = await supabase
-        .from('content_assets')
-        .insert({
-          storage_path: path,
-          preview_path: previewBlob ? previewPath : null,
-          mime_type: file.mime,
-          title: titleCore,
-          song_title: title.trim(),
-          show: cleanedShow || null,
-          key: key || null,
-          dedication: track.client ? `prepared for ${track.client.trim().split(/\s+/)[0]}` : null,
-          request_id: track.requestId,
-          duration_seconds: decoded.duration || null,
-          aspect: teaserOnly ? '9:16' : '16:9',
-          created_by: user.user?.id ?? null,
-        })
-        .select('id')
-        .single();
-      if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+      // Records the card, uploads it, and registers it as a content asset.
+      // YouTube gets a landscape copy with the pink intro; TikTok and Instagram
+      // get a vertical copy that opens on the card. Recording both here is what
+      // makes a queued track ready for every platform with no follow-up pass.
+      const recordAndStore = async (opts: {
+        width: number;
+        height: number;
+        aspect: '16:9' | '9:16';
+        fade: number;
+        fps: number;
+        bitrate: number;
+        title: string;
+        /** Seconds to record. Defaults to the whole track (what TikTok wants). */
+        seconds?: number;
+        /** Instagram-safe layout: keep the brand block out of IG's caption area. */
+        igSafe?: boolean;
+      }) => {
+        const recordSeconds = Math.min(opts.seconds ?? durationSecs, durationSecs);
+        const cv = document.createElement('canvas');
+        cv.width = opts.width;
+        cv.height = opts.height;
+        const cvCtx = cv.getContext('2d');
+        // An AudioBufferSourceNode can only be started once, so each pass needs
+        // its own source over the same decoded buffer.
+        const source = context.createBufferSource();
+        source.buffer = decoded;
+        source.connect(context.destination);
+
+        setRecording({ loaded: 0, total: recordSeconds });
+        setPhase('recording');
+        const blob = await recordCanvasClip({
+          canvas: cv,
+          duration: recordSeconds,
+          audio: { context, source },
+          // The card is a still image: a low frame rate looks identical and
+          // leaves the main thread free to keep the audio muxer fed.
+          fps: opts.fps,
+          videoBitsPerSecond: opts.bitrate,
+          label: title.trim() || songTitle,
+          onProgress: setRecording,
+          drawFrame: (elapsed) => {
+            if (!cvCtx) return;
+            drawCard(cvCtx, opts.width, opts.height, card, logoImg, {
+              brandBottom: opts.igSafe ? IG_BRAND_BOTTOM : undefined,
+            });
+            if (opts.fade > 0) {
+              const p = Math.min(elapsed / opts.fade, 1);
+              const ease = 1 - Math.pow(1 - p, 3);
+              cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
+              cvCtx.fillRect(0, 0, opts.width, opts.height);
+            }
+          },
+        });
+        if (!blob) throw new Error('Recording failed in this browser.');
+
+        // Refuse to publish a file the browser itself can't decode.
+        const probe = await probeVideoBlob(blob);
+        console.info('[release-board] recorded clip', blob.type, probe);
+        if (!probe || !probe.width || !probe.height) {
+          throw new Error(
+            "The recording couldn't be read back. Close other tabs, then try again — and use an up-to-date Chrome or Safari."
+          );
+        }
+
+        setPhase('uploading');
+        const id = crypto.randomUUID();
+        const file = videoFileInfo(blob.type);
+        const path = `content/${id}.${file.ext}`;
+        const previewPath = `content/${id}.preview.png`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('content')
+          .upload(path, blob, { contentType: file.mime, upsert: false });
+        if (uploadErr) throw uploadErr;
+
+        const previewBlob = await captureCardSnapshot(cv);
+        if (previewBlob) {
+          const { error: previewErr } = await supabase.storage
+            .from('content')
+            .upload(previewPath, previewBlob, { contentType: 'image/png', upsert: false });
+          if (previewErr) throw previewErr;
+        }
+
+        const { data: asset, error: assetErr } = await supabase
+          .from('content_assets')
+          .insert({
+            storage_path: path,
+            preview_path: previewBlob ? previewPath : null,
+            mime_type: file.mime,
+            title: opts.title,
+            song_title: title.trim(),
+            show: cleanedShow || null,
+            key: key || null,
+            dedication: clientName ? `prepared for ${clientName.trim().split(/\s+/)[0]}` : null,
+            request_id: reqId,
+            duration_seconds: recordSeconds,
+            aspect: opts.aspect,
+            created_by: user.user?.id ?? null,
+          })
+          .select('id')
+          .single();
+        if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+        return { assetId: asset.id as string, file };
+      };
 
       if (teaserOnly) {
+        // Two cuts, because the platforms want different lengths: TikTok gets the
+        // whole track (so duets inherit the full audio), Instagram a 30-second
+        // Reel. They used to share one file, which made that impossible.
+        const tt = await recordAndStore({
+          width: 1080,
+          height: 1920,
+          aspect: '9:16',
+          fade: 0,
+          fps: 15,
+          bitrate: 3_000_000,
+          title: titleCore,
+        });
+        const ig = await recordAndStore({
+          width: 1080,
+          height: 1920,
+          aspect: '9:16',
+          fade: 0,
+          fps: 15,
+          bitrate: 3_000_000,
+          seconds: IG_TEASER_SECONDS,
+          igSafe: true,
+          title: titleCore,
+        });
         const { data: teaserRows, error: teaserErr } = await supabase
           .from('publications')
-          .select('id, status, content_assets!inner(request_id)')
-          .eq('content_assets.request_id', track.requestId)
+          .select('id, platform, status, content_assets!inner(request_id)')
+          .eq('content_assets.request_id', reqId)
           .in('platform', ['tiktok', 'instagram']);
         if (teaserErr) throw teaserErr;
-        const ids = (teaserRows ?? []).map((r) => r.id);
-        if (ids.length) {
+        const rows = teaserRows ?? [];
+        for (const platform of ['tiktok', 'instagram'] as const) {
+          const ids = rows.filter((r) => r.platform === platform).map((r) => r.id);
+          if (!ids.length) continue;
           const { error: moveErr } = await supabase
             .from('publications')
             .update({
-              asset_id: asset.id,
+              asset_id: platform === 'tiktok' ? tt.assetId : ig.assetId,
               status: 'pending_approval',
+              scheduled_for: null,
               platform_post_id: null,
               published_at: null,
               error: null,
@@ -1168,37 +1265,70 @@ export function VettingDialog({
             .in('id', ids);
           if (moveErr) throw moveErr;
         }
-        await queryClient.invalidateQueries({ queryKey: ['publications'] });
+        await queryClient.invalidateQueries({ queryKey: ['publications_queue'] });
         onQueued();
         if (onNext) onNext();
         else onClose();
         toast({
-          title: ids.length
-            ? `Teaser re-recorded — ${ids.length} TikTok/Instagram row${ids.length === 1 ? '' : 's'} reset to pending`
+          title: rows.length
+            ? `Teaser re-recorded — ${rows.length} TikTok/Instagram row${rows.length === 1 ? '' : 's'} reset to pending`
             : 'Teaser re-recorded — no teaser rows to update',
           description:
-            file.mime === 'video/mp4'
+            tt.file.mime === 'video/mp4'
               ? undefined
               : 'This browser could only record WebM, which TikTok cannot play. Use the latest Chrome or Safari to record an MP4.',
         });
         return;
       }
 
-      // Queue YouTube as the primary video and track TikTok/Instagram teasers
-      // alongside it so the board shows progress on every platform. The teasers
-      // stay as drafts — posting them waits on the platform integrations.
+      // Queue every cut in one sitting: the landscape video for YouTube, the
+      // full-length vertical teaser for TikTok, and a 30-second vertical Reel for
+      // Instagram. Recording all three here is what removes the manual re-record
+      // that used to gate every track.
+      const video = await recordAndStore({
+        width: 1920,
+        height: 1080,
+        aspect: '16:9',
+        fade: 1.1,
+        fps: 30,
+        bitrate: 8_000_000,
+        title: titleCore,
+      });
+      const teaser = await recordAndStore({
+        width: 1080,
+        height: 1920,
+        aspect: '9:16',
+        fade: 0,
+        fps: 15,
+        bitrate: 3_000_000,
+        title: titleCore,
+      });
+      const reel = await recordAndStore({
+        width: 1080,
+        height: 1920,
+        aspect: '9:16',
+        fade: 0,
+        fps: 15,
+        bitrate: 3_000_000,
+        seconds: IG_TEASER_SECONDS,
+        igSafe: true,
+        title: titleCore,
+      });
+
       const platforms = ['youtube', 'tiktok', 'instagram'] as const;
+      const assetFor = (platform: (typeof platforms)[number]) =>
+        platform === 'youtube' ? video.assetId : platform === 'tiktok' ? teaser.assetId : reel.assetId;
       const { error: pubErr } = await supabase
         .from('publications')
-        .insert(platforms.map((platform) => ({ asset_id: asset.id, platform, status: 'draft' })));
+        .insert(platforms.map((platform) => ({ asset_id: assetFor(platform), platform, status: 'draft' })));
       if (pubErr) throw new Error(pubErr.message || "Couldn't create the publications.");
 
       setPhase('drafting');
       // Draft each platform's caption. Only the YouTube row is required — a
       // missing teaser caption shouldn't block the video being queued.
-      for (const platform of ['youtube', 'tiktok', 'instagram'] as const) {
+      for (const platform of platforms) {
         const { error: draftErr } = await supabase.functions.invoke('draft-publication-metadata', {
-          body: { asset_id: asset.id, platform },
+          body: { asset_id: assetFor(platform), platform },
         });
         if (draftErr && platform === 'youtube') throw draftErr;
       }
@@ -1206,7 +1336,11 @@ export function VettingDialog({
       onQueued();
       if (onNext) onNext();
       else onClose();
-      toast({ title: 'Queued for YouTube + TikTok/Instagram teasers — needs approval' });
+      toast({
+        title: bookAutomatically
+          ? 'Queued for YouTube + TikTok/Instagram teasers — it will be booked automatically'
+          : 'Queued for YouTube + TikTok/Instagram teasers — needs approval',
+      });
     } catch (e) {
       setPhase('review');
       toast({ title: 'Could not queue this track', description: await getFunctionErrorMessage(e), variant: 'destructive' });

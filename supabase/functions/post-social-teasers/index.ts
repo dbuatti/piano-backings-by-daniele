@@ -7,8 +7,8 @@
 // has approved the video.
 //
 // UNTESTED until the platform credentials are connected — each row fails
-// independently with a clear message (Instagram in particular needs an MP4
-// source, not our webm recordings).
+// independently with a clear message (Instagram only accepts MP4/MOV, which is
+// what the recorder now produces first).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { requireSupabaseEnv } from '../_shared/env.ts';
 import { getSocialToken, getFreshSocialAccessToken } from '../_shared/social.ts';

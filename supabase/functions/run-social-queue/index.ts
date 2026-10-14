@@ -57,7 +57,17 @@ async function notifyAdmins(subject: string, bodyHtml: string) {
 function captionFor(pub: Record<string, unknown>): string {
   const meta = (pub.metadata || {}) as Record<string, unknown>;
   const asset = (pub.content_assets || {}) as Record<string, unknown>;
-  return String(meta.caption || meta.title || asset.title || asset.song_title || '').trim();
+  // A drafted caption already carries its hashtags, so use it whole.
+  const drafted = String(meta.caption || '').trim();
+  if (drafted) return drafted;
+  // Legacy rows have no caption. Fall back to the title, and put the hashtags
+  // back on: a TikTok/Instagram post with no tags is a post nobody sees.
+  const base = String(meta.title || asset.title || asset.song_title || '').trim();
+  if (!base) return '';
+  const tags = Array.isArray(meta.hashtags)
+    ? (meta.hashtags as unknown[]).map((t) => `#${String(t).replace(/^#/, '')}`).filter((t) => t.length > 1)
+    : [];
+  return [base, tags.join(' ')].filter(Boolean).join('\n\n');
 }
 
 Deno.serve(async (req) => {
@@ -162,44 +172,66 @@ Deno.serve(async (req) => {
     }
 
     // --- 2) Arm teasers onto the slot of their song's YouTube video. ---
+    // A *future* slot is always armed: the owner still has time to fix or reset
+    // it. A slot that has already passed (the video is live, or the teaser was
+    // reset after the fact) is only armed when the teaser is genuinely postable,
+    // so a leftover landscape clip from an old video never goes out unattended.
     let armed = 0;
+    let armSkipped = 0;
     try {
       const { data: ytRows, error: ytErr } = await supabaseAdmin
         .from('publications')
-        .select('asset_id, scheduled_for, metadata, content_assets!inner(request_id)')
+        .select('asset_id, scheduled_for, status, metadata, content_assets!inner(request_id)')
         .eq('platform', 'youtube')
-        .eq('status', 'scheduled')
-        .gt('scheduled_for', nowIso)
-        .limit(100);
+        .in('status', ['scheduled', 'published'])
+        .not('scheduled_for', 'is', null)
+        .order('scheduled_for', { ascending: true })
+        .limit(200);
       if (ytErr) throw ytErr;
 
-      const byRequest = new Map<string, { slot: string; meta: Record<string, unknown> }>();
-      const byAsset = new Map<string, { slot: string; meta: Record<string, unknown> }>();
+      const byRequest = new Map<string, { slot: string; isFuture: boolean; meta: Record<string, unknown> }>();
+      const byAsset = new Map<string, { slot: string; isFuture: boolean; meta: Record<string, unknown> }>();
       for (const r of ytRows ?? []) {
         if (!r.scheduled_for) continue;
-        const slot = new Date(new Date(r.scheduled_for).getTime() + offsetMs).toISOString();
+        const base = new Date(r.scheduled_for).getTime();
+        const isFuture = base > Date.now();
+        // Future slots keep the configured offset. A slot that has passed goes
+        // out on the next pass instead of at a time that is already behind us.
+        const slot = new Date(isFuture ? base + offsetMs : Date.now()).toISOString();
         const meta = (r.metadata || {}) as Record<string, unknown>;
         const requestId = (r as Record<string, unknown>).content_assets?.request_id;
-        if (requestId) byRequest.set(String(requestId), { slot, meta });
-        if (r.asset_id) byAsset.set(String(r.asset_id), { slot, meta });
+        if (requestId) byRequest.set(String(requestId), { slot, isFuture, meta });
+        if (r.asset_id) byAsset.set(String(r.asset_id), { slot, isFuture, meta });
       }
 
       if (byRequest.size || byAsset.size) {
         const { data: teasers, error: teaserErr } = await supabaseAdmin
           .from('publications')
-          .select('id, asset_id, platform, metadata, content_assets!inner(request_id)')
+          .select('id, asset_id, platform, metadata, content_assets!inner(request_id, aspect, mime_type)')
           .in('platform', ['tiktok', 'instagram'])
           .in('status', ['draft', 'pending_approval'])
           .limit(200);
         if (teaserErr) throw teaserErr;
 
         for (const teaser of teasers ?? []) {
-          const requestId = (teaser as Record<string, unknown>).content_assets?.request_id;
+          const teaserAsset = ((teaser as Record<string, unknown>).content_assets || {}) as Record<string, unknown>;
+          const requestId = teaserAsset.request_id;
           const target =
             (requestId && byRequest.get(String(requestId))) ||
             byAsset.get(String(teaser.asset_id));
           if (!target) continue;
           if (requestId && noSocialIds.has(String(requestId))) continue;
+          if (!target.isFuture) {
+            // The video is already out. Only publish unattended if the recorded
+            // file is actually a vertical, playable teaser; anything else waits
+            // for a person instead of going out letterboxed.
+            const vertical = String(teaserAsset.aspect || '') === '9:16';
+            const playable = POSTABLE_MIME.test(String(teaserAsset.mime_type || ''));
+            if (!vertical || !playable) {
+              armSkipped += 1;
+              continue;
+            }
+          }
 
           const meta = (teaser.metadata || {}) as Record<string, unknown>;
           const seeded = meta.title || meta.caption
@@ -385,7 +417,7 @@ Deno.serve(async (req) => {
       console.error('[run-social-queue] post pass failed:', err?.message || err);
     }
 
-    return json({ autoPost: true, platform: onlyPlatform ?? 'all', reconciled, armed, posted });
+    return json({ autoPost: true, platform: onlyPlatform ?? 'all', reconciled, armed, armSkipped, posted });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }

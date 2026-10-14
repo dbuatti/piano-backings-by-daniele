@@ -79,6 +79,10 @@ const AdminShell = () => {
     if (next !== 'requests') {
       sp.delete('request');
     }
+    // `sub` is the tab within a section, and the publishing and settings
+    // sections both use it — so it must not survive a section change, or the
+    // URL claims you are on a tab that does not exist here.
+    sp.delete('sub');
     setSearchParams(sp, { replace: false });
     navigate({ pathname: '/admin', search: sp.toString() });
   };

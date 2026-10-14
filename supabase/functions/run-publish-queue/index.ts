@@ -4,6 +4,8 @@
 // (status -> publishing) before upload so concurrent runs can't double-post.
 //
 // Responsibilities:
+//   0. Hands-off booking (opt-in): give a reviewed-but-unscheduled video the next
+//      free cadence slot, so a release never waits for someone to press a button.
 //   1. Upload `approved` rows now as private videos scheduled via YouTube's
 //      native `status.publishAt` — YouTube promotes them to public at the slot.
 //   2. Confirm with YouTube that uploaded rows whose slot passed are actually
@@ -15,6 +17,7 @@ import { mintChannelAccessToken, uploadVideoToYouTube } from '../_shared/youtube
 import { escapeHtml, safeLink, sendEmail } from '../_shared/email.ts';
 import { requireGoogleCreds, requireSupabaseEnv } from '../_shared/env.ts';
 import { defaultYouTubeDescription, shopSongUrlForTrack } from '../_shared/shop.ts';
+import { allocatePublishingSlots, slotSettingsFrom } from '../_shared/schedule.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,6 +88,91 @@ Deno.serve(async (req) => {
       (noSocialRows ?? []).forEach((r) => noSocialIds.add(String(r.id)));
     } catch (e) {
       console.warn('no_socials lookup skipped:', e);
+    }
+
+    // 0) Hands-off booking. A video that has been reviewed and queued — the file
+    //    is recorded and the copy is written — is given the next free cadence
+    //    slot by itself rather than waiting for someone to press "Book slots".
+    //    Gated by publishing_settings.auto_book, which is off by default, so the
+    //    normal flow (a human approves, then a human books) is unchanged.
+    let autoBooked = 0;
+    const autoBookSkipped: string[] = [];
+    try {
+      const { data: settingsRow, error: settingsErr } = await supabaseAdmin
+        .from('publishing_settings')
+        .select('auto_book, schedule_mode, interval_days, weekly_dow, weekly_time, timezone')
+        .eq('id', 1)
+        .maybeSingle();
+      if (settingsErr) throw settingsErr;
+
+      if (settingsRow?.auto_book) {
+        const { data: candidates, error: candErr } = await supabaseAdmin
+          .from('publications')
+          .select('id, status, metadata, content_assets(storage_path, request_id)')
+          .eq('platform', 'youtube')
+          .in('status', ['draft', 'pending_approval', 'approved'])
+          .is('scheduled_for', null)
+          .order('created_at', { ascending: true })
+          .limit(50);
+        if (candErr) throw candErr;
+
+        // Only rows that are genuinely ready: a recorded file and drafted copy.
+        // A video going out without a description looks broken on the channel,
+        // and a row with no file has nothing to upload.
+        const ready = (candidates ?? []).filter((row) => {
+          const asset = (row.content_assets || {}) as Record<string, unknown>;
+          const meta = (row.metadata || {}) as Record<string, unknown>;
+          const hasCopy = !!String(meta.description || '').trim();
+          const noSocial = asset.request_id && noSocialIds.has(String(asset.request_id));
+          if (!asset.storage_path || !hasCopy || noSocial) {
+            autoBookSkipped.push(String(meta.title || asset.request_id || row.id));
+            return false;
+          }
+          return true;
+        });
+
+        if (ready.length) {
+          // Start after everything already booked so two runs never collide.
+          const { data: bookedRows } = await supabaseAdmin
+            .from('publications')
+            .select('scheduled_for')
+            .eq('platform', 'youtube')
+            .in('status', ['approved', 'scheduled', 'publishing'])
+            .not('scheduled_for', 'is', null)
+            .gte('scheduled_for', nowIso)
+            .limit(500);
+          const existing = (bookedRows ?? [])
+            .map((r) => r.scheduled_for)
+            .filter((s): s is string => !!s)
+            .map((s) => new Date(s));
+
+          const slots = allocatePublishingSlots(slotSettingsFrom(settingsRow), ready.length, existing);
+          for (let i = 0; i < ready.length; i++) {
+            const row = ready[i];
+            const { data: booked } = await supabaseAdmin
+              .from('publications')
+              .update({
+                status: 'approved',
+                approved_at: nowIso,
+                scheduled_for: slots[i].toISOString(),
+                error: null,
+                attempts: 0,
+              })
+              .eq('id', row.id)
+              .eq('status', row.status)
+              .is('scheduled_for', null)
+              .select('id')
+              .maybeSingle();
+            if (booked) {
+              autoBooked += 1;
+              results.push({ id: row.id, status: 'auto-booked', scheduled_for: slots[i].toISOString() });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // A booking hiccup must never stop uploads, confirmation or retention.
+      console.error('[run-publish-queue] auto-book pass failed:', err?.message || err);
     }
 
     // 1) Upload approved rows immediately, scheduling them through publishAt.
@@ -302,7 +390,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ processed: results.length, confirmationDegraded, results });
+    return json({ processed: results.length, confirmationDegraded, autoBooked, autoBookSkipped, results });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }

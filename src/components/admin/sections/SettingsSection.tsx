@@ -121,10 +121,24 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-sm text-gray-500">
-                Connect the TikTok and Instagram accounts used for short teaser clips. Once connected,
-                the release board can post teasers alongside the YouTube upload. Requires the app
-                credentials and (for public TikTok posts) a passed Content Posting                 audit.
+                Connect the accounts used for the short teaser clips. Once connected, the
+                release board and the 15-minute worker can post teasers alongside the
+                YouTube upload.
               </p>
+              <ul className="list-disc pl-5 text-sm text-gray-500 space-y-1">
+                <li>
+                  <strong className="text-gray-600">TikTok</strong> — posts land as{' '}
+                  <em>Only me</em> until the app passes TikTok's Content Posting audit, and
+                  that audit is unlikely to pass a single-owner, unattended tool. Treat
+                  public TikTok posts as a manual step.
+                </li>
+                <li>
+                  <strong className="text-gray-600">Instagram</strong> — needs a{' '}
+                  <em>professional</em> (Business or Creator) account and a Meta app with
+                  Instagram Business Login. No Facebook Page is required. The token lasts
+                  60 days and is refreshed automatically.
+                </li>
+              </ul>
               <SocialConnectionStatus />
               <SocialOAuthButtons />
             </CardContent>

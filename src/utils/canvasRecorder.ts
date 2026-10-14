@@ -63,6 +63,13 @@ export interface RecordCanvasClipOptions {
   /** Optional audio mixed into the clip (decoded track, not yet started). */
   audio?: RecordingAudio;
   fps?: number;
+  /**
+   * Encoder targets. The defaults suit an 8 Mbps talking-head clip; a static
+   * card wastes most of that, and a lower rate leaves the main thread free,
+   * which is what keeps the audio muxer fed.
+   */
+  videoBitsPerSecond?: number;
+  audioBitsPerSecond?: number;
   /** Human label for a global "recording…" indicator (e.g. the song title). */
   label?: string;
   onProgress?: (progress: ClipProgress) => void;
@@ -148,10 +155,15 @@ export async function recordCanvasClip(
         'video/webm',
       ];
   const mimeType = mimeCandidates.find((mime) => MediaRecorder.isTypeSupported(mime));
-  const recorder = new MediaRecorder(
-    stream,
-    mimeType ? { mimeType, videoBitsPerSecond: 8_000_000 } : undefined
-  );
+  // Pin the audio bitrate too. Without it the browser picks for us, and a low
+  // default is one of the ways a perfectly clean track comes out of the muxer
+  // sounding rough.
+  const recorderOptions: MediaRecorderOptions = {
+    videoBitsPerSecond: options.videoBitsPerSecond ?? 8_000_000,
+  };
+  if (mimeType) recorderOptions.mimeType = mimeType;
+  if (audioTrack) recorderOptions.audioBitsPerSecond = options.audioBitsPerSecond ?? 192_000;
+  const recorder = new MediaRecorder(stream, recorderOptions);
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (event) => {
     if (event.data.size) chunks.push(event.data);
@@ -190,14 +202,17 @@ export async function recordCanvasClip(
     });
 
     recorder.stop();
+    // Stop feeding audio, but leave the tracks and the graph alive until the
+    // recorder has flushed its final chunk — tearing the stream down first can
+    // clip the tail of the audio.
     try {
       audio?.source.stop();
     } catch {
       // Already ended.
     }
+    await stopped;
     stream.getTracks().forEach((track) => track.stop());
     dest?.disconnect();
-    await stopped;
     await audio?.context.close().catch(() => undefined);
     // Tag with the container the recorder actually produced so uploads carry the
     // right Content-Type (TikTok validates it).

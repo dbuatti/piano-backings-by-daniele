@@ -18,6 +18,7 @@ import {
   loadCardFonts,
   LOGO_SRC,
 } from "@/utils/titleCard";
+import { IG_BRAND_BOTTOM, IG_TEASER_SECONDS } from "@/utils/publishingPipeline";
 
 // Video-game pixel options for the top banner (stand-ins until Arcade Gamer
 // is dropped into public/fonts).
@@ -941,15 +942,21 @@ export default function TitleCardGenerator() {
     }
   }, [recording, publishing, queuing, recordClip, captureCardPreview, state, selectedTrack, linkedRequest]);
 
-  // Teaser aimed at TikTok / Instagram: same background, a "Full version on
-  // YouTube" footer band, and the whole track so duets inherit the full audio.
-  // Same background-safe recorder, so it too completes if the user navigates away.
+  // Teaser aimed at TikTok / Instagram. It is painted into its own 9:16 canvas
+  // rather than the editor canvas, so a teaser is always vertical (and the
+  // editor's own aspect is left alone). Same background-safe recorder, so it
+  // too completes if the user navigates away.
   const recordTeaser = useCallback(
     async (
+      target: "tiktok" | "instagram",
       onProgress?: (loaded: number, total: number) => void
     ): Promise<{ blob: Blob; duration: number } | null> => {
-      const cv = canvasRef.current;
-      if (!cv || typeof MediaRecorder === "undefined") return null;
+      if (typeof MediaRecorder === "undefined") return null;
+      const cv = document.createElement("canvas");
+      cv.width = 1080;
+      cv.height = 1920;
+      const cvCtx = cv.getContext("2d");
+      if (!cvCtx) return null;
 
       let duration = TEASER_SECONDS;
       let audio: RecordingAudio | null = null;
@@ -969,31 +976,34 @@ export default function TitleCardGenerator() {
         audio = { context, source };
       }
 
-      const cvCtx = cv.getContext("2d");
-      const W = dims.w;
-      const H = dims.h;
+      // TikTok gets the whole track so duets inherit the full audio; Instagram
+      // wants a short Reel.
+      if (target === "instagram") duration = Math.min(duration, IG_TEASER_SECONDS);
 
       // No fade: a teaser should open on the card, not on a blank pink frame.
       const blob = await recordCanvasClip({
         canvas: cv,
         duration,
         audio: audio ?? undefined,
-        fps: 30,
-        drawFrame: (elapsed) => {
-          if (!cvCtx) return;
-          drawCard(cvCtx, W, H, state, logoImg);
+        // A still card at 15 fps is indistinguishable from 30 and leaves the
+        // main thread free to keep the audio encoder fed.
+        fps: 15,
+        videoBitsPerSecond: 3_000_000,
+        drawFrame: () => {
+          drawCard(cvCtx, cv.width, cv.height, state, logoImg, {
+            brandBottom: target === "instagram" ? IG_BRAND_BOTTOM : undefined,
+          });
         },
         onProgress: (p) => onProgress?.(p.loaded, p.total),
       });
 
-      paint();
       return blob ? { blob, duration } : null;
     },
-    [dims.w, dims.h, state, logoImg, paint, audioUrl]
+    [state, logoImg, audioUrl]
   );
 
-  // Save a teaser (TikTok + Instagram) into the publishing catalogue without
-  // posting: uploads the clip, creates one asset + a tiktok + an instagram draft,
+  // Save teasers (TikTok + Instagram) into the publishing catalogue without
+  // posting: uploads one clip per platform, creates a matching asset + draft,
   // then AI-drafts each platform's caption and flags them for approval.
   const addTeaserToQueue = useCallback(async () => {
     if (queuing || recording || publishing) return;
@@ -1002,71 +1012,80 @@ export default function TitleCardGenerator() {
     setQueueResult(null);
     setQueueError(null);
     try {
-      const recorded = await recordTeaser((loaded, total) =>
-        setPublishProgress({ loaded, total })
-      );
-      if (!recorded) throw new Error("Recording failed in this browser.");
-      const { blob, duration: recordedDuration } = recorded;
-      setQueueStep("uploading");
-      setPublishProgress({ loaded: 0, total: blob.size });
-
-      const { data: user } = await supabase.auth.getUser();
-      const id = crypto.randomUUID();
-      const teaserMime = videoFileInfo(blob.type);
-      const path = `content/${id}-teaser.${teaserMime.ext}`;
-      const previewPath = `content/${id}-teaser.preview.png`;
-      const { error: uploadErr } = await supabase.storage
-        .from("content")
-        .upload(path, blob, { contentType: teaserMime.mime, upsert: false });
-      if (uploadErr) throw uploadErr;
-
-      const previewBlob = await captureCardPreview();
-      if (previewBlob) {
-        const { error: previewErr } = await supabase.storage
-          .from("content")
-          .upload(previewPath, previewBlob, { contentType: "image/png", upsert: false });
-        if (previewErr) throw previewErr;
-      }
-
       const showText = state.show.replace(/^\s*from\s+/i, "").trim();
       const titleCore =
         [state.title.trim(), state.banner.trim()].filter(Boolean).join(" — ") || "Backing track";
+      const { data: user } = await supabase.auth.getUser();
 
-      const { data: asset, error: assetErr } = await supabase
-        .from("content_assets")
-        .insert({
-          storage_path: path,
-          preview_path: previewBlob ? previewPath : null,
-          mime_type: teaserMime.mime,
-          title: `${titleCore}${showText ? ` (from ${showText})` : ""} (Teaser)`,
-          song_title: state.title.trim() || null,
-          show: showText || null,
-          key: state.key || null,
-          dedication:
-            state.dedication.trim() || (linkedRequest?.client ?? null) || null,
-          request_id: selectedTrack?.requestId ?? null,
-          duration_seconds: recordedDuration,
-          aspect: state.aspect,
-          created_by: user.user?.id ?? null,
-        })
-        .select("id")
-        .single();
-      if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+      // One asset per platform: TikTok gets the whole track (so duets inherit
+      // the full audio), Instagram a 30-second Reel. They used to share a single
+      // file, which forced both platforms to the same length.
+      const buildAsset = async (target: "tiktok" | "instagram") => {
+        const recorded = await recordTeaser(target, (loaded, total) =>
+          setPublishProgress({ loaded, total })
+        );
+        if (!recorded) throw new Error("Recording failed in this browser.");
+        const { blob, duration: recordedDuration } = recorded;
+        setQueueStep("uploading");
+        setPublishProgress({ loaded: 0, total: blob.size });
+
+        const id = crypto.randomUUID();
+        const teaserMime = videoFileInfo(blob.type);
+        const path = `content/${id}-teaser.${teaserMime.ext}`;
+        const previewPath = `content/${id}-teaser.preview.png`;
+        const { error: uploadErr } = await supabase.storage
+          .from("content")
+          .upload(path, blob, { contentType: teaserMime.mime, upsert: false });
+        if (uploadErr) throw uploadErr;
+
+        const previewBlob = await captureCardPreview();
+        if (previewBlob) {
+          const { error: previewErr } = await supabase.storage
+            .from("content")
+            .upload(previewPath, previewBlob, { contentType: "image/png", upsert: false });
+          if (previewErr) throw previewErr;
+        }
+
+        const { data: asset, error: assetErr } = await supabase
+          .from("content_assets")
+          .insert({
+            storage_path: path,
+            preview_path: previewBlob ? previewPath : null,
+            mime_type: teaserMime.mime,
+            title: `${titleCore}${showText ? ` (from ${showText})` : ""}`,
+            song_title: state.title.trim() || null,
+            show: showText || null,
+            key: state.key || null,
+            dedication:
+              state.dedication.trim() || (linkedRequest?.client ?? null) || null,
+            request_id: selectedTrack?.requestId ?? null,
+            duration_seconds: recordedDuration,
+            aspect: "9:16",
+            created_by: user.user?.id ?? null,
+          })
+          .select("id")
+          .single();
+        if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
+        return asset.id as string;
+      };
 
       const platforms = ["tiktok", "instagram"] as const;
+      const created: { platform: (typeof platforms)[number]; assetId: string }[] = [];
       for (const platform of platforms) {
+        const assetId = await buildAsset(platform);
         const { error: pubErr } = await supabase
           .from("publications")
-          .insert({ asset_id: asset.id, platform, status: "draft" });
-        if (pubErr) throw pubErr;
+          .insert({ asset_id: assetId, platform, status: "draft" });
+        if (pubErr) throw new Error(pubErr.message || "Couldn't create the publication.");
+        created.push({ platform, assetId });
       }
 
       setQueueStep("drafting");
       let draftsFailed = 0;
-      for (const platform of platforms) {
+      for (const { platform, assetId } of created) {
         const { error: draftErr } = await supabase.functions.invoke(
           "draft-publication-metadata",
-          { body: { asset_id: asset.id, platform } }
+          { body: { asset_id: assetId, platform } }
         );
         if (draftErr) draftsFailed += 1;
       }

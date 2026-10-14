@@ -2,10 +2,17 @@
 // Instagram Content Publishing helpers (Instagram Business Login / graph.instagram.com).
 //
 // NOTE: written against the documented two-step container flow but UNTESTED until
-// the Meta app credentials are in place. Important constraint: Instagram only
-// accepts H.264 MP4/MOV — our recordings are webm, so `publishInstagramReel`
-// refuses non-mp4 sources rather than letting the container fail opaquely.
+// the Meta app credentials are in place. Two constraints: the account must be a
+// *professional* (Business/Creator) account, and Instagram only accepts H.264
+// MP4/MOV — `publishInstagramReel` refuses a non-mp4 source rather than letting
+// the container fail opaquely.
+//
+// See docs/social-automation-research.md. No Facebook Page or App Review is
+// needed when posting only to the owner's own account.
 const GRAPH = 'https://graph.instagram.com';
+// One place to bump when Meta retires a version — an expired version 400s before
+// any of the flow below runs. Bump deliberately, not on a whim.
+export const GRAPH_VERSION = 'v25.0';
 
 export interface InstagramPostResult {
   containerId: string;
@@ -40,7 +47,7 @@ export async function publishInstagramReel(
   }
 
   // 1) Create the media container. Instagram downloads the video asynchronously.
-  const createRes = await fetch(`${GRAPH}/v21.0/${igUserId}/media`, {
+  const createRes = await fetch(`${GRAPH}/${GRAPH_VERSION}/${igUserId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -63,7 +70,7 @@ export async function publishInstagramReel(
   }
 
   // 3) Publish the finished container.
-  const publishRes = await fetch(`${GRAPH}/v21.0/${igUserId}/media_publish`, {
+  const publishRes = await fetch(`${GRAPH}/${GRAPH_VERSION}/${igUserId}/media_publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ creation_id: containerId, access_token: accessToken }),
@@ -82,7 +89,7 @@ async function waitForInstagramContainer(
 ): Promise<string> {
   for (let i = 0; i < attempts; i++) {
     const res = await fetch(
-      `${GRAPH}/v21.0/${containerId}?` +
+      `${GRAPH}/${GRAPH_VERSION}/${containerId}?` +
         new URLSearchParams({ fields: 'status_code', access_token: accessToken })
     );
     const data = await res.json();

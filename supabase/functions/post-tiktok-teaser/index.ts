@@ -125,6 +125,9 @@ Deno.serve(async (req) => {
           error: null,
           metadata: {
             ...(pub.metadata || {}),
+            // Keep the caption the owner actually posted with, so a re-draft or
+            // a retry never reverts to the machine's first suggestion.
+            caption: String(caption).trim(),
             tiktok_post: {
               privacyLevel,
               videoCoverTimestampMs: COVER_TIMESTAMP_MS,

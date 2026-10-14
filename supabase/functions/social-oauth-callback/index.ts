@@ -10,6 +10,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { requireSupabaseEnv } from '../_shared/env.ts';
 import { saveSocialToken, type SocialPlatform } from '../_shared/social.ts';
+import { GRAPH_VERSION } from '../_shared/instagram.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -118,7 +119,7 @@ async function connectInstagram({ code, redirectUri, userId, supabaseAdmin }) {
   let displayName = null;
   try {
     const meRes = await fetch(
-      'https://graph.instagram.com/v21.0/me?' +
+      `https://graph.instagram.com/${GRAPH_VERSION}/me?` +
         new URLSearchParams({ fields: 'user_id,username', access_token: accessToken })
     );
     if (meRes.ok) {

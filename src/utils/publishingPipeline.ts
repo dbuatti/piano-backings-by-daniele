@@ -1,4 +1,4 @@
-import type { PublicationWithAsset } from '@/types/publishing';
+import { PLATFORM_LABELS, type PublicationWithAsset } from '@/types/publishing';
 
 // ---------------------------------------------------------------------------
 // Grouping for the publishing page.
@@ -25,6 +25,15 @@ export function when(iso: string | null | undefined, tz: string): string {
     return new Date(iso).toLocaleString();
   }
 }
+
+// Instagram gets a short cut of the same card: Reels are discovered, not
+// watched to the end, and a 30-second cut is the format Instagram rewards.
+// TikTok keeps the full song so duets inherit the whole audio.
+export const IG_TEASER_SECONDS = 30;
+
+// Instagram draws its UI over the bottom fifth of a Reel; the IG cut lifts the
+// brand block clear of it. See drawCard's `brandBottom`.
+export const IG_BRAND_BOTTOM = 0.8;
 
 export interface TrackGroup {
   key: string;
@@ -70,16 +79,19 @@ export function isPostable(pub?: PublicationWithAsset): boolean {
 }
 
 // The video's slot is still ahead, so run-social-queue will book the teasers on
-// it. Only true while the automation switch is on and the slot is in the future.
+// it — or the video is already live and the teasers are still waiting, in which
+// case the worker arms them to "now" on its next pass. Only true while the
+// automation switch is on.
 export function willAutoPost(group: TrackGroup, autoOn: boolean): boolean {
   if (!autoOn) return false;
   const yt = group.yt;
-  return (
-    !!yt &&
-    yt.status === 'scheduled' &&
-    !!yt.scheduled_for &&
-    new Date(yt.scheduled_for).getTime() > Date.now()
-  );
+  if (!yt) return false;
+  if (yt.status === 'scheduled') {
+    return !!yt.scheduled_for && new Date(yt.scheduled_for).getTime() > Date.now();
+  }
+  // Callers check isPostable() before asking, so a landscape leftover is already
+  // ruled out — the worker applies the same guard before it arms a past slot.
+  return yt.status === 'published';
 }
 
 const VIDEO_NEEDS_ACTION = ['draft', 'pending_approval', 'approved', 'failed'];
@@ -119,4 +131,129 @@ export function teaserProblem(
     }
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// The song page.
+//
+// One song, everything about it, and the checklist it has to pass before the
+// pipeline can carry it on its own. The checklist lives here, not in the page,
+// so the board, the "Publish this song" bar and the song page can't disagree
+// about what is missing.
+// ---------------------------------------------------------------------------
+
+export function formatSeconds(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return 'an unknown length';
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
+}
+
+// The caption that will actually go out: the platform-specific one the AI (or
+// the owner, via the composer) wrote, falling back to the description.
+export function captionOf(pub?: PublicationWithAsset): string {
+  if (!pub) return '';
+  const meta = pub.metadata ?? {};
+  return String((meta.caption as string | undefined) ?? meta.description ?? '').trim();
+}
+
+export interface ReadinessItem {
+  label: string;
+  ok: boolean;
+  note: string;
+  // Advisory items are worth fixing but never block a publish (a song without a
+  // shop listing is still a perfectly good post).
+  advisory?: boolean;
+}
+
+export interface ReadinessContext {
+  /** The YouTube description, drafted by the AI or written by hand. */
+  hasCopy: boolean;
+  /** True when the video still needs booking — the only time copy is a blocker. */
+  copyBlocking: boolean;
+  shop: 'live' | 'draft' | 'none';
+}
+
+function teaserReadiness(
+  pub: PublicationWithAsset | undefined,
+  name: string
+): { ok: boolean; note: string } {
+  if (!pub) return { ok: false, note: `No ${name} row yet — record one.` };
+  const asset = pub.content_assets;
+  if (!asset?.storage_path) return { ok: false, note: 'The row has no recorded file.' };
+  if (!isPostable(pub)) {
+    return {
+      ok: false,
+      note: `${asset.aspect ?? 'Not portrait'} ${asset.mime_type || 'file'} — ${name} needs a portrait MP4.`,
+    };
+  }
+  return { ok: true, note: `Portrait MP4, ${formatSeconds(asset.duration_seconds)}.` };
+}
+
+export function trackReadiness(group: TrackGroup, ctx: ReadinessContext): ReadinessItem[] {
+  const yt = group.yt;
+  const asset = yt?.content_assets;
+  const tt = teaserReadiness(group.tt, PLATFORM_LABELS.tiktok);
+  const ig = teaserReadiness(group.ig, PLATFORM_LABELS.instagram);
+
+  const missingCaptions = ([
+    ['TikTok', group.tt],
+    ['Instagram', group.ig],
+  ] as const)
+    .filter(([, pub]) => pub && !captionOf(pub))
+    .map(([name]) => name);
+
+  return [
+    {
+      label: 'Song details',
+      ok: !!group.label && group.label !== 'Untitled',
+      note:
+        group.label === 'Untitled'
+          ? 'The request has no song title yet.'
+          : 'Title and show are on the card.',
+    },
+    {
+      label: 'YouTube cut',
+      ok: !!asset?.storage_path && asset.aspect === '16:9',
+      note: !yt
+        ? 'Nothing queued for YouTube yet.'
+        : !asset?.storage_path
+          ? 'The row has no recorded file.'
+          : asset.aspect === '16:9'
+            ? `16:9, ${formatSeconds(asset.duration_seconds)}.`
+            : `Recorded ${asset.aspect ?? 'at an unknown size'} — YouTube wants 16:9.`,
+    },
+    {
+      label: 'YouTube copy',
+      ok: ctx.hasCopy,
+      advisory: !ctx.copyBlocking,
+      note: ctx.hasCopy
+        ? 'Title, description and tags drafted.'
+        : ctx.copyBlocking
+          ? 'No description yet — nothing gets booked without one.'
+          : 'No description yet.',
+    },
+    { label: 'TikTok teaser', ...tt },
+    { label: 'Instagram teaser', ...ig },
+    {
+      label: 'Captions',
+      ok: missingCaptions.length === 0,
+      note:
+        missingCaptions.length === 0
+          ? 'Every teaser has a caption.'
+          : `Nothing drafted for ${missingCaptions.join(' or ')} yet.`,
+    },
+    {
+      label: 'Shop listing',
+      advisory: true,
+      ok: ctx.shop === 'live',
+      note:
+        ctx.shop === 'live'
+          ? 'Linked from the description.'
+          : ctx.shop === 'draft'
+            ? 'Draft listing — activate it in Shop to link it.'
+            : 'No listing — the description points to the order form.',
+    },
+  ];
 }
