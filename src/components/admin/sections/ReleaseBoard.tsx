@@ -604,6 +604,15 @@ export default function ReleaseBoard({
                       <RotateCcw className="h-3 w-3" /> Reset teaser
                     </Button>
                   )}
+                  {tt && ['scheduled', 'publishing', 'failed'].includes(tt.status) && (
+                    <span
+                      className={cn('shrink-0 truncate', tt.status === 'failed' && 'text-red-500')}
+                      title={tt.error || 'Booked onto the same slot as the YouTube video and posted automatically.'}
+                    >
+                      TikTok {STATUS_LABELS[tt.status]}
+                      {tt.status === 'scheduled' && tt.scheduled_for ? ` · ${whenLabel(tt.scheduled_for, tz)}` : ''}
+                    </span>
+                  )}
                   {tt && (
                     <Button
                       variant="outline"

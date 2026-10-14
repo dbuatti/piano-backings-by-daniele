@@ -119,13 +119,22 @@ function SlotSettings({
   const [time, setTime] = useState<string | null>(null);
   const [timezone, setTimezone] = useState<string | null>(null);
   const [auto, setAuto] = useState<boolean | null>(null);
+  const [socialAuto, setSocialAuto] = useState<boolean | null>(null);
+  const [socialOffset, setSocialOffset] = useState<string | null>(null);
+  const [tikTokPrivacy, setTikTokPrivacy] = useState<string | null>(null);
 
   function final(key: 'schedule_mode'): 'weekly' | 'interval';
-  function final(key: 'interval_days' | 'weekly_dow'): number;
-  function final(key: 'weekly_time' | 'timezone'): string;
-  function final(key: 'auto_schedule'): boolean;
+  function final(key: 'interval_days' | 'weekly_dow' | 'social_offset_minutes'): number;
+  function final(key: 'weekly_time' | 'timezone' | 'social_tiktok_privacy'): string;
+  function final(key: 'auto_schedule' | 'social_auto_post'): boolean;
   function final(key: string): string | number | boolean {
     switch (key) {
+      case 'social_auto_post':
+        return socialAuto ?? settings?.social_auto_post ?? false;
+      case 'social_offset_minutes':
+        return Number(socialOffset ?? String(settings?.social_offset_minutes ?? 0)) || 0;
+      case 'social_tiktok_privacy':
+        return tikTokPrivacy ?? settings?.social_tiktok_privacy ?? 'SELF_ONLY';
       case 'schedule_mode':
         return (mode ?? settings?.schedule_mode ?? 'weekly') as 'weekly' | 'interval';
       case 'interval_days':
@@ -155,6 +164,9 @@ function SlotSettings({
         weekly_time: final('weekly_time'),
         timezone: final('timezone'),
         auto_schedule: final('auto_schedule'),
+        social_auto_post: final('social_auto_post'),
+        social_offset_minutes: final('social_offset_minutes'),
+        social_tiktok_privacy: final('social_tiktok_privacy'),
       })
       .eq('id', 1);
     if (error) {
@@ -269,6 +281,59 @@ function SlotSettings({
               <Label className="font-normal">Auto-schedule on approval</Label>
             </div>
           </div>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+          <div className="flex items-start gap-3">
+            <Switch
+              checked={final('social_auto_post')}
+              onCheckedChange={setSocialAuto}
+              className="mt-0.5"
+            />
+            <div className="min-w-0">
+              <Label className="font-semibold text-[#1C0357]">Auto-post teasers to TikTok &amp; Instagram</Label>
+              <p className="mt-0.5 text-xs text-gray-500">
+                When a video is approved, its teaser rows are booked onto the same slot and posted
+                automatically — no composing, no clicking. A worker checks every 15 minutes.
+              </p>
+            </div>
+          </div>
+          {final('social_auto_post') && (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Post after the video by (minutes)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={1440}
+                  value={String(final('social_offset_minutes'))}
+                  onChange={(e) => setSocialOffset(e.target.value)}
+                />
+                <p className="text-[11px] text-gray-400">0 = same time as the YouTube video. 120 = two hours later.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>TikTok privacy for automated posts</Label>
+                <Select value={final('social_tiktok_privacy')} onValueChange={setTikTokPrivacy}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SELF_ONLY">Only me (private)</SelectItem>
+                    <SelectItem value="MUTUAL_FOLLOW_FRIENDS">Friends</SelectItem>
+                    <SelectItem value="FOLLOWER_OF_CREATOR">Followers</SelectItem>
+                    <SelectItem value="PUBLIC_TO_EVERYONE">Everyone</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-gray-400">
+                  An unaudited TikTok app is forced to <em>Only me</em> no matter what you pick here.
+                </p>
+              </div>
+              <p className="text-[11px] leading-relaxed text-gray-500 sm:col-span-2">
+                Heads up: TikTok's rules expect you to post each video yourself, and their API has no
+                scheduled-publish setting. Turning this on runs the posts on a timer instead — handy,
+                but it isn't what TikTok's review looks for. Switch it off any time to go back to
+                composing each teaser by hand.
+              </p>
+            </div>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           {onRespace && (
