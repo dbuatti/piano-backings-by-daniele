@@ -48,8 +48,14 @@ export async function publishTikTokVideo(
   meta: { caption?: string; privacyLevel?: string; mimeType?: string }
 ): Promise<TikTokPostResult> {
   const size = bytes.byteLength;
-  const chunkSize = Math.min(MAX_CHUNK, Math.max(MIN_CHUNK, size));
-  const totalChunkCount = Math.max(1, Math.ceil(size / chunkSize));
+  // TikTok chunk rules: total_chunk_count = floor(video_size / chunk_size);
+  // chunks are 5–64MB except the final one (up to 128MB); videos under 5MB go as
+  // a single chunk whose chunk_size equals the whole file.
+  const chunkSize = size < MIN_CHUNK ? size : Math.min(MAX_CHUNK, size);
+  const totalChunkCount = Math.max(1, Math.floor(size / chunkSize));
+  console.log(
+    `[tiktok] upload size=${size} chunkSize=${chunkSize} chunks=${totalChunkCount}`
+  );
 
   const initRes = await fetch(`${API}/post/publish/video/init/`, {
     method: 'POST',
