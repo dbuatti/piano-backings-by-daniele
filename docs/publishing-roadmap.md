@@ -197,6 +197,36 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-14 — in-app social setup guide (Instagram-ready morning)
+
+Settings → Integrations now contains a **Set up social posting** guide, so the
+Instagram work is a copy-paste morning rather than a research project:
+
+- The exact redirect URI (`{origin}/social-oauth-callback`) with a copy button —
+  the usual reason a connect bounces back.
+- Instagram, expanded: switch to a **professional** account → create the Meta app
+  with *Instagram Business Login* → add the redirect URI → request
+  `instagram_business_basic` + `instagram_business_content_publish` → put the app
+  id/secret in Supabase secrets (`INSTAGRAM_CLIENT_ID`/`INSTAGRAM_CLIENT_SECRET`)
+  and the app id in the frontend build (`VITE_INSTAGRAM_CLIENT_ID`) → redeploy →
+  Connect → Test.
+- TikTok, collapsed: the same shape of steps, plus a table of where "automatic"
+  actually stands today (Route A private auto-post = 0 taps but not public;
+  Route C drafts = 1 tap and public; Route B audit = a long shot).
+
+Two trust fixes came with it:
+
+- `social-status` now reports **which secrets are set** (booleans only, never
+  values), and the guide ticks them off live. A missing secret is visible as
+  *not configured* instead of masquerading as a failed connection.
+- **Connect** is disabled when the frontend does not know the client id/key
+  (`VITE_…` is baked in at build time), with a pointer to the guide — instead of
+  failing after the owner has already committed to the redirect. The status row
+  says "credentials not configured yet" instead of a bare "Not connected".
+
+The duplicated TikTok/Instagram bullets in the Integrations card were collapsed
+into one line, since the guide now says it in full.
+
 ### 2026-10-14 — honesty + discoverability pass
 
 **The song page is now findable.** It existed but the only way in was hovering a
@@ -405,8 +435,9 @@ song page now share it instead of each rolling their own.
 - Confirm the audio artefacts are gone once a re-recorded teaser is downloaded
   and played locally.
 - Instagram integration — credentials plus a **professional** (Business/Creator)
-  account; the 30 s cut is recorded but nothing can post it yet. See
-  `docs/social-automation-research.md`.
+  account; the 30 s cut is recorded but nothing can post it yet. The steps are in
+  the in-app guide (Settings → Integrations); the code path is already wired and
+  only needs the secrets + `VITE_INSTAGRAM_CLIENT_ID`, then Connect.
 - TikTok audit / drafts — decided: stay on private auto-post (§8).
 - Re-record the pending teasers (only the chosen ones).
 - Song page, next slices: inline caption editing (today it hands off to the
