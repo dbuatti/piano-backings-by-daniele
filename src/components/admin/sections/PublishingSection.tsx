@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +32,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Eye, RefreshCw, Rocket, SlidersHorizontal, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clapperboard, Eye, Library, ListChecks, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
 import TikTokComposer from '@/components/admin/TikTokComposer';
 import { useDeliveredTracks } from '@/hooks/useDeliveredTracks';
@@ -43,6 +44,17 @@ import {
   teaserProblem,
   type TrackGroup,
 } from '@/utils/publishingPipeline';
+
+// The page is four tabs now: what needs you, the full track list, the recorder
+// that feeds it, and the cadence settings you rarely touch.
+type PublishingTab = 'pipeline' | 'tracks' | 'recorder' | 'settings';
+
+const PUBLISHING_TABS: { id: PublishingTab; label: string; icon: typeof ListChecks }[] = [
+  { id: 'pipeline', label: 'Pipeline', icon: ListChecks },
+  { id: 'tracks', label: 'Tracks', icon: Library },
+  { id: 'recorder', label: 'Recorder', icon: Clapperboard },
+  { id: 'settings', label: 'Settings', icon: Settings2 },
+];
 
 // The teaser side of a "needs you" row: one line per platform that can't move on
 // its own, with the single action that unblocks it.
@@ -898,6 +910,17 @@ function QueueRow({
 // ---------------------------------------------------------------------------
 const PublishingSection = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('sub');
+  const tab: PublishingTab = PUBLISHING_TABS.some((t) => t.id === rawTab)
+    ? (rawTab as PublishingTab)
+    : 'pipeline';
+  const setTab = (next: PublishingTab) => {
+    const sp = new URLSearchParams(searchParams);
+    if (next === 'pipeline') sp.delete('sub');
+    else sp.set('sub', next);
+    setSearchParams(sp, { replace: false });
+  };
   const [bulkDrafting, setBulkDrafting] = useState(false);
   // True when the last queue run couldn't read video status from YouTube, so
   // "published" is being inferred from the schedule rather than confirmed.
@@ -991,6 +1014,21 @@ const PublishingSection = () => {
   // can re-book — everything not yet live and not manually skipped.
   const respaceableCount = youtubeQueue.filter(
     (p) => p.status === 'approved' || p.status === 'scheduled'
+  ).length;
+
+  // What the two bulk buttons would do right now, so they can show the number
+  // and switch themselves off when there's nothing left to do — instead of
+  // doing nothing and explaining afterwards.
+  const missingMetadata = active.filter(
+    (p) =>
+      ['draft', 'pending_approval', 'approved', 'failed', 'scheduled'].includes(p.status) &&
+      !p.metadata?.description?.trim()
+  ).length;
+  const readyToBook = active.filter(
+    (p) =>
+      ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status) &&
+      !!p.metadata?.description?.trim() &&
+      !p.scheduled_for
   ).length;
 
   // Re-books every pending row onto fresh cadence slots, oldest first, then
@@ -1091,6 +1129,34 @@ const PublishingSection = () => {
     await runNow();
   };
 
+  // Clears the TikTok/Instagram rows for a song so its teaser can be recorded
+  // and posted again. Nothing is deleted from TikTok itself — that stays in the
+  // app, by hand.
+  const resetTeaserFor = async (group: TrackGroup) => {
+    if (
+      !window.confirm(
+        `Reset the TikTok/Instagram teaser rows for "${group.label}"? You'll need to record and post them again. Anything already on TikTok is not deleted — remove it in the TikTok app.`
+      )
+    ) {
+      return;
+    }
+    const ids = [group.tt?.id, group.ig?.id].filter((id): id is string => !!id);
+    if (ids.length === 0) {
+      toast({ title: 'No teaser rows to reset', variant: 'destructive' });
+      return;
+    }
+    const { error } = await supabase
+      .from('publications')
+      .update({ status: 'pending_approval', platform_post_id: null, published_at: null, error: null })
+      .in('id', ids);
+    if (error) {
+      toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
+      return;
+    }
+    await refetch();
+    toast({ title: 'Teaser reset', description: `${group.label} can be recorded and posted again.` });
+  };
+
   // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
   // slot in one go, then kick the queue so the first upload begins now.
   // Bulk recovery: (re)generate metadata for every active row that still has no
@@ -1173,12 +1239,20 @@ const PublishingSection = () => {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-[#1C0357]">Publishing</h2>
           <p className="text-sm text-gray-500">
-            <span className="font-semibold text-[#1C0357]">{needsYou.length}</span> need you ·{' '}
-            <span className="font-semibold text-[#1C0357]">{bookedGroups.length}</span> booked ·{' '}
+            {needsYou.length > 0 ? (
+              <>
+                <span className="font-semibold text-amber-600">{needsYou.length}</span> need you
+              </>
+            ) : (
+              <span className="font-semibold text-emerald-600">All caught up</span>
+            )}
+            {' · '}
+            <span className="font-semibold text-[#1C0357]">{bookedGroups.length}</span> booked
+            {' · '}
             <span className="font-semibold text-[#1C0357]">{liveGroups.length}</span> live
             {autoOn ? ' · teasers post automatically' : ' · teasers post by hand'}
           </p>
@@ -1186,6 +1260,41 @@ const PublishingSection = () => {
         <Button variant="outline" onClick={runNow} disabled={running}>
           <Rocket className="h-4 w-4" /> {running ? 'Running…' : 'Run now'}
         </Button>
+      </div>
+
+      {/* Four tabs instead of a page of stacked panels. The tab lives in the
+          URL (?sub=tracks), so a link can point straight at it. */}
+      <div className="flex gap-2 overflow-x-auto">
+        {PUBLISHING_TABS.map(({ id, label, icon: Icon }) => {
+          const activeTab = tab === id;
+          const badge = id === 'pipeline' ? needsYou.length : 0;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={cn(
+                'flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-bold whitespace-nowrap transition-colors',
+                activeTab
+                  ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                  : 'border-gray-200 bg-white text-[#1C0357] hover:bg-gray-50'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+              {badge > 0 && (
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
+                    activeTab ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                  )}
+                >
+                  {badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {confirmDegraded && (
@@ -1202,24 +1311,55 @@ const PublishingSection = () => {
         </div>
       )}
 
-      {/* 1 — Needs you: the only band that's always open. */}
+      {tab === 'pipeline' && (
+        <>
+      {/* Needs you: what to post, and nothing else. */}
       <Card className="bg-white border-none shadow-sm rounded-2xl">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-lg font-bold text-[#1C0357]">
+          <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-lg font-bold text-[#1C0357]">
             <span className="flex items-center gap-2">
               <AlertTriangle className={cn('h-4 w-4', needsYou.length ? 'text-amber-500' : 'text-gray-300')} />
               Needs you
             </span>
             <span className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={draftAll} disabled={isLoading || bulkDrafting}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={draftAll}
+                disabled={isLoading || bulkDrafting || missingMetadata === 0}
+                title={
+                  missingMetadata === 0
+                    ? 'Every queued video already has a drafted description.'
+                    : `Ask the AI to write the YouTube description for ${missingMetadata} video${missingMetadata === 1 ? '' : 's'} that don’t have one yet.`
+                }
+              >
                 <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
-                {bulkDrafting ? 'Drafting…' : 'Draft missing metadata'}
+                {bulkDrafting
+                  ? 'Writing…'
+                  : missingMetadata > 0
+                    ? `Write ${missingMetadata} description${missingMetadata === 1 ? '' : 's'}`
+                    : 'Descriptions drafted'}
               </Button>
-              <Button variant="outline" size="sm" onClick={scheduleAll} disabled={isLoading}>
-                <CalendarClock className="h-3.5 w-3.5" /> Book all ready
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={scheduleAll}
+                disabled={isLoading || readyToBook === 0}
+                title={
+                  readyToBook === 0
+                    ? 'No approved video is waiting for a slot.'
+                    : `Give ${readyToBook} ready video${readyToBook === 1 ? '' : 's'} the next free cadence slot${readyToBook === 1 ? '' : 's'}.`
+                }
+              >
+                <CalendarClock className="h-3.5 w-3.5" />{' '}
+                {readyToBook > 0 ? `Book ${readyToBook} slot${readyToBook === 1 ? '' : 's'}` : 'Nothing to book'}
               </Button>
             </span>
           </CardTitle>
+          <p className="text-xs text-gray-400">
+            “Write descriptions” drafts the YouTube copy with AI. “Book slots” drops each ready video
+            into the next free cadence slot.
+          </p>
         </CardHeader>
         <CardContent className="space-y-1">
           {isLoading ? (
@@ -1267,7 +1407,7 @@ const PublishingSection = () => {
         </CardContent>
       </Card>
 
-      {/* 2 — Booked: one row per song, video and teasers on the same slot. */}
+      {/* Booked: one row per song, video and teasers on the same slot. */}
       {bookedGroups.length > 0 && (
         <Card className="bg-white border-none shadow-sm rounded-2xl">
           <CardHeader>
@@ -1280,29 +1420,50 @@ const PublishingSection = () => {
           </CardHeader>
           <CardContent className="space-y-1">
             {bookedGroups.map((group) => (
-              <TrackPipelineRow key={group.key} group={group} tz={tz} />
+              <TrackPipelineRow
+                key={group.key}
+                group={group}
+                tz={tz}
+                onReRecord={setReRecordFor}
+                onResetTeaser={resetTeaserFor}
+              />
             ))}
           </CardContent>
         </Card>
       )}
 
-      {/* 3 — Live: collapsed by default so the page opens quiet. */}
+      {/* Live: collapsed by default so the page opens quiet. */}
       <Disclosure title="Live" hint={`${liveGroups.length} published`}>
         {liveGroups.length === 0 ? (
           <p className="text-sm text-gray-400">Nothing published yet.</p>
         ) : (
           <div className="space-y-1">
             {liveGroups.map((group) => (
-              <TrackPipelineRow key={group.key} group={group} tz={tz} />
+              <TrackPipelineRow
+                key={group.key}
+                group={group}
+                tz={tz}
+                onReRecord={setReRecordFor}
+                onResetTeaser={resetTeaserFor}
+              />
             ))}
           </div>
         )}
       </Disclosure>
+        </>
+      )}
 
-      <Disclosure
-        title="Schedule & automation"
-        hint={autoOn ? 'auto-posting on' : 'auto-posting off'}
-      >
+      {tab === 'tracks' && (
+        <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} />
+      )}
+
+      {tab === 'recorder' && (
+        <Suspense fallback={<p className="text-sm text-gray-400">Loading…</p>}>
+          <TitleCardGenerator />
+        </Suspense>
+      )}
+
+      {tab === 'settings' && (
         <SlotSettings
           pendingCount={notQueued + active.length}
           existingSlots={existingDates}
@@ -1310,20 +1471,7 @@ const PublishingSection = () => {
           respaceCount={respaceableCount}
           respacing={respacing}
         />
-      </Disclosure>
-
-      <Disclosure
-        title="Queue a new track"
-        hint={notQueued ? `${notQueued} not queued yet` : 'everything is queued'}
-      >
-        <ReleaseBoard queue={queue} tz={tz} onMutation={() => refetch()} />
-      </Disclosure>
-
-      <Disclosure title="Teaser & title-card recorder">
-        <Suspense fallback={<p className="text-sm text-gray-400">Loading…</p>}>
-          <TitleCardGenerator />
-        </Suspense>
-      </Disclosure>
+      )}
 
       {reRecordFor && (
         <VettingDialog

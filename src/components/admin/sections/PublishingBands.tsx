@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   PLATFORM_LABELS,
@@ -7,6 +7,13 @@ import {
   type PublicationPlatform,
   type PublicationWithAsset,
 } from '@/types/publishing';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { when, type TrackGroup } from '@/utils/publishingPipeline';
 
 const CHIP: Record<string, string> = {
@@ -55,7 +62,20 @@ function PlatformCell({
 }
 
 // One song across all three platforms — the whole point of the regroup.
-export function TrackPipelineRow({ group, tz }: { group: TrackGroup; tz: string }) {
+export function TrackPipelineRow({
+  group,
+  tz,
+  onReRecord,
+  onResetTeaser,
+}: {
+  group: TrackGroup;
+  tz: string;
+  onReRecord?: (requestId: string) => void;
+  onResetTeaser?: (group: TrackGroup) => void;
+}) {
+  const hasTeaser = !!(group.tt || group.ig);
+  const canReset = group.tt?.status === 'published' || group.ig?.status === 'published';
+  const showMenu = hasTeaser && !!(onReRecord || (onResetTeaser && canReset));
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 px-3 py-2">
       <span className="min-w-[150px] flex-1 truncate text-sm font-medium text-[#1C0357]">
@@ -64,6 +84,29 @@ export function TrackPipelineRow({ group, tz }: { group: TrackGroup; tz: string 
       <PlatformCell platform="youtube" pub={group.yt} tz={tz} />
       <PlatformCell platform="tiktok" pub={group.tt} tz={tz} />
       <PlatformCell platform="instagram" pub={group.ig} tz={tz} />
+      {/* Teaser housekeeping lives here too, so a booked or live row can be
+          re-recorded or reset without hunting through the release board. */}
+      {showMenu && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 px-2" title="Teaser actions">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onReRecord && group.requestId && (
+              <DropdownMenuItem onSelect={() => onReRecord(group.requestId as string)}>
+                <RefreshCw className="h-3.5 w-3.5" /> Re-record teaser
+              </DropdownMenuItem>
+            )}
+            {onResetTeaser && canReset && (
+              <DropdownMenuItem onSelect={() => onResetTeaser(group)}>
+                <RotateCcw className="h-3.5 w-3.5" /> Reset teaser
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

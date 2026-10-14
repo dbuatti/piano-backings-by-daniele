@@ -18,7 +18,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -246,8 +253,7 @@ export default function ReleaseBoard({
     .map((row) => row.t.requestId);
   const [bulkVet, setBulkVet] = useState<{ ids: string[]; index: number } | null>(null);
 
-  // At-a-glance progress: how much of the catalogue is live, queued and listed.
-  const totalDelivered = boardRows.length;
+  // At-a-glance progress: how much of the catalogue is queued and listed.
   const queuedYt = boardRows.filter((row) => row.yt && row.yt.status !== 'published').length;
   const nextUpload = queue
     .filter((p) => p.platform === 'youtube' && p.status === 'scheduled' && p.scheduled_for)
@@ -353,45 +359,24 @@ export default function ReleaseBoard({
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2 pb-3 lg:grid-cols-4">
-              <StatTile
-                label="On YouTube"
-                value={`${audit.on_youtube}/${totalDelivered}`}
-                hint="Published and public"
-                pct={totalDelivered ? (audit.on_youtube / totalDelivered) * 100 : 0}
-                tone="green"
-              />
-              <StatTile
-                label="Queued to publish"
-                value={queuedYt}
-                hint={nextUpload ? `Next: ${whenLabel(nextUpload, tz)}` : 'Nothing scheduled yet'}
-                pct={totalDelivered ? (queuedYt / totalDelivered) * 100 : 0}
-                tone="pink"
-              />
-              <StatTile
-                label="In the shop"
-                value={`${audit.in_shop}/${totalDelivered}`}
-                hint={
-                  audit.shop_draft > 0
-                    ? `${audit.shop_draft} draft listing${audit.shop_draft === 1 ? '' : 's'} to activate`
-                    : 'No drafts waiting'
-                }
-                pct={totalDelivered ? (audit.in_shop / totalDelivered) * 100 : 0}
-                tone="amber"
-              />
-              <StatTile
-                label="Not on YouTube"
-                value={notOnYoutubeIds.length}
-                hint="Allowed on socials, no video yet"
-                pct={totalDelivered ? (notOnYoutubeIds.length / totalDelivered) * 100 : 0}
-                tone="gray"
-                onClick={() => setFilter('not_on_youtube')}
-              />
-            </div>
+            {/* One line instead of four boxes, so the filters below are the only
+                controls up here. */}
+            <p className="pb-3 text-xs text-gray-500">
+              <span className="font-semibold text-[#1C0357]">{audit.on_youtube}</span> live on YouTube
+              {' · '}
+              <span className="font-semibold text-[#1C0357]">{queuedYt}</span> scheduled
+              {nextUpload ? ` (next ${whenLabel(nextUpload, tz)})` : ''}
+              {' · '}
+              <span className="font-semibold text-[#1C0357]">{audit.in_shop}</span> in the shop
+              {audit.shop_draft > 0 ? `, ${audit.shop_draft} draft` : ''}
+            </p>
             <div className="flex flex-wrap gap-1.5 pb-3">
               {BOARD_STATS.map((s) => {
                 const active = filter === s.key;
                 const count = audit[s.key];
+                // An empty filter is just noise — hide it unless it's the one
+                // you're already looking at.
+                if (s.key !== 'all' && count === 0 && !active) return null;
                 const isGap = !active && count > 0 && ['no_shop', 'not_on_youtube', 'missing_key'].includes(s.key);
                 return (
                   <button
@@ -445,8 +430,8 @@ export default function ReleaseBoard({
             ) : (
               visibleRows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
                 return (
-              <div key={t.requestId} className="rounded-xl border border-gray-100 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div key={t.requestId} className="rounded-xl border border-gray-100 p-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-[#1C0357]">
                       <span className="truncate">{t.song}</span>
@@ -505,70 +490,34 @@ export default function ReleaseBoard({
                           Shop <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <span className="inline-flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => activateProduct(shopProduct.id, t.song)}
-                            disabled={activating !== null}
-                            className="h-7 rounded-full border-amber-200 bg-amber-50 px-2.5 font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                            title="Publish this draft listing to the shop now — it becomes reachable at its public URL."
-                          >
-                            <CheckCircle2 className="h-3 w-3" />{' '}
-                            {activating === shopProduct.id ? 'Activating…' : 'Shop draft — activate'}
-                          </Button>
-                          <Link
-                            to="/admin?section=shop"
-                            className="rounded-full px-1.5 text-amber-700/70 hover:underline"
-                            title="Open Shop to review the details first."
-                          >
-                            review
-                          </Link>
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+                          Shop draft
                         </span>
                       )
                     ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => listProduct(t)}
-                          disabled={listing !== null}
-                          className="h-7 rounded-full border-amber-200 bg-amber-50 px-2.5 font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                          title="Create a draft shop listing from this track — review and activate it in Admin → Shop."
-                        >
-                          {listing === t.requestId
-                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <PlusCircle className="h-3 w-3" />}
-                          Add to shop
-                        </Button>
-                        <Link
-                          to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}
-                          className="rounded-full px-2 py-1 font-medium text-gray-400 hover:text-[#1C0357]"
-                          title="Open the full Repurpose Request form prefilled with this track."
-                        >
-                          Edit details
-                        </Link>
+                      <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-gray-400">
+                        Shop: —
                       </span>
                     )}
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPreviewing(t)}
-                      title="Preview how this will look on YouTube, TikTok and Instagram."
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleNoSocials(t.requestId, t.noSocials)}
-                      title={t.noSocials ? 'Allow this track on socials again' : 'Never upload this track to socials'}
-                    >
-                      {t.noSocials ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
-                    </Button>
+                  {/* One visible action for the gap that needs closing, then
+                      everything optional lives behind the ⋯ menu. */}
+                  <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                    {!shopProduct && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => listProduct(t)}
+                        disabled={listing !== null}
+                        title="Create a draft shop listing from this track — review and activate it in Admin → Shop."
+                      >
+                        {listing === t.requestId
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <PlusCircle className="h-3.5 w-3.5" />}
+                        Add to shop
+                      </Button>
+                    )}
                     {!queuedForYoutube && (
                       <Button
                         size="sm"
@@ -580,49 +529,63 @@ export default function ReleaseBoard({
                         <ListPlus className="h-3.5 w-3.5" /> Review & queue
                       </Button>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="px-2" title="More actions for this track">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-60">
+                        <DropdownMenuItem onSelect={() => setPreviewing(t)}>
+                          <Eye className="h-3.5 w-3.5" /> Preview posts
+                        </DropdownMenuItem>
+                        {(tt || ig) && (
+                          <DropdownMenuItem onSelect={() => setReRecording(t.requestId)}>
+                            <RefreshCw className="h-3.5 w-3.5" /> Re-record teaser
+                          </DropdownMenuItem>
+                        )}
+                        {tt && tt.status === 'published' && (
+                          <DropdownMenuItem onSelect={() => resetTeaser(t)}>
+                            <RotateCcw className="h-3.5 w-3.5" /> Reset teaser
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => toggleNoSocials(t.requestId, t.noSocials)}>
+                          {t.noSocials ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+                          {t.noSocials ? 'Allow on socials' : 'Never post to socials'}
+                        </DropdownMenuItem>
+                        {shopProduct && !shopProduct.is_active && (
+                          <DropdownMenuItem onSelect={() => activateProduct(shopProduct.id, t.song)}>
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Activate shop draft
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}>
+                            <ExternalLink className="h-3.5 w-3.5" /> Edit shop details
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-400">
                   <Music2 className="h-3.5 w-3.5 shrink-0" />
                   <audio controls preload="none" src={t.url} className="h-9 w-full max-w-[320px]" />
-                  {queuedForYoutube && yt && (
-                    <span className="truncate">
-                      {STATUS_LABELS[yt.status]}
-                      {yt.scheduled_for ? ` · ${whenLabel(yt.scheduled_for, tz)}` : ''}
-                      {yt.platform_post_id ? ` · youtu.be/${yt.platform_post_id}` : ''}
+                  {yt?.platform_post_id && (
+                    <a
+                      href={`https://youtu.be/${yt.platform_post_id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-[#1C0357] hover:underline"
+                    >
+                      youtu.be/{yt.platform_post_id}
+                    </a>
+                  )}
+                  {tt?.status === 'failed' && (
+                    <span className="font-medium text-red-500" title={tt.error || undefined}>
+                      Teaser failed{tt.error ? `: ${tt.error}` : ''}
                     </span>
-                  )}
-                  {tt && tt.status === 'published' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                      onClick={() => resetTeaser(t)}
-                      title="Clear the TikTok/Instagram post this row points at so the teaser can be recorded and posted again. Nothing is deleted from TikTok."
-                    >
-                      <RotateCcw className="h-3 w-3" /> Reset teaser
-                    </Button>
-                  )}
-                  {tt && ['scheduled', 'publishing', 'failed'].includes(tt.status) && (
-                    <span
-                      className={cn('shrink-0 truncate', tt.status === 'failed' && 'text-red-500')}
-                      title={tt.error || 'Booked onto the same slot as the YouTube video and posted automatically.'}
-                    >
-                      TikTok {STATUS_LABELS[tt.status]}
-                      {tt.status === 'scheduled' && tt.scheduled_for ? ` · ${whenLabel(tt.scheduled_for, tz)}` : ''}
-                    </span>
-                  )}
-                  {tt && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                      onClick={() => setReRecording(t.requestId)}
-                      title="Record a fresh teaser (portrait MP4, full length) and point the TikTok/Instagram rows at it, replacing any post they already reference. The YouTube video is not changed."
-                    >
-                      <RefreshCw className="h-3 w-3" /> Re-record teaser
-                    </Button>
                   )}
                 </div>
               </div>
@@ -677,52 +640,6 @@ export default function ReleaseBoard({
   );
 }
 
-const TILE_BARS = {
-  green: 'bg-emerald-500',
-  pink: 'bg-[#F538BC]',
-  amber: 'bg-amber-400',
-  gray: 'bg-gray-300',
-} as const;
-
-// One tile in the board's at-a-glance progress strip.
-function StatTile({
-  label,
-  value,
-  hint,
-  pct,
-  tone,
-  onClick,
-}: {
-  label: string;
-  value: string | number;
-  hint: string;
-  pct: number;
-  tone: keyof typeof TILE_BARS;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      className={cn(
-        'rounded-xl border border-gray-100 bg-gray-50/60 p-3',
-        onClick && 'cursor-pointer transition-colors hover:border-gray-300'
-      )}
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
-        <span className="text-lg font-bold tabular-nums text-[#1C0357]">{value}</span>
-      </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-        <div className={cn('h-full rounded-full', TILE_BARS[tone])} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
-      </div>
-      <p className="mt-1.5 text-[11px] leading-snug text-gray-400">{hint}</p>
-    </div>
-  );
-}
-
 // mm:ss for the recording progress readout.
 function fmtClock(seconds: number) {
   const s = Math.max(0, Math.round(seconds));
@@ -760,15 +677,34 @@ function PlatformChip({
       </span>
     );
   }
+  const failed = pub.status === 'failed';
+  const stamp = pub.scheduled_for ? shortStamp(pub.scheduled_for, tz) : null;
   return (
     <Badge
       variant={pub.status === 'published' ? 'default' : 'outline'}
-      className={cn(pub.status === 'published' && 'bg-green-100 text-green-700')}
-      title={`${label} · ${PLATFORM_LABELS[pub.platform]} ${STATUS_LABELS[pub.status]} ${pub.scheduled_for ? whenLabel(pub.scheduled_for, tz) : ''}`}
+      className={cn(
+        pub.status === 'published' && 'bg-green-100 text-green-700',
+        failed && 'border-red-200 bg-red-50 text-red-600'
+      )}
+      title={`${label} · ${PLATFORM_LABELS[pub.platform]} · ${STATUS_LABELS[pub.status]}${
+        pub.scheduled_for ? ` · ${whenLabel(pub.scheduled_for, tz)}` : ''
+      }${pub.error ? ` — ${pub.error}` : ''}`}
     >
       {label}: {STATUS_LABELS[pub.status]}
+      {stamp ? ` · ${stamp}` : ''}
     </Badge>
   );
+}
+
+// A short "Tue 20 Oct" for the chips; the full time lives in the tooltip so the
+// row stays scannable.
+function shortStamp(iso: string, tz: string) {
+  return new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(iso));
 }
 
 // The description the AI drafts follows this fixed skeleton (mirrors the prompt
