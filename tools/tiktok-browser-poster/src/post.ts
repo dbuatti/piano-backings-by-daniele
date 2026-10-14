@@ -1,4 +1,4 @@
-import { openContext, UPLOAD_URL, screenshotOnFailure } from './browser.js';
+import { openContext, UPLOAD_URL, screenshotOnFailure, dismissTour } from './browser.js';
 import { config } from './config.js';
 import { log } from './logger.js';
 
@@ -22,6 +22,10 @@ export async function postTeaser(videoPath: string, caption: string): Promise<Po
       throw new Error('Not logged in — run `pnpm login` to refresh the session.');
     }
 
+    // First-visit product tour (react-joyride) covers the composer with an
+    // overlay that eats clicks — clear it before touching anything.
+    await dismissTour(page);
+
     // 1) Attach the video.
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.waitFor({ state: 'attached', timeout: 60_000 });
@@ -36,7 +40,14 @@ export async function postTeaser(videoPath: string, caption: string): Promise<Po
     await page.waitForTimeout(5_000); // let the video finish ingesting
 
     // 3) Caption — type it like a human.
-    await captionBox.click();
+    await dismissTour(page);
+    try {
+      await captionBox.click({ timeout: 10_000 });
+    } catch {
+      // The tour may have (re)appeared between the wait and the click.
+      await dismissTour(page);
+      await captionBox.click({ timeout: 15_000 });
+    }
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
     await page.keyboard.press('Backspace');
     await page.keyboard.type(caption, { delay: 12 });
@@ -50,12 +61,18 @@ export async function postTeaser(videoPath: string, caption: string): Promise<Po
     }
 
     // 4) Post.
+    await dismissTour(page);
     const postButton = page
       .getByRole('button', { name: /^post$/i })
       .or(page.locator('button:has-text("Post")'))
       .last();
     await postButton.waitFor({ state: 'visible', timeout: 60_000 });
-    await postButton.click();
+    try {
+      await postButton.click({ timeout: 15_000 });
+    } catch {
+      await dismissTour(page);
+      await postButton.click({ timeout: 20_000 });
+    }
     log.info('clicked Post, waiting for confirmation…');
 
     // 5) Confirm — success shows a manage/posts link or leaves /upload.

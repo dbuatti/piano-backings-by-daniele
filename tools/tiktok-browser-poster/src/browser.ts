@@ -93,6 +93,27 @@ export async function hasSessionCookie(ctx: BrowserContext): Promise<boolean> {
   return cookies.some((c) => c.name === 'sessionid' || c.name === 'sid_tt');
 }
 
+/** TikTok shows a react-joyride onboarding tour on the upload page whose overlay
+ *  swallows pointer events, so clicks on the composer silently time out. Dismiss
+ *  it if present (click through the steps, else drop the portal node). */
+export async function dismissTour(page: Page): Promise<void> {
+  for (let i = 0; i < 6; i++) {
+    const portal = page.locator('#react-joyride-portal');
+    if ((await portal.count().catch(() => 0)) === 0) return;
+    const btn = portal
+      .locator('button')
+      .filter({ hasText: /skip|next|done|got it|ok|close|finish|start/i })
+      .first();
+    if ((await btn.count().catch(() => 0)) === 0) break;
+    await btn.click({ timeout: 5_000 }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  // Last resort: drop the portal node so it can't keep intercepting clicks.
+  await page
+    .evaluate(() => document.getElementById('react-joyride-portal')?.remove())
+    .catch(() => {});
+}
+
 export async function screenshotOnFailure(page: Page, tag: string): Promise<void> {
   const fs = await import('node:fs/promises');
   await fs.mkdir(config.screenshotsDir, { recursive: true });
