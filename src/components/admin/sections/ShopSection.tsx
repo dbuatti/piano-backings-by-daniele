@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import {
@@ -6,7 +6,6 @@ import {
   PlusCircle,
   RefreshCw,
   Megaphone,
-  Film,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -17,7 +16,6 @@ import ShopPreviewsCard from '@/components/admin/ShopPreviewsCard';
 import { PromoCodesTabContent } from '@/components/admin/PromoCodesTabContent';
 
 const IgGenerator = lazy(() => import('@/pages/IgGenerator'));
-const TitleCardGenerator = lazy(() => import('@/pages/TitleCardGenerator'));
 
 type ShopSub = 'products' | 'promo' | 'marketing';
 
@@ -35,12 +33,6 @@ const IgGeneratorWrapper = () => (
   </Suspense>
 );
 
-const TitleCardWrapper = () => (
-  <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading title-card tool…</div>}>
-    <TitleCardGenerator />
-  </Suspense>
-);
-
 const MarketingPanel = () => (
   <div className="space-y-4">
     <div>
@@ -53,15 +45,13 @@ const MarketingPanel = () => (
     </div>
     <IgGeneratorWrapper />
 
-    <div className="pt-2 border-t border-gray-100 mt-2">
-      <h2 className="text-xl font-bold text-[#1C0357] flex items-center gap-2">
-        <Film className="h-5 w-5" /> Video Title Cards
-      </h2>
-      <p className="text-sm text-gray-500 mt-1">
-        Design the opening frame for YouTube uploads — audition cuts with the song, show and key.
-      </p>
+    <div className="pt-2 border-t border-gray-100 mt-2 text-xs text-gray-400">
+      Video title cards and teaser recordings now live under{' '}
+      <Link to="/admin?section=publishing" className="font-semibold text-[#1C0357] underline">
+        Publishing
+      </Link>
+      .
     </div>
-    <TitleCardWrapper />
   </div>
 );
 

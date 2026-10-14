@@ -1004,7 +1004,7 @@ function InstagramMock({ track, caption }: { track: DeliveredTrack; caption: str
 // socials' if needed, then approve → records the title card and queues it for
 // the YouTube approval pipeline.
 // ---------------------------------------------------------------------------
-function VettingDialog({
+export function VettingDialog({
   requestId,
   onClose,
   onQueued,
