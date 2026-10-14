@@ -75,17 +75,32 @@ export async function postTeaser(videoPath: string, caption: string): Promise<Po
     }
     log.info('clicked Post, waiting for confirmation…');
 
-    // 5) Confirm — success shows a manage/posts link or leaves /upload.
+    // TikTok runs a pre-post safety check and, while it is still running,
+    // interposes a "Continue to post?" dialog behind a "Post now" button.
+    // Without clicking it the post silently never goes out.
+    await page.waitForTimeout(2_000);
+    const postNow = page.getByRole('button', { name: /^post now$/i }).first();
+    if (await postNow.isVisible().catch(() => false)) {
+      log.info('safety-check dialog shown — clicking "Post now"');
+      await postNow.click({ timeout: 15_000 }).catch(() => {});
+    }
+
+    // 5) Confirm — success normally leaves /upload, but the composer can also
+    // just close in place, so accept that too.
     await page.waitForURL((u) => !/\/upload/.test(u.pathname), { timeout: 120_000 }).catch(() => {});
     await page.waitForTimeout(5_000);
     const url = page.url();
-    const ok = !/\/upload/.test(new URL(url).pathname);
-    if (!ok) {
-      await screenshotOnFailure(page, 'post-unconfirmed');
-      return { ok: false, note: `still on upload page (${url})` };
+    if (!/\/upload/.test(new URL(url).pathname)) {
+      log.info('post confirmed at', url);
+      return { ok: true };
     }
-    log.info('post confirmed at', url);
-    return { ok: true };
+    const editors = await page.locator('.public-DraftEditor-content').count().catch(() => 1);
+    if (editors === 0) {
+      log.info('post confirmed (composer closed in place)');
+      return { ok: true };
+    }
+    await screenshotOnFailure(page, 'post-unconfirmed');
+    return { ok: false, note: `still on upload page (${url})` };
   } catch (err) {
     await screenshotOnFailure(page, 'post-error').catch(() => {});
     return { ok: false, note: (err as Error).message };

@@ -35,14 +35,16 @@ export async function openContext(): Promise<BrowserContext> {
     ],
   });
 
-  await ctx.addInitScript(() => {
+  // NOTE: passed as a string on purpose. tsx/esbuild injects a `__name` helper
+  // into transpiled closures, which doesn't exist inside the page and makes
+  // Playwright's function serialization throw `__name is not defined`.
+  await ctx.addInitScript(`
     Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     // Some sites check for the missing chrome runtime object.
-    // @ts-expect-error - injected in page context
     window.chrome = { runtime: {} };
     Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-  });
+  `);
 
   if (seed) {
     try {
@@ -109,9 +111,8 @@ export async function dismissTour(page: Page): Promise<void> {
     await page.waitForTimeout(400);
   }
   // Last resort: drop the portal node so it can't keep intercepting clicks.
-  await page
-    .evaluate(() => document.getElementById('react-joyride-portal')?.remove())
-    .catch(() => {});
+  // (String form — see the note in openContext about esbuild's `__name`.)
+  await page.evaluate("document.getElementById('react-joyride-portal')?.remove();").catch(() => {});
 }
 
 export async function screenshotOnFailure(page: Page, tag: string): Promise<void> {
