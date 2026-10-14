@@ -30,11 +30,15 @@ async function main(): Promise<void> {
     await new Promise((r) => setTimeout(r, 4000));
   }
 
+  if (ok) {
+    // Portable copy of the session, so it can be moved to another machine.
+    await ctx.storageState({ path: config.storageState }).catch(() => {});
+  }
   await page.close().catch(() => {});
   await ctx.close(); // persists the profile to disk (config.userDataDir)
 
   if (ok) {
-    log.info(`Session saved to ${config.userDataDir}. You can run the poster now.`);
+    log.info(`Session saved to ${config.userDataDir} (portable copy: ${config.storageState}).`);
   } else {
     log.error('Timed out before a login was detected. Try again.');
     process.exit(1);

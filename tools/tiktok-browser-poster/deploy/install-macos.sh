@@ -44,8 +44,8 @@ if [[ ! -d "$HERE/node_modules" ]]; then
   echo "Run 'npm install' in $HERE first." >&2
   exit 1
 fi
-if [[ ! -d "$HERE/.auth/profile" ]]; then
-  echo "No saved session found. Run 'HEADLESS=0 npm run login' first (or copy .auth/profile from the machine you logged in on)." >&2
+if [[ ! -d "$HERE/.auth/profile" && ! -f "$HERE/.auth/state.json" ]]; then
+  echo "No saved session found. Run 'HEADLESS=0 npm run login' first, or copy .auth/state.json from the machine you logged in on." >&2
   exit 1
 fi
 

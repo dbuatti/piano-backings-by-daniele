@@ -11,6 +11,8 @@ async function runOnce(): Promise<number> {
   let loggedIn = false;
   try {
     loggedIn = await checkLoggedIn(ctx);
+    // Keep the portable state file in step with the live profile.
+    if (loggedIn) await ctx.storageState({ path: config.storageState }).catch(() => {});
   } finally {
     await ctx.close();
   }

@@ -12,6 +12,9 @@ export const config = {
   serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   pollSeconds: num('POLL_SECONDS', 300),
   userDataDir: process.env.USER_DATA_DIR ?? './.auth/profile',
+  // Portable, unencrypted snapshot of the session. Used to seed a fresh profile
+  // on another machine (macOS cookie encryption is per-machine).
+  storageState: process.env.STORAGE_STATE ?? './.auth/state.json',
   headless: process.env.HEADLESS !== '0',
   dryRun: process.env.DRY_RUN === '1',
   maxPerRun: num('MAX_PER_RUN', 2),

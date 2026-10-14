@@ -6,6 +6,7 @@
   "description": "UNOFFICIAL TikTok poster for @pianobackingsbydaniele, driven by browser automation. Not sanctioned by TikTok. See README.md.",
   "scripts": {
     "login": "tsx src/login.ts",
+    "export-state": "tsx src/export-state.ts",
     "post:once": "tsx src/index.ts --once",
     "start": "tsx src/index.ts",
     "dry": "DRY_RUN=1 tsx src/index.ts --once",

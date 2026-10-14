@@ -1,4 +1,6 @@
 import { chromium, type BrowserContext, type Page } from 'playwright';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { config } from './config.js';
 import { log } from './logger.js';
 
@@ -9,12 +11,23 @@ const UA =
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 export async function openContext(): Promise<BrowserContext> {
+  // On macOS the cookie DB is encrypted with a per-machine Keychain key, so a
+  // profile copied between machines loses its session. When the profile is still
+  // empty, seed it from the portable storageState (plaintext cookies) instead.
+  const profileCookies = join(config.userDataDir, 'Default', 'Cookies');
+  const seed =
+    !existsSync(profileCookies) && existsSync(config.storageState)
+      ? config.storageState
+      : undefined;
+  if (seed) log.info('seeding fresh profile from', seed);
+
   const ctx = await chromium.launchPersistentContext(config.userDataDir, {
     headless: config.headless,
     viewport: { width: 1280, height: 900 },
     locale: 'en-US',
     timezoneId: config.timezone,
     userAgent: UA,
+    ...(seed ? { storageState: seed } : {}),
     args: [
       '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
