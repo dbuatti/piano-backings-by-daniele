@@ -18,7 +18,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, ExternalLink, Eye, Heart, ListPlus, Loader2, Mail, MessageCircle, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
@@ -72,6 +72,7 @@ export default function ReleaseBoard({
   const { data: tracks, isLoading, error } = useDeliveredTracks();
   const { data: products = [] } = useShopProducts();
   const [vetting, setVetting] = useState<string | null>(null);
+  const [reRecording, setReRecording] = useState<string | null>(null);
   const [listing, setListing] = useState<string | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
@@ -550,6 +551,17 @@ export default function ReleaseBoard({
                       {yt.platform_post_id ? ` · youtu.be/${yt.platform_post_id}` : ''}
                     </span>
                   )}
+                  {tt && tt.status !== 'published' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 rounded-full px-2.5 text-xs"
+                      onClick={() => setReRecording(t.requestId)}
+                      title="Record a fresh 30fps teaser and point the TikTok/Instagram rows at it. The YouTube video is not changed."
+                    >
+                      <RefreshCw className="h-3 w-3" /> Re-record teaser
+                    </Button>
+                  )}
                 </div>
               </div>
                 );
@@ -558,6 +570,16 @@ export default function ReleaseBoard({
           </>
         )}
       </CardContent>
+
+      {reRecording && (
+        <VettingDialog
+          key={`re-${reRecording}`}
+          requestId={reRecording}
+          onClose={() => setReRecording(null)}
+          onQueued={onMutation}
+          teaserOnly
+        />
+      )}
 
       {vetting && (
         <VettingDialog
@@ -926,6 +948,7 @@ function VettingDialog({
   onQueued,
   progress,
   onNext,
+  teaserOnly = false,
 }: {
   requestId: string | null;
   onClose: () => void;
@@ -934,6 +957,9 @@ function VettingDialog({
   // advances to the next track after each queue instead of closing.
   progress?: { index: number; total: number };
   onNext?: () => void;
+  // Re-record only the TikTok/Instagram teaser: the YouTube row is untouched and
+  // the existing teaser rows are moved onto the new recording.
+  teaserOnly?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1008,7 +1034,7 @@ function VettingDialog({
       .in('status', ['draft', 'pending_approval', 'approved', 'scheduled', 'publishing', 'published'])
       .limit(1)
       .maybeSingle();
-    if (existingRow) {
+    if (existingRow && !teaserOnly) {
       toast({
         title: 'Already in the pipeline',
         description: 'This track already has a video in the queue or on the channel. Remove that row first if you want to re-record it.',
@@ -1112,6 +1138,39 @@ function VettingDialog({
         .single();
       if (assetErr || !asset) throw new Error(assetErr?.message || "Couldn't create the asset.");
 
+      if (teaserOnly) {
+        const { data: teaserRows, error: teaserErr } = await supabase
+          .from('publications')
+          .select('id, status, content_assets!inner(request_id)')
+          .eq('content_assets.request_id', track.requestId)
+          .in('platform', ['tiktok', 'instagram']);
+        if (teaserErr) throw teaserErr;
+        const ids = (teaserRows ?? []).filter((r) => r.status !== 'published').map((r) => r.id);
+        if (ids.length) {
+          const { error: moveErr } = await supabase
+            .from('publications')
+            .update({
+              asset_id: asset.id,
+              status: 'pending_approval',
+              platform_post_id: null,
+              published_at: null,
+              error: null,
+            })
+            .in('id', ids);
+          if (moveErr) throw moveErr;
+        }
+        await queryClient.invalidateQueries({ queryKey: ['publications'] });
+        onQueued();
+        if (onNext) onNext();
+        else onClose();
+        toast({
+          title: ids.length
+            ? `Teaser re-recorded — ${ids.length} TikTok/Instagram row${ids.length === 1 ? '' : 's'} updated`
+            : 'Teaser re-recorded — no open teaser rows to update',
+        });
+        return;
+      }
+
       // Queue YouTube as the primary video and track TikTok/Instagram teasers
       // alongside it so the board shows progress on every platform. The teasers
       // stay as drafts — posting them waits on the platform integrations.
@@ -1146,7 +1205,7 @@ function VettingDialog({
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-[#1C0357]">
-            Review & queue for YouTube
+            {teaserOnly ? 'Re-record teaser' : 'Review & queue for YouTube'}
             {progress && (
               <span className="ml-2 text-sm font-normal text-gray-400">
                 {progress.index + 1} of {progress.total}
@@ -1306,7 +1365,7 @@ function VettingDialog({
             disabled={phase !== 'review' || !title.trim()}
             className="bg-[#1C0357] hover:bg-[#1C0357]/90"
           >
-            {allowSocials ? (onNext ? 'Approve & next' : 'Approve & queue') : 'Save as not for socials'}
+            {teaserOnly ? 'Record new teaser' : allowSocials ? (onNext ? 'Approve & next' : 'Approve & queue') : 'Save as not for socials'}
           </Button>
         </DialogFooter>
       </DialogContent>
