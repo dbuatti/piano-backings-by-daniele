@@ -428,19 +428,30 @@ rule the "Publish this song" bar already used.
 `assetFilename`) signs the exact file a row will post; the release board and the
 song page now share it instead of each rolling their own.
 
-### Still open
+### Morning checklist
 
-- Apply `supabase/migrations/0044_auto_book.sql`, then try **Book new videos
-  automatically** — queue a track and leave it; it should book and upload itself.
-- Confirm the audio artefacts are gone once a re-recorded teaser is downloaded
-  and played locally.
-- Instagram integration — credentials plus a **professional** (Business/Creator)
-  account; the 30 s cut is recorded but nothing can post it yet. The steps are in
-  the in-app guide (Settings → Integrations); the code path is already wired and
-  only needs the secrets + `VITE_INSTAGRAM_CLIENT_ID`, then Connect.
-- TikTok audit / drafts — decided: stay on private auto-post (§8).
-- Re-record the pending teasers (only the chosen ones).
-- Song page, next slices: inline caption editing (today it hands off to the
-  composer), the audition cut's own metadata, and a price/PDF block if they earn
-  their space.
+Ordered so the cheap, unblocking things come first.
+
+1. **Instagram** (≈10 min, needs a professional account).
+   In Settings → Integrations, open **Set up social posting → Instagram** and
+   follow it top to bottom. In short: switch the IG account to Business/Creator →
+   create a Meta app with *Instagram Business Login* → paste the redirect URI the
+   guide shows → request `instagram_business_basic` +
+   `instagram_business_content_publish` → add `INSTAGRAM_CLIENT_ID` /
+   `INSTAGRAM_CLIENT_SECRET` as Supabase Edge secrets and
+   `VITE_INSTAGRAM_CLIENT_ID` in Vercel → redeploy → **Connect Instagram** →
+   **Test**. The guide's live checklist turns green as each piece lands, so the
+   first thing to check is what is still unticked after the deploy.
+2. **TikTok** — already works (private auto-post). Confirm **Test** is green, and
+   read the guide's *Where "fully automatic" stands* table before expecting public
+   posts. Public TikTok = Route C (drafts, 1 tap), a separate build. See §8.
+3. **Apply `supabase/migrations/0044_auto_book.sql`** (no workflow applies
+   migrations), then trial **Book new videos automatically**.
+4. **Confirm the audio artefacts are gone**: download a re-recorded teaser and
+   play it locally (the fix was a real-time encoder change, not provable in CI).
+5. **Re-record the pending teasers** — only the chosen cuts.
+6. **Song page, next slices** (if they earn their space): inline caption editing
+   (today it hands off to the composer), the audition cut's own metadata, and a
+   price/PDF block.
+
 
