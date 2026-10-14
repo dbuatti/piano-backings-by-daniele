@@ -3,6 +3,35 @@
 // "Queue more tracks" panel so every recorded video is pixel-identical.
 import { keyForDisplay } from "@/utils/musicalKeys";
 
+// The card's faces ship with this module rather than with one page: whichever
+// screen records a card (the Title Card Generator, or Admin → Publishing's
+// re-record flow) gets the same fonts, instead of falling back to Georgia and
+// Courier on the admin route.
+import "@fontsource/press-start-2p";
+import "@fontsource/silkscreen/400.css";
+import "@fontsource/silkscreen/700.css";
+import "@fontsource/vt323";
+import "../pages/videoTitleCardFonts.css";
+
+// Font stacks the canvas asks for. A recording must await document.fonts.load
+// for these before drawing, or the canvas paints the fallback face instead.
+export const CARD_FONT_PROBES = [
+  '400 32px "Arcade Gamer"',
+  '400 32px "Press Start 2P"',
+  '700 32px "Silkscreen"',
+  '400 32px "VT323"',
+  'italic 400 32px "Baskervville"',
+  '400 32px "Inter"',
+] as const;
+
+/** Resolves once every face the card needs is ready to paint. */
+export function loadCardFonts(): Promise<unknown> {
+  return Promise.allSettled([
+    document.fonts.ready,
+    ...CARD_FONT_PROBES.map((f) => document.fonts.load(f)),
+  ]);
+}
+
 // ---------- Palette ----------
 const PINK = "#F538BC";
 export const KEY_YELLOW = "#EDE04A";
@@ -257,26 +286,6 @@ export function drawCard(
   }
 }
 
-// Footer band for teaser clips: points viewers at the full-length channel upload.
-export function drawTeaserFooter(ctx: CanvasRenderingContext2D, W: number, H: number) {
-  const bandH = Math.round(H * 0.16);
-  const y = H - bandH;
-  ctx.fillStyle = NAVY;
-  ctx.fillRect(0, y, W, bandH);
-  ctx.fillStyle = KEY_YELLOW;
-  ctx.fillRect(0, y, W, Math.max(3, Math.round(H * 0.006)));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = WHITE;
-  const fs = Math.max(12, Math.round(Math.min(W, H) * 0.05));
-  ctx.font = `700 ${fs}px ${FONT_SANS}`;
-  ctx.fillText("Full version on YouTube", W / 2, y + bandH * 0.36);
-  ctx.fillStyle = KEY_YELLOW;
-  const sub = Math.max(10, Math.round(fs * 0.55));
-  ctx.font = `400 ${sub}px ${FONT_SANS}`;
-  ctx.fillText("@pianobackingsbydaniele", W / 2, y + bandH * 0.72);
-}
-
 // Preloads the card logo once and shares it across every recording.
 let logoPromise: Promise<HTMLImageElement | null> | null = null;
 export function loadCardLogo(): Promise<HTMLImageElement | null> {
@@ -314,6 +323,8 @@ export async function renderCardToBlob(
   meta: { song?: string | null; artist?: string | null; client?: string | null; key?: string | null },
   aspect: Aspect = "1:1"
 ): Promise<Blob | null> {
+  // Paint only once the faces are loaded, or the PNG bakes in the fallbacks.
+  await loadCardFonts();
   const dims = CARD_DIMS[aspect];
   const canvas = document.createElement("canvas");
   canvas.width = dims.w;

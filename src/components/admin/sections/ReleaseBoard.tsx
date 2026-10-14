@@ -23,7 +23,7 @@ import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hook
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { formatKey } from '../../../../shared/song-catalog.mjs';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
-import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, drawTeaserFooter, firstNameOf, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
+import { CARD_DIMS, type Aspect, captureCardSnapshot, defaultCardState, drawCard, firstNameOf, loadCardFonts, loadCardLogo, renderCardToBlob } from '@/utils/titleCard';
 import { probeVideoBlob, recordCanvasClip, videoFileInfo, type ClipProgress } from '@/utils/canvasRecorder';
 import { Progress } from '@/components/ui/progress';
 
@@ -604,13 +604,13 @@ export default function ReleaseBoard({
                       <RotateCcw className="h-3 w-3" /> Reset teaser
                     </Button>
                   )}
-                  {tt && tt.status !== 'published' && (
+                  {tt && (
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-7 shrink-0 rounded-full px-2.5 text-xs"
                       onClick={() => setReRecording(t.requestId)}
-                      title="Record a fresh teaser (portrait MP4, full length) and point the TikTok/Instagram rows at it. The YouTube video is not changed."
+                      title="Record a fresh teaser (portrait MP4, full length) and point the TikTok/Instagram rows at it, replacing any post they already reference. The YouTube video is not changed."
                     >
                       <RefreshCw className="h-3 w-3" /> Re-record teaser
                     </Button>
@@ -1100,16 +1100,7 @@ function VettingDialog({
       // Record a fresh title card with the verified title/show/key.
       const card = defaultCardState({ song: title.trim(), artist: show.trim(), client: track.client, key });
       const logoImg = await loadCardLogo();
-      await Promise.allSettled([
-        document.fonts.ready,
-        ...[
-          '400 32px "Arcade Gamer"',
-          '400 32px "Press Start 2P"',
-          '400 32px "VT323"',
-          'italic 400 32px "Baskervville"',
-          '400 32px "Inter"',
-        ].map((f) => document.fonts.load(f)),
-      ]);
+      await loadCardFonts();
 
       // TikTok and Instagram Reels are vertical: a teaser-only recording is
       // captured 9:16 so it fills the phone screen instead of being letterboxed.
@@ -1149,7 +1140,6 @@ function VettingDialog({
           const ease = 1 - Math.pow(1 - p, 3);
           cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
           cvCtx.fillRect(0, 0, cw, ch);
-          if (teaserOnly) drawTeaserFooter(cvCtx, cw, ch);
         },
 
       });
@@ -1214,7 +1204,7 @@ function VettingDialog({
           .eq('content_assets.request_id', track.requestId)
           .in('platform', ['tiktok', 'instagram']);
         if (teaserErr) throw teaserErr;
-        const ids = (teaserRows ?? []).filter((r) => r.status !== 'published').map((r) => r.id);
+        const ids = (teaserRows ?? []).map((r) => r.id);
         if (ids.length) {
           const { error: moveErr } = await supabase
             .from('publications')
@@ -1234,8 +1224,8 @@ function VettingDialog({
         else onClose();
         toast({
           title: ids.length
-            ? `Teaser re-recorded — ${ids.length} TikTok/Instagram row${ids.length === 1 ? '' : 's'} updated`
-            : 'Teaser re-recorded — no open teaser rows to update',
+            ? `Teaser re-recorded — ${ids.length} TikTok/Instagram row${ids.length === 1 ? '' : 's'} reset to pending`
+            : 'Teaser re-recorded — no teaser rows to update',
           description:
             file.mime === 'video/mp4'
               ? undefined

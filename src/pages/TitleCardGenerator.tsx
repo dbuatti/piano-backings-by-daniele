@@ -10,17 +10,12 @@ import {
   type RecordingAudio,
 } from "@/utils/canvasRecorder";
 import { KEY_OPTIONS, keyForDisplay } from "@/utils/musicalKeys";
-import "@fontsource/press-start-2p";
-import "@fontsource/silkscreen/400.css";
-import "@fontsource/silkscreen/700.css";
-import "@fontsource/vt323";
-import "./videoTitleCardFonts.css";
 import {
   type Aspect,
   type CardState,
   drawCard,
-  drawTeaserFooter,
   firstNameOf,
+  loadCardFonts,
   LOGO_SRC,
 } from "@/utils/titleCard";
 
@@ -405,17 +400,7 @@ export default function TitleCardGenerator() {
     paintIfAlive();
     (async () => {
       try {
-        await Promise.allSettled([
-          document.fonts.ready,
-          ...[
-            '400 32px "Arcade Gamer"',
-            '400 32px "Press Start 2P"',
-            '700 32px "Silkscreen"',
-            '400 32px "VT323"',
-            'italic 400 32px "Baskervville"',
-            '400 32px "Inter"',
-          ].map((f) => document.fonts.load(f)),
-        ]);
+        await loadCardFonts();
       } catch {
         // Fallback fonts still draw fine.
       }
@@ -1001,7 +986,6 @@ export default function TitleCardGenerator() {
           const ease = 1 - Math.pow(1 - p, 3);
           cvCtx.fillStyle = `rgba(245,56,188,${(1 - ease).toFixed(3)})`;
           cvCtx.fillRect(0, 0, W, H);
-          drawTeaserFooter(cvCtx, W, H);
         },
         onProgress: (p) => onProgress?.(p.loaded, p.total),
       });
