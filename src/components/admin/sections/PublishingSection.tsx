@@ -939,7 +939,7 @@ const PublishingSection = () => {
         .select('id')
         .eq('platform', 'tiktok')
         .in('status', ['draft', 'pending_approval', 'failed'])
-        .order('created_at', { ascending: true })
+        .order('updated_at', { ascending: false })
         .limit(1);
       if (error) throw error;
       const id = data?.[0]?.id;
