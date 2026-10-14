@@ -40,6 +40,35 @@ export async function refreshTikTokToken(
   return data;
 }
 
+export interface TikTokCreatorInfo {
+  creator_username?: string;
+  privacy_level_options?: string[];
+  max_video_post_duration_sec?: number;
+  comment_disabled?: boolean;
+  duet_disabled?: boolean;
+  stitch_disabled?: boolean;
+}
+
+// Direct Post requires querying the creator's current settings first (their
+// required UX): it returns the allowed privacy levels and the max video length.
+// TikTok rejects an init that skips this with "Please review our integration
+// guidelines", so it is not optional.
+export async function queryTikTokCreatorInfo(accessToken: string): Promise<TikTokCreatorInfo> {
+  const res = await fetch(`${API}/post/publish/creator_info/query/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+  });
+  const data = await res.json();
+  const code = data?.error?.code;
+  if (!res.ok || (code && code !== 'ok')) {
+    throw new Error(data?.error?.message || `TikTok creator info failed (${res.status})`);
+  }
+  return (data?.data ?? {}) as TikTokCreatorInfo;
+}
+
 // Initialise a direct post, upload the single/first chunk, then wait for TikTok
 // to finish processing. Returns the publish id and final status.
 export async function publishTikTokVideo(
@@ -47,6 +76,19 @@ export async function publishTikTokVideo(
   bytes: Uint8Array,
   meta: { caption?: string; privacyLevel?: string; mimeType?: string }
 ): Promise<TikTokPostResult> {
+  // Required first step: read the creator's allowed privacy levels.
+  const creator = await queryTikTokCreatorInfo(accessToken);
+  const allowed = creator.privacy_level_options ?? [];
+  console.log(
+    `[tiktok] creator=${creator.creator_username ?? '?'} privacyOptions=${JSON.stringify(allowed)} maxDuration=${creator.max_video_post_duration_sec ?? '?'}`
+  );
+  const requested = meta.privacyLevel ?? 'SELF_ONLY';
+  const privacyLevel = allowed.includes(requested)
+    ? requested
+    : allowed.includes('SELF_ONLY')
+      ? 'SELF_ONLY'
+      : allowed[0] ?? 'SELF_ONLY';
+
   const size = bytes.byteLength;
   // TikTok chunk rules: total_chunk_count = floor(video_size / chunk_size);
   // chunks are 5–64MB except the final one (up to 128MB); videos under 5MB go as
@@ -67,7 +109,7 @@ export async function publishTikTokVideo(
       post_info: {
         title: meta.caption ?? '',
         // Unaudited apps are restricted to private regardless of this value.
-        privacy_level: meta.privacyLevel ?? 'SELF_ONLY',
+        privacy_level: privacyLevel,
         disable_duet: false,
         disable_stitch: false,
         disable_comment: false,
