@@ -1,5 +1,6 @@
 import { chromium, type BrowserContext, type Page } from 'playwright';
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from './config.js';
 import { log } from './logger.js';
@@ -19,7 +20,6 @@ export async function openContext(): Promise<BrowserContext> {
     !existsSync(profileCookies) && existsSync(config.storageState)
       ? config.storageState
       : undefined;
-  if (seed) log.info('seeding fresh profile from', seed);
 
   const ctx = await chromium.launchPersistentContext(config.userDataDir, {
     headless: config.headless,
@@ -27,7 +27,6 @@ export async function openContext(): Promise<BrowserContext> {
     locale: 'en-US',
     timezoneId: config.timezone,
     userAgent: UA,
-    ...(seed ? { storageState: seed } : {}),
     args: [
       '--disable-blink-features=AutomationControlled',
       '--no-sandbox',
@@ -44,6 +43,20 @@ export async function openContext(): Promise<BrowserContext> {
     Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
   });
+
+  if (seed) {
+    try {
+      const state = JSON.parse(await readFile(seed, 'utf8')) as {
+        cookies?: Parameters<BrowserContext['addCookies']>[0];
+      };
+      if (Array.isArray(state.cookies) && state.cookies.length > 0) {
+        await ctx.addCookies(state.cookies);
+        log.info(`seeded ${state.cookies.length} cookies from ${seed}`);
+      }
+    } catch (err) {
+      log.warn('could not seed session:', (err as Error).message);
+    }
+  }
 
   return ctx;
 }
