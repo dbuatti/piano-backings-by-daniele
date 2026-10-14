@@ -341,8 +341,8 @@ export default function ReleaseBoard({
         <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
           <span>Release board — delivered tracks</span>
           <span className="text-xs font-normal text-gray-400">
-            {isLoading
-              ? 'Loading tracks…'
+            {isLoading || !tracks
+              ? ' '
               : filter === 'all'
                 ? `${tracks?.length ?? 0} delivered · newest first`
                 : `${visibleRows.length} of ${tracks?.length ?? 0} · ${BOARD_STATS.find((s) => s.key === filter)?.label}`}

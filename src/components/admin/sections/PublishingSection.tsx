@@ -32,7 +32,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Clapperboard, Eye, Library, ListChecks, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clapperboard, Eye, Instagram, Library, ListChecks, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video, Youtube } from 'lucide-react';
 import CardPreview from '@/components/admin/CardPreview';
 import TikTokComposer from '@/components/admin/TikTokComposer';
 import { useDeliveredTracks } from '@/hooks/useDeliveredTracks';
@@ -922,6 +922,10 @@ const PublishingSection = () => {
     setSearchParams(sp, { replace: false });
   };
   const [bulkDrafting, setBulkDrafting] = useState(false);
+  // Admin test hooks: which platform pass is running, and the raw worker reply
+  // so the pipeline can be verified from the page.
+  const [testing, setTesting] = useState<'youtube' | 'tiktok' | 'instagram' | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
   // True when the last queue run couldn't read video status from YouTube, so
   // "published" is being inferred from the schedule rather than confirmed.
   const [confirmDegraded, setConfirmDegraded] = useState(false);
@@ -1237,6 +1241,34 @@ const PublishingSection = () => {
     toast({ title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}` });
   };
 
+  // Runs one platform's pass on demand, ignoring the schedule, and prints the
+  // worker's raw reply so it's obvious whether each side is wired up.
+  const testPlatform = async (platform: 'youtube' | 'tiktok' | 'instagram') => {
+    setTesting(platform);
+    setTestResult(null);
+    try {
+      if (platform === 'youtube') {
+        const { data, error } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+        if (error) throw error;
+        setTestResult(JSON.stringify(data, null, 2));
+      } else {
+        const { data, error } = await supabase.functions.invoke('run-social-queue', {
+          body: { force: true, only_platform: platform },
+        });
+        if (error) throw error;
+        setTestResult(JSON.stringify(data, null, 2));
+      }
+      toast({ title: `${platform} pass finished` });
+      refetch();
+    } catch (e) {
+      const message = await getFunctionErrorMessage(e);
+      setTestResult(message);
+      toast({ title: `${platform} pass failed`, description: message, variant: 'destructive' });
+    } finally {
+      setTesting(null);
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1449,6 +1481,47 @@ const PublishingSection = () => {
             ))}
           </div>
         )}
+      </Disclosure>
+
+      {/* Fire each platform's pass by hand and see exactly what the worker said. */}
+      <Disclosure title="Test the pipeline" hint="force a pass on each platform">
+        <div className="space-y-3">
+          <p className="text-xs text-gray-500">
+            Runs the same worker the cron uses, right now. TikTok and Instagram only pick up teasers
+            whose slot has arrived — if the list is empty, that's the worker telling you nothing is due.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testPlatform('youtube')}
+              disabled={testing !== null}
+            >
+              <Youtube className="h-3.5 w-3.5" /> {testing === 'youtube' ? 'Running…' : 'Run YouTube'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testPlatform('tiktok')}
+              disabled={testing !== null}
+            >
+              <ListChecks className="h-3.5 w-3.5" /> {testing === 'tiktok' ? 'Running…' : 'Run TikTok'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testPlatform('instagram')}
+              disabled={testing !== null}
+            >
+              <Instagram className="h-3.5 w-3.5" /> {testing === 'instagram' ? 'Running…' : 'Run Instagram'}
+            </Button>
+          </div>
+          {testResult && (
+            <pre className="max-h-72 overflow-auto rounded-xl bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">
+              {testResult}
+            </pre>
+          )}
+        </div>
       </Disclosure>
         </>
       )}

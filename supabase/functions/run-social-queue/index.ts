@@ -80,6 +80,14 @@ Deno.serve(async (req) => {
     const isScheduled = body?.scheduled === true;
     if (!admin && !isScheduled) return json({ error: 'Forbidden' }, 403);
 
+    // Admin-only test hooks: run the post pass for a single platform so the
+    // pipeline can be exercised from the Publishing page.
+    const onlyPlatform: 'tiktok' | 'instagram' | null =
+      body?.only_platform === 'tiktok' || body?.only_platform === 'instagram'
+        ? body.only_platform
+        : null;
+    if (onlyPlatform && !admin) return json({ error: 'Forbidden' }, 403);
+
     const { data: settings } = await supabaseAdmin
       .from('publishing_settings')
       .select('social_auto_post, social_offset_minutes, social_tiktok_privacy')
@@ -208,14 +216,15 @@ Deno.serve(async (req) => {
     // --- 3) Post the teasers whose slot has arrived. ---
     const posted: Array<Record<string, unknown>> = [];
     try {
-      const { data: due, error: dueErr } = await supabaseAdmin
+      const dueQuery = supabaseAdmin
         .from('publications')
         .select('*, content_assets(*)')
-        .in('platform', ['tiktok', 'instagram'])
+        .in('platform', onlyPlatform ? [onlyPlatform] : ['tiktok', 'instagram'])
         .eq('status', 'scheduled')
-        .lte('scheduled_for', nowIso)
+        .lte('scheduled_for', nowIso);
+      const { data: due, error: dueErr } = await dueQuery
         .order('scheduled_for', { ascending: true })
-        .limit(BATCH_LIMIT);
+        .limit(onlyPlatform ? 20 : BATCH_LIMIT);
       if (dueErr) throw dueErr;
 
       for (const pub of due ?? []) {
@@ -344,7 +353,7 @@ Deno.serve(async (req) => {
       console.error('[run-social-queue] post pass failed:', err?.message || err);
     }
 
-    return json({ autoPost: true, reconciled, armed, posted });
+    return json({ autoPost: true, platform: onlyPlatform ?? 'all', reconciled, armed, posted });
   } catch (error) {
     return json({ error: error?.message || 'Unknown error' }, 500);
   }

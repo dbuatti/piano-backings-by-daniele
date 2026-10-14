@@ -72,24 +72,48 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
     })
   );
 
-  const files: { path: string; folder: string | null }[] = [];
+  // The bucket nests at most tracks/<request-id>/<file>, with an optional extra
+  // level of takes. Listing each folder one after another meant one round-trip
+  // per track (39 tracks = 39 sequential calls); list them all at once instead.
   const MAX_FILES = 400;
-  const MAX_DEPTH = 3; // tracks bucket nests at most tracks/<request-id>/<file>
-  const visit = async (prefix: string, folder: string | null, depth: number) => {
-    if (files.length >= MAX_FILES || depth > MAX_DEPTH) return;
-    const { data, error } = await supabase.storage.from('tracks').list(prefix, { limit: 400 });
-    if (error) throw error;
-    for (const item of data || []) {
-      if (files.length >= MAX_FILES) return;
-      if (item.id === null) {
-        await visit(`${prefix}${item.name}/`, folder ?? item.name, depth + 1);
-        continue;
+  const root = await supabase.storage.from('tracks').list('tracks/', { limit: 400 });
+  if (root.error) throw root.error;
+
+  const files: { path: string; folder: string | null }[] = [];
+  const folders: string[] = [];
+  for (const item of root.data || []) {
+    if (item.id === null) folders.push(item.name);
+    else if (isAudioFile(item.name, item.metadata)) files.push({ path: `tracks/${item.name}`, folder: null });
+  }
+
+  const fromFolder = await Promise.all(
+    folders.map(async (folder) => {
+      const out: { path: string; folder: string | null }[] = [];
+      const { data, error } = await supabase.storage
+        .from('tracks')
+        .list(`tracks/${folder}/`, { limit: 400 });
+      if (error) return out;
+      const nested: string[] = [];
+      for (const item of data || []) {
+        if (item.id === null) nested.push(item.name);
+        else if (isAudioFile(item.name, item.metadata)) out.push({ path: `tracks/${folder}/${item.name}`, folder });
       }
-      if (!isAudioFile(item.name, item.metadata)) continue;
-      files.push({ path: `${prefix}${item.name}`, folder });
-    }
-  };
-  await visit('tracks/', null, 1);
+      const deeper = await Promise.all(
+        nested.map(async (sub) => {
+          const { data: inner } = await supabase.storage
+            .from('tracks')
+            .list(`tracks/${folder}/${sub}/`, { limit: 400 });
+          return (inner || [])
+            .filter((item) => item.id !== null && isAudioFile(item.name, item.metadata))
+            .map((item) => ({ path: `tracks/${folder}/${sub}/${item.name}`, folder }));
+        })
+      );
+      return out.concat(deeper.flat());
+    })
+  );
+  files.push(...fromFolder.flat());
+
+  if (files.length > MAX_FILES) files.length = MAX_FILES;
 
   const tracks: DeliveredTrack[] = [];
   const seen = new Set<string>();
@@ -114,7 +138,7 @@ export function useDeliveredTracks() {
   return useQuery({
     queryKey: ['delivered_tracks'],
     queryFn: loadDeliveredTracks,
-    staleTime: 60_000,
+    staleTime: 300_000,
     retry: 1,
   });
 }
