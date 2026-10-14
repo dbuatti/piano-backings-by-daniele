@@ -73,7 +73,9 @@ export async function recordCanvasClip(
   const canvasCtx = canvas.getContext('2d');
   if (!canvasCtx) return null;
 
-  const videoTrack = canvas.captureStream(options.fps ?? 30).getVideoTracks()[0];
+  const fps = options.fps ?? 30;
+  const frameMs = Math.round(1000 / fps);
+  const videoTrack = canvas.captureStream(fps).getVideoTracks()[0];
   if (!videoTrack) return null;
 
   let dest: MediaStreamAudioDestinationNode | null = null;
@@ -118,14 +120,17 @@ export async function recordCanvasClip(
         const el = (performance.now() - startedAt) / 1000;
         if (el < duration) {
           drawFrame(el);
+          // Push the drawn frame into the stream at the target rate. Drawing
+          // less often than the stream's fps yields a low-frame-rate file.
+          (videoTrack as MediaStreamTrack & { requestFrame?: () => void }).requestFrame?.();
           activeProgress = { loaded: Math.min(el, duration), total: duration };
           emit();
-          tickTimer = setTimeout(tick, 100);
+          tickTimer = setTimeout(tick, frameMs);
         } else {
           resolve();
         }
       };
-      tickTimer = setTimeout(tick, 100);
+      tickTimer = setTimeout(tick, frameMs);
     });
 
     recorder.stop();
