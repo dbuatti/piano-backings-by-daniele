@@ -13,8 +13,9 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-// Frame used as the post's cover. The recording fades the card in over 1.1s, so
-// the first frame is flat pink with no text on it.
+// Frame used as the post's cover. Teasers are recorded with fade = 0, so frame 0
+// already carries the card text; asking for a moment in just dodges any browser
+// warm-up frame and matches the automated path (run-social-queue).
 const COVER_TIMESTAMP_MS = 1500;
 
 const json = (body: unknown, status = 200) =>
@@ -108,21 +109,35 @@ Deno.serve(async (req) => {
         brandOrganic,
         brandContent,
         mimeType: asset.mime_type,
-        // Use the card itself as the cover: the first ~1.1s is the pink fade-in,
-        // and TikTok defaults the cover to the very first frame.
+        // Cover from the card, not the first frame TikTok would pick by default.
         videoCoverTimestampMs: COVER_TIMESTAMP_MS,
       });
 
       const row = await getSocialToken(supabaseAdmin, 'tiktok');
       const completed = posted.status === 'PUBLISH_COMPLETE';
+      // TikTok answers with SEND_TO_USER_INBOX when it will not post the video
+      // itself — for an unaudited app it drops it in the creator's drafts instead.
+      // Treating that like "still processing" left the row stuck on `publishing`
+      // for good (the reconciler has the same three terminal states), so call it
+      // out with the one thing that fixes it. Mirrors run-social-queue.
+      const toInbox = posted.status === 'SEND_TO_USER_INBOX';
+      const rejected = posted.status === 'FAILED';
+      const nextStatus = completed ? 'published' : toInbox || rejected ? 'failed' : 'publishing';
+      const outcomeError = completed
+        ? null
+        : toInbox
+          ? 'TikTok saved this to your drafts inbox instead of posting it — that is what an unaudited app does. Post the draft in TikTok by hand, or finish the Content Posting audit to let it post directly.'
+          : rejected
+            ? 'TikTok rejected the post.'
+            : null;
       await supabaseAdmin
         .from('publications')
         .update({
-          status: completed ? 'published' : 'publishing',
+          status: nextStatus,
           platform_post_id: posted.publishId,
           url: row?.display_name ? `https://www.tiktok.com/@${row.display_name}` : null,
           published_at: completed ? new Date().toISOString() : null,
-          error: null,
+          error: outcomeError,
           metadata: {
             ...(pub.metadata || {}),
             // Keep the caption the owner actually posted with, so a re-draft or
@@ -143,7 +158,7 @@ Deno.serve(async (req) => {
         })
         .eq('id', pub.id);
 
-      return json({ ok: true, publishId: posted.publishId, status: posted.status });
+      return json({ ok: completed, publishId: posted.publishId, status: posted.status, inbox: toInbox });
     } catch (err) {
       const message = err?.message || String(err);
       console.error(`[post-tiktok-teaser] failed for ${pub.id}:`, message);

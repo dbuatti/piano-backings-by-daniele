@@ -40,6 +40,11 @@ export async function publishInstagramReel(
   igUserId: string,
   meta: { videoUrl: string; caption?: string; mimeType?: string }
 ): Promise<InstagramPostResult> {
+  if (!igUserId) {
+    throw new Error(
+      'No Instagram account id is stored — reconnect Instagram in Settings → Integrations.'
+    );
+  }
   if (meta.mimeType && !/mp4|quicktime|mov/i.test(meta.mimeType)) {
     throw new Error(
       `Instagram only accepts MP4/MOV, but this teaser is ${meta.mimeType}. Transcode to MP4 before posting.`

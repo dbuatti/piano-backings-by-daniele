@@ -263,10 +263,18 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      // TikTok answers SEND_TO_USER_INBOX when it will not post directly — on an
+      // unaudited app the video waits in the creator's drafts. Saying "still
+      // processing" there was a lie that left the owner waiting for a post that
+      // would never appear.
+      const inbox = data?.inbox === true || data?.status === 'SEND_TO_USER_INBOX';
       toast({
-        title: 'Sent to TikTok',
-        description:
-          data?.status === 'PUBLISH_COMPLETE'
+        title: inbox ? 'Saved to your TikTok drafts' : 'Sent to TikTok',
+        description: inbox
+          ? 'TikTok would not post it directly, so it is waiting in your drafts. Open the TikTok app to finish it — that is what an unaudited app does.'
+          : data?.status === 'PUBLISH_COMPLETE'
             ? 'Published. It may take a few minutes to appear on your profile.'
             : 'Uploaded. TikTok is still processing your post — it will appear shortly.',
       });

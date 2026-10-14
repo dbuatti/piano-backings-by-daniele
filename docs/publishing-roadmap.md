@@ -197,6 +197,32 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-14 — honesty + discoverability pass
+
+**The song page is now findable.** It existed but the only way in was hovering a
+song title, so it read as plain text. Now:
+
+- The song name in every Pipeline row (Needs you, Booked, Live) carries a book
+  icon and a tooltip, and the Needs-you row also gets an explicit **Song page**
+  button next to Edit/Approve.
+- The Pipeline card explains it: *"Open a song's page … to see everything about it
+  — video, teasers, captions — and publish it in one place."*
+- It was already reachable from Tracks → `⋯` → **Open song page**.
+
+**Stopped the checklist blocking what the worker does.** The song page's
+**Captions** item was a hard blocker, so *Publish this song* refused to run when a
+teaser had no caption — even though `run-social-queue` rebuilds one from the title
+and hashtags and posts it anyway. It is now **advisory**: it nudges ("it would
+post the title and hashtags instead") without pretending the song is stuck. This
+matches the rule the rest of the checklist already follows.
+
+**A missing Instagram id now says so.** `publishInstagramReel` is called with
+`tokenRow?.external_id`; when the account is half-connected that is `null`, and
+the old code posted to `/v25.0/null/media` and failed with an opaque Graph error.
+It now fails immediately with "reconnect Instagram in Settings → Integrations".
+
+**Small cleaning:** the duplicated comment on `TrackPipelineRow` is gone.
+
 ### 2026-10-14 — social automation research + integrations polish
 
 **Answered the TikTok/Instagram "can it be automatic?" question.** New

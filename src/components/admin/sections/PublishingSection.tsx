@@ -872,10 +872,11 @@ function QueueRow({
             <button
               type="button"
               onClick={onOpen}
-              title="Open the song page"
-              className="block max-w-full truncate text-left font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
+              title="Open the song page — everything about this song in one place"
+              className="flex max-w-full items-center gap-1.5 text-left font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
             >
-              {label}
+              <Library className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+              <span className="truncate">{label}</span>
             </button>
           ) : (
             <p className="truncate font-bold text-[#1C0357]">{label}</p>
@@ -894,6 +895,11 @@ function QueueRow({
           <Badge variant="outline">{PLATFORM_LABELS[publication.platform]}</Badge>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {onOpen && (
+            <Button variant="outline" size="sm" onClick={onOpen}>
+              <Library className="h-3.5 w-3.5" /> Song page
+            </Button>
+          )}
           {['published', 'scheduled'].includes(publication.status) && publication.url && (
             <Button variant="outline" size="sm" asChild>
               <a href={publication.url} target="_blank" rel="noreferrer">View</a>
@@ -1495,6 +1501,21 @@ const PublishingSection = () => {
     }
   };
 
+  // Inline caption edit from the song page. `metadata` is jsonb and an update
+  // replaces it wholesale, so merge rather than clobber the AI's other keys.
+  const saveCaption = async (pub: PublicationWithAsset, caption: string) => {
+    const { error } = await supabase
+      .from('publications')
+      .update({
+        metadata: { ...(pub.metadata ?? {}), caption },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pub.id);
+    if (error) throw error;
+    await refetch();
+    toast({ title: 'Caption saved', description: 'The post will use this text.' });
+  };
+
   // Runs one platform's pass on demand, ignoring the schedule, and prints the
   // worker's raw reply so it's obvious whether each side is wired up.
   const testPlatform = async (platform: 'youtube' | 'tiktok' | 'instagram') => {
@@ -1695,7 +1716,8 @@ const PublishingSection = () => {
           </CardTitle>
           <p className="text-xs text-gray-400">
             “Write descriptions” drafts the YouTube copy with AI. “Book slots” drops each ready video
-            into the next free cadence slot.
+            into the next free cadence slot. Open a song’s page (the book icon, or “Song page”) to see
+            everything about it — video, teasers, captions — and publish it in one place.
           </p>
         </CardHeader>
         <CardContent className="space-y-1">
@@ -1909,6 +1931,7 @@ const PublishingSection = () => {
           onRecord={setReRecordFor}
           onRetry={retryTeaser}
           onDownload={downloadPub}
+          onSaveCaption={saveCaption}
         />
       )}
 

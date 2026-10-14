@@ -848,9 +848,9 @@ function CardThumb({
 // title card and the same description/caption skeletons the pipeline produces.
 // This is the "check it before it goes out" view for YouTube, TikTok, Instagram.
 const PLATFORM_META = {
-  youtube: { label: 'YouTube', aspect: '16:9' as Aspect },
-  tiktok: { label: 'TikTok', aspect: '9:16' as Aspect },
-  instagram: { label: 'Instagram', aspect: '1:1' as Aspect },
+  youtube: { label: 'YouTube' },
+  tiktok: { label: 'TikTok' },
+  instagram: { label: 'Instagram' },
 } as const;
 
 function PlatformPreview({ track, onClose }: { track: DeliveredTrack; onClose: () => void }) {
@@ -956,21 +956,24 @@ function TikTokMock({ track, caption }: { track: DeliveredTrack; caption: string
 
 function InstagramMock({ track, caption }: { track: DeliveredTrack; caption: string }) {
   return (
-    <div className="w-full max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-white text-left">
-      <div className="flex items-center gap-2 p-2.5">
-        <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-[#F538BC] to-[#1C0357]" />
-        <p className="text-xs font-semibold text-gray-900">pianobackingsbydaniele</p>
-      </div>
-      <CardThumb song={track.song} show={track.show} musicalKey={track.key ?? ''} client={track.client} aspect="1:1" className="w-full rounded-none border-0" />
-      <div className="flex items-center gap-3 p-2.5">
-        <Heart className="h-5 w-5 text-gray-800" />
-        <MessageCircle className="h-5 w-5 text-gray-800" />
-        <Send className="h-5 w-5 text-gray-800" />
-      </div>
-      <div className="px-2.5 pb-3">
-        <p className="whitespace-pre-line text-xs leading-snug text-gray-700">
-          <span className="font-semibold text-gray-900">pianobackingsbydaniele</span> {caption}
+    <div className="relative w-full max-w-xs overflow-hidden rounded-xl border border-gray-200 bg-black">
+      <CardThumb song={track.song} show={track.show} musicalKey={track.key ?? ''} client={track.client} aspect="9:16" className="w-full rounded-none border-0" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 pt-10">
+        <div className="mb-1.5 flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#F538BC] to-[#1C0357]" />
+          <p className="text-xs font-semibold text-white">pianobackingsbydaniele</p>
+        </div>
+        <p className="max-h-24 overflow-hidden whitespace-pre-line text-[11px] leading-snug text-white/95">
+          {caption}
         </p>
+        <p className="mt-1.5 flex items-center gap-1 text-[10px] text-white/80">
+          <Music2 className="h-3 w-3" /> original sound — Piano Backings by Daniele
+        </p>
+      </div>
+      <div className="pointer-events-none absolute bottom-24 right-2 flex flex-col items-center gap-4 text-white">
+        <Heart className="h-5 w-5" />
+        <MessageCircle className="h-5 w-5" />
+        <Send className="h-5 w-5" />
       </div>
     </div>
   );

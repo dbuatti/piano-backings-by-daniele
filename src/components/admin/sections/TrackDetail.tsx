@@ -138,6 +138,7 @@ function TeaserPanel({
   onRecord,
   onRetry,
   onDownload,
+  onSaveCaption,
 }: {
   platform: PublicationPlatform;
   pub: PublicationWithAsset;
@@ -148,11 +149,45 @@ function TeaserPanel({
   onRecord: (requestId: string) => void;
   onRetry: (id: string) => void;
   onDownload: (pub: PublicationWithAsset) => void;
+  onSaveCaption: (pub: PublicationWithAsset, caption: string) => Promise<void>;
 }) {
   const name = PLATFORM_LABELS[platform];
   const problem = teaserProblem(pub, group, autoOn);
   const caption = captionOf(pub);
   const igBlocked = platform === 'instagram' && problem && problem.action !== 'record';
+  // A caption edits the row the worker posts from, so it is worth doing for a
+  // booked teaser too. It is pointless once the post is live — nothing re-reads
+  // it — so the affordance is hidden there.
+  const canEditCaption = pub.status !== 'published';
+
+  // Inline caption editing: saved straight onto the publication, which is the
+  // same field run-social-queue posts, so editing here and posting later agree.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const startEdit = () => {
+    setDraft(caption);
+    setSaveError(null);
+    setEditing(true);
+  };
+  const save = async () => {
+    const next = draft.trim();
+    if (next === caption.trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSaveCaption(pub, next);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save the caption.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Panel title={name}>
@@ -178,12 +213,48 @@ function TeaserPanel({
               : 'Ready to post.'}
         </p>
       )}
-      {caption ? (
-        <p className="mb-3 max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2 text-[11px] leading-relaxed text-gray-600">
-          {caption}
-        </p>
+      {editing ? (
+        <div className="mb-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={6}
+            autoFocus
+            placeholder="Write the caption that goes with the post…"
+            className="w-full rounded-lg border border-gray-200 p-2 text-[11px] leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+          />
+          {saveError ? <p className="mt-1 text-[11px] text-red-600">{saveError}</p> : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Save caption
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <span className="text-[11px] text-gray-400">
+              This is the text the post goes out with.
+            </span>
+          </div>
+        </div>
       ) : (
-        <p className="mb-3 text-[11px] text-gray-400">No caption yet.</p>
+        <div className="mb-3">
+          {caption ? (
+            <p className="max-h-24 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2 text-[11px] leading-relaxed text-gray-600">
+              {caption}
+            </p>
+          ) : (
+            <p className="text-[11px] text-gray-400">No caption yet.</p>
+          )}
+          {canEditCaption ? (
+            <button
+              type="button"
+              onClick={startEdit}
+              className="mt-1 text-[11px] font-medium text-[#F538BC] hover:underline"
+            >
+              {caption ? 'Edit caption' : 'Write caption'}
+            </button>
+          ) : null}
+        </div>
       )}
       <div className="flex flex-wrap gap-2">
         {problem?.action === 'record' && group.requestId ? (
@@ -235,6 +306,8 @@ export interface TrackDetailProps {
   onRecord: (requestId: string) => void;
   onRetry: (id: string) => void;
   onDownload: (pub: PublicationWithAsset) => void;
+  /** Saves an edited caption onto the row the worker will post from. */
+  onSaveCaption: (pub: PublicationWithAsset, caption: string) => Promise<void>;
 }
 
 export default function TrackDetail({
@@ -253,6 +326,7 @@ export default function TrackDetail({
   onRecord,
   onRetry,
   onDownload,
+  onSaveCaption,
 }: TrackDetailProps) {
   const [step, setStep] = useState(0);
   const yt = group.yt;
@@ -458,6 +532,7 @@ export default function TrackDetail({
                 onRecord={onRecord}
                 onRetry={onRetry}
                 onDownload={onDownload}
+                onSaveCaption={onSaveCaption}
               />
             ) : (
               <Panel title={PLATFORM_LABELS.tiktok}>
@@ -486,6 +561,7 @@ export default function TrackDetail({
                 onRecord={onRecord}
                 onRetry={onRetry}
                 onDownload={onDownload}
+                onSaveCaption={onSaveCaption}
               />
             ) : (
               <Panel title={PLATFORM_LABELS.instagram}>

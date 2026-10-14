@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronRight, MoreHorizontal, RefreshCw, RotateCcw } from 'lucide-react';
+import { ChevronRight, Library, MoreHorizontal, RefreshCw, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   PLATFORM_LABELS,
@@ -62,7 +62,6 @@ function PlatformCell({
 }
 
 // One song across all three platforms — the whole point of the regroup.
-// One song across all three platforms — the whole point of the regroup.
 export function TrackPipelineRow({
   group,
   tz,
@@ -85,10 +84,11 @@ export function TrackPipelineRow({
         <button
           type="button"
           onClick={() => onOpen(group)}
-          title="Open the song page"
-          className="min-w-[150px] flex-1 truncate text-left text-sm font-medium text-[#1C0357] hover:text-[#F538BC] hover:underline"
+          title="Open the song page — everything about this song in one place"
+          className="flex min-w-[150px] flex-1 items-center gap-1.5 truncate text-left text-sm font-medium text-[#1C0357] hover:text-[#F538BC] hover:underline"
         >
-          {group.label}
+          <Library className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+          <span className="truncate">{group.label}</span>
         </button>
       ) : (
         <span className="min-w-[150px] flex-1 truncate text-sm font-medium text-[#1C0357]">

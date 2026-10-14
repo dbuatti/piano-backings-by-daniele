@@ -237,12 +237,17 @@ export function trackReadiness(group: TrackGroup, ctx: ReadinessContext): Readin
     { label: 'TikTok teaser', ...tt },
     { label: 'Instagram teaser', ...ig },
     {
+      // Advisory, not a blocker. `run-social-queue`'s captionFor() rebuilds a
+      // caption from the title and hashtags when none is drafted, so a missing
+      // caption never stops a post. Blocking here would refuse a publish the
+      // 15-minute cron performs happily — instead, nudge for a better hook.
       label: 'Captions',
       ok: missingCaptions.length === 0,
+      advisory: true,
       note:
         missingCaptions.length === 0
           ? 'Every teaser has a caption.'
-          : `Nothing drafted for ${missingCaptions.join(' or ')} yet.`,
+          : `Nothing drafted for ${missingCaptions.join(' or ')} — it would post the title and hashtags instead.`,
     },
     {
       label: 'Shop listing',
