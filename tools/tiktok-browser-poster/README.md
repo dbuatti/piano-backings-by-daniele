@@ -127,6 +127,22 @@ Datacenter IPs are easier for TikTok to flag, so prefer the Mac Mini.
 - Kill switch: stop the process (or set `MAX_PER_RUN=0`).
 - Screenshots on every failure in `SCREENSHOTS_DIR`.
 
+## Why TikTok browser posting is fragile (observed failure modes)
+The composer is undocumented and changes without notice. Two quirks already
+handled in code, documented so they're easy to spot again:
+- **First-visit product tour** — a `react-joyride` overlay covers the composer and
+  swallows clicks (Playwright reports `element ... intercepts pointer events`).
+  `dismissTour()` clicks through it, else removes `#react-joyride-portal`.
+- **"Continue to post?" dialog.** After clicking Post, TikTok runs a pre-post
+  safety check and shows a modal whose only way forward is **"Post now"**. If it
+  is not clicked, nothing publishes and the check then reports a false failure
+  (which would trigger a duplicate retry). `post.ts` clicks it when present.
+- The composer lives at `/tiktokstudio/upload`; success navigates to
+  `/tiktokstudio/content` ("Everyone" = public when the account is public).
+
+One more trap: macOS encrypts Chromium's cookie DB with a per-machine Keychain
+key, so never copy `.auth/profile` between Macs — move `.auth/state.json` instead.
+
 ## Keeping it from racing the API worker
 While this runs, the edge function must **not** also post TikTok. Set the flag so
 `run-social-queue` skips tiktok (migration `0045`):
