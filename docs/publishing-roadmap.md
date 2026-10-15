@@ -16,12 +16,13 @@ automate".
 
 ---
 
-## 0. DEFECT — audio artifacts in teaser uploads
+## 0. RESOLVED — audio artefacts in teaser uploads
 
-Reported: small audio artifacts in a TikTok post. Unknown whether the artifact is
-in the recorded file or introduced by TikTok's transcode.
+Reported: small audio artifacts in a TikTok post. **Answered 2026-10-15:** the
+artefact is in the recorded file, not in TikTok's transcode — and only in one
+recording, not across the board. See the resolution at the end of this section.
 
-Cause candidates, in order of likelihood:
+The candidates that were considered, in the order they were suspected:
 
 1. **Real-time encoder contention.** `MediaRecorder` encodes H.264 in real time
    while the page also runs a 30 fps timer that repaints a *static* card. The card
@@ -40,16 +41,21 @@ Fixes to try, cheapest first: set `audioBitsPerSecond`, drop the teaser frame ra
 (the card is static), add a short silent lead-in/tail, and stop monitoring the
 audio out loud. Then re-record one teaser and compare.
 
-**Progress:** the encoder targets are now pinned (8 Mbps / 192 kbps, and teasers
-record at 15 fps), and the stop sequence no longer tears the audio graph down
-before the recorder flushes its last chunk. The composer also reads the audio
-track straight out of the file — its length, or a red "no audio track in this
-file" — and asks before posting a file it believes would land silent. The silent
-lead-in/tail is still un-tried: do that only if a downloaded file still shows a
-click at either end.
+**Resolved 2026-10-15 — measured, not guessed.** Every teaser the recorder
+produced ends in digital silence (see the dated entry below), so there is no
+boundary click and no systemic encoder fault. One file is the exception, and it
+is the one that went out: `66fe309d` (Don't Wanna Be Here, TikTok) ends at full
+level mid-performance — re-record it if the tail matters. Two claims in this
+section turned out to be wrong: the pinned bitrate/frame-rate targets never reach
+the file (the browser treats them as hints; teasers land at ~29.4 fps, ~500 kbps
+video, ~125 kbps AAC), and monitoring the audio out loud has no bearing on the
+file. What did fix the tail was the stop sequence waiting for the recorder's
+final flush. The silent lead-in/tail was never needed — it is already there. The
+four 30 s Instagram trims made with `ffmpeg -c copy` *did* cut mid-note; those
+were re-encoded with a 0.5 s fade-out, video stream copied, on 2026-10-15.
 
-**Before any of that: make the file downloadable, so the artifact can be located
-in the file rather than guessed at.** See 1.
+The prerequisite held: §1 made the file downloadable, so the artifact was located
+in the file rather than guessed at.
 
 ## 1. Verify — download and play a teaser, as uploaded
 
@@ -197,6 +203,42 @@ of guessed at.
 ---
 
 ## Done so far
+
+### 2026-10-15 — the audio artefact was one file, not the encoder
+
+**Measured the teasers instead of guessing at them.** §0 listed five candidates
+for the "audio artefacts in a TikTok post". I pulled eleven assets straight out
+of storage and decoded their audio, so the artefact could be located in a file
+rather than inferred from the code.
+
+- **Every teaser the recorder produced ends in digital silence.** A silent lead-in
+  (0.1–1.8 s) and a silent tail (0.2–2.8 s), final sample ≤0.001 (about −60 dBFS).
+  No boundary click at either end, on any take, old or new. The recorder is not
+  the fault.
+- **One file is the exception, and it is the one that shipped.**
+  `66fe309d-8bef-4965-9c76-9c4f9fffd0f7` ("Don't Wanna Be Here", TikTok, posted
+  2026-10-14T23:18) holds full musical level right up to its last sample (last
+  200 ms RMS 0.17) and stops dead mid-performance (final sample 0.174, no tail).
+  That is the most likely source of what the owner heard.
+- **The pinned encoder targets never reach the file.** Every teaser lands at
+  ~29.4 fps (configured 15), ~500 kbps video (configured 8 Mbps) and ~125 kbps
+  AAC (configured 192 kbps) — `MediaRecorder` treats all three as hints the
+  browser overrides. What actually fixed the tail was the stop sequence waiting
+  for the recorder's final flush. Don't "fix" the levers again.
+- **The four 30 s Instagram trims did cut mid-note.** They were made with
+  `ffmpeg -c copy`, which keeps the audio but cuts at exactly 30.0 s with the
+  music still playing (final sample 0.015–0.080). Re-encoded with a 0.5 s
+  fade-out and the video stream copied, so the video stays **bit-exact** (checked
+  by stream md5); same storage paths, so no row, asset id or signed URL changed.
+  (A re-download immediately after the upload can still return the old bytes from
+  the CDN — the stored object was already correct; verified by size, etag and md5.)
+- Re-verified by downloading each from storage and comparing md5: `a19bba2e`
+  (How it ends), `7a3807bd` (Tonight at eight), `9bffa087` (Don't Wanna Be Here),
+  `5b3edb18` (Love Revolution). All four are Instagram and all four are still
+  `pending_approval`, so nothing had posted from the chopped versions.
+- Long near-silent stretches in `a260ab8e` (3.7 s) and `67b20cbe` (1.5 s) are
+  musical rests in long takes, not dropouts — recorded here so a later "silence"
+  report is not mistaken for this defect.
 
 ### 2026-10-15 — token refresh: weekly → 6-hourly, and only when due
 
@@ -502,8 +544,10 @@ Ordered so the cheap, unblocking things come first.
    (no workflow applies migrations) so the tokens are checked every 6 hours.
    Not urgent — a stale token never blocks a post — but it keeps the connections
    badge honest and gives the Instagram token a wide margin before it lapses.
-5. **Confirm the audio artefacts are gone**: download a re-recorded teaser and
-   play it locally (the fix was a real-time encoder change, not provable in CI).
+5. **Confirm the audio artefacts are gone** — **done 2026-10-15.** Decoded every
+   teaser in storage: all end in digital silence. The only file that doesn't is
+   the one already live on TikTok (`66fe309d`, Don't Wanna Be Here), which stops
+   mid-performance. The four chopped Instagram trims were repaired. See §0.
 6. **Re-record the pending teasers** — only the chosen cuts.
 7. **Song page, next slices** (if they earn their space): inline caption editing
    (today it hands off to the composer), the audition cut's own metadata, and a
