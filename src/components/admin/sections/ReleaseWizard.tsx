@@ -656,65 +656,92 @@ export function ReleaseWizard({
         onExit={goHome}
         exitLabel="Exit"
       >
-        <div className="rounded-xl border border-gray-100 p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#1C0357]">
-            <Music2 className="h-4 w-4 text-[#F538BC]" />
-            {current.client ? `Ordered by ${current.client}` : 'Delivered request'}
-          </div>
-          <audio controls preload="none" src={current.url} className="mt-2 h-9 w-full" />
-        </div>
+        <div className="grid gap-5 md:grid-cols-[1fr_280px]">
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+              <Music2 className="h-4 w-4 shrink-0 text-[#F538BC]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-gray-500">
+                  {current.client ? `Ordered by ${current.client}` : 'Delivered request'}
+                </p>
+                <audio controls preload="none" src={current.url} className="mt-1 h-8 w-full" />
+              </div>
+            </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="wiz-song">Song title</Label>
-            <Input id="wiz-song" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song name" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="wiz-show">Show or artist</Label>
-            <Input id="wiz-show" value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Key</Label>
-            <KeySelect value={key} onChange={setKey} />
-          </div>
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="wiz-song">Song title</Label>
+                <Input
+                  id="wiz-song"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && title.trim() && key) makeIt();
+                  }}
+                  placeholder="Song name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wiz-show">Show or artist</Label>
+                <Input id="wiz-show" value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
+              </div>
+            </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-gray-700">Title card preview</p>
-            <p className="truncate text-[11px] text-gray-400">
-              {title || 'Song'} · {show ? `from ${show}` : 'no show'} · {keyForDisplay(key)}
-            </p>
-          </div>
-          <div className="shrink-0">
-            <TitleCardThumb title={title} show={show} client={current.client} musicalKey={key} />
-          </div>
-        </div>
+            <div className="space-y-1.5">
+              <Label>Key</Label>
+              <div
+                className={cn(
+                  'rounded-xl p-1 transition-colors',
+                  !key && 'bg-amber-50 ring-1 ring-amber-200',
+                )}
+              >
+                <KeySelect value={key} onChange={setKey} />
+              </div>
+              <p className={cn('text-[11px]', key ? 'text-gray-400' : 'font-medium text-amber-700')}>
+                {key
+                  ? 'Read it off the sheet and it should match. The key goes on the card.'
+                  : 'Read the key off the sheet music, then pick it here. The card needs it.'}
+              </p>
+            </div>
 
-        <div className="space-y-1.5">
-          <Label>Sheet music</Label>
-          <SheetMusicDrop requestId={current.requestId} compact />
-        </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+              <Button
+                onClick={makeIt}
+                disabled={!title.trim() || !key}
+                title={!key ? 'Pick the key first — it goes on the card.' : undefined}
+                className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+              >
+                Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
+                Save &amp; exit
+              </Button>
+              <Button variant="ghost" onClick={() => advancePast(markHandled(current.requestId))}>
+                Skip this song
+              </Button>
+              {!key && <span className="text-[11px] font-medium text-amber-700">Pick a key to continue</span>}
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={makeIt}
-            disabled={!title.trim() || !key}
-            title={!key ? 'Pick the key first — it goes on the card.' : undefined}
-            className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-          >
-            Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-          {!key && <span className="text-[11px] font-medium text-amber-600">Pick a key first</span>}
-          <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
-            Save &amp; exit
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => advancePast(markHandled(current.requestId))}
-          >
-            Skip this song
-          </Button>
+          <aside className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sheet music</p>
+              <SheetMusicDrop requestId={current.requestId} compact />
+              <p className="text-[11px] text-gray-400">Optional. Attach it here to read the key from.</p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">The card</p>
+              <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 p-3">
+                <TitleCardThumb title={title} show={show} client={current.client} musicalKey={key} />
+                <p className="text-center text-[11px] text-gray-400">
+                  {title || 'Song'}
+                  {show ? ` · from ${show}` : ''}
+                  {key ? ` · ${keyForDisplay(key)}` : ''}
+                </p>
+              </div>
+            </div>
+          </aside>
         </div>
       </StepShell>
     );
