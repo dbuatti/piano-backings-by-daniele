@@ -36,6 +36,7 @@ import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
 import { queueTrackForRelease, rerecordTeasers, saveRequestKey } from '@/utils/releaseTrack';
 import { ShopListingDialog } from '@/components/admin/ShopListingDialog';
 import { teaserListLabel } from '@/utils/publishingPipeline';
+import { invalidateShopProducts } from '@/lib/shop-queries';
 import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -354,7 +355,7 @@ export default function ReleaseBoard({
     try {
       const { error: e } = await supabase.from('products').update({ is_active: true }).eq('id', id);
       if (e) throw e;
-      await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+      await invalidateShopProducts(queryClient);
       toast({ title: 'Shop listing activated', description: `${song} is now live in the shop.` });
     } catch (e) {
       toast({ title: "Couldn't activate the listing", description: getErrorMessage(e), variant: 'destructive' });

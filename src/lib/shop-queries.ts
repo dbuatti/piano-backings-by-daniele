@@ -42,6 +42,24 @@ export const SHOP_STALE_TIME = 2 * 60 * 1000;
 export const shopProductsQueryKey = (q: ShopQuery) => ['shopProducts', q.search, q.category, q.trackType, q.sort] as const;
 export const shopProductQueryKey = (id: string) => ['shopProduct', id] as const;
 
+/**
+ * Refresh every cached view of the product catalogue after a write.
+ *
+ * There are two key families and they do not match by prefix: the public shop
+ * page and the admin product table use `['shopProducts', …]`, while the admin
+ * hooks (useShopProducts, used by the release board and wizard) use
+ * `['shop_products']`. Invalidating only one leaves the other stale — a listing
+ * added from the board would not appear in the Shop page. Callers write once and
+ * invalidate through here.
+ */
+export function invalidateShopProducts(queryClient: {
+  invalidateQueries: (filters: { queryKey: string[] }) => unknown;
+}): void {
+  queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+  queryClient.invalidateQueries({ queryKey: ['shopProductsForRepurpose'] });
+  queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+}
+
 // PostgREST `or=(...)` filters treat commas, parentheses and quotes as syntax, so
 // strip them (and LIKE wildcards) from free-text search before interpolating.
 const sanitizeSearch = (term: string) => term.replace(/[,()"'\\%*]/g, ' ').replace(/\s+/g, ' ').trim();

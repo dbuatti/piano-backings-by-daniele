@@ -19,6 +19,7 @@ import { getErrorMessage } from '@/lib/utils';
 import type { DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { listTrackInShop, shopListingDefaults } from '@/utils/releaseTrack';
 import { renderCardToBlob } from '@/utils/titleCard';
+import { invalidateShopProducts } from '@/lib/shop-queries';
 
 /**
  * The pause between clicking "Add to shop" and the listing existing: the owner
@@ -100,7 +101,7 @@ export function ShopListingDialog({
         price: parsed,
         description,
       });
-      await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+      await invalidateShopProducts(queryClient);
       await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
       toast(
         created

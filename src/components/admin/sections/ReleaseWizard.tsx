@@ -29,6 +29,7 @@ import {
 import type { TrackGroup } from '@/utils/publishingPipeline';
 import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 import SheetMusicDrop from '@/components/admin/SheetMusicDrop';
+import { invalidateShopProducts } from '@/lib/shop-queries';
 
 // ---------------------------------------------------------------------------
 // The release wizard.
@@ -546,7 +547,7 @@ export function ReleaseWizard({
       let shopped = false;
       if (toShop && !listed) {
         const res = await listTrackInShop(current, { active: shopLive });
-        await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
+        await invalidateShopProducts(queryClient);
         shopped = res.created;
       }
 

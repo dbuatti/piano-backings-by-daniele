@@ -1,5 +1,4 @@
 import { useSearchParams } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import {
   Store,
   Plug,
@@ -21,6 +20,8 @@ import DataImporter from '@/pages/DataImporter';
 import RequestOwnershipTabContent from '@/components/admin/RequestOwnershipTabContent';
 import IssueReportsTabContent from '@/components/admin/IssueReportsTabContent';
 import FormDebugger from '@/components/admin/FormDebugger';
+import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
+import { SectionTabs } from '@/components/admin/SectionTabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type SettingsSub = 'storefront' | 'integrations' | 'data-tools' | 'feedback' | 'developer';
@@ -37,6 +38,14 @@ const SUBS: { id: SettingsSub; label: string; icon: typeof Store }[] = [
   { id: 'developer', label: 'Developer', icon: Bug },
 ];
 
+const SUB_DESCRIPTIONS: Record<SettingsSub, string> = {
+  storefront: 'Opening hours, holidays and who gets notified about new work.',
+  integrations: 'Connect Gmail, Dropbox, YouTube and the social accounts the app posts with.',
+  'data-tools': 'Ownership transfers, imports and one-off data fixes.',
+  feedback: 'Bug reports and suggestions sent from the site.',
+  developer: 'Diagnostics and testing utilities.',
+};
+
 const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSub = searchParams.get('sub');
@@ -50,32 +59,18 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ unreadIssueReports })
     setSearchParams(sp, { replace: false });
   };
 
+  const tabs = SUBS.map((item) => ({
+    ...item,
+    ...(item.id === 'feedback' && unreadIssueReports > 0
+      ? { badge: unreadIssueReports, tone: 'red' as const }
+      : {}),
+  }));
+
   return (
     <div className="w-full">
-      <div className="flex mb-6 gap-2 overflow-x-auto">
-        {SUBS.map((item) => {
-          const Icon = item.icon;
-          const active = sub === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setSub(item.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 h-10 rounded-xl font-bold text-sm whitespace-nowrap border transition-colors',
-                active ? 'bg-[#1C0357] text-white border-[#1C0357]' : 'bg-white text-[#1C0357] border-gray-200 hover:bg-gray-50'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-              {item.id === 'feedback' && unreadIssueReports > 0 && (
-                <span className="ml-1 bg-red-500 text-white text-[10px] rounded-full h-4 min-w-4 px-1 flex items-center justify-center">
-                  {unreadIssueReports}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <AdminDashboardHeader title="Settings" description={SUB_DESCRIPTIONS[sub]} />
+
+      <SectionTabs tabs={tabs} active={sub} onSelect={setSub} />
 
       {sub === 'storefront' && (
         <div className="space-y-8">

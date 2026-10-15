@@ -32,8 +32,9 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Trash2, Store, Link, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, FileText, Key, FileAudio, PlusCircle, Copy, X } from 'lucide-react';
+import { Loader2, Edit, Trash2, Store, Link, MinusCircle, UploadCloud, Search, ArrowUpDown, Tag, FileText, Key, FileAudio, PlusCircle, Copy, X, Eye, EyeOff } from 'lucide-react';
 import ErrorDisplay from '@/components/ErrorDisplay';
+import { invalidateShopProducts } from '@/lib/shop-queries';
 import { cn, getErrorMessage } from "@/lib/utils";
 import FileInput from '../FileInput';
 import { TrackInfo } from '@/utils/helpers';
@@ -127,6 +128,10 @@ const ProductManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortOption, setSortOption] = useState('created_at_desc');
+  // Live/draft visibility. Defaults to everything: a listing saved as a draft
+  // (from the wizard, the board's "Add to shop" modal, or a manual toggle) must
+  // be findable here, or "activate it in Admin → Shop" sends the owner nowhere.
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'live' | 'draft'>('all');
 
   // Helper to truncate URL for display
   const truncateUrl = (url: string | null, maxLength: number = 40) => {
@@ -141,10 +146,11 @@ const ProductManager: React.FC = () => {
   const { data: products, isLoading, isError, error: fetchError } = useQuery<Product[], Error>({
     queryKey: ['shopProducts', searchTerm, categoryFilter, sortOption],
     queryFn: async () => {
+      // Both live and draft listings are fetched; the Live/Drafts control below
+      // narrows them client-side so it can also show how many of each exist.
       let query = supabase
         .from('products')
-        .select(PRODUCT_WITH_FILES)
-        .eq('is_active', true);
+        .select(PRODUCT_WITH_FILES);
 
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,artist_name.ilike.%${searchTerm}%`);
@@ -215,7 +221,7 @@ const ProductManager: React.FC = () => {
     },
     onSuccess: () => {
       toast({ title: "Product Updated", description: "Product details saved successfully." });
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      invalidateShopProducts(queryClient);
       setEditDialogOpen(false);
     },
     onError: (err: unknown) => {
@@ -235,7 +241,7 @@ const ProductManager: React.FC = () => {
     },
     onSuccess: () => {
       toast({ title: "Product Deleted", description: "Product has been permanently removed." });
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      invalidateShopProducts(queryClient);
       setDeleteDialogOpen(false);
     },
     onError: (err: unknown) => {
@@ -253,8 +259,13 @@ const ProductManager: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      toast({ title: "Status Updated", description: `Product marked as ${variables.is_active ? 'active' : 'inactive'}.` });
-      queryClient.invalidateQueries({ queryKey: ['shopProducts'] });
+      toast({
+        title: variables.is_active ? "Live in the shop" : "Moved to draft",
+        description: variables.is_active
+          ? "Shoppers can buy it now."
+          : "Hidden from the shop until you put it live again.",
+      });
+      invalidateShopProducts(queryClient);
     },
     onError: (err: unknown) => {
       toast({ title: "Error", description: `Failed to update status: ${getErrorMessage(err)}`, variant: "destructive" });
@@ -553,7 +564,19 @@ const ProductManager: React.FC = () => {
   }
 
   const filtersActive = !!searchTerm || categoryFilter !== 'all';
-  const productCount = products?.length ?? 0;
+  const allProducts = products ?? [];
+  const liveCount = allProducts.filter((p) => p.is_active).length;
+  const draftCount = allProducts.length - liveCount;
+  const visibleProducts = allProducts.filter((p) =>
+    visibilityFilter === 'all' ? true : visibilityFilter === 'live' ? p.is_active : !p.is_active
+  );
+  const productCount = visibleProducts.length;
+
+  const VISIBILITY: { id: 'all' | 'live' | 'draft'; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: allProducts.length },
+    { id: 'live', label: 'Live', count: liveCount },
+    { id: 'draft', label: 'Drafts', count: draftCount },
+  ];
 
   return (
     <Card className="bg-white border-none shadow-sm rounded-2xl">
@@ -564,10 +587,53 @@ const ProductManager: React.FC = () => {
         </CardTitle>
         <CardDescription>
           {productCount} product{productCount === 1 ? '' : 's'}
-          {filtersActive ? ' matching your filters' : ''}. Edit a listing or remove it from the shop.
+          {visibilityFilter === 'draft' ? ' waiting for review' : filtersActive ? ' matching your filters' : ''}.
+          Edit a listing, put it live, or remove it from the shop.
         </CardDescription>
       </CardHeader>
       <CardContent>
+
+        {/* Live vs draft is the first question about a catalogue, so it leads the
+            controls and carries the counts. Drafts are exactly what the wizard and
+            the board's "Add to shop" produce, so they must never be hidden. */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {VISIBILITY.map(({ id, label, count }) => {
+            const isActive = visibilityFilter === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setVisibilityFilter(id)}
+                className={cn(
+                  'flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-bold transition-colors',
+                  isActive
+                    ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                    : 'border-gray-200 bg-white text-[#1C0357] hover:bg-gray-50'
+                )}
+              >
+                {label}
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 text-xs tabular-nums',
+                    isActive ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-500'
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+          {draftCount > 0 && visibilityFilter !== 'draft' && (
+            <button
+              type="button"
+              onClick={() => setVisibilityFilter('draft')}
+              className="ml-1 text-xs font-semibold text-[#1C0357] underline"
+            >
+              {draftCount} draft{draftCount === 1 ? '' : 's'} waiting for review
+            </button>
+          )}
+        </div>
 
         <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center">
           <div className="relative w-full sm:flex-1">
@@ -628,17 +694,30 @@ const ProductManager: React.FC = () => {
             <Loader2 className="h-8 w-8 animate-spin text-[#1C0357]" />
             <p className="ml-3 text-lg text-gray-600">Loading products...</p>
           </div>
-        ) : products && products.length > 0 ? (
+        ) : visibleProducts.length > 0 ? (
           <TooltipProvider>
             <div className="border rounded-xl overflow-x-auto">
               <Table>
                 <TableHeader className="bg-[#D1AAF2]/20">
-                  <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow>
+                  <TableRow><TableHead className="w-[200px]">Title</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[150px]">Artist</TableHead><TableHead className="w-[100px]">Price</TableHead><TableHead className="w-[100px]">Category</TableHead><TableHead className="w-[120px]">Vocal Ranges</TableHead><TableHead className="w-[100px]">Key</TableHead><TableHead className="w-[100px]">PDF</TableHead><TableHead className="w-[100px]">Type</TableHead><TableHead>Tracks</TableHead><TableHead className="text-right w-[180px]">Actions</TableHead></TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
+                  {visibleProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.title}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'text-xs',
+                            product.is_active
+                              ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                              : 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                          )}
+                        >
+                          {product.is_active ? 'Live' : 'Draft'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-sm text-gray-700">{product.artist_name || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="whitespace-nowrap text-sm font-medium text-gray-900">
@@ -725,6 +804,20 @@ const ProductManager: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title={product.is_active ? 'Move to draft' : 'Put live in the shop'}
+                            onClick={() =>
+                              toggleProductStatusMutation.mutate({
+                                id: product.id,
+                                is_active: !product.is_active,
+                              })
+                            }
+                            disabled={toggleProductStatusMutation.isPending}
+                          >
+                            {product.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => openEditDialog(product)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -743,12 +836,18 @@ const ProductManager: React.FC = () => {
           <div className="text-center py-12">
             <Store className="mx-auto h-16 w-16 text-gray-300" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">
-              {filtersActive ? 'No products match your filters' : 'Nothing in the shop yet'}
+              {visibilityFilter === 'draft'
+                ? 'No drafts waiting'
+                : filtersActive
+                  ? 'No products match your filters'
+                  : 'Nothing in the shop yet'}
             </h3>
             <p className="mt-1 text-gray-500">
-              {filtersActive
-                ? 'Try a different search or clear the filters.'
-                : 'Use the Create or Repurpose tabs above to add your first product.'}
+              {visibilityFilter === 'draft'
+                ? 'Every listing is live. Listings you save as a draft — from the wizard or the release board — will appear here for review.'
+                : filtersActive
+                  ? 'Try a different search or clear the filters.'
+                  : 'Use the Create or Repurpose tabs above to add your first product.'}
             </p>
           </div>
         )}

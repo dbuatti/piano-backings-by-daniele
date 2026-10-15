@@ -1,5 +1,4 @@
 import { useSearchParams } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import { Users, ShoppingBag, Star, Contact, ListChecks, Gift } from 'lucide-react';
 import { UsersTabContent } from '@/components/admin/UsersTabContent';
 import { OrdersTabContent } from '@/components/admin/OrdersTabContent';
@@ -7,11 +6,13 @@ import ReviewRequestsTab from '@/components/admin/ReviewRequestsTab';
 import CustomersTab from '@/components/admin/crm/CustomersTab';
 import WaitlistTab from '@/components/admin/crm/WaitlistTab';
 import ReferralsTab from '@/components/admin/crm/ReferralsTab';
+import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
+import { SectionTabs } from '@/components/admin/SectionTabs';
 
 type ClientsSub = 'customers' | 'directory' | 'orders' | 'reviews' | 'waitlist' | 'referrals';
 
 const SUBS: { id: ClientsSub; label: string; icon: typeof Users }[] = [
-  { id: 'customers', label: 'Customers (CRM)', icon: Contact },
+  { id: 'customers', label: 'Customers', icon: Contact },
   { id: 'directory', label: 'Accounts', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'reviews', label: 'Review requests', icon: Star },
@@ -19,9 +20,23 @@ const SUBS: { id: ClientsSub; label: string; icon: typeof Users }[] = [
   { id: 'referrals', label: 'Referral codes', icon: Gift },
 ];
 
+// One line of context per tab, so the section never opens as a wall of controls
+// with no framing — the same pattern the Shop section uses.
+const SUB_DESCRIPTIONS: Record<ClientsSub, string> = {
+  customers: 'Everyone you have worked with: contacts, history and follow-ups.',
+  directory: 'Login accounts — who can sign in, and what they can see.',
+  orders: 'Purchases from the shop, and their fulfilment state.',
+  reviews: 'Ask happy clients for a review, and track who has replied.',
+  waitlist: 'People waiting for a service to reopen.',
+  referrals: 'Referral codes to share, and who has used them.',
+};
+
 const ClientsSection: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const sub = (searchParams.get('sub') as ClientsSub) || 'customers';
+  const rawSub = searchParams.get('sub');
+  const sub: ClientsSub = SUBS.some((item) => item.id === rawSub)
+    ? (rawSub as ClientsSub)
+    : 'customers';
 
   const setSub = (next: ClientsSub) => {
     const sp = new URLSearchParams(searchParams);
@@ -31,25 +46,9 @@ const ClientsSection: React.FC = () => {
 
   return (
     <div className="w-full">
-      <div className="flex mb-6 gap-2 overflow-x-auto">
-        {SUBS.map((item) => {
-          const Icon = item.icon;
-          const active = sub === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setSub(item.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 h-10 rounded-xl font-bold text-sm whitespace-nowrap border transition-colors',
-                active ? 'bg-[#1C0357] text-white border-[#1C0357]' : 'bg-white text-[#1C0357] border-gray-200 hover:bg-gray-50'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      <AdminDashboardHeader title="Clients" description={SUB_DESCRIPTIONS[sub]} />
+
+      <SectionTabs tabs={SUBS} active={sub} onSelect={setSub} />
 
       {sub === 'customers' && <CustomersTab />}
       {sub === 'directory' && <UsersTabContent />}

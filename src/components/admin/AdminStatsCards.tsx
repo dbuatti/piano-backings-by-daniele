@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { FileAudio, AlertCircle, Clock, CheckCircle, DollarSign, TrendingUp } from 'lucide-react';
+import { FileAudio, AlertCircle, Clock, DollarSign, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BackingRequest {
@@ -14,88 +14,134 @@ interface AdminStatsCardsProps {
   requests: BackingRequest[];
   totalIssueReports: number;
   unreadIssueReports: number;
+  // When given, the KPIs become shortcuts into the list underneath instead of
+  // read-only numbers — clicking "In Progress" filters to those requests.
+  onFilterStatus?: (status: 'all' | 'in-progress') => void;
+  activeStatus?: string;
+  onOpenFeedback?: () => void;
 }
+
+const StatCard: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  icon: React.ElementType;
+  border: string;
+  valueClass: string;
+  iconClass: string;
+  onClick?: () => void;
+  active?: boolean;
+  title?: string;
+}> = ({ label, value, sub, icon: Icon, border, valueClass, iconClass, onClick, active, title }) => {
+  const body = (
+    <CardContent className="p-4 flex items-center justify-between">
+      <div>
+        <p className="text-xs font-black uppercase tracking-widest text-gray-400">{label}</p>
+        <p className={cn('text-3xl font-black mt-1', valueClass)}>{value}</p>
+        {sub}
+      </div>
+      <div className={cn('h-12 w-12 rounded-2xl flex items-center justify-center', iconClass)}>
+        <Icon size={24} />
+      </div>
+    </CardContent>
+  );
+
+  const cardClass = cn(
+    'shadow-lg border-l-4 bg-white rounded-2xl',
+    border,
+    onClick && 'transition hover:shadow-xl hover:-translate-y-0.5',
+    active && 'ring-2 ring-offset-1 ring-[#1C0357]/30'
+  );
+
+  if (!onClick) return <Card className={cardClass}>{body}</Card>;
+
+  return (
+    <button type="button" onClick={onClick} title={title} className="text-left">
+      <Card className={cardClass}>{body}</Card>
+    </button>
+  );
+};
 
 const AdminStatsCards: React.FC<AdminStatsCardsProps> = ({
   requests,
   totalIssueReports,
   unreadIssueReports,
+  onFilterStatus,
+  activeStatus,
+  onOpenFeedback,
 }) => {
   const totalRequests = requests.length;
-  const completedRequests = requests.filter(r => r.status === 'completed').length;
   const inProgressRequests = requests.filter(r => r.status === 'in-progress').length;
-  
+
   // Calculate revenue
   const totalRevenue = requests
     .filter(r => r.is_paid)
     .reduce((sum, r) => sum + (r.cost || 0), 0);
-    
+
   const pendingRevenue = requests
     .filter(r => !r.is_paid && r.status !== 'cancelled')
     .reduce((sum, r) => sum + (r.cost || 0), 0);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {/* Total Requests Card */}
-      <Card className="shadow-lg border-l-4 border-[#1C0357] bg-white">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Total Requests</p>
-            <p className="text-3xl font-black text-[#1C0357] mt-1">{totalRequests}</p>
-          </div>
-          <div className="h-12 w-12 rounded-2xl bg-[#1C0357]/5 flex items-center justify-center text-[#1C0357]">
-            <FileAudio size={24} />
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        label="Total Requests"
+        value={totalRequests}
+        icon={FileAudio}
+        border="border-[#1C0357]"
+        valueClass="text-[#1C0357]"
+        iconClass="bg-[#1C0357]/5 text-[#1C0357]"
+        onClick={onFilterStatus ? () => onFilterStatus('all') : undefined}
+        active={!!onFilterStatus && (!activeStatus || activeStatus === 'all')}
+        title={onFilterStatus ? 'Show every request' : undefined}
+      />
 
-      {/* Revenue Card */}
-      <Card className="shadow-lg border-l-4 border-green-500 bg-white">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Total Revenue</p>
-            <p className="text-3xl font-black text-green-600 mt-1">${totalRevenue.toFixed(0)}</p>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 flex items-center">
-              <TrendingUp size={10} className="mr-1" /> ${pendingRevenue.toFixed(0)} pending
-            </p>
-          </div>
-          <div className="h-12 w-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600">
-            <DollarSign size={24} />
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        label="Total Revenue"
+        value={`$${totalRevenue.toFixed(0)}`}
+        sub={
+          <p className="text-[10px] font-bold text-gray-400 mt-1 flex items-center">
+            <TrendingUp size={10} className="mr-1" /> ${pendingRevenue.toFixed(0)} pending
+          </p>
+        }
+        icon={DollarSign}
+        border="border-green-500"
+        valueClass="text-green-600"
+        iconClass="bg-green-50 text-green-600"
+      />
 
-      {/* In Progress Card */}
-      <Card className="shadow-lg border-l-4 border-yellow-500 bg-white">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">In Progress</p>
-            <p className="text-3xl font-black text-yellow-600 mt-1">{inProgressRequests}</p>
-          </div>
-          <div className="h-12 w-12 rounded-2xl bg-yellow-50 flex items-center justify-center text-yellow-600">
-            <Clock size={24} />
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        label="In Progress"
+        value={inProgressRequests}
+        icon={Clock}
+        border="border-yellow-500"
+        valueClass="text-yellow-600"
+        iconClass="bg-yellow-50 text-yellow-600"
+        onClick={onFilterStatus ? () => onFilterStatus('in-progress') : undefined}
+        active={!!onFilterStatus && activeStatus === 'in-progress'}
+        title={onFilterStatus ? 'Show only the requests in progress' : undefined}
+      />
 
-      {/* Issue Reports Card */}
-      <Card className="shadow-lg border-l-4 border-red-500 bg-white">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">Issue Reports</p>
-            <p className="text-3xl font-black text-red-600 mt-1">
-              {unreadIssueReports}
-              <span className="text-sm font-bold text-gray-400 ml-1">/{totalIssueReports}</span>
-            </p>
-          </div>
-          <div className={cn(
-            "h-12 w-12 rounded-2xl flex items-center justify-center",
-            unreadIssueReports > 0 ? "bg-red-50 text-red-600 animate-pulse" : "bg-gray-50 text-gray-400"
-          )}>
-            <AlertCircle size={24} />
-          </div>
-        </CardContent>
-      </Card>
+      <StatCard
+        label="Issue Reports"
+        value={
+          <>
+            {unreadIssueReports}
+            <span className="text-lg text-gray-400">/{totalIssueReports}</span>
+          </>
+        }
+        sub={
+          <p className="text-[10px] font-bold text-gray-400 mt-1">
+            {unreadIssueReports > 0 ? 'unread — click to open Feedback' : 'all read'}
+          </p>
+        }
+        icon={AlertCircle}
+        border="border-red-500"
+        valueClass="text-red-600"
+        iconClass={unreadIssueReports > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}
+        onClick={onOpenFeedback}
+        title={onOpenFeedback ? 'Open Settings → Feedback' : undefined}
+      />
     </div>
   );
 };

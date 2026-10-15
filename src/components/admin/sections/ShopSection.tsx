@@ -1,6 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { cn } from '@/lib/utils';
 import {
   Tag,
   PlusCircle,
@@ -10,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminDashboardHeader from '@/components/admin/AdminDashboardHeader';
+import { SectionTabs } from '@/components/admin/SectionTabs';
 
 import CreateNewProduct from '@/components/admin/CreateNewProduct';
 import RepurposeTrackToShop from '@/components/admin/RepurposeTrackToShop';
@@ -88,27 +88,7 @@ const ShopSection: React.FC = () => {
     <div className="w-full">
       <AdminDashboardHeader title="Shop" description={SUB_DESCRIPTIONS[sub]} />
 
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto">
-        {SUBS.map((item) => {
-          const Icon = item.icon;
-          const active = sub === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setSub(item.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 h-9 rounded-xl font-bold text-sm whitespace-nowrap transition-colors border',
-                active
-                  ? 'bg-[#1C0357] text-white border-[#1C0357] shadow-sm'
-                  : 'bg-white text-[#1C0357] border-gray-200 hover:bg-gray-50'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      <SectionTabs tabs={SUBS} active={sub} onSelect={setSub} />
 
       {sub === 'products' && (
         <div className="space-y-6">

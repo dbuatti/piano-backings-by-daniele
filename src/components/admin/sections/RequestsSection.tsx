@@ -169,6 +169,9 @@ const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mo
         requests={requests}
         totalIssueReports={totalIssueReports as number}
         unreadIssueReports={unreadIssueReports as number}
+        onFilterStatus={setStatusFilter}
+        activeStatus={statusFilter}
+        onOpenFeedback={() => navigate('/admin?section=settings&sub=feedback')}
       />
 
       <Card className="shadow-lg mb-6 bg-white rounded-2xl">

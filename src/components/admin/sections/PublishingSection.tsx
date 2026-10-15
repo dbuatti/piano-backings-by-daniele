@@ -2004,47 +2004,50 @@ const PublishingSection = () => {
             <span className="flex items-center gap-2">
               <AlertTriangle className={cn('h-4 w-4', needsYou.length ? 'text-amber-500' : 'text-gray-300')} />
               Needs you
+              {needsYou.length > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold tabular-nums text-amber-700">
+                  {needsYou.length}
+                </span>
+              )}
             </span>
-            <span className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={draftAll}
-                disabled={isLoading || bulkDrafting || missingMetadata === 0}
-                title={
-                  missingMetadata === 0
-                    ? 'Every queued video already has a drafted description.'
-                    : `Ask the AI to write the YouTube description for ${missingMetadata} video${missingMetadata === 1 ? '' : 's'} that don’t have one yet.`
-                }
-              >
-                <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
-                {bulkDrafting
-                  ? 'Writing…'
-                  : missingMetadata > 0
-                    ? `Write ${missingMetadata} description${missingMetadata === 1 ? '' : 's'}`
-                    : 'Descriptions drafted'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={scheduleAll}
-                disabled={isLoading || readyToBook === 0 || scheduling}
-                title={
-                  readyToBook === 0
-                    ? 'No approved video is waiting for a slot.'
-                    : `Give ${readyToBook} ready video${readyToBook === 1 ? '' : 's'} the next free cadence slot${readyToBook === 1 ? '' : 's'}.`
-                }
-              >
-                <CalendarClock className="h-3.5 w-3.5" />{' '}
-                {readyToBook > 0 ? `Book ${readyToBook} slot${readyToBook === 1 ? '' : 's'}` : 'Nothing to book'}
-              </Button>
-            </span>
+            {/* The bulk actions only appear when there is something for them to
+                do. Two disabled buttons restating "nothing to do" is noise on an
+                empty card. */}
+            {(missingMetadata > 0 || readyToBook > 0) && (
+              <span className="flex flex-wrap items-center gap-2">
+                {missingMetadata > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={draftAll}
+                    disabled={isLoading || bulkDrafting}
+                    title={`Ask the AI to write the YouTube description for ${missingMetadata} video${missingMetadata === 1 ? '' : 's'} that don’t have one yet.`}
+                  >
+                    <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
+                    {bulkDrafting ? 'Writing…' : `Write ${missingMetadata} description${missingMetadata === 1 ? '' : 's'}`}
+                  </Button>
+                )}
+                {readyToBook > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={scheduleAll}
+                    disabled={isLoading || scheduling}
+                    title={`Give ${readyToBook} ready video${readyToBook === 1 ? '' : 's'} the next free cadence slot${readyToBook === 1 ? '' : 's'}.`}
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" /> Book {readyToBook} slot{readyToBook === 1 ? '' : 's'}
+                  </Button>
+                )}
+              </span>
+            )}
           </CardTitle>
-          <p className="text-xs text-gray-400">
-            “Write descriptions” drafts the YouTube copy with AI. “Book slots” drops each ready video
-            into the next free cadence slot. Open a song’s page (the book icon, or “Song page”) to see
-            everything about it — video, teasers, captions — and publish it in one place.
-          </p>
+          {(missingMetadata > 0 || readyToBook > 0) && (
+            <p className="text-xs text-gray-400">
+              “Write descriptions” drafts the YouTube copy with AI. “Book slots” drops each ready video
+              into the next free cadence slot. Open a song’s page (the book icon, or “Song page”) to see
+              everything about it — video, teasers, captions — and publish it in one place.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-1">
           {isLoading ? (
