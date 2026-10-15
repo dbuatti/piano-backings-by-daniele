@@ -198,6 +198,30 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-15 — token refresh: weekly → 6-hourly, and only when due
+
+Posting already self-heals — every worker refreshes an expired token through
+`getFreshSocialAccessToken` before it posts — so a lapsed token never blocked a
+post. The gap was elsewhere:
+
+- **Instagram can't refresh an expired token.** A long-lived token must be
+  refreshed *while it still has life*; once it expires the only fix is a full
+  reconnect. The weekly cron gave it one shot a week, and `pg_net` calls fail
+  silently, so a single missed run meant a manual reconnect.
+- **TikTok's token looked dead all week.** Its access token lives 24 hours and
+  the weekly cron only reset it on Sundays, so the connections badge showed
+  "login expired" most of the time even though posting worked.
+
+`refresh-social-tokens` now refreshes a platform only when its token is close to
+expiring (TikTok 12 hours, Instagram 8 days; a manual, non-cron call still
+forces), and `0046_social_token_refresh_cron_frequent.sql` moves the cron to
+every 6 hours. Each window is wider than the cron period so a token can't slip
+past between runs; the Instagram window stays wide enough to be safe under the
+old weekly schedule too.
+
+**To apply:** run `supabase/migrations/0046_social_token_refresh_cron_frequent.sql`
+in the Supabase SQL editor (no workflow applies migrations).
+
 ### 2026-10-15 — Instagram is live (and the bug that hid it)
 
 **The first Reel posted itself.** `Wondering` went out through the ordinary

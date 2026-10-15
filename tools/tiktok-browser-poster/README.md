@@ -90,6 +90,15 @@ Two things to set on the Mac Mini:
 - Keep it on Ethernet/wifi and let it stay on; the profile and session live in
   `tools/tiktok-browser-poster/.auth/profile` on that machine.
 
+### Reaching the mini remotely
+Nothing about the poster needs this — it is only how you get a shell on the host
+when you are not at home. Add two SSH aliases in `~/.ssh/config`: one pointing at
+the mini's **Tailscale** address (installed on both the mini and your laptop) so
+the same alias works on the home network *and* away from it, and one for the plain
+LAN address as a fallback for when Tailscale is not running. Tailscale routes
+directly over the LAN when both machines are home, so the first alias is no slower
+there than the second.
+
 ### Logging in without a screen
 The login step needs a visible browser, but the Mac Mini may be headless.
 
