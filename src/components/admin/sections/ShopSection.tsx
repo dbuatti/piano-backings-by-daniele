@@ -92,20 +92,20 @@ const ShopSection: React.FC = () => {
 
       {sub === 'products' && (
         <div className="space-y-6">
-          <ShopPreviewsCard />
           <Tabs value={view ?? 'list'} onValueChange={(next) => setView(next)} className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-3 bg-gray-100/70 p-1 rounded-xl">
               <TabsTrigger value="list" className="rounded-lg font-bold">
-                Products
+                Listings
               </TabsTrigger>
               <TabsTrigger value="create" className="rounded-lg font-bold">
-                <PlusCircle className="mr-1.5 h-4 w-4" /> Create
+                <PlusCircle className="mr-1.5 h-4 w-4" /> New listing
               </TabsTrigger>
               <TabsTrigger value="repurpose" className="rounded-lg font-bold">
-                <RefreshCw className="mr-1.5 h-4 w-4" /> Repurpose
+                <RefreshCw className="mr-1.5 h-4 w-4" /> Repurpose a track
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="list" className="mt-4">
+            <TabsContent value="list" className="mt-4 space-y-6">
+              <ShopPreviewsCard />
               <ProductManager />
             </TabsContent>
             <TabsContent value="create" className="mt-4">

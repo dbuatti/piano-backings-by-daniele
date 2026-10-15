@@ -10,7 +10,7 @@ const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({ title, desc
   return (
     <div className="mb-8">
       <h1 className="text-3xl font-bold text-[#1C0357]">{title}</h1>
-      <p className="text-lg text-[#1C0357]/90">{description}</p>
+      <p className="mt-1 max-w-3xl text-base text-gray-500">{description}</p>
       {adminEmail && (
         <p className="text-sm text-gray-600 mt-2 flex items-center">
           Logged in as: <span className="font-medium ml-1 text-[#1C0357]">{adminEmail}</span>
