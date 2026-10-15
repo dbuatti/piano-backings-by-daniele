@@ -23,7 +23,10 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned, not `latest`: resolving `latest` hits the GitHub releases API
+          # and fails the whole deploy when that is rate limited (seen
+          # 2026-10-15). Bump this deliberately when a newer CLI is needed.
+          version: 2.121.0
 
       - name: Deploy all Edge Functions
         run: supabase functions deploy --project-ref "$PROJECT_ID"
