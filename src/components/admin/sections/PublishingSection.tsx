@@ -238,6 +238,79 @@ function formatWhen(iso: string | null, tz: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Queue runway
+// ---------------------------------------------------------------------------
+// How long posting keeps going on its own, and the nudge to top the queue up
+// before it stops. Deliberately loud: an empty queue is silent — nothing posts,
+// nothing emails you, and the only symptom is a quiet channel.
+function QueueRunway({
+  postDates,
+  notQueued,
+  tz,
+  cadenceLabel,
+  onQueue,
+}: {
+  postDates: string[];
+  notQueued: number;
+  tz: string;
+  cadenceLabel: string;
+  onQueue: () => void;
+}) {
+  const now = Date.now();
+  const future = postDates
+    .map((s) => new Date(s).getTime())
+    .filter((t) => Number.isFinite(t) && t > now)
+    .sort((a, b) => a - b);
+  // One entry per posting day: a song's video and its teasers share a slot, and
+  // a song rows twice on the same day only counts once.
+  const days = [...new Set(future.map((t) => new Date(t).toLocaleDateString('en-CA', { timeZone: tz })))];
+  const last = future.length ? new Date(future[future.length - 1]) : null;
+  const daysLeft = last ? Math.ceil((last.getTime() - now) / 86_400_000) : 0;
+
+  const tone: 'empty' | 'low' | 'ok' = !last ? 'empty' : daysLeft <= 6 ? 'low' : 'ok';
+  const shell = {
+    empty: 'border-red-200 bg-red-50',
+    low: 'border-amber-200 bg-amber-50',
+    ok: 'border-emerald-200 bg-emerald-50/70',
+  }[tone];
+  const ink = {
+    empty: 'text-red-700',
+    low: 'text-amber-800',
+    ok: 'text-emerald-800',
+  }[tone];
+
+  const headline =
+    tone === 'empty'
+      ? 'Nothing is queued — nothing will post.'
+      : tone === 'low'
+        ? `Only ${days.length} posting day${days.length === 1 ? '' : 's'} left — the last is ${formatWhen(last!.toISOString(), tz)}.`
+        : `${days.length} posting days queued, running to ${formatWhen(last!.toISOString(), tz)}.`;
+
+  const nudge =
+    notQueued > 0
+      ? `${notQueued} delivered song${notQueued === 1 ? '' : 's'} ${notQueued === 1 ? "isn't" : "aren't"} queued yet — adding ${notQueued === 1 ? 'it' : 'them'} keeps the run going.`
+      : 'Every delivered song is already queued. Record a new one to add more.';
+
+  return (
+    <div className={cn('flex flex-wrap items-start gap-x-4 gap-y-3 rounded-2xl border px-4 py-3', shell)}>
+      <CalendarClock className={cn('mt-0.5 h-5 w-5 shrink-0', ink)} />
+      <div className="min-w-0 flex-1">
+        <p className={cn('text-sm font-semibold', ink)}>{headline}</p>
+        <p className="mt-0.5 text-xs text-gray-600">{nudge}</p>
+        <p className="mt-0.5 text-[11px] text-gray-500">
+          To queue one: <span className="font-medium">Backing track library</span> tab → open a delivered song →{' '}
+          <span className="font-medium">Review &amp; queue</span>. Each song takes the next free slot on your{' '}
+          {cadenceLabel} cadence.
+        </p>
+      </div>
+      <Button size="sm" onClick={onQueue} className="bg-[#1C0357] hover:bg-[#2D0B8C]">
+        <ListPlus className="h-4 w-4" /> Queue a song
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Weekly slot settings
 // ---------------------------------------------------------------------------
 function SlotSettings({
@@ -1149,6 +1222,11 @@ const PublishingSection = () => {
   const queueTruncated = queueData?.truncated ?? false;
 
   const tz = settings?.timezone ?? 'Australia/Sydney';
+  // Plain-words cadence, for the runway nudge's one-line "how".
+  const cadenceLabel =
+    (settings?.schedule_mode ?? 'interval') === 'interval'
+      ? `${settings?.interval_days ?? 3}-day`
+      : 'weekly';
   // The automation switch. It decides whether a booked teaser will move on its
   // own or is waiting for a hand-post, so the "needs you" band reads from it.
   const autoOn = settings?.social_auto_post === true;
@@ -1156,6 +1234,14 @@ const PublishingSection = () => {
   // YouTube-only queue, used for the bulk draft/schedule buttons.
   const youtubeQueue = queue.filter((p) => p.platform === 'youtube');
   const active = youtubeQueue.filter((p) => p.status !== 'skipped' && p.status !== 'published');
+
+  // Every slot the worker will actually post into: rows that are booked and not
+  // yet live. Skipped and failed rows are left out, so the runway can't claim
+  // time it doesn't have.
+  const postDates = youtubeQueue
+    .filter((p) => p.status === 'scheduled' || p.status === 'publishing')
+    .map((p) => p.scheduled_for)
+    .filter((s): s is string => !!s);
 
   // Delivered tracks the board can't see a YouTube video for. Computed here, not
   // read back from the board, because the board only mounts once its disclosure
@@ -1856,6 +1942,16 @@ const PublishingSection = () => {
           </div>
         </div>
       )}
+
+      {/* The runway, on every tab: it is the one number that decides whether the
+          channel keeps posting without you doing anything. */}
+      <QueueRunway
+        postDates={postDates}
+        notQueued={notQueued}
+        tz={tz}
+        cadenceLabel={cadenceLabel}
+        onQueue={() => setTab('tracks')}
+      />
 
       {tab === 'pipeline' && (
         <>

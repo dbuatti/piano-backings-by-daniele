@@ -63,6 +63,35 @@ const AdminShell = () => {
     refetchInterval: 30000,
   });
 
+  // The publishing runway, boiled down to one row: when the last booked slot
+  // lands. The Publishing page explains it properly; this is so the nudge
+  // follows you around the rest of the admin instead of waiting to be visited.
+  const { data: lastBookedSlot } = useQuery<string | null, Error>({
+    queryKey: ['publishing_runway'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('publications')
+        .select('scheduled_for')
+        .eq('platform', 'youtube')
+        .eq('status', 'scheduled')
+        .gt('scheduled_for', new Date().toISOString())
+        .order('scheduled_for', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return (data?.[0]?.scheduled_for as string | undefined) ?? null;
+    },
+    enabled: isAdmin,
+    refetchInterval: 60000,
+  });
+
+  const runwayDays = lastBookedSlot
+    ? Math.ceil((new Date(lastBookedSlot).getTime() - Date.now()) / 86_400_000)
+    : 0;
+  const runwayShort =
+    lastBookedSlot === null || (lastBookedSlot !== undefined && runwayDays <= 6);
+  const runwayBadge =
+    lastBookedSlot === null ? '!' : runwayDays < 0 ? '!' : `${runwayDays}d`;
+
   useEffect(() => {
     if (!isAuthLoading && !isAdmin) {
       navigate('/');
@@ -128,6 +157,18 @@ const AdminShell = () => {
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
+                {item.id === 'publishing' && runwayShort && (
+                  <span
+                    title={
+                      lastBookedSlot === null
+                        ? 'Nothing is queued — nothing will post until you queue a song.'
+                        : `Posting runs out in ${runwayDays} days — queue another song.`
+                    }
+                    className="ml-1 bg-amber-400 text-[#1C0357] text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center"
+                  >
+                    {runwayBadge}
+                  </span>
+                )}
                 {item.id === 'settings' && (unreadIssueReports as number) > 0 && (
                   <span className="ml-1 bg-red-500 text-white text-[10px] rounded-full h-4 min-w-4 px-1 flex items-center justify-center">
                     {unreadIssueReports}

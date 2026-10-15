@@ -441,7 +441,7 @@ export default function ReleaseBoard({
                   title="Step through every delivered track that isn't on YouTube yet, one at a time."
                   className="inline-flex items-center gap-1.5 rounded-full bg-[#1C0357] px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#2D0B8C]"
                 >
-                  <ListPlus className="h-3 w-3" /> Vett backlog ({notOnYoutubeIds.length})
+                  <ListPlus className="h-3 w-3" /> Review &amp; queue all ({notOnYoutubeIds.length})
                 </button>
               )}
               <button
