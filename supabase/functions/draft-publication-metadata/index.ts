@@ -106,31 +106,56 @@ No emojis. Write like a friendly professional, never hype.`;
 // Google retires model names over time, and access varies by key age (a newer
 // key can lose access to an older model). Try an ordered list and use the first
 // one that answers, so a retired/overloaded name doesn't take the pipeline down.
-// Override the whole list with the GEMINI_MODEL secret if needed.
+//
+// The order matters more than it looks. The newest flash models are routinely
+// "experiencing high demand" (503) and two of those in a row used to burn the
+// whole time budget before reaching the model that actually answers — the owner
+// saw "Gemini request timed out" every time. So: the proven, fast model first,
+// the newest names behind it. Override the whole list with GEMINI_MODEL.
 function geminiModels() {
   const override = Deno.env.get('GEMINI_MODEL');
   return [
     ...new Set(
-      [override, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-2.5-flash'].filter(Boolean)
+      [
+        override,
+        'gemini-2.5-flash',
+        'gemini-flash-latest',
+        'gemini-3.8-flash',
+        'gemini-3.7-flash',
+        'gemini-2.5-flash-lite',
+      ].filter(Boolean)
     ),
   ];
 }
 
+// Drafting metadata is a writing job with every fact supplied, so a model's
+// reasoning pass only adds seconds. The 2.5 family takes a thinking budget, the
+// 3.x family a level, and sending the wrong one is a 400 — so the first rejected
+// attempt drops the setting and retries the same name before moving on.
+function generationConfig(model, withThinking) {
+  const base = { responseMimeType: 'application/json', temperature: 0.6 };
+  if (!withThinking) return base;
+  return /^gemini-3/.test(model)
+    ? { ...base, thinkingConfig: { thinkingLevel: 'low' } }
+    : { ...base, thinkingConfig: { thinkingBudget: 0 } };
+}
+
 async function callGemini(apiKey, prompt) {
-  const body = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
-  });
-  const deadline = Date.now() + 50000; // stay well under the function's wall-clock limit
+  const deadline = Date.now() + 40000; // stay well under the function's wall-clock limit
   let lastError;
+  let withThinking = true;
   for (const model of geminiModels()) {
     if (Date.now() > deadline) break;
     // 503 means the model exists but is briefly overloaded, so retry the same
-    // name a couple of times before falling through to the next candidate.
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    // name once before falling through to the next candidate.
+    for (let attempt = 1; attempt <= 2; attempt++) {
       if (Date.now() > deadline) break;
+      const body = JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: generationConfig(model, withThinking),
+      });
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), Math.max(5000, Math.min(20000, deadline - Date.now())));
+      const timer = setTimeout(() => controller.abort(), Math.max(6000, Math.min(15000, deadline - Date.now())));
       let res;
       try {
         res = await fetch(
@@ -156,17 +181,76 @@ async function callGemini(apiKey, prompt) {
       lastError = new Error(`Gemini request failed (${res.status}) on ${model}: ${detail}`);
       console.error(`[draft-publication-metadata] model ${model} failed (attempt ${attempt}): ${res.status} ${detail}`);
 
-      if (res.status === 503 && attempt < 3) {
-        await new Promise((r) => setTimeout(r, 700 * attempt));
+      if (withThinking && res.status === 400 && /thinking/i.test(detail)) {
+        withThinking = false;
         continue;
       }
-      // 404 = retired/unavailable, 503 = overloaded — try the next name. Anything
-      // else (bad key, malformed request) won't be fixed by another model.
-      if ([404, 503].includes(res.status)) break;
-      throw lastError;
+      if (res.status === 503 && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * attempt));
+        continue;
+      }
+      // Anything else: move to the next name rather than give up — a model that
+      // is retired or briefly overloaded says nothing about the others.
+      break;
     }
   }
   throw lastError || new Error('Gemini request failed.');
+}
+
+// The house template: the copy the owner would write by hand. Deterministic,
+// built only from facts already on the request, and always readable — so the
+// queue never depends on Gemini's mood. Used when every model above fails.
+function buildTemplate({ platform, song, show, dedication, key, title, productUrl }) {
+  const firstName = String(dedication || '').split(/\s+/)[0] || '';
+  const songLine = String(song || '').trim() || 'This song';
+  const cleanedShow = String(show || '').replace(/^\s*from\s+/i, '').trim();
+  const showFrom = cleanedShow ? `from ${cleanedShow}` : '';
+  const keyPart = key ? ` in ${key}` : '';
+  // Same title line the board's review preview builds.
+  const titleLine = `${song || 'Song'} — Audition Cut${showFrom ? ` (${showFrom})` : ''}`;
+  const resolvedTitle = title || `${songLine}${showFrom ? ` (${showFrom})` : ''}`;
+
+  if (platform === 'tiktok' || platform === 'instagram') {
+    return {
+      title: resolvedTitle,
+      caption: [
+        `${songLine}${showFrom ? ` ${showFrom}` : ''} — piano backing track${keyPart}.`,
+        firstName ? `Made for ${firstName} to sing over.` : 'Made to sing over: audition, rehearse, perform.',
+        'Any song, any key — link in bio.',
+        '',
+        '#pianobackingtrack #auditioncut #musicaltheatre',
+      ].join('\n'),
+      hashtags: ['pianobackingtrack', 'auditioncut', 'musicaltheatre'],
+    };
+  }
+
+  return {
+    title: resolvedTitle,
+    // Mirrors the description skeleton the board shows when a track is reviewed
+    // (ReleaseBoard.descriptionSkeleton) — so what was approved is what lands.
+    description: [
+      [`${titleLine}.`, firstName ? `Prepared for ${firstName}.` : '', key ? `Key: ${key}.` : '']
+        .filter(Boolean)
+        .join(' '),
+      'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
+      productUrl
+        ? `Get this track (instant download): ${productUrl}\nOrder a custom cut in your key: ${SITE}/form-page`
+        : `Order yours (any song, your key): ${SITE}/form-page`,
+      'Follow: https://www.youtube.com/@pianobackingsbydaniele and https://www.instagram.com/pianobackingsbydaniele/',
+      '#pianobackingtrack #backingtrack #auditioncut #musicaltheatre',
+    ].join('\n\n'),
+    tags: [
+      songLine,
+      show,
+      'piano backing track',
+      'audition cut',
+      key ? `${key} backing track` : 'backing track',
+      'musical theatre audition',
+      'singing practice',
+      'piano accompaniment',
+    ].filter(Boolean),
+    hashtags: ['pianobackingtrack', 'backingtrack', 'auditioncut', 'musicaltheatre'],
+  };
 }
 
 async function isAdmin(req, supabaseAdmin) {
@@ -221,7 +305,7 @@ Deno.serve(async (req) => {
       String(reqRow.song_title || asset.song_title || '').trim() ||
       'Piano backing track';
 
-    const drafted = await callGemini(apiKey, buildPrompt({
+    const facts = {
       platform,
       song: String(reqRow.song_title || '').trim(),
       show: String(reqRow.musical_or_artist || '').trim(),
@@ -232,7 +316,21 @@ Deno.serve(async (req) => {
         song_title: asset.song_title,
         show: asset.show,
       }),
-    }));
+    };
+
+    // Gemini being busy, slow or unavailable must not block the queue — the
+    // owner is better served by copy they can edit than by an empty description.
+    let drafted;
+    let draftSource = 'ai';
+    let draftNote;
+    try {
+      drafted = await callGemini(apiKey, buildPrompt(facts));
+    } catch (err) {
+      console.error('[draft-publication-metadata] AI draft failed, using the house template:', err?.message || err);
+      drafted = buildTemplate(facts);
+      draftSource = 'template';
+      draftNote = 'The AI writer was busy, so this is the house template. Edit it if you like.';
+    }
 
     const metadata = {
       title: String(drafted.title || fallbackTitle).slice(0, 100),
@@ -242,6 +340,11 @@ Deno.serve(async (req) => {
       // TikTok and Instagram post a caption. run-social-queue and the composer
       // both read `metadata.caption` first, then fall back to the title.
       ...(drafted.caption ? { caption: String(drafted.caption).slice(0, 2200) } : {}),
+      // Always written, never merged over: the metadata below is merged into the
+      // row, so a note left by an earlier template run would otherwise outlive
+      // the AI draft that replaced it.
+      draft_source: draftSource,
+      draft_note: draftNote || null,
     };
 
     // Only not-yet-approved rows move to pending_approval — a scheduled
@@ -284,7 +387,7 @@ Deno.serve(async (req) => {
       return json({ error: `No ${platform} publication exists for this asset.` }, 400);
     }
 
-    return json({ publication_id: pub.id, metadata: mergedMetadata });
+    return json({ publication_id: pub.id, metadata: mergedMetadata, draft_source: draftSource, draft_note: draftNote });
   } catch (error) {
     console.error('[draft-publication-metadata] failed:', error?.message || error);
     return json({ error: error?.message || 'Unknown error' }, 500);

@@ -212,7 +212,7 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
     if (!assetId || !publicationId || redrafting) return;
     setRedrafting(true);
     try {
-      const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+      const { data: drafted, error } = await supabase.functions.invoke('draft-publication-metadata', {
         body: { asset_id: assetId, platform: 'tiktok' },
       });
       if (error) throw error;
@@ -224,7 +224,14 @@ const TikTokComposer = ({ publicationId, onClose, onPosted }: TikTokComposerProp
       const meta = (data?.metadata ?? {}) as Record<string, unknown>;
       setCaption(String(meta.caption || meta.title || ''));
       onPosted();
-      toast({ title: 'New caption written', description: 'Edit it freely — it saves with the post.' });
+      if (drafted?.draft_source === 'template') {
+        toast({
+          title: 'Caption from the template',
+          description: drafted.draft_note || 'The AI writer was busy — edit it freely, it saves with the post.',
+        });
+      } else {
+        toast({ title: 'New caption written', description: 'Edit it freely — it saves with the post.' });
+      }
     } catch (err) {
       toast({
         title: "Couldn't write a new caption",

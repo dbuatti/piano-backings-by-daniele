@@ -873,9 +873,14 @@ function QueueRow({
     }, 'publish', 'Published');
   };
 
-  const redraft = () =>
-    run(async () => {
-      const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+  // Re-drafting is best-effort on the AI side: the function falls back to the
+  // house template when every model is busy, so the row always ends up with a
+  // description it can be approved with. When that happens, say so instead of
+  // claiming the AI wrote it.
+  const redraft = async () => {
+    setBusy('draft');
+    try {
+      const { data, error } = await supabase.functions.invoke('draft-publication-metadata', {
         body: { asset_id: publication.asset_id, platform: publication.platform },
       });
       if (error) throw error;
@@ -892,7 +897,25 @@ function QueueRow({
           });
         }
       }
-    }, 'draft', 'Metadata regenerated');
+      if (data?.draft_source === 'template') {
+        toast({
+          title: 'Drafted from the template',
+          description: data.draft_note || 'The AI writer was busy — edit the copy if you like.',
+        });
+      } else {
+        toast({ title: 'Metadata regenerated' });
+      }
+      onMutation();
+    } catch (e) {
+      toast({
+        title: "Couldn't draft the copy",
+        description: await getFunctionErrorMessage(e),
+        variant: 'destructive',
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   // Manual slot: lets a publish time be chosen even when auto_schedule is off
   // (or to override the auto slot for one video). Uploads via the same queue.
@@ -1528,14 +1551,16 @@ const PublishingSection = () => {
     setBulkDrafting(true);
     let ok = 0;
     let failed = 0;
+    let templated = 0;
     let lastError = '';
     for (const p of missing) {
       try {
-        const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+        const { data, error } = await supabase.functions.invoke('draft-publication-metadata', {
           body: { asset_id: p.asset_id, platform: p.platform },
         });
         if (error) throw error;
         ok += 1;
+        if (data?.draft_source === 'template') templated += 1;
       } catch (e) {
         failed += 1;
         lastError = await getFunctionErrorMessage(e);
@@ -1545,7 +1570,11 @@ const PublishingSection = () => {
     refetch();
     toast({
       title: `Drafted ${ok} of ${missing.length}`,
-      description: failed ? `${failed} failed — ${lastError}` : undefined,
+      description: failed
+        ? `${failed} failed — ${lastError}`
+        : templated
+          ? `${templated} used the house template (the AI writer was busy) — edit those if you like.`
+          : undefined,
       variant: failed ? 'destructive' : 'default',
     });
   };
@@ -1687,12 +1716,19 @@ const PublishingSection = () => {
   const draftOne = async (pub: PublicationWithAsset) => {
     setDraftingId(pub.id);
     try {
-      const { error } = await supabase.functions.invoke('draft-publication-metadata', {
+      const { data, error } = await supabase.functions.invoke('draft-publication-metadata', {
         body: { asset_id: pub.asset_id, platform: pub.platform },
       });
       if (error) throw error;
       await refetch();
-      toast({ title: 'Copy drafted' });
+      if (data?.draft_source === 'template') {
+        toast({
+          title: 'Drafted from the template',
+          description: data.draft_note || 'The AI writer was busy — edit the copy if you like.',
+        });
+      } else {
+        toast({ title: 'Copy drafted' });
+      }
     } catch (e) {
       toast({
         title: "Couldn't draft the copy",

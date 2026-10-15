@@ -923,16 +923,21 @@ export default function TitleCardGenerator() {
       if (pubErr || !pub) throw new Error(pubErr?.message || "Couldn't create the publication.");
 
       setQueueStep("drafting");
-      const { error: draftErr } = await supabase.functions.invoke(
+      const { data: draft, error: draftErr } = await supabase.functions.invoke(
         "draft-publication-metadata",
         { body: { asset_id: asset.id, platform: "youtube" } }
       );
       const draftFailed = Boolean(draftErr);
+      // The function always leaves copy behind: the AI draft, or the house
+      // template when every model was busy. Only a real failure leaves nothing.
+      const usedTemplate = draft?.draft_source === "template";
 
       setQueueResult(
         draftFailed
-          ? "Video saved to the publishing queue, but the AI metadata draft failed. Re-draft or edit it in Admin → Publishing."
-          : "Saved to the publishing queue with AI-drafted metadata. Review and approve it in Admin → Publishing."
+          ? "Video saved to the publishing queue, but the metadata draft failed. Re-draft or edit it in Admin → Publishing."
+          : usedTemplate
+            ? "Saved to the publishing queue with the house template copy (the AI writer was busy). Review and approve it in Admin → Publishing."
+            : "Saved to the publishing queue with AI-drafted metadata. Review and approve it in Admin → Publishing."
       );
     } catch (e) {
       setQueueError(e instanceof Error ? e.message : "Failed to save to the queue.");
@@ -1082,18 +1087,22 @@ export default function TitleCardGenerator() {
 
       setQueueStep("drafting");
       let draftsFailed = 0;
+      let usedTemplate = false;
       for (const { platform, assetId } of created) {
-        const { error: draftErr } = await supabase.functions.invoke(
+        const { data: draft, error: draftErr } = await supabase.functions.invoke(
           "draft-publication-metadata",
           { body: { asset_id: assetId, platform } }
         );
         if (draftErr) draftsFailed += 1;
+        if (draft?.draft_source === "template") usedTemplate = true;
       }
 
       setQueueResult(
         draftsFailed
-          ? "Teaser saved for TikTok & Instagram, but the AI caption draft failed. Re-draft or edit it in Admin → Publishing."
-          : "Teaser saved for TikTok & Instagram with AI-drafted captions. Review them in Admin → Publishing."
+          ? "Teaser saved for TikTok & Instagram, but the caption draft failed. Re-draft or edit it in Admin → Publishing."
+          : usedTemplate
+            ? "Teaser saved for TikTok & Instagram with the house template captions (the AI writer was busy). Review them in Admin → Publishing."
+            : "Teaser saved for TikTok & Instagram with AI-drafted captions. Review them in Admin → Publishing."
       );
     } catch (e) {
       setQueueError(e instanceof Error ? e.message : "Failed to save the teaser.");

@@ -16,6 +16,10 @@ export interface PublicationMetadata {
   tags?: string[];
   hashtags?: string[];
   privacy?: "private" | "unlisted" | "public";
+  // How the current copy was produced. `template` means the AI writer was
+  // unavailable and the house template was used — it is editable like any copy.
+  draft_source?: "ai" | "template";
+  draft_note?: string | null;
   [key: string]: unknown;
 }
 
