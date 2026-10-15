@@ -131,7 +131,7 @@ const FormDebugger: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-lg border-2 border-orange-200 bg-orange-50/30">
+    <Card className="shadow-lg border-2 border-orange-200 bg-orange-50/30 rounded-2xl">
       <CardHeader>
         <CardTitle className="text-xl text-[#1C0357] flex items-center">
           <Bug className="mr-2 h-5 w-5 text-orange-500" />

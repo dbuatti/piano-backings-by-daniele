@@ -192,7 +192,7 @@ const RequestOwnershipTabContent: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-lg bg-white">
+    <Card className="shadow-lg bg-white rounded-2xl">
       <CardHeader>
         <CardTitle className="text-xl text-[#1C0357] flex items-center">
           <User className="mr-2 h-5 w-5" />

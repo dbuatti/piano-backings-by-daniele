@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn, getErrorMessage } from "@/lib/utils";
-import { RefreshCcw, Loader2, FileAudio } from 'lucide-react';
+import { RefreshCcw, Loader2, FileAudio, List, CalendarDays, DollarSign } from 'lucide-react';
 
 import { useAdminRequests } from '@/hooks/admin/useAdminRequests';
 import { useRequestFilters } from '@/hooks/admin/useRequestFilters';
@@ -30,6 +30,12 @@ interface RequestsSectionProps {
   selectedRequestId: string | null;
   mode: EditorMode;
 }
+
+const VIEW_MODES: { id: 'list' | 'calendar' | 'pricing'; label: string; icon: typeof List }[] = [
+  { id: 'list', label: 'List', icon: List },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'pricing', label: 'Pricing', icon: DollarSign },
+];
 
 const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mode }) => {
   const navigate = useNavigate();
@@ -192,32 +198,41 @@ const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mo
         </CardContent>
       </Card>
 
-      <div className="flex justify-end mb-4 space-x-2">
-        <Button
-          variant={viewMode === 'list' ? 'default' : 'outline'}
-          onClick={() => setViewMode('list')}
-          className={cn("rounded-full px-6", viewMode === 'list' ? 'bg-[#1C0357]' : '')}
-        >
-          List View
-        </Button>
-        <Button
-          variant={viewMode === 'calendar' ? 'default' : 'outline'}
-          onClick={() => setViewMode('calendar')}
-          className={cn("rounded-full px-6", viewMode === 'calendar' ? 'bg-[#1C0357]' : '')}
-        >
-          Calendar
-        </Button>
-        <Button
-          variant={viewMode === 'pricing' ? 'default' : 'outline'}
-          onClick={() => setViewMode('pricing')}
-          className={cn("rounded-full px-6", viewMode === 'pricing' ? 'bg-[#1C0357]' : '')}
-        >
-          Pricing
-        </Button>
+      {/* One segmented control, matching the mode switcher inside the request
+          pane, instead of three loose pills that read as separate actions. */}
+      <div className="mb-4 flex justify-end">
+        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50/70 p-1">
+          {VIEW_MODES.map(({ id, label, icon: Icon }) => {
+            const active = viewMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setViewMode(id)}
+                className={cn(
+                  'flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-bold transition-colors',
+                  active ? 'bg-[#1C0357] text-white shadow-sm' : 'text-[#1C0357] hover:bg-gray-100'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Master–detail split */}
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
+      {/* Master–detail split — only in list view. The calendar and the pricing
+          matrix are full-width references, and nothing there feeds the detail
+          pane, so the pane is not rendered for them. */}
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-6',
+          viewMode === 'list' && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-start'
+        )}
+      >
         {/* Master list */}
         <div className="min-w-0">
           {viewMode === 'list' && (
@@ -256,23 +271,25 @@ const RequestsSection: React.FC<RequestsSectionProps> = ({ selectedRequestId, mo
         </div>
 
         {/* Detail / editor pane */}
-        <div className="min-w-0">
-          {selectedRequestId ? (
-            <RequestEditorPane
-              requestId={selectedRequestId}
-              mode={mode}
-              onModeChange={handleModeChange}
-            />
-          ) : (
-            <Card className="shadow-lg bg-white rounded-2xl">
-              <CardContent className="p-12 text-center text-gray-500">
-                <FileAudio className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                <p className="font-bold text-[#1C0357]">Select a request</p>
-                <p className="text-sm mt-1">Choose a request from the list to view, edit, upload tracks, or email the client.</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {viewMode === 'list' && (
+          <div className="min-w-0">
+            {selectedRequestId ? (
+              <RequestEditorPane
+                requestId={selectedRequestId}
+                mode={mode}
+                onModeChange={handleModeChange}
+              />
+            ) : (
+              <Card className="shadow-lg bg-white rounded-2xl">
+                <CardContent className="p-12 text-center text-gray-500">
+                  <FileAudio className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                  <p className="font-bold text-[#1C0357]">Select a request</p>
+                  <p className="text-sm mt-1">Choose a request from the list to view, edit, upload tracks, or email the client.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
 
       <UploadTrackDialog

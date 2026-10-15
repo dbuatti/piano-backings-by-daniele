@@ -97,7 +97,7 @@ const HolidayModeSettings: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Card className="shadow-lg bg-white">
+      <Card className="shadow-lg bg-white rounded-2xl">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
             <Plane className="mr-2 h-5 w-5" />
@@ -114,7 +114,7 @@ const HolidayModeSettings: React.FC = () => {
 
   if (fetchError) {
     return (
-      <Card className="shadow-lg bg-white">
+      <Card className="shadow-lg bg-white rounded-2xl">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
             <Plane className="mr-2 h-5 w-5" />
@@ -129,7 +129,7 @@ const HolidayModeSettings: React.FC = () => {
   }
 
   return (
-    <Card className="shadow-lg bg-white">
+    <Card className="shadow-lg bg-white rounded-2xl">
       <CardHeader>
         <CardTitle className="text-2xl text-[#1C0357] flex items-center">
           <Plane className="mr-2 h-5 w-5" />

@@ -136,7 +136,7 @@ const ReportsSection = () => {
 
       {/* Top-line KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 my-6">
-        <Card className="shadow-lg border-l-4 border-green-500 bg-white">
+        <Card className="shadow-lg border-l-4 border-green-500 bg-white rounded-2xl">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">Avg Order Value</p>
@@ -148,7 +148,7 @@ const ReportsSection = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-l-4 border-[#F538BC] bg-white">
+        <Card className="shadow-lg border-l-4 border-[#F538BC] bg-white rounded-2xl">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">Conversion Rate</p>
@@ -161,7 +161,7 @@ const ReportsSection = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-l-4 border-[#1C0357] bg-white">
+        <Card className="shadow-lg border-l-4 border-[#1C0357] bg-white rounded-2xl">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">Unique Clients</p>
@@ -173,7 +173,7 @@ const ReportsSection = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-l-4 border-yellow-500 bg-white">
+        <Card className="shadow-lg border-l-4 border-yellow-500 bg-white rounded-2xl">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">Repeat Client Rate</p>

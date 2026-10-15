@@ -82,7 +82,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
 }) => {
 
   return (
-    <Card className="shadow-lg mb-6 bg-white">
+    <Card className="shadow-lg mb-6 bg-white rounded-2xl">
       <CardHeader>
         <CardTitle className="text-2xl text-[#1C0357] flex items-center justify-between flex-wrap gap-4">
           <span className="flex items-center">

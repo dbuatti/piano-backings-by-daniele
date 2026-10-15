@@ -78,7 +78,7 @@ const ServiceClosureSettings: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Card className="shadow-lg bg-white">
+      <Card className="shadow-lg bg-white rounded-2xl">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
             <AlertTriangle className="mr-2 h-5 w-5" />
@@ -95,7 +95,7 @@ const ServiceClosureSettings: React.FC = () => {
 
   if (fetchError) {
     return (
-      <Card className="shadow-lg bg-white">
+      <Card className="shadow-lg bg-white rounded-2xl">
         <CardHeader>
           <CardTitle className="text-2xl text-[#1C0357] flex items-center">
             <AlertTriangle className="mr-2 h-5 w-5" />
@@ -110,7 +110,7 @@ const ServiceClosureSettings: React.FC = () => {
   }
 
   return (
-    <Card className="shadow-lg bg-white">
+    <Card className="shadow-lg bg-white rounded-2xl">
       <CardHeader>
         <CardTitle className="text-2xl text-[#1C0357] flex items-center">
           <AlertTriangle className="mr-2 h-5 w-5" />
