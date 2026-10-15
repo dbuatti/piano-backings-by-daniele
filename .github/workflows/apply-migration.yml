@@ -17,8 +17,8 @@ on:
   workflow_dispatch:
     inputs:
       file:
-        description: Migration file to apply, as a path in the repo
-        required: true
+        description: Migration file to apply, as a path in the repo (leave empty to only run verify_query)
+        required: false
         default: supabase/migrations/0046_social_token_refresh_cron_frequent.sql
       verify_query:
         description: Optional SQL to run afterwards, to show the result
@@ -62,6 +62,7 @@ jobs:
           fi
 
       - name: Apply migration
+        if: ${{ inputs.file != '' }}
         run: |
           set -euo pipefail
           if [ ! -f "$MIGRATION_FILE" ]; then
