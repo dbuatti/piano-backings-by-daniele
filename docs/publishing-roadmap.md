@@ -498,10 +498,14 @@ Ordered so the cheap, unblocking things come first.
    posts. Public TikTok = Route C (drafts, 1 tap), a separate build. See §8.
 3. **Apply `supabase/migrations/0044_auto_book.sql`** (no workflow applies
    migrations), then trial **Book new videos automatically**.
-4. **Confirm the audio artefacts are gone**: download a re-recorded teaser and
+4. **Apply `supabase/migrations/0046_social_token_refresh_cron_frequent.sql`**
+   (no workflow applies migrations) so the tokens are checked every 6 hours.
+   Not urgent — a stale token never blocks a post — but it keeps the connections
+   badge honest and gives the Instagram token a wide margin before it lapses.
+5. **Confirm the audio artefacts are gone**: download a re-recorded teaser and
    play it locally (the fix was a real-time encoder change, not provable in CI).
-5. **Re-record the pending teasers** — only the chosen cuts.
-6. **Song page, next slices** (if they earn their space): inline caption editing
+6. **Re-record the pending teasers** — only the chosen cuts.
+7. **Song page, next slices** (if they earn their space): inline caption editing
    (today it hands off to the composer), the audition cut's own metadata, and a
    price/PDF block.
 
