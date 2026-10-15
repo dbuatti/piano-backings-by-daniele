@@ -2121,6 +2121,7 @@ const PublishingSection = () => {
                 key={group.key}
                 group={group}
                 tz={tz}
+                autoOn={autoOn}
                 onOpen={openTrack}
                 onReRecord={setReRecordFor}
                 onResetTeaser={resetTeaserFor}
@@ -2141,6 +2142,7 @@ const PublishingSection = () => {
                 key={group.key}
                 group={group}
                 tz={tz}
+                autoOn={autoOn}
                 onOpen={openTrack}
                 onReRecord={setReRecordFor}
                 onResetTeaser={resetTeaserFor}

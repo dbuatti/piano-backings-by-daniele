@@ -1,4 +1,4 @@
-import { PLATFORM_LABELS, type PublicationWithAsset } from '@/types/publishing';
+import { PLATFORM_LABELS, STATUS_LABELS, type PublicationWithAsset } from '@/types/publishing';
 
 // ---------------------------------------------------------------------------
 // Grouping for the publishing page.
@@ -82,16 +82,22 @@ export function isPostable(pub?: PublicationWithAsset): boolean {
 // it — or the video is already live and the teasers are still waiting, in which
 // case the worker arms them to "now" on its next pass. Only true while the
 // automation switch is on.
-export function willAutoPost(group: TrackGroup, autoOn: boolean): boolean {
-  if (!autoOn) return false;
-  const yt = group.yt;
-  if (!yt) return false;
+// Whether a teaser is safe to leave alone: its video will carry it. Split from
+// willAutoPost() so a list that holds only the YouTube row (the release board)
+// can ask the same question the pipeline asks.
+export function youtubeWillAutoPost(
+  yt: PublicationWithAsset | undefined,
+  autoOn: boolean
+): boolean {
+  if (!autoOn || !yt) return false;
   if (yt.status === 'scheduled') {
     return !!yt.scheduled_for && new Date(yt.scheduled_for).getTime() > Date.now();
   }
-  // Callers check isPostable() before asking, so a landscape leftover is already
-  // ruled out — the worker applies the same guard before it arms a past slot.
   return yt.status === 'published';
+}
+
+export function willAutoPost(group: TrackGroup, autoOn: boolean): boolean {
+  return youtubeWillAutoPost(group.yt, autoOn);
 }
 
 // Instagram has no “post now” button, so when one of its teasers can't go out on
@@ -139,6 +145,26 @@ export function isStuckPublishing(
 // is work waiting.
 export function trackActionable(group: TrackGroup): boolean {
   return trackBookable(group) || hasPendingWork(group);
+}
+
+// What a teaser row should read as in a list. "Needs approval" is only honest
+// when a person actually has to act: a teaser that is postable and will ride its
+// video's slot needs nothing, so it says so instead of wearing the amber
+// "needs you" label. Mirrors needsAttention()/willAutoPost() so the label and
+// the "Needs you" section can never disagree.
+export function teaserListLabel(
+  pub: PublicationWithAsset,
+  yt: PublicationWithAsset | undefined,
+  autoOn: boolean
+): string {
+  if (
+    (pub.status === 'draft' || pub.status === 'pending_approval') &&
+    isPostable(pub) &&
+    youtubeWillAutoPost(yt, autoOn)
+  ) {
+    return 'Rides the video';
+  }
+  return STATUS_LABELS[pub.status];
 }
 
 export function needsAttention(group: TrackGroup, autoOn: boolean): boolean {

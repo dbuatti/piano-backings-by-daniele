@@ -347,9 +347,43 @@ export async function saveRequestKey(track: DeliveredTrack, value: string): Prom
  * left alone rather than being listed twice: the same song can be delivered more
  * than once, and nothing should end up with two shop entries.
  */
+export interface ShopListingDefaults {
+  title: string;
+  artist: string;
+  price: number;
+  description: string;
+  key: string;
+}
+
+/**
+ * The listing the shop would get for this track, before anyone reviews it.
+ * One source of truth, so the one-click, the wizard and the review dialog all
+ * prefill identically.
+ */
+export function shopListingDefaults(track: DeliveredTrack): ShopListingDefaults {
+  const shownKey = formatKey(track.key ?? '');
+  const shownShow = track.show.replace(/^\s*from\s+/i, '').trim();
+  return {
+    title: track.song,
+    artist: track.show || 'Various',
+    price: 6.99,
+    key: shownKey,
+    description: [
+      `${track.song}${shownShow ? ` (from ${shownShow})` : ''} — a piano backing track by Piano Backings by Daniele.${shownKey ? ` Recorded in ${shownKey}.` : ''}`,
+      'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
+    ].join('\n\n'),
+  };
+}
+
 export async function listTrackInShop(
   track: DeliveredTrack,
-  { active = false } = {}
+  {
+    active = false,
+    title,
+    artist,
+    price,
+    description,
+  }: { active?: boolean; title?: string; artist?: string; price?: number; description?: string } = {}
 ): Promise<{ created: boolean }> {
   const { data: existing, error: lookupErr } = await supabase
     .from('products')
@@ -359,19 +393,19 @@ export async function listTrackInShop(
     return { created: false };
   }
 
-  const shownKey = formatKey(track.key ?? '');
-  const shownShow = track.show.replace(/^\s*from\s+/i, '').trim();
-  const description = [
-    `${track.song}${shownShow ? ` (from ${shownShow})` : ''} — a piano backing track by Piano Backings by Daniele.${shownKey ? ` Recorded in ${shownKey}.` : ''}`,
-    'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
-  ].join('\n\n');
+  const defaults = shopListingDefaults(track);
+  const shownKey = defaults.key;
+  const finalTitle = (title ?? defaults.title).trim() || defaults.title;
+  const finalArtist = (artist ?? defaults.artist).trim() || 'Various';
+  const finalPrice = typeof price === 'number' && price > 0 ? price : defaults.price;
+  const finalDescription = (description ?? defaults.description).trim() || defaults.description;
 
   // Render the same title card as the product image so the listing isn't blank;
   // a render/upload failure just leaves it empty for a manual add.
   let imageUrl = '';
   try {
     const cardBlob = await renderCardToBlob(
-      { song: track.song, artist: track.show, client: track.client, key: track.key },
+      { song: finalTitle, artist: finalArtist, client: track.client, key: track.key },
       '1:1'
     );
     if (cardBlob) {
@@ -388,10 +422,10 @@ export async function listTrackInShop(
   }
 
   const { error } = await supabase.from('products').insert([{
-    title: track.song,
-    artist_name: track.show || 'Various',
-    description,
-    price: 6.99,
+    title: finalTitle,
+    artist_name: finalArtist,
+    description: finalDescription,
+    price: finalPrice,
     currency: 'AUD',
     image_url: imageUrl,
     track_urls: [{ url: track.url, caption: track.song }],

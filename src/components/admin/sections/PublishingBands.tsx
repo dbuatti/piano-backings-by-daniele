@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { when, type TrackGroup } from '@/utils/publishingPipeline';
+import { when, teaserListLabel, type TrackGroup } from '@/utils/publishingPipeline';
 
 const CHIP: Record<string, string> = {
   draft: 'border-gray-200 bg-gray-50 text-gray-500',
@@ -31,10 +31,14 @@ const CHIP: Record<string, string> = {
 function PlatformCell({
   platform,
   pub,
+  group,
+  autoOn,
   tz,
 }: {
   platform: PublicationPlatform;
   pub?: PublicationWithAsset;
+  group: TrackGroup;
+  autoOn: boolean;
   tz: string;
 }) {
   const name = PLATFORM_LABELS[platform];
@@ -47,15 +51,17 @@ function PlatformCell({
   }
   const dated = pub.status === 'scheduled' || pub.status === 'published';
   const stamp = dated ? (pub.scheduled_for ?? pub.published_at) : null;
+  const label = teaserListLabel(pub, group.yt, autoOn);
+  const ridesVideo = label !== STATUS_LABELS[pub.status];
   return (
     <span
       className={cn(
         'inline-flex max-w-[230px] items-center truncate rounded-full border px-2 py-0.5 text-[11px]',
-        CHIP[pub.status] ?? CHIP.draft
+        ridesVideo ? 'border-gray-200 bg-gray-50 text-gray-500' : (CHIP[pub.status] ?? CHIP.draft)
       )}
-      title={pub.error || undefined}
+      title={ridesVideo ? 'Nothing to do — it posts automatically with the video.' : pub.error || undefined}
     >
-      {name} · {STATUS_LABELS[pub.status]}
+      {name} · {label}
       {stamp ? ` · ${when(stamp, tz)}` : ''}
     </span>
   );
@@ -65,12 +71,14 @@ function PlatformCell({
 export function TrackPipelineRow({
   group,
   tz,
+  autoOn = false,
   onOpen,
   onReRecord,
   onResetTeaser,
 }: {
   group: TrackGroup;
   tz: string;
+  autoOn?: boolean;
   onOpen?: (group: TrackGroup) => void;
   onReRecord?: (requestId: string) => void;
   onResetTeaser?: (group: TrackGroup) => void;
@@ -95,9 +103,9 @@ export function TrackPipelineRow({
           {group.label}
         </span>
       )}
-      <PlatformCell platform="youtube" pub={group.yt} tz={tz} />
-      <PlatformCell platform="tiktok" pub={group.tt} tz={tz} />
-      <PlatformCell platform="instagram" pub={group.ig} tz={tz} />
+      <PlatformCell platform="youtube" pub={group.yt} group={group} autoOn={autoOn} tz={tz} />
+      <PlatformCell platform="tiktok" pub={group.tt} group={group} autoOn={autoOn} tz={tz} />
+      <PlatformCell platform="instagram" pub={group.ig} group={group} autoOn={autoOn} tz={tz} />
       {/* Teaser housekeeping lives here too, so a booked or live row can be
           re-recorded or reset without hunting through the release board. */}
       {showMenu && (

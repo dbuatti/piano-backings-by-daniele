@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +33,9 @@ import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { CARD_DIMS, type Aspect, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
 import { type ClipProgress } from '@/utils/canvasRecorder';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
-import { listTrackInShop, queueTrackForRelease, rerecordTeasers, saveRequestKey } from '@/utils/releaseTrack';
+import { queueTrackForRelease, rerecordTeasers, saveRequestKey } from '@/utils/releaseTrack';
+import { ShopListingDialog } from '@/components/admin/ShopListingDialog';
+import { teaserListLabel } from '@/utils/publishingPipeline';
 import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -127,9 +129,25 @@ export default function ReleaseBoard({
   const queryClient = useQueryClient();
   const { data: tracks, isLoading, error } = useDeliveredTracks();
   const { data: products = [] } = useShopProducts();
+  // The automation switch decides whether a teaser reads "Needs approval" or
+  // "Rides the video" — same flag the pipeline and the worker use.
+  const { data: boardSettings } = useQuery<PublishingSettings, Error>({
+    queryKey: ['publishing_settings'],
+    queryFn: async () => {
+      const { data, error: settingsError } = await supabase
+        .from('publishing_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+      if (settingsError) throw settingsError;
+      return data;
+    },
+  });
+  const autoOn = boardSettings?.social_auto_post === true;
   const [vetting, setVetting] = useState<string | null>(null);
   const [reRecording, setReRecording] = useState<string | null>(null);
-  const [listing, setListing] = useState<string | null>(null);
+  // The track whose shop listing is being reviewed in the modal, or null.
+  const [shopReview, setShopReview] = useState<DeliveredTrack | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
   const [inspecting, setInspecting] = useState<DeliveredTrack | null>(null);
@@ -137,28 +155,8 @@ export default function ReleaseBoard({
   const [activating, setActivating] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  // One-click shop listing: create a DRAFT product from the delivered track with
-  // sensible defaults. It stays inactive until the owner reviews and activates it
-  // in Admin → Shop, so nothing goes public without a look.
-  const listProduct = async (t: DeliveredTrack) => {
-    if (listing) return;
-    setListing(t.requestId);
-    try {
-      // Shared with the release wizard, so a listing made there and one made
-      // here are identical.
-      const { created } = await listTrackInShop(t);
-      await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
-      toast(
-        created
-          ? { title: 'Saved as a shop draft', description: `${t.song} is ready for review — open Shop to check it and activate the listing.` }
-          : { title: 'Already in the shop', description: `${t.song} already has a listing, so nothing was added.` }
-      );
-    } catch (e) {
-      toast({ title: "Couldn't list the track", description: getErrorMessage(e), variant: 'destructive' });
-    } finally {
-      setListing(null);
-    }
-  };
+  // "Add to shop" opens a review modal instead of creating a listing blind: the
+  // owner checks the copy, price and cover, then chooses draft or live.
 
   // A published teaser can't be re-recorded in place — the row still points at
   // the post TikTok already holds. Resetting forgets that reference (and any
@@ -606,8 +604,8 @@ export default function ReleaseBoard({
 
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <PlatformChip label="YouTube" pub={yt} tz={tz} />
-                    <PlatformChip label="TikTok" pub={tt} tz={tz} />
-                    <PlatformChip label="Instagram" pub={ig} tz={tz} />
+                    <PlatformChip label="TikTok" pub={tt} yt={yt} autoOn={autoOn} tz={tz} />
+                    <PlatformChip label="Instagram" pub={ig} yt={yt} autoOn={autoOn} tz={tz} />
                     {/* One vocabulary for the shop in every state — Not listed /
                         Draft / Live — with a single action beside it. */}
                     {shopProduct?.is_active ? (
@@ -644,13 +642,10 @@ export default function ReleaseBoard({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => listProduct(t)}
-                        disabled={listing !== null}
-                        title="Create a draft shop listing from this track — review and activate it in Admin → Shop."
+                        onClick={() => setShopReview(t)}
+                        title="Review and create the shop listing — choose the price, copy and whether it goes live."
                       >
-                        {listing === t.requestId
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <PlusCircle className="h-3.5 w-3.5" />}
+                        <PlusCircle className="h-3.5 w-3.5" />
                         Add to shop
                       </Button>
                     )}
@@ -794,6 +789,12 @@ export default function ReleaseBoard({
         open={inspecting !== null}
         onOpenChange={(o) => !o && setInspecting(null)}
       />
+
+      <ShopListingDialog
+        track={shopReview}
+        open={shopReview !== null}
+        onOpenChange={(o) => !o && setShopReview(null)}
+      />
     </Card>
   );
 }
@@ -819,10 +820,14 @@ function whenLabel(iso: string, tz: string) {
 function PlatformChip({
   label,
   pub,
+  yt,
+  autoOn,
   tz,
 }: {
   label: string;
   pub: PublicationWithAsset | undefined;
+  yt?: PublicationWithAsset;
+  autoOn?: boolean;
   tz: string;
 }) {
   // Most of the catalogue has nothing on a given platform, and a wall of
@@ -831,6 +836,10 @@ function PlatformChip({
   if (!pub) return null;
   const failed = pub.status === 'failed';
   const stamp = pub.scheduled_for ? shortStamp(pub.scheduled_for, tz) : null;
+  // A teaser that rides its video needs nothing, so it doesn't wear the amber
+  // "needs approval" label or the failed-red styling.
+  const statusLabel = teaserListLabel(pub, yt, autoOn ?? false);
+  const ridesVideo = statusLabel !== STATUS_LABELS[pub.status];
   return (
     <Badge
       variant={pub.status === 'published' ? 'default' : 'outline'}
@@ -838,11 +847,11 @@ function PlatformChip({
         pub.status === 'published' && 'bg-green-100 text-green-700',
         failed && 'border-red-200 bg-red-50 text-red-600'
       )}
-      title={`${label} · ${PLATFORM_LABELS[pub.platform]} · ${STATUS_LABELS[pub.status]}${
+      title={`${label} · ${PLATFORM_LABELS[pub.platform]} · ${statusLabel}${
         pub.scheduled_for ? ` · ${whenLabel(pub.scheduled_for, tz)}` : ''
-      }${pub.error ? ` — ${pub.error}` : ''}`}
+      }${!ridesVideo && pub.error ? ` — ${pub.error}` : ''}`}
     >
-      {label}: {STATUS_LABELS[pub.status]}
+      {label}: {statusLabel}
       {stamp ? ` · ${stamp}` : ''}
     </Badge>
   );

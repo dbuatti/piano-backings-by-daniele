@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -81,7 +80,7 @@ function useDebounced<T>(value: T, delay = 250): T {
 // what "step 2" was.
 function StepCrumbs({ index }: { index: number }) {
   return (
-    <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold">
+    <ol className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold">
       {STEPS.map((label, i) => {
         const state = i < index ? 'done' : i === index ? 'active' : 'todo';
         return (
@@ -89,7 +88,7 @@ function StepCrumbs({ index }: { index: number }) {
             {i > 0 && <span aria-hidden className="text-gray-300">›</span>}
             <span
               className={cn(
-                'flex items-center gap-1.5',
+                'flex items-center gap-2',
                 state === 'active' && 'text-[#F538BC]',
                 state === 'done' && 'text-[#1C0357]',
                 state === 'todo' && 'text-gray-400'
@@ -98,13 +97,13 @@ function StepCrumbs({ index }: { index: number }) {
             >
               <span
                 className={cn(
-                  'flex h-4 w-4 items-center justify-center rounded-full text-[9px]',
+                  'flex h-6 w-6 items-center justify-center rounded-full text-[11px]',
                   state === 'active' && 'bg-[#F538BC] text-white',
                   state === 'done' && 'bg-[#1C0357] text-white',
                   state === 'todo' && 'bg-gray-100 text-gray-400'
                 )}
               >
-                {state === 'done' ? <Check className="h-2.5 w-2.5" /> : i + 1}
+                {state === 'done' ? <Check className="h-3.5 w-3.5" /> : i + 1}
               </span>
               {label}
             </span>
@@ -140,7 +139,7 @@ function StepShell({
 }) {
   return (
     <Card className="rounded-2xl border-none bg-white shadow-sm">
-      <CardHeader className="space-y-3">
+      <CardHeader className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <StepCrumbs index={index} />
           {onExit && (
@@ -148,22 +147,24 @@ function StepShell({
               type="button"
               onClick={onExit}
               disabled={exitDisabled}
-              className="-mr-1 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              className="-mr-1 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
-              <X className="h-3 w-3" /> {exitLabel ?? 'Exit'}
+              <X className="h-3.5 w-3.5" /> {exitLabel ?? 'Exit'}
             </button>
           )}
         </div>
-        <CardTitle
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-lg font-bold text-[#1C0357] outline-none"
-        >
-          {title}
-        </CardTitle>
-        <p className="text-sm leading-relaxed text-gray-500">{blurb}</p>
+        <div className="space-y-1.5">
+          <CardTitle
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-2xl font-bold text-[#1C0357] outline-none sm:text-3xl"
+          >
+            {title}
+          </CardTitle>
+          <p className="max-w-3xl text-base leading-relaxed text-gray-500">{blurb}</p>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-5">{children}</CardContent>
+      <CardContent className="space-y-6">{children}</CardContent>
     </Card>
   );
 }
@@ -570,11 +571,11 @@ export function ReleaseWizard({
     return (
       <div className="space-y-4">
         <Card className="rounded-2xl border-none bg-white shadow-sm">
-          <CardHeader className="space-y-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-bold text-[#1C0357]">
-              <Sparkles className="h-5 w-5 text-[#F538BC]" /> Get your songs out
+          <CardHeader className="space-y-4">
+            <CardTitle className="flex items-center gap-2.5 text-2xl font-bold text-[#1C0357] sm:text-3xl">
+              <Sparkles className="h-6 w-6 text-[#F538BC]" /> Get your songs out
             </CardTitle>
-            <p className="text-sm leading-relaxed text-gray-500">
+            <p className="max-w-3xl text-base leading-relaxed text-gray-500">
               {nothingToDo
                 ? waiting > 0
                   ? 'Nothing new to record. The songs below are already made and just need approving.'
@@ -582,35 +583,35 @@ export function ReleaseWizard({
                 : 'One song at a time. We check the details, make the videos, show you the captions, then push the song to YouTube, TikTok and Instagram — and into the shop. About a minute a song.'}
             </p>
             {!nothingToDo && (
-              <p className="flex items-center gap-2 text-xs text-gray-400">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />
+              <p className="flex items-center gap-2 text-sm text-gray-400">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
                 Nothing leaves your account until you press Push on the last screen.
               </p>
             )}
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-[#1C0357] p-4 text-white">
-                <p className="text-3xl font-bold tabular-nums">{total}</p>
-                <p className="text-xs text-white/70">songs ready to queue</p>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl bg-[#1C0357] p-5 text-white">
+                <p className="text-4xl font-bold tabular-nums">{total}</p>
+                <p className="mt-1 text-sm text-white/70">songs ready to queue</p>
               </div>
-              <div className="rounded-xl bg-gray-50 p-4">
-                <p className="text-base font-bold leading-tight text-[#1C0357]">{nextSlotLabel || '—'}</p>
-                <p className="text-xs text-gray-500">the next one goes out</p>
+              <div className="rounded-xl bg-gray-50 p-5">
+                <p className="text-xl font-bold leading-tight text-[#1C0357]">{nextSlotLabel || '—'}</p>
+                <p className="mt-1 text-sm text-gray-500">the next one goes out</p>
               </div>
-              <div className={cn('rounded-xl p-4', needsKey.length ? 'bg-amber-50' : 'bg-gray-50')}>
-                <p className={cn('text-3xl font-bold tabular-nums', needsKey.length ? 'text-amber-700' : 'text-[#1C0357]')}>
+              <div className={cn('rounded-xl p-5', needsKey.length ? 'bg-amber-50' : 'bg-gray-50')}>
+                <p className={cn('text-4xl font-bold tabular-nums', needsKey.length ? 'text-amber-700' : 'text-[#1C0357]')}>
                   {needsKey.length}
                 </p>
-                <p className={cn('text-xs', needsKey.length ? 'text-amber-700' : 'text-gray-500')}>
+                <p className={cn('mt-1 text-sm', needsKey.length ? 'text-amber-700' : 'text-gray-500')}>
                   need a key first
                 </p>
               </div>
             </div>
 
             {doneIds.length > 0 && (
-              <p className="flex items-center gap-2 text-xs text-green-700">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <p className="flex items-center gap-2 text-sm text-green-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {doneIds.length} done in this sitting.
               </p>
             )}
@@ -621,36 +622,36 @@ export function ReleaseWizard({
               <button
                 type="button"
                 onClick={onOpenPipeline}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 p-3 text-left transition-colors hover:bg-gray-50"
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 p-4 text-left transition-colors hover:bg-gray-50"
               >
-                <span className="text-xs text-gray-600">
+                <span className="text-sm text-gray-600">
                   <strong className="font-semibold text-[#1C0357]">
                     {waiting === 1 ? 'One song is' : `${waiting} songs are`} recorded and waiting
                   </strong>{' '}
                   — approve {waiting === 1 ? 'it' : 'them'} in the pipeline to give {waiting === 1 ? 'it' : 'them'} a slot.
                 </span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                <ArrowRight className="h-4 w-4 shrink-0 text-gray-400" />
               </button>
             )}
 
             {total > 0 && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Coming up</p>
-                <ul className="space-y-1.5">
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Coming up</p>
+                <ul className="space-y-2">
                   {upNext.slice(0, 3).map((t) => (
-                    <li key={t.requestId} className="flex items-center justify-between gap-3 text-sm">
+                    <li key={t.requestId} className="flex items-center justify-between gap-3 text-base">
                       <span className="flex min-w-0 items-center gap-2">
-                        <Music2 className="h-3.5 w-3.5 shrink-0 text-[#F538BC]" />
+                        <Music2 className="h-4 w-4 shrink-0 text-[#F538BC]" />
                         <span className="truncate font-medium text-[#1C0357]">{t.song}</span>
-                        {t.show && <span className="truncate text-xs text-gray-400">{t.show}</span>}
+                        {t.show && <span className="truncate text-sm text-gray-400">{t.show}</span>}
                       </span>
-                      <span className="shrink-0 text-[11px] text-gray-400">{keyForDisplay(t.key ?? '')}</span>
+                      <span className="shrink-0 text-sm text-gray-400">{keyForDisplay(t.key ?? '')}</span>
                     </li>
                   ))}
                 </ul>
                 {total > 3 && (
-                  <p className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                    <Lightbulb className="h-3 w-3 shrink-0" /> and {total - 3} more after
+                  <p className="flex items-center gap-1.5 text-sm text-gray-400">
+                    <Lightbulb className="h-4 w-4 shrink-0" /> and {total - 3} more after
                     {total - 3 === 1 ? '' : ' these'}.
                   </p>
                 )}
@@ -673,7 +674,7 @@ export function ReleaseWizard({
                   Start with “{nextUp?.song}”
                 </Button>
               )}
-              <Button variant="ghost" onClick={onOpenPipeline}>
+              <Button variant="ghost" size="lg" onClick={onOpenPipeline}>
                 What's in the pipeline
               </Button>
             </div>
@@ -707,12 +708,12 @@ export function ReleaseWizard({
         onExit={goHome}
         exitLabel="Exit"
       >
-        <div className="grid gap-5 md:grid-cols-[1fr_280px]">
+        <div className="grid gap-5 md:grid-cols-[1fr_320px]">
           <div className="space-y-5">
-            <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+            <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-4">
               <Music2 className="h-4 w-4 shrink-0 text-[#F538BC]" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-gray-500">
+                <p className="text-sm font-medium text-gray-500">
                   {current.client ? `Ordered by ${current.client}` : 'Delivered request'}
                 </p>
                 <audio controls preload="none" src={current.url} className="mt-1 h-8 w-full" />
@@ -720,10 +721,11 @@ export function ReleaseWizard({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="wiz-song">Song title</Label>
                 <Input
                   id="wiz-song"
+                  className="h-11 text-base"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -732,13 +734,13 @@ export function ReleaseWizard({
                   placeholder="Song name"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="wiz-show">Show or artist</Label>
-                <Input id="wiz-show" value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
+                <Input id="wiz-show" className="h-11 text-base" value={show} onChange={(e) => setShow(e.target.value)} placeholder="from the show" />
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>Key</Label>
               <div
                 className={cn(
@@ -748,7 +750,7 @@ export function ReleaseWizard({
               >
                 <KeySelect value={key} onChange={setKey} />
               </div>
-              <p className={cn('text-[11px]', key ? 'text-gray-400' : 'font-medium text-amber-700')}>
+              <p className={cn('text-xs', key ? 'text-gray-400' : 'font-medium text-amber-700')}>
                 {key
                   ? 'Read it off the sheet and it should match. The key goes on the card.'
                   : 'Read the key off the sheet music, then pick it here. The card needs it.'}
@@ -911,7 +913,7 @@ export function ReleaseWizard({
         exitLabel="Save & exit"
       >
         {!rows.length && (
-          <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+          <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
             The rows haven’t appeared yet — they will once the queue refreshes.
           </p>
         )}
@@ -920,7 +922,7 @@ export function ReleaseWizard({
         {editor('instagram', { hint: 'The 30-second Reel' })}
 
         {error && (
-          <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
           </p>
         )}
@@ -991,30 +993,68 @@ export function ReleaseWizard({
             )}
           </div>
         ) : (
-          <div className="space-y-3 rounded-xl bg-gray-50 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Add it to the shop</p>
-                <p className="text-[11px] text-gray-400">$6.99, with the title card as its cover.</p>
-              </div>
-              <Switch checked={toShop} onCheckedChange={setToShop} />
+          <div className="space-y-4 rounded-xl bg-gray-50 p-4">
+            <div>
+              <p className="text-sm font-semibold text-[#1C0357]">Add this track to the shop?</p>
+              <p className="text-sm text-gray-500">
+                Pick one. You can always change it in Admin → Shop later.
+              </p>
             </div>
-            {toShop && (
-              <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Live straight away</p>
-                  <p className="text-[11px] text-gray-400">
-                    Off saves it as a draft to review in the Shop first.
-                  </p>
-                </div>
-                <Switch checked={shopLive} onCheckedChange={setShopLive} />
-              </div>
-            )}
+            <div className="grid gap-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
+                <input
+                  type="radio"
+                  name="shop-choice"
+                  className="mt-0.5 h-4 w-4"
+                  checked={!toShop}
+                  onChange={() => {
+                    setToShop(false);
+                    setShopLive(false);
+                  }}
+                />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium text-[#1C0357]">Don’t list it</span>
+                  <span className="block text-xs text-gray-500">Publish to YouTube, TikTok and Instagram only.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
+                <input
+                  type="radio"
+                  name="shop-choice"
+                  className="mt-0.5 h-4 w-4"
+                  checked={toShop && !shopLive}
+                  onChange={() => {
+                    setToShop(true);
+                    setShopLive(false);
+                  }}
+                />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium text-[#1C0357]">Save as a draft to review</span>
+                  <span className="block text-xs text-gray-500">Creates the listing hidden, so you can check it in Admin → Shop first.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
+                <input
+                  type="radio"
+                  name="shop-choice"
+                  className="mt-0.5 h-4 w-4"
+                  checked={toShop && shopLive}
+                  onChange={() => {
+                    setToShop(true);
+                    setShopLive(true);
+                  }}
+                />
+                <span className="space-y-0.5">
+                  <span className="block text-sm font-medium text-[#1C0357]">List it live — $6.99</span>
+                  <span className="block text-xs text-gray-500">Shoppers can buy it immediately; the title card is the cover.</span>
+                </span>
+              </label>
+            </div>
           </div>
         )}
 
         {error && (
-          <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
           </p>
         )}
@@ -1268,7 +1308,7 @@ function CopyEditor({
               maxLength={LIMITS.ytDescription}
               onChange={(e) => onChange({ description: e.target.value })}
               rows={6}
-              className="w-full rounded-lg border border-gray-200 p-2 text-xs leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
             />
           </div>
         </>
@@ -1285,7 +1325,7 @@ function CopyEditor({
             onChange={(e) => onChange({ caption: e.target.value })}
             rows={5}
             placeholder="Write the caption that goes with the post…"
-            className="w-full rounded-lg border border-gray-200 p-2 text-xs leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
+            className="w-full rounded-lg border border-gray-200 p-3 text-sm leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
           />
         </div>
       )}
