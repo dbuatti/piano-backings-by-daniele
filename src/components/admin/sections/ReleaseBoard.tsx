@@ -48,15 +48,22 @@ type BoardFilter =
   | 'missing_key'
   | 'hidden';
 
-const BOARD_STATS: { key: BoardFilter; label: string; hint: string }[] = [
-  { key: 'all', label: 'All delivered', hint: 'Every delivered track that can be posted. Exclusive and not-for-socials tracks live under Hidden.' },
-  { key: 'in_shop', label: 'In shop', hint: 'Live shop listings — the public shop page is reachable.' },
-  { key: 'shop_draft', label: 'Shop draft', hint: 'Saved to the shop but not activated — needs review.' },
-  { key: 'no_shop', label: 'No shop listing', hint: 'Not in the shop yet.' },
-  { key: 'on_youtube', label: 'Live on YouTube', hint: 'Confirmed public on YouTube.' },
-  { key: 'not_on_youtube', label: 'Not queued', hint: 'No video queued yet, allowed on socials and not exclusive.' },
-  { key: 'missing_key', label: 'Missing key', hint: 'The request has no key recorded — the title card needs one.' },
-  { key: 'hidden', label: 'Hidden', hint: 'Exclusive ownership or marked not for socials. These are never posted.' },
+const BOARD_STATS: { key: BoardFilter; label: string; short: string; hint: string }[] = [
+  { key: 'all', label: 'All delivered', short: 'All', hint: 'Every delivered track that can be posted. Exclusive and not-for-socials tracks live under Hidden.' },
+  { key: 'not_on_youtube', label: 'Not queued', short: 'Not queued', hint: 'No video queued yet, allowed on socials and not exclusive.' },
+  { key: 'on_youtube', label: 'Live on YouTube', short: 'Live', hint: 'Confirmed public on YouTube.' },
+  { key: 'missing_key', label: 'Missing key', short: 'Missing key', hint: 'The request has no key recorded — the title card needs one.' },
+  { key: 'in_shop', label: 'In shop', short: 'Live', hint: 'Live shop listings — the public shop page is reachable.' },
+  { key: 'shop_draft', label: 'Shop draft', short: 'Draft', hint: 'Saved to the shop but not activated — needs review.' },
+  { key: 'no_shop', label: 'No shop listing', short: 'Not listed', hint: 'Not in the shop yet.' },
+  { key: 'hidden', label: 'Hidden', short: 'Hidden', hint: 'Exclusive ownership or marked not for socials. These are never posted.' },
+];
+
+// Two questions the owner asks at different times — "is it out yet?" and "is it in
+// the shop?" — so the filters are shown as two rows instead of one wall of pills.
+const STAT_GROUPS: { label: string; keys: BoardFilter[] }[] = [
+  { label: 'Posting', keys: ['all', 'not_on_youtube', 'on_youtube', 'missing_key'] },
+  { label: 'Shop & visibility', keys: ['in_shop', 'shop_draft', 'no_shop', 'hidden'] },
 ];
 
 // How close a delivered track is to being postable. It decides the section a song
@@ -403,19 +410,37 @@ export default function ReleaseBoard({
 
   return (
     <Card className="bg-white border-none shadow-sm rounded-2xl">
-      <CardHeader>
-        <CardTitle className="text-lg font-bold text-[#1C0357] flex items-center justify-between">
-          <span>Release board — delivered tracks</span>
-          <span className="text-xs font-normal text-gray-400">
-            {isLoading || !tracks
-              ? ' '
-              : filter === 'all'
-                ? `${audit.all} to post${audit.hidden > 0 ? ` · ${audit.hidden} hidden` : ''}`
-                : `${visibleRows.length} of ${audit.all} · ${BOARD_STATS.find((s) => s.key === filter)?.label}`}
-          </span>
-        </CardTitle>
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+          <div className="min-w-0 space-y-0.5">
+            <CardTitle className="text-lg font-bold text-[#1C0357]">Release board</CardTitle>
+            <p className="text-xs text-gray-500">
+              Every delivered track, grouped by what it needs next. Start here when you have
+              half an hour to queue songs.
+            </p>
+          </div>
+          {!isLoading && tracks && (
+            <div className="shrink-0 text-right text-xs text-gray-500">
+              <p>
+                <span className="text-xl font-bold tabular-nums text-[#1C0357]">
+                  {audit.not_on_youtube}
+                </span>{' '}
+                still to queue
+              </p>
+              <p className="mt-0.5">
+                {audit.on_youtube} live · {queuedYt} scheduled
+                {nextUpload ? ` · next ${whenLabel(nextUpload, tz)}` : ''}
+              </p>
+              <p className="mt-0.5 text-gray-400">
+                {audit.in_shop} in the shop
+                {audit.shop_draft > 0 ? `, ${audit.shop_draft} draft` : ''}
+                {audit.hidden > 0 ? ` · ${audit.hidden} hidden` : ''}
+              </p>
+            </div>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-0.5">
+      <CardContent className="space-y-3">
         {isLoading || !tracks ? (
           <p className="px-4 py-6 text-sm text-gray-400">Loading tracks…</p>
         ) : tracks.length === 0 ? (
@@ -425,81 +450,91 @@ export default function ReleaseBoard({
           </p>
         ) : (
           <>
-            {/* One line instead of four boxes, so the filters below are the only
-                controls up here. */}
-            <p className="pb-3 text-xs text-gray-500">
-              <span className="font-semibold text-[#1C0357]">{audit.on_youtube}</span> live on YouTube
-              {' · '}
-              <span className="font-semibold text-[#1C0357]">{queuedYt}</span> scheduled
-              {nextUpload ? ` (next ${whenLabel(nextUpload, tz)})` : ''}
-              {' · '}
-              <span className="font-semibold text-[#1C0357]">{audit.in_shop}</span> in the shop
-              {audit.shop_draft > 0 ? `, ${audit.shop_draft} draft` : ''}
-            </p>
-            <div className="flex flex-wrap gap-1.5 pb-3">
-              {BOARD_STATS.map((s) => {
-                const active = filter === s.key;
-                const count = audit[s.key];
-                // An empty filter is just noise — hide it unless it's the one
-                // you're already looking at.
-                if (s.key !== 'all' && count === 0 && !active) return null;
-                const isGap = !active && count > 0 && ['no_shop', 'not_on_youtube', 'missing_key'].includes(s.key);
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => setFilter(active && s.key !== 'all' ? 'all' : s.key)}
-                    title={s.hint}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                      active
-                        ? 'border-[#1C0357] bg-[#1C0357] text-white'
-                        : isGap
-                          ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    )}
-                  >
-                    {s.label}
-                    <span
-                      className={cn(
-                        'rounded-full px-1.5 text-[11px] tabular-nums',
-                        active ? 'bg-white/20 text-white' : isGap ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                      )}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+            {/* Two questions the owner asks at different times — is it out yet,
+                and is it in the shop — so the filters read as two rows, not one
+                wall of pills. */}
+            <div className="space-y-2">
+              {STAT_GROUPS.map((g) => (
+                <div key={g.label} className="flex flex-wrap items-center gap-1.5">
+                  <span className="w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    {g.label}
+                  </span>
+                  {g.keys.map((k) => {
+                    const s = BOARD_STATS.find((x) => x.key === k);
+                    if (!s) return null;
+                    const active = filter === k;
+                    const count = audit[k];
+                    // An empty filter is just noise — hide it unless it's the
+                    // one you're already looking at.
+                    if (k !== 'all' && count === 0 && !active) return null;
+                    const isGap = !active && count > 0 && ['no_shop', 'not_on_youtube', 'missing_key'].includes(k);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setFilter(active && k !== 'all' ? 'all' : k)}
+                        title={s.hint}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                          active
+                            ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                            : isGap
+                              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        )}
+                      >
+                        {s.short}
+                        <span
+                          className={cn(
+                            'rounded-full px-1.5 text-[11px] tabular-nums',
+                            active ? 'bg-white/20 text-white' : isGap ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                          )}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               {notOnYoutubeIds.length > 0 && (
-                <button
-                  type="button"
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setBulkVet({ ids: notOnYoutubeIds, index: 0 })}
-                  title="Step through every delivered track that isn't on YouTube yet, one at a time."
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#1C0357] px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#2D0B8C]"
+                  title="Opens them one at a time so you and the wizard can vet each song. Nothing posts until you approve it."
+                  className="gap-1.5"
                 >
-                  <ListPlus className="h-3 w-3" /> Review &amp; queue all ({notOnYoutubeIds.length})
-                </button>
+                  <ListPlus className="h-3.5 w-3.5" /> Review &amp; queue all ({notOnYoutubeIds.length})
+                </Button>
               )}
-              <button
-                type="button"
+              {filter !== 'all' && (
+                <span className="text-[11px] text-gray-500">
+                  Showing {visibleRows.length} · {BOARD_STATS.find((s) => s.key === filter)?.label}
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={emailAudit}
                 disabled={emailing}
-                title="Email yourself a digest of what's missing — not on YouTube, not in the shop."
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-gray-300 disabled:opacity-60"
+                title="Emails you a digest of what's still missing — not on YouTube, not in the shop, or without a key."
+                className="ml-auto gap-1.5 text-gray-600"
               >
-                <Mail className="h-3 w-3" /> {emailing ? 'Sending…' : 'Email audit'}
-              </button>
+                <Mail className="h-3.5 w-3.5" /> {emailing ? 'Sending…' : 'Email me the gaps'}
+              </Button>
             </div>
             {sections.length === 0 ? (
               <p className="px-4 py-6 text-sm text-gray-400">Nothing here — try another filter.</p>
             ) : (
               sections.map((section) => (
-                <div key={section.key} className="pb-3">
-                  <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 px-1">
+                <div key={section.key} className="border-t border-gray-100 pt-3 pb-3 first:border-t-0 first:pt-0">
+                  <div className="mb-2 flex flex-wrap items-baseline gap-x-2 px-1">
                     <h3 className="text-sm font-bold text-[#1C0357]">{section.label}</h3>
                     <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold tabular-nums text-gray-600">
-                      {section.groups.length}
+                      {section.groups.reduce((n, g) => n + g.rows.length, 0)}
                     </span>
                     <span className="text-[11px] text-gray-400">{section.hint}</span>
                   </div>
@@ -509,9 +544,12 @@ export default function ReleaseBoard({
                       className={cn('rounded-xl', group.rows.length > 1 && 'mb-2 bg-gray-50/70 p-2')}
                     >
                       {group.rows.length > 1 && (
-                        <p className="px-1 pb-1.5 text-[11px] font-medium text-gray-500">
-                          {group.rows.length} orders of this song — only one video is made, for the
-                          order that still needs one.
+                        <p className="mx-1 mb-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-800">
+                          <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            {group.rows.length} orders of this song — one video covers the order that
+                            still needs it. The others aren’t queued again.
+                          </span>
                         </p>
                       )}
                       {group.rows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
@@ -570,24 +608,25 @@ export default function ReleaseBoard({
                     <PlatformChip label="YouTube" pub={yt} tz={tz} />
                     <PlatformChip label="TikTok" pub={tt} tz={tz} />
                     <PlatformChip label="Instagram" pub={ig} tz={tz} />
-                    {shopProduct ? (
-                      shopProduct.is_active ? (
-                        <a
-                          href={shopUrl ?? '/shop'}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 hover:bg-green-100"
-                        >
-                          Shop <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
-                          Shop draft
-                        </span>
-                      )
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-gray-400">
-                        Shop: —
+                    {/* Absent is the normal state and the action button says it,
+                        so only the two states worth a chip get one. */}
+                    {shopProduct?.is_active && (
+                      <a
+                        href={shopUrl ?? '/shop'}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Live in the shop"
+                        className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-700 hover:bg-green-100"
+                      >
+                        Shop live <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                    {shopProduct && !shopProduct.is_active && (
+                      <span
+                        className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
+                        title="Saved to the shop but not active yet"
+                      >
+                        Shop draft
                       </span>
                     )}
                   </div>
@@ -681,9 +720,9 @@ export default function ReleaseBoard({
                       href={`https://youtu.be/${yt.platform_post_id}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="hover:text-[#1C0357] hover:underline"
+                      className="inline-flex items-center gap-1 hover:text-[#1C0357] hover:underline"
                     >
-                      youtu.be/{yt.platform_post_id}
+                      <ExternalLink className="h-3 w-3" /> Open on YouTube
                     </a>
                   )}
                   {tt?.status === 'failed' && (
@@ -780,16 +819,10 @@ function PlatformChip({
   pub: PublicationWithAsset | undefined;
   tz: string;
 }) {
-  if (!pub) {
-    return (
-      <span
-        className="rounded-full bg-gray-50 px-2.5 py-1 text-gray-400"
-        title={label === 'YouTube' ? 'No video yet' : `No teaser queued — ${label} posting arrives with the integration.`}
-      >
-        {label}: —
-      </span>
-    );
-  }
+  // Most of the catalogue has nothing on a given platform, and a wall of
+  // "YouTube: —" chips tells the owner nothing. The row shows only what exists;
+  // the section heading carries "not queued yet".
+  if (!pub) return null;
   const failed = pub.status === 'failed';
   const stamp = pub.scheduled_for ? shortStamp(pub.scheduled_for, tz) : null;
   return (

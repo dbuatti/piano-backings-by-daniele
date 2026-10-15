@@ -299,9 +299,9 @@ function QueueRunway({
         <p className={cn('text-sm font-semibold', ink)}>{headline}</p>
         <p className="mt-0.5 text-xs text-gray-600">{nudge}</p>
         <p className="mt-0.5 text-[11px] text-gray-500">
-          To queue one: <span className="font-medium">Backing track library</span> tab → open a delivered song →{' '}
-          <span className="font-medium">Review &amp; queue</span>. Each song takes the next free slot on your{' '}
-          {cadenceLabel} cadence.
+          To add one: open the <span className="font-medium">Tracks</span> tab, pick a delivered
+          song, then choose <span className="font-medium">Review &amp; queue</span>. It takes the
+          next free slot on your {cadenceLabel} cadence.
         </p>
       </div>
       <Button size="sm" onClick={onQueue} className="bg-[#1C0357] hover:bg-[#2D0B8C]">

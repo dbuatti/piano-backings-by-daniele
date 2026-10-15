@@ -216,6 +216,12 @@ export function ReleaseWizard({
   const [show, setShow] = useState('');
   const [key, setKey] = useState('');
 
+  // The Check step writes back as it settles. The owner often only wants to fix
+  // the title and leave, and a title typed but not queued used to be lost.
+  const [detailSave, setDetailSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const lastSavedRef = useRef('');
+  const detailsSnapshot = useDebounced(`${title}\u0001${show}\u0001${key}`, 700);
+
   // Captions, held here so one button can approve all three.
   const [drafts, setDrafts] = useState<Record<PublicationPlatform, CaptionDraft>>({
     youtube: emptyDraft(),
@@ -299,12 +305,61 @@ export function ReleaseWizard({
     setTitle(track.song);
     setShow(track.show);
     setKey(track.key ?? '');
+    lastSavedRef.current = `${track.song}\u0001${track.show}\u0001${track.key ?? ''}`;
+    setDetailSave('idle');
     setDrafts({ youtube: emptyDraft(), tiktok: emptyDraft(), instagram: emptyDraft() });
     setError(null);
     setToShop(true);
     setShopLive(true);
     setStep('details');
   };
+
+  // Writes the Check step's three fields back to the request. Shared by the
+  // autosave and Save & exit, so leaving always stores what is on screen.
+  const persistDetails = async (t: string, s: string, k: string) => {
+    if (!current) return;
+    const cleanTitle = t.trim();
+    const cleanShow = s.trim();
+    const updates: { song_title?: string; musical_or_artist?: string } = {};
+    if (cleanTitle && cleanTitle !== current.song) updates.song_title = cleanTitle;
+    if (cleanShow !== current.show) updates.musical_or_artist = cleanShow;
+    if (Object.keys(updates).length) {
+      const { error: upErr } = await supabase
+        .from('backing_requests')
+        .update(updates)
+        .eq('id', current.requestId);
+      if (upErr) throw upErr;
+    }
+    // A key chosen here is a fix, not a preference — record it on the request so
+    // the board, the card and the copy all agree.
+    if (k && k !== (current.key ?? '')) await saveRequestKey(current, k);
+    lastSavedRef.current = `${cleanTitle}\u0001${cleanShow}\u0001${k}`;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] }),
+      queryClient.invalidateQueries({ queryKey: ['request_info', current.requestId] }),
+    ]);
+  };
+
+  useEffect(() => {
+    if (step !== 'details' || !current) return;
+    // Only the settled edit is saved, so typing a title costs one write.
+    if (detailsSnapshot === lastSavedRef.current) return;
+    const [t, s, k] = detailsSnapshot.split('\u0001');
+    let cancelled = false;
+    setDetailSave('saving');
+    persistDetails(t, s, k)
+      .then(() => {
+        if (!cancelled) setDetailSave('saved');
+      })
+      .catch(() => {
+        // Best effort: Save & exit reports a real failure.
+        if (!cancelled) setDetailSave('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailsSnapshot, step, current]);
 
   // Opened from a board row: begin on that song. Only consumed once the song is
   // actually in hand — the first render happens before the tracks query resolves,
@@ -466,18 +521,8 @@ export function ReleaseWizard({
     setBusy(true);
     setError(null);
     try {
-      const updates: { song_title?: string; musical_or_artist?: string } = {};
-      if (title.trim() && title.trim() !== current.song) updates.song_title = title.trim();
-      if (show.trim() !== current.show) updates.musical_or_artist = show.trim();
-      if (Object.keys(updates).length) {
-        const { error: upErr } = await supabase.from('backing_requests').update(updates).eq('id', current.requestId);
-        if (upErr) throw upErr;
-      }
-      if (key && key !== (current.key ?? '')) {
-        await saveRequestKey(current, key);
-      }
-      await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
-      await queryClient.invalidateQueries({ queryKey: ['request_info', current.requestId] });
+      // Flushes the pending edit immediately rather than waiting for the debounce.
+      await persistDetails(title, show, key);
       toast({ title: 'Saved', description: `${title || current.song} is back on the list, with these details.` });
       goHome();
     } catch (e) {
@@ -536,12 +581,18 @@ export function ReleaseWizard({
                   : 'Nothing is waiting to be pushed. Everything delivered is either on the way or already out.'
                 : 'One song at a time. We check the details, make the videos, show you the captions, then push the song to YouTube, TikTok and Instagram — and into the shop. About a minute a song.'}
             </p>
+            {!nothingToDo && (
+              <p className="flex items-center gap-2 text-xs text-gray-400">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                Nothing leaves your account until you press Push on the last screen.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl bg-[#1C0357] p-4 text-white">
                 <p className="text-3xl font-bold tabular-nums">{total}</p>
-                <p className="text-xs text-white/70">ready to push</p>
+                <p className="text-xs text-white/70">songs ready to queue</p>
               </div>
               <div className="rounded-xl bg-gray-50 p-4">
                 <p className="text-base font-bold leading-tight text-[#1C0357]">{nextSlotLabel || '—'}</p>
@@ -651,7 +702,7 @@ export function ReleaseWizard({
       <StepShell
         index={0}
         title="Check this one"
-        blurb="This is what goes on the video and the caption. Fix anything that’s wrong, then we make the videos."
+        blurb="This is what goes on the video and the caption. Your edits save as you go, so you can stop here and come back. Make the videos when it reads right."
         headingRef={headingRef}
         onExit={goHome}
         exitLabel="Exit"
@@ -719,7 +770,23 @@ export function ReleaseWizard({
               <Button variant="ghost" onClick={() => advancePast(markHandled(current.requestId))}>
                 Skip this song
               </Button>
-              {!key && <span className="text-[11px] font-medium text-amber-700">Pick a key to continue</span>}
+              <span className="flex items-center gap-1.5 text-[11px]">
+                {detailSave === 'saving' ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
+                    <span className="text-gray-500">Saving…</span>
+                  </>
+                ) : detailSave === 'saved' ? (
+                  <>
+                    <Check className="h-3 w-3 text-green-600" />
+                    <span className="text-gray-500">Title saved — you can leave any time</span>
+                  </>
+                ) : detailSave === 'error' ? (
+                  <span className="text-amber-700">Not saved — use Save &amp; exit</span>
+                ) : !key ? (
+                  <span className="font-medium text-amber-700">Pick a key to continue</span>
+                ) : null}
+              </span>
             </div>
           </div>
 
