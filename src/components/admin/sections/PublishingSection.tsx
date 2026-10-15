@@ -2216,20 +2216,32 @@ const PublishingSection = () => {
         <div className="space-y-4">
           {/* The wizard is the default: it answers "what do I do next?". The board
               is the reference view — every delivered song and its state. */}
-          <div className="inline-flex rounded-full bg-gray-100 p-0.5">
-            {([['wizard', 'Push songs'], ['board', 'Full list']] as const).map(([view, label]) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() => setTracksView(view)}
-                className={cn(
-                  'rounded-full px-3.5 py-1 text-xs font-medium transition-colors',
-                  tracksView === view ? 'bg-white text-[#1C0357] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                )}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              How to work
+            </span>
+            <div role="group" aria-label="Tracks view" className="inline-flex rounded-full bg-gray-100 p-0.5">
+              {([
+                ['wizard', 'Push songs', 'Take them one at a time, with the details, captions and shop decided for you.'],
+                ['board', 'Full list', 'The reference view — every delivered song and exactly what it needs.'],
+              ] as const).map(([view, label, hint]) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setTracksView(view)}
+                  aria-pressed={tracksView === view}
+                  title={hint}
+                  className={cn(
+                    'rounded-full px-3.5 py-1 text-xs font-semibold transition-colors',
+                    tracksView === view
+                      ? 'bg-[#1C0357] text-white shadow-sm'
+                      : 'text-gray-500 hover:text-[#1C0357]'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {tracksView === 'wizard' ? (
             <ReleaseWizard

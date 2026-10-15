@@ -581,7 +581,7 @@ export default function ReleaseBoard({
                     </div>
                     <p className="truncate text-xs text-gray-500">
                       {t.show ? `from ${t.show}` : 'Backing track'}
-                      {t.key ? ` · ${t.key.replace(/ \([^)]*\)$/, '')}` : ''}
+                      {t.key ? ` · ${keyForDisplay(t.key)}` : ''}
                     </p>
                     {!t.key && (
                       <div className="mt-1 flex items-center gap-1.5">
@@ -608,9 +608,9 @@ export default function ReleaseBoard({
                     <PlatformChip label="YouTube" pub={yt} tz={tz} />
                     <PlatformChip label="TikTok" pub={tt} tz={tz} />
                     <PlatformChip label="Instagram" pub={ig} tz={tz} />
-                    {/* Absent is the normal state and the action button says it,
-                        so only the two states worth a chip get one. */}
-                    {shopProduct?.is_active && (
+                    {/* One vocabulary for the shop in every state — Not listed /
+                        Draft / Live — with a single action beside it. */}
+                    {shopProduct?.is_active ? (
                       <a
                         href={shopUrl ?? '/shop'}
                         target="_blank"
@@ -620,13 +620,19 @@ export default function ReleaseBoard({
                       >
                         Shop live <ExternalLink className="h-3 w-3" />
                       </a>
-                    )}
-                    {shopProduct && !shopProduct.is_active && (
+                    ) : shopProduct ? (
                       <span
                         className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
-                        title="Saved to the shop but not active yet"
+                        title="Saved to the shop but not active yet — activate it in Admin → Shop."
                       >
                         Shop draft
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-500"
+                        title="Not in the shop yet."
+                      >
+                        Not in shop
                       </span>
                     )}
                   </div>
