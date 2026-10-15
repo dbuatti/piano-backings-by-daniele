@@ -321,11 +321,14 @@ export async function rerecordTeasers({
 }
 
 /**
- * Creates the shop draft for a delivered track: a $6.99 listing with a rendered
- * title card as its image and the track's audio attached. Saved inactive so the
- * owner reviews it before it goes public.
+ * Creates the shop listing for a delivered track: a $6.99 listing with a
+ * rendered title card as its image and the track's audio attached.
+ *
+ * `active` decides whether the listing is live immediately or saved as a draft
+ * for review — the board's one-click uses the draft, the wizard defaults to
+ * live so "push it to the shop" means what it says.
  */
-export async function listTrackInShop(track: DeliveredTrack): Promise<void> {
+export async function listTrackInShop(track: DeliveredTrack, { active = false } = {}): Promise<void> {
   const shownKey = formatKey(track.key ?? '');
   const shownShow = track.show.replace(/^\s*from\s+/i, '').trim();
   const description = [
@@ -362,7 +365,7 @@ export async function listTrackInShop(track: DeliveredTrack): Promise<void> {
     currency: 'AUD',
     image_url: imageUrl,
     track_urls: [{ url: track.url, caption: track.song }],
-    is_active: false,
+    is_active: active,
     category: 'audition-cut',
     track_type: 'polished',
     key_signature: shownKey,

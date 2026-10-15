@@ -38,6 +38,7 @@ import CardPreview from '@/components/admin/CardPreview';
 import TikTokComposer from '@/components/admin/TikTokComposer';
 import { useDeliveredTracks, useShopProducts } from '@/hooks/useDeliveredTracks';
 import ReleaseBoard, { VettingDialog } from '@/components/admin/sections/ReleaseBoard';
+import { ReleaseWizard } from '@/components/admin/sections/ReleaseWizard';
 import { Disclosure, TrackPipelineRow } from '@/components/admin/sections/PublishingBands';
 import TrackDetail from '@/components/admin/sections/TrackDetail';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
@@ -1144,6 +1145,8 @@ const PublishingSection = () => {
     setSearchParams(sp, { replace: false });
   };
   const [bulkDrafting, setBulkDrafting] = useState(false);
+  // Tracks tab: the guided push wizard (default) or the full reference board.
+  const [tracksView, setTracksView] = useState<'wizard' | 'board'>('wizard');
   // Admin test hooks: which platform pass is running, and the raw worker reply
   // so the pipeline can be verified from the page.
   const [testing, setTesting] = useState<'youtube' | 'tiktok' | 'instagram' | null>(null);
@@ -2171,12 +2174,45 @@ const PublishingSection = () => {
       )}
 
       {tab === 'tracks' && (
-        <ReleaseBoard
-          queue={queue}
-          tz={tz}
-          onMutation={() => refetch()}
-          onOpenTrack={openByPub}
-        />
+        <div className="space-y-4">
+          {/* The wizard is the default: it answers "what do I do next?". The board
+              is the reference view — every delivered song and its state. */}
+          <div className="inline-flex rounded-full bg-gray-100 p-0.5">
+            {([['wizard', 'Push songs'], ['board', 'Full list']] as const).map(([view, label]) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => setTracksView(view)}
+                className={cn(
+                  'rounded-full px-3.5 py-1 text-xs font-medium transition-colors',
+                  tracksView === view ? 'bg-white text-[#1C0357] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {tracksView === 'wizard' ? (
+            <ReleaseWizard
+              queue={queue}
+              groups={groups}
+              tz={tz}
+              nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
+              onPush={publishTrack}
+              onRefresh={refetch}
+              onSaveCaption={saveCaption}
+              onSaveCopy={saveCopy}
+              onOpenBoard={() => setTracksView('board')}
+            />
+          ) : (
+            <ReleaseBoard
+              queue={queue}
+              tz={tz}
+              onMutation={() => refetch()}
+              onOpenTrack={openByPub}
+            />
+          )}
+        </div>
       )}
 
       {tab === 'recorder' && (
