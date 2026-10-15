@@ -204,6 +204,31 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-15 — first end-to-end scheduled release, all three platforms
+
+**Confirmed on a live run, not in theory.** Love Revolution was moved from its
+16 Oct slot to a few minutes ahead and went out everywhere:
+
+- **YouTube** — the video was already uploaded carrying a `publishAt`; YouTube
+  made it public at that instant and the queue's confirmation pass then labelled
+  the row `published`. Checked independently against the YouTube API:
+  `privacyStatus: public` → https://youtu.be/55W_Wuz2WCI
+- **Instagram** — `run-social-queue` posted the 30 s portrait teaser.
+- **TikTok** — the mini's browser poster claimed the row on its next poll and
+  posted it. That poll is `POLL_SECONDS` (default 300 s), so a TikTok can land
+  up to five minutes after its slot, where YouTube and Instagram fire on time.
+  Its row keeps a synthetic `browser-…` id and no URL, so the board has nothing
+  to link to for TikTok.
+
+Until this run only TikTok's scheduled path had ever fired for real: the live
+Instagram post had been made during setup, and no YouTube release had happened
+at all. All three are now confirmed.
+
+**What it cost:** Love Revolution published 15 Oct rather than 16 Oct, so the
+rhythm now reads 15 / 19 / 22 / 25 / 28 Oct — a four-day gap after today. The
+other four can be pulled back to 18 / 21 / 24 / 27 Oct to restore an exact
+three-day cadence.
+
 ### 2026-10-15 — the first full cadence is booked
 
 **Five songs took the 16 / 19 / 22 / 25 / 28 Oct slots** — the whole backlog that
@@ -221,7 +246,7 @@ noticed until the videos appeared late.
 
 | slot (10:59 AEDT) | song | goes out |
 | --- | --- | --- |
-| Fri 16 Oct | Love Revolution | YouTube + Instagram + TikTok |
+| ~~Fri 16 Oct~~ **15 Oct** | Love Revolution | YouTube + Instagram + TikTok — pulled forward as the live test |
 | Mon 19 Oct | Wondering | YouTube |
 | Thu 22 Oct | Don't Wanna Be Here | YouTube + Instagram |
 | Sun 25 Oct | How it ends | YouTube + Instagram + TikTok |
@@ -235,7 +260,7 @@ ride the videos rather than firing early. Wondering appears with a video only
 because its Instagram Reel and TikTok are already live; Don't Wanna Be Here
 likewise, so its slot has no second TikTok.
 
-**Nothing is public before Fri 16 Oct 10:59 AEDT**, and any slot can still be
+**Nothing went public before the test above**, and any future slot can still be
 cancelled from the board before it lands.
 
 ### 2026-10-15 — migrations now apply from CI
