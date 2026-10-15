@@ -32,7 +32,7 @@ import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { CARD_DIMS, type Aspect, defaultCardState, drawCard, firstNameOf, loadCardLogo } from '@/utils/titleCard';
 import { type ClipProgress } from '@/utils/canvasRecorder';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
-import { listTrackInShop, queueTrackForRelease, rerecordTeasers } from '@/utils/releaseTrack';
+import { listTrackInShop, queueTrackForRelease, rerecordTeasers, saveRequestKey } from '@/utils/releaseTrack';
 import { Progress } from '@/components/ui/progress';
 
 // The board's measurable filters: a clickable count of what's done and what's
@@ -100,6 +100,7 @@ export default function ReleaseBoard({
   onMutation,
   onBacklog,
   onOpenTrack,
+  onQueueTrack,
 }: {
   queue: PublicationWithAsset[];
   tz: string;
@@ -109,6 +110,10 @@ export default function ReleaseBoard({
   onBacklog?: (count: number) => void;
   // Opens the per-song page for a track already in the queue.
   onOpenTrack?: (pub: PublicationWithAsset) => void;
+  // Hands a song to the release wizard instead of opening the dialog inline —
+  // the wizard is the friendlier way to do the same job, so the row is the index
+  // and the wizard is the work.
+  onQueueTrack?: (requestId: string) => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -354,11 +359,11 @@ export default function ReleaseBoard({
   // Record a missing musical key without leaving the board — the card and the
   // description pick it up next time the track is queued.
   const saveKey = async (requestId: string, value: string) => {
-    if (!value || savingKey) return;
+    const track = tracks.find((t) => t.requestId === requestId);
+    if (!track || !value || savingKey) return;
     setSavingKey(requestId);
     try {
-      const { error: e } = await supabase.from('backing_requests').update({ song_key: value }).eq('id', requestId);
-      if (e) throw e;
+      await saveRequestKey(track, value);
       await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
       toast({ title: 'Key saved', description: `${value.replace(/\s*\([^)]*\)\s*$/, '')} recorded on the request.` });
     } catch (e) {
@@ -503,8 +508,8 @@ export default function ReleaseBoard({
                     >
                       {group.rows.length > 1 && (
                         <p className="px-1 pb-1.5 text-[11px] font-medium text-gray-500">
-                          {group.rows.length} orders of this song — one video per song, so only the
-                          order that still needs a video is offered to queue.
+                          {group.rows.length} orders of this song — only one video is made, for the
+                          order that still needs one.
                         </p>
                       )}
                       {group.rows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
@@ -607,10 +612,10 @@ export default function ReleaseBoard({
                         size="sm"
                         className="bg-[#1C0357] hover:bg-[#1C0357]/90"
                         disabled={t.noSocials || t.isExclusive}
-                        onClick={() => setVetting(t.requestId)}
+                        onClick={() => (onQueueTrack ? onQueueTrack(t.requestId) : setVetting(t.requestId))}
                         title={t.isExclusive ? 'Exclusive ownership — not for public sharing' : undefined}
                       >
-                        <ListPlus className="h-3.5 w-3.5" /> Review & queue
+                        <ListPlus className="h-3.5 w-3.5" /> Review &amp; queue
                       </Button>
                     )}
                     <DropdownMenu>

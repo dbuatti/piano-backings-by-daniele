@@ -322,6 +322,20 @@ export async function rerecordTeasers({
 }
 
 /**
+ * Records a musical key on the request, in the column that request actually
+ * reads (see DeliveredTrack.keyField). Used by the board's inline key picker and
+ * the wizard's "needs a key" fixer.
+ */
+export async function saveRequestKey(track: DeliveredTrack, value: string): Promise<void> {
+  if (!value) throw new Error('Pick a key first.');
+  const { error } = await supabase
+    .from('backing_requests')
+    .update({ [track.keyField]: value })
+    .eq('id', track.requestId);
+  if (error) throw error;
+}
+
+/**
  * Creates the shop listing for a delivered track: a $6.99 listing with a
  * rendered title card as its image and the track's audio attached.
  *

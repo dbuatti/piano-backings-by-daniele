@@ -9,6 +9,10 @@ export type DeliveredTrack = {
   show: string;
   client: string;
   key: string | null;
+  // Which column `key` came from. A request where the client asked for a
+  // different key reads `key_for_track`; writing to `song_key` for one of those
+  // would silently leave the track keyless.
+  keyField: 'song_key' | 'key_for_track';
   createdAt: string;
   url: string;
   noSocials: boolean;
@@ -64,6 +68,7 @@ async function loadDeliveredTracks(): Promise<DeliveredTrack[]> {
           key: (different
             ? String(r.key_for_track ?? '').trim() || String(r.song_key ?? '').trim()
             : String(r.song_key ?? '').trim()) || null,
+          keyField: different ? ('key_for_track' as const) : ('song_key' as const),
           createdAt: String(r.created_at ?? ''),
           noSocials: Boolean(r.no_socials),
           isExclusive,

@@ -1147,6 +1147,9 @@ const PublishingSection = () => {
   const [bulkDrafting, setBulkDrafting] = useState(false);
   // Tracks tab: the guided push wizard (default) or the full reference board.
   const [tracksView, setTracksView] = useState<'wizard' | 'board'>('wizard');
+  // A song the board asked the wizard to open on. Consumed (cleared) once the
+  // wizard has taken it, so returning to the wizard doesn't re-open it.
+  const [wizardStart, setWizardStart] = useState<string | null>(null);
   // Admin test hooks: which platform pass is running, and the raw worker reply
   // so the pipeline can be verified from the page.
   const [testing, setTesting] = useState<'youtube' | 'tiktok' | 'instagram' | null>(null);
@@ -2196,13 +2199,15 @@ const PublishingSection = () => {
             <ReleaseWizard
               queue={queue}
               groups={groups}
-              tz={tz}
               nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
               onPush={publishTrack}
-              onRefresh={refetch}
+              onRefresh={async () => (await refetch()).data?.queue ?? []}
               onSaveCaption={saveCaption}
               onSaveCopy={saveCopy}
               onOpenBoard={() => setTracksView('board')}
+              onOpenPipeline={() => setTab('pipeline')}
+              startRequestId={wizardStart}
+              onStartConsumed={() => setWizardStart(null)}
             />
           ) : (
             <ReleaseBoard
@@ -2210,6 +2215,10 @@ const PublishingSection = () => {
               tz={tz}
               onMutation={() => refetch()}
               onOpenTrack={openByPub}
+              onQueueTrack={(requestId) => {
+                setWizardStart(requestId);
+                setTracksView('wizard');
+              }}
             />
           )}
         </div>
