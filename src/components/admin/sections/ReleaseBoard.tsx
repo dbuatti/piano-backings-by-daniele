@@ -45,19 +45,51 @@ type BoardFilter =
   | 'no_shop'
   | 'on_youtube'
   | 'not_on_youtube'
-  | 'not_for_socials'
-  | 'missing_key';
+  | 'missing_key'
+  | 'hidden';
 
 const BOARD_STATS: { key: BoardFilter; label: string; hint: string }[] = [
-  { key: 'all', label: 'All delivered', hint: 'Every delivered track' },
+  { key: 'all', label: 'All delivered', hint: 'Every delivered track that can be posted. Exclusive and not-for-socials tracks live under Hidden.' },
   { key: 'in_shop', label: 'In shop', hint: 'Live shop listings — the public shop page is reachable.' },
   { key: 'shop_draft', label: 'Shop draft', hint: 'Saved to the shop but not activated — needs review.' },
   { key: 'no_shop', label: 'No shop listing', hint: 'Not in the shop yet.' },
-  { key: 'on_youtube', label: 'On YouTube', hint: 'Confirmed public on YouTube.' },
-  { key: 'not_on_youtube', label: 'Not on YouTube', hint: 'No video queued, allowed on socials and not exclusive.' },
-  { key: 'not_for_socials', label: 'Not for socials', hint: 'Manually excluded from socials.' },
-  { key: 'missing_key', label: 'Missing key', hint: 'The request has no key recorded.' },
+  { key: 'on_youtube', label: 'Live on YouTube', hint: 'Confirmed public on YouTube.' },
+  { key: 'not_on_youtube', label: 'Not queued', hint: 'No video queued yet, allowed on socials and not exclusive.' },
+  { key: 'missing_key', label: 'Missing key', hint: 'The request has no key recorded — the title card needs one.' },
+  { key: 'hidden', label: 'Hidden', hint: 'Exclusive ownership or marked not for socials. These are never posted.' },
 ];
+
+// How close a delivered track is to being postable. It decides the section a song
+// lands in, so the board reads top-down: do this, then this, then nothing.
+type Readiness = 'ready' | 'needs_key' | 'queued' | 'live' | 'hidden';
+
+// In order — most actionable first, which is also the tie-break used inside a
+// section when a song has more than one order.
+const READINESS_SECTIONS: { key: Readiness; label: string; hint: string }[] = [
+  { key: 'ready', label: 'Ready to queue', hint: 'Everything a post needs is here — open one and Review & queue.' },
+  { key: 'needs_key', label: 'Needs a key', hint: 'Record the musical key on the request and it can be queued.' },
+  { key: 'queued', label: 'In the queue', hint: 'Booked or waiting on you — the Pipeline tab shows what needs a press.' },
+  { key: 'live', label: 'Live', hint: 'Already published.' },
+  { key: 'hidden', label: 'Hidden', hint: 'Exclusive or not for socials. Shown only because you opened this filter.' },
+];
+
+const PENDING_STATUSES = ['draft', 'pending_approval', 'approved', 'scheduled', 'publishing'];
+
+function readinessOf(t: DeliveredTrack, pubs: PublicationWithAsset[]): Readiness {
+  // Never postable, whatever state the pipeline is in.
+  if (t.isExclusive || t.noSocials) return 'hidden';
+  // Mid-pipeline comes before live: a song whose video is scheduled but whose
+  // teasers already went out is still "in the queue", not finished.
+  if (pubs.some((p) => PENDING_STATUSES.includes(p.status))) return 'queued';
+  if (pubs.some((p) => p.status === 'published')) return 'live';
+  if (!t.key) return 'needs_key';
+  return 'ready';
+}
+
+const sectionRankOf = (rows: { readiness: Readiness }[]) =>
+  Math.min(...rows.map((r) => READINESS_SECTIONS.findIndex((s) => s.key === r.readiness)));
+
+const songKeyOf = (t: DeliveredTrack) => `${t.song.trim().toLowerCase()}|${t.show.trim().toLowerCase()}`;
 
 // Delivered tracks → one row each showing progress across every platform: is it
 // in the shop, what's up on YouTube, are teaser drafts queued for TikTok/IG,
@@ -256,18 +288,22 @@ export default function ReleaseBoard({
       shopProduct: shopProductForTrack(products, { song: t.song, show: t.show }),
       shopUrl: shopSongUrl(products, { song: t.song, show: t.show }),
       queuedForYoutube: !!ytPub,
+      readiness: readinessOf(t, pubs),
     };
   });
 
   type BoardRow = (typeof boardRows)[number];
   const rowMatches = (key: BoardFilter, row: BoardRow): boolean => {
+    // Exclusive / not-for-socials tracks are never postable, so they sit outside
+    // every working filter and surface only under Hidden.
+    if (key === 'hidden') return row.readiness === 'hidden';
+    if (row.readiness === 'hidden') return false;
     switch (key) {
       case 'in_shop': return row.shopProduct?.is_active === true;
       case 'shop_draft': return !!row.shopProduct && row.shopProduct.is_active === false;
       case 'no_shop': return !row.shopProduct;
       case 'on_youtube': return row.yt?.status === 'published';
-      case 'not_on_youtube': return !row.yt && !row.t.noSocials && !row.t.isExclusive;
-      case 'not_for_socials': return row.t.noSocials;
+      case 'not_on_youtube': return !row.yt;
       case 'missing_key': return !row.t.key;
       default: return true;
     }
@@ -280,11 +316,45 @@ export default function ReleaseBoard({
 
   const visibleRows = boardRows.filter((row) => rowMatches(filter, row));
 
-  // The not-on-YouTube backlog, in board order, for the "vett backlog" walkthrough.
-  const notOnYoutubeIds = boardRows
-    .filter((row) => rowMatches('not_on_youtube', row))
-    .map((row) => row.t.requestId);
+  // The un-queued backlog for the "Review & queue all" walkthrough. One video per
+  // song: a track ordered twice ("How it ends") queues once, and the order that
+  // still needs a video is the one offered.
+  const notOnYoutubeIds: string[] = [];
+  {
+    const seen = new Set<string>();
+    for (const row of boardRows) {
+      if (!rowMatches('not_on_youtube', row)) continue;
+      const key = songKeyOf(row.t);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      notOnYoutubeIds.push(row.t.requestId);
+    }
+  }
   const [bulkVet, setBulkVet] = useState<{ ids: string[]; index: number } | null>(null);
+
+  // Fold the orders of one song under a single heading, then file that song into
+  // the most actionable state any of its orders is in. So the board never lists
+  // one song twice, and never buries a song that still needs work.
+  const songGroups: { key: string; song: string; show: string; rows: BoardRow[] }[] = [];
+  for (const row of visibleRows) {
+    const key = songKeyOf(row.t);
+    const found = songGroups.find((g) => g.key === key);
+    if (found) found.rows.push(row);
+    else songGroups.push({ key, song: row.t.song, show: row.t.show, rows: [row] });
+  }
+  const sections = READINESS_SECTIONS.map((section, i) => ({
+    ...section,
+    groups: songGroups
+      .filter((g) => sectionRankOf(g.rows) === i)
+      .map((g) => ({
+        ...g,
+        rows: [...g.rows].sort(
+          (a, b) =>
+            READINESS_SECTIONS.findIndex((s) => s.key === a.readiness) -
+            READINESS_SECTIONS.findIndex((s) => s.key === b.readiness)
+        ),
+      })),
+  })).filter((section) => section.groups.length > 0);
 
   // At-a-glance progress: how much of the catalogue is queued and listed.
   const queuedYt = boardRows.filter((row) => row.yt && row.yt.status !== 'published').length;
@@ -377,8 +447,8 @@ export default function ReleaseBoard({
             {isLoading || !tracks
               ? ' '
               : filter === 'all'
-                ? `${tracks?.length ?? 0} delivered · newest first`
-                : `${visibleRows.length} of ${tracks?.length ?? 0} · ${BOARD_STATS.find((s) => s.key === filter)?.label}`}
+                ? `${audit.all} to post${audit.hidden > 0 ? ` · ${audit.hidden} hidden` : ''}`
+                : `${visibleRows.length} of ${audit.all} · ${BOARD_STATS.find((s) => s.key === filter)?.label}`}
           </span>
         </CardTitle>
       </CardHeader>
@@ -458,17 +528,37 @@ export default function ReleaseBoard({
                 <Mail className="h-3 w-3" /> {emailing ? 'Sending…' : 'Email audit'}
               </button>
             </div>
-            {visibleRows.length === 0 ? (
+            {sections.length === 0 ? (
               <p className="px-4 py-6 text-sm text-gray-400">Nothing here — try another filter.</p>
             ) : (
-              visibleRows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
-                const teaserWithFile =
-                  (tt?.content_assets?.storage_path ? tt : null) ??
-                  (ig?.content_assets?.storage_path ? ig : null);
-                // Any row at all means the song has a page in the pipeline.
-                const anyPub = yt ?? tt ?? ig;
-                return (
-              <div key={t.requestId} className="rounded-xl border border-gray-100 p-3">
+              sections.map((section) => (
+                <div key={section.key} className="pb-3">
+                  <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 px-1">
+                    <h3 className="text-sm font-bold text-[#1C0357]">{section.label}</h3>
+                    <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold tabular-nums text-gray-600">
+                      {section.groups.length}
+                    </span>
+                    <span className="text-[11px] text-gray-400">{section.hint}</span>
+                  </div>
+                  {section.groups.map((group) => (
+                    <div
+                      key={group.key}
+                      className={cn('rounded-xl', group.rows.length > 1 && 'mb-2 bg-gray-50/70 p-2')}
+                    >
+                      {group.rows.length > 1 && (
+                        <p className="px-1 pb-1.5 text-[11px] font-medium text-gray-500">
+                          {group.rows.length} orders of this song — one video per song, so only the
+                          order that still needs a video is offered to queue.
+                        </p>
+                      )}
+                      {group.rows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
+                        const teaserWithFile =
+                          (tt?.content_assets?.storage_path ? tt : null) ??
+                          (ig?.content_assets?.storage_path ? ig : null);
+                        // Any row at all means the song has a page in the pipeline.
+                        const anyPub = yt ?? tt ?? ig;
+                        return (
+                      <div key={t.requestId} className="rounded-xl border border-gray-100 p-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-[#1C0357]">
@@ -636,9 +726,13 @@ export default function ReleaseBoard({
                     </span>
                   )}
                 </div>
-              </div>
-                );
-              })
+                      </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ))
             )}
           </>
         )}
