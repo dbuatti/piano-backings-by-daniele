@@ -506,7 +506,7 @@ function SlotSettings({
                 <p className="text-[11px] text-gray-400">0 = same time as the YouTube video. 120 = two hours later.</p>
               </div>
               <div className="space-y-1.5">
-                <Label>TikTok privacy for automated posts</Label>
+                <Label>TikTok privacy — API path only</Label>
                 <Select value={final('social_tiktok_privacy')} onValueChange={setTikTokPrivacy}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -517,7 +517,9 @@ function SlotSettings({
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-gray-400">
-                  An unaudited TikTok app is forced to <em>Only me</em> no matter what you pick here.
+                  Only used by the official API (see below). While the app is unaudited that path is
+                  forced to <em>Only me</em>. The browser poster ignores this setting and always
+                  selects <em>Everyone</em> — public, as long as the TikTok account itself is public.
                 </p>
               </div>
               <div className="space-y-1.5">
