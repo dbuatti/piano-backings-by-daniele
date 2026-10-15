@@ -230,8 +230,12 @@ export default function ReleaseBoard({
     return queue.filter((p) => {
       const a = p.content_assets;
       if (!a) return false;
-      if (a.request_id === requestId) return true;
-      // Fallback for legacy assets with no request_id: same song title AND show.
+      // The request is the identity, and it wins outright. The song+show match
+      // is only a legacy fallback for assets recorded before request_id existed
+      // — mixing the two made two orders of the same song ("How it ends" was
+      // ordered twice) wear each other's publications, and made the row with no
+      // video look queued.
+      if (a.request_id) return a.request_id === requestId;
       const titleMatch = (a.song_title || '').trim().toLowerCase() === songLc;
       const assetShow = (a.show || '').trim().toLowerCase();
       return titleMatch && (!showLc || !assetShow || assetShow === showLc);
