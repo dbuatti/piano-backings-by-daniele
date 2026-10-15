@@ -25,7 +25,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Ban, CheckCircle2, Download, ExternalLink, Eye, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, Download, ExternalLink, Eye, FileText, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
@@ -124,6 +125,7 @@ export default function ReleaseBoard({
   const [listing, setListing] = useState<string | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
+  const [inspecting, setInspecting] = useState<DeliveredTrack | null>(null);
   const [emailing, setEmailing] = useState(false);
   const [activating, setActivating] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -630,6 +632,9 @@ export default function ReleaseBoard({
                             <Library className="h-3.5 w-3.5" /> Open song page
                           </DropdownMenuItem>
                         ) : null}
+                        <DropdownMenuItem onSelect={() => setInspecting(t)}>
+                          <FileText className="h-3.5 w-3.5" /> Sheet music &amp; details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setPreviewing(t)}>
                           <Eye className="h-3.5 w-3.5" /> Preview posts
                         </DropdownMenuItem>
@@ -739,6 +744,11 @@ export default function ReleaseBoard({
       {previewing && (
         <PlatformPreview track={previewing} onClose={() => setPreviewing(null)} />
       )}
+      <TrackInfoDialog
+        track={inspecting}
+        open={inspecting !== null}
+        onOpenChange={(o) => !o && setInspecting(null)}
+      />
     </Card>
   );
 }

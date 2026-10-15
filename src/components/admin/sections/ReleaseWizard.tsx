@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle, ArrowRight, Check, CheckCircle2, KeyRound, Lightbulb, Loader2, Music2, Play,
+  AlertCircle, ArrowRight, Check, CheckCircle2, FileText, KeyRound, Lightbulb, Loader2, Music2, Play,
   Sparkles, Store, X,
 } from 'lucide-react';
 
@@ -28,6 +28,7 @@ import {
   listTrackInShop, queueTrackForRelease, saveRequestKey, type ReleasePhase,
 } from '@/utils/releaseTrack';
 import type { TrackGroup } from '@/utils/publishingPipeline';
+import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 
 // ---------------------------------------------------------------------------
 // The release wizard.
@@ -973,6 +974,7 @@ function KeyFixer({ tracks }: { tracks: DeliveredTrack[] }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState<DeliveredTrack | null>(null);
 
   const save = async (track: DeliveredTrack, value: string) => {
     if (!value || saving) return;
@@ -1004,6 +1006,14 @@ function KeyFixer({ tracks }: { tracks: DeliveredTrack[] }) {
               {t.song}
               {t.show && <span className="ml-2 text-xs font-normal text-gray-400">{t.show}</span>}
             </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 shrink-0 gap-1.5 text-amber-900 hover:bg-amber-100"
+              onClick={() => setInspecting(t)}
+            >
+              <FileText className="h-3.5 w-3.5" /> Sheet & details
+            </Button>
             <div className="w-44 shrink-0">
               <KeySelect value="" onChange={(v) => save(t, v)} />
             </div>
@@ -1011,6 +1021,11 @@ function KeyFixer({ tracks }: { tracks: DeliveredTrack[] }) {
           </li>
         ))}
       </ul>
+      <TrackInfoDialog
+        track={inspecting}
+        open={inspecting !== null}
+        onOpenChange={(o) => !o && setInspecting(null)}
+      />
     </div>
   );
 }

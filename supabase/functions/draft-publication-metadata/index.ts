@@ -205,10 +205,12 @@ function buildTemplate({ platform, song, show, dedication, key, title, productUr
   const songLine = String(song || '').trim() || 'This song';
   const cleanedShow = String(show || '').replace(/^\s*from\s+/i, '').trim();
   const showFrom = cleanedShow ? `from ${cleanedShow}` : '';
-  const keyPart = key ? ` in ${key}` : '';
-  // Same title line the board's review preview builds.
-  const titleLine = `${song || 'Song'} — Audition Cut${showFrom ? ` (${showFrom})` : ''}`;
+  // Stored keys carry a suffix ("G Major (1♯)") that reads badly in copy.
+  const cleanKey = key ? String(key).replace(/\s*\([^)]*\)\s*$/, '').trim() : '';
+  const keyPart = cleanKey ? ` in ${cleanKey}` : '';
+  // The client's typed song name can be lowercase; the working title is curated.
   const resolvedTitle = title || `${songLine}${showFrom ? ` (${showFrom})` : ''}`;
+  const titleLine = resolvedTitle.replace(/\.$/, '');
 
   if (platform === 'tiktok' || platform === 'instagram') {
     return {
@@ -229,7 +231,7 @@ function buildTemplate({ platform, song, show, dedication, key, title, productUr
     // Mirrors the description skeleton the board shows when a track is reviewed
     // (ReleaseBoard.descriptionSkeleton) — so what was approved is what lands.
     description: [
-      [`${titleLine}.`, firstName ? `Prepared for ${firstName}.` : '', key ? `Key: ${key}.` : '']
+      [`${titleLine}.`, firstName ? `Prepared for ${firstName}.` : '', cleanKey ? `Key: ${cleanKey}.` : '']
         .filter(Boolean)
         .join(' '),
       'Custom piano backing tracks for auditions, performances and practice — arranged and recorded in the key you choose, delivered fast.',
@@ -244,7 +246,7 @@ function buildTemplate({ platform, song, show, dedication, key, title, productUr
       show,
       'piano backing track',
       'audition cut',
-      key ? `${key} backing track` : 'backing track',
+      cleanKey ? `${cleanKey} backing track` : 'backing track',
       'musical theatre audition',
       'singing practice',
       'piano accompaniment',
