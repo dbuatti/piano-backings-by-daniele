@@ -204,6 +204,40 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-15 — the first full cadence is booked
+
+**Five songs took the 16 / 19 / 22 / 25 / 28 Oct slots** — the whole backlog that
+had been sitting in *draft* since 13 October. Every row was already complete (a
+recorded file and a written description), so nothing tripped the ready checks.
+
+Booked through the app's own hands-off pass rather than by writing SQL: `auto_book`
+was switched on, `run-publish-queue` ran once, and it was switched **off again**.
+That matters, because hand-rolled slot maths got it *wrong* — the first attempt
+anchored the 3-day grid on today, and since today's 10:59 Sydney had already
+passed, it put the first slot on 18 Oct. The server's `allocatePublishingSlots`
+said 16 Oct, and it is right: the cadence starts at the soonest 10:59 still
+ahead, not at today's. Two days of drift, from arithmetic no one would have
+noticed until the videos appeared late.
+
+| slot (10:59 AEDT) | song | goes out |
+| --- | --- | --- |
+| Fri 16 Oct | Love Revolution | YouTube + Instagram + TikTok |
+| Mon 19 Oct | Wondering | YouTube |
+| Thu 22 Oct | Don't Wanna Be Here | YouTube + Instagram |
+| Sun 25 Oct | How it ends | YouTube + Instagram + TikTok |
+| Wed 28 Oct | Tonight at eight | YouTube + Instagram + TikTok |
+
+All five YouTube videos uploaded straight away with `publishAt` set to their
+slot, so they are **scheduled/private until then** — every row carries a
+`platform_post_id` and none carries an error. `run-social-queue` armed the 7
+teasers (4 Instagram, 3 TikTok) onto their songs' slots, so the social passes
+ride the videos rather than firing early. Wondering appears with a video only
+because its Instagram Reel and TikTok are already live; Don't Wanna Be Here
+likewise, so its slot has no second TikTok.
+
+**Nothing is public before Fri 16 Oct 10:59 AEDT**, and any slot can still be
+cancelled from the board before it lands.
+
 ### 2026-10-15 — migrations now apply from CI
 
 **The project's database was unreachable from this machine.** Applying a
@@ -556,7 +590,8 @@ song page now share it instead of each rolling their own.
 
 Ordered so the cheap, unblocking things come first.
 
-1. **Instagram** (≈10 min, needs a professional account).
+1. **Instagram** — **done**; Instagram is live (§7, and the Reel that posted
+   itself). The steps below are kept as the record of what it took.
    In Settings → Integrations, open **Set up social posting → Instagram** and
    follow it top to bottom. In short: switch the IG account to Business/Creator →
    create a Meta app with *Instagram Business Login* → paste the redirect URI the
@@ -580,7 +615,10 @@ Ordered so the cheap, unblocking things come first.
    teaser in storage: all end in digital silence. The only file that doesn't is
    the one already live on TikTok (`66fe309d`, Don't Wanna Be Here), which stops
    mid-performance. The four chopped Instagram trims were repaired. See §0.
-6. **Re-record the pending teasers** — only the chosen cuts.
+6. **Re-record the pending teasers** — **not needed for this batch.** The five
+   backlog songs are booked onto 16-28 Oct with their good cuts armed, so
+   nothing pending is waiting on a re-record. The one known-bad teaser is the
+   already-live TikTok above, which cannot be replaced in place.
 7. **Song page, next slices** (if they earn their space): inline caption editing
    (today it hands off to the composer), the audition cut's own metadata, and a
    price/PDF block.
