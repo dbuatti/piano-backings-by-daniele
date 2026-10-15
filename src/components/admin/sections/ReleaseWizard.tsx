@@ -18,9 +18,10 @@ import { Progress } from '@/components/ui/progress';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
+import { useDeliveredTracks, useShopProducts, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { renderCardToBlob } from '@/utils/titleCard';
+import { shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
 import type { ClipProgress } from '@/utils/canvasRecorder';
 import { listTrackInShop, queueTrackForRelease, type ReleasePhase } from '@/utils/releaseTrack';
 import type { TrackGroup } from '@/utils/publishingPipeline';
@@ -93,6 +94,7 @@ export function ReleaseWizard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: tracks } = useDeliveredTracks();
+  const { data: products } = useShopProducts();
 
   const [step, setStep] = useState<WizardStep>('intro');
   const [doneIds, setDoneIds] = useState<string[]>([]);
@@ -142,6 +144,10 @@ export function ReleaseWizard({
   // freshest handled list so "next" is right immediately, before React re-renders.
   const upNext = ready.filter((t) => !doneIds.includes(t.requestId));
   const nextUp = upNext[0] ?? null;
+
+  // A song can be delivered twice; it must not be listed in the shop twice. The
+  // existing listing is surfaced rather than silently skipped.
+  const listed = current ? shopProductForTrack(products ?? [], current) : null;
 
   const rowsFor = (requestId: string) =>
     queue.filter((p) => p.content_assets?.request_id === requestId);
@@ -231,10 +237,10 @@ export function ReleaseWizard({
       await onPush(group);
 
       let shopped = false;
-      if (toShop) {
-        await listTrackInShop(current, { active: shopLive });
+      if (toShop && !listed) {
+        const res = await listTrackInShop(current, { active: shopLive });
         await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
-        shopped = true;
+        shopped = res.created;
       }
 
       setPushed({ song: title || current.song, slot: nextSlotLabel, shop: shopped });
@@ -534,6 +540,7 @@ export function ReleaseWizard({
 
   // ----------------------------------------------------------------- push
   if (step === 'push' && current) {
+    const shopListingUrl = shopSongUrl(products ?? [], current);
     return (
       <Card className="border-none bg-white shadow-sm rounded-2xl">
         <CardHeader className="space-y-2">
@@ -558,26 +565,51 @@ export function ReleaseWizard({
             </li>
           </ul>
 
-          <div className="space-y-3 rounded-xl bg-gray-50 p-3">
-            <div className="flex items-center justify-between gap-3">
+          {listed ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3">
               <div>
-                <p className="text-sm font-medium text-gray-700">Add it to the shop</p>
-                <p className="text-[11px] text-gray-400">$6.99, with the title card as its cover.</p>
+                <p className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <Store className="h-3.5 w-3.5 text-[#F538BC]" /> Already in the shop
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  {listed.is_active === false
+                    ? 'It’s saved as a draft — activate it in the Shop when you’re happy.'
+                    : 'This song already has a live listing, so it will be left alone.'}
+                </p>
               </div>
-              <Switch checked={toShop} onCheckedChange={setToShop} />
+              {shopListingUrl && (
+                <a
+                  href={shopListingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 text-xs font-medium text-[#1C0357] underline"
+                >
+                  View
+                </a>
+              )}
             </div>
-            {toShop && (
-              <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
+          ) : (
+            <div className="space-y-3 rounded-xl bg-gray-50 p-3">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Live straight away</p>
-                  <p className="text-[11px] text-gray-400">
-                    Off saves it as a draft to review in the Shop first.
-                  </p>
+                  <p className="text-sm font-medium text-gray-700">Add it to the shop</p>
+                  <p className="text-[11px] text-gray-400">$6.99, with the title card as its cover.</p>
                 </div>
-                <Switch checked={shopLive} onCheckedChange={setShopLive} />
+                <Switch checked={toShop} onCheckedChange={setToShop} />
               </div>
-            )}
-          </div>
+              {toShop && (
+                <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Live straight away</p>
+                    <p className="text-[11px] text-gray-400">
+                      Off saves it as a draft to review in the Shop first.
+                    </p>
+                  </div>
+                  <Switch checked={shopLive} onCheckedChange={setShopLive} />
+                </div>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">

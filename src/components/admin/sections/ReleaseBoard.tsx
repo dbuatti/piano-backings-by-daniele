@@ -132,9 +132,13 @@ export default function ReleaseBoard({
     try {
       // Shared with the release wizard, so a listing made there and one made
       // here are identical.
-      await listTrackInShop(t);
+      const { created } = await listTrackInShop(t);
       await queryClient.invalidateQueries({ queryKey: ['shop_products'] });
-      toast({ title: 'Saved as a shop draft', description: `${t.song} is ready for review — open Shop to check it and activate the listing.` });
+      toast(
+        created
+          ? { title: 'Saved as a shop draft', description: `${t.song} is ready for review — open Shop to check it and activate the listing.` }
+          : { title: 'Already in the shop', description: `${t.song} already has a listing, so nothing was added.` }
+      );
     } catch (e) {
       toast({ title: "Couldn't list the track", description: getErrorMessage(e), variant: 'destructive' });
     } finally {

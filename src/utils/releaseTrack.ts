@@ -7,7 +7,8 @@
 // wizard is a friendlier way to drive it, not a second recording path.
 
 import { supabase } from '@/integrations/supabase/client';
-import type { DeliveredTrack } from '@/hooks/useDeliveredTracks';
+import type { DeliveredTrack, ShopProductRow } from '@/hooks/useDeliveredTracks';
+import { shopProductForTrack } from '@/utils/shopLink';
 import {
   captureCardSnapshot,
   defaultCardState,
@@ -327,8 +328,23 @@ export async function rerecordTeasers({
  * `active` decides whether the listing is live immediately or saved as a draft
  * for review — the board's one-click uses the draft, the wizard defaults to
  * live so "push it to the shop" means what it says.
+ *
+ * Returns whether a listing was actually created. A song already in the shop is
+ * left alone rather than being listed twice: the same song can be delivered more
+ * than once, and nothing should end up with two shop entries.
  */
-export async function listTrackInShop(track: DeliveredTrack, { active = false } = {}): Promise<void> {
+export async function listTrackInShop(
+  track: DeliveredTrack,
+  { active = false } = {}
+): Promise<{ created: boolean }> {
+  const { data: existing, error: lookupErr } = await supabase
+    .from('products')
+    .select('id, title, artist_name, product_type, is_active');
+  if (lookupErr) throw lookupErr;
+  if (shopProductForTrack((existing ?? []) as ShopProductRow[], track)) {
+    return { created: false };
+  }
+
   const shownKey = formatKey(track.key ?? '');
   const shownShow = track.show.replace(/^\s*from\s+/i, '').trim();
   const description = [
@@ -379,4 +395,5 @@ export async function listTrackInShop(track: DeliveredTrack, { active = false } 
     master_download_link: '',
   }]);
   if (error) throw error;
+  return { created: true };
 }
