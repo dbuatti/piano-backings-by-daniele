@@ -96,7 +96,13 @@ async function connectInstagram({ code, redirectUri, userId, supabaseAdmin }) {
       code,
     }),
   });
-  const shortData = await shortRes.json();
+  // Read the body as text, not JSON: the token exchange also returns user_id,
+  // but as a JSON number. The Instagram id is 17 digits and exceeds
+  // Number.MAX_SAFE_INTEGER, so JSON.parse rounds the last digit
+  // (…359 -> …360) and every later publish 400s with "object does not exist".
+  // The raw text keeps the exact digits for the fallback below.
+  const shortText = await shortRes.text();
+  const shortData = shortText ? JSON.parse(shortText) : {};
   if (!shortRes.ok || !shortData.access_token) {
     throw new Error(shortData.error_message || shortData.error?.message || `Instagram token exchange failed (${shortRes.status})`);
   }
@@ -114,20 +120,27 @@ async function connectInstagram({ code, redirectUri, userId, supabaseAdmin }) {
   const accessToken = longData.access_token || shortData.access_token;
   const expiresIn = longData.expires_in ?? null;
 
-  // 3) Resolve the username for display; the numeric user id is what publishing
-  //    uses as {ig-user-id}.
+  // 3) Resolve the username for display and the numeric user id, which is what
+  //    publishing uses as {ig-user-id}. Prefer /me, which returns the id as a
+  //    string; fall back to the exact digits from the token response text so a
+  //    reconnect can never silently store a rounded id.
   let displayName = null;
+  let externalId: string | null = null;
   try {
     const meRes = await fetch(
       `https://graph.instagram.com/${GRAPH_VERSION}/me?` +
-        new URLSearchParams({ fields: 'user_id,username', access_token: accessToken })
+        new URLSearchParams({ fields: 'id,username', access_token: accessToken })
     );
     if (meRes.ok) {
       const me = await meRes.json();
       displayName = me?.username ?? null;
+      if (me?.id != null) externalId = String(me.id);
     }
   } catch (_) {
     // ignore
+  }
+  if (!externalId) {
+    externalId = /"user_id"\s*:\s*"?(\d+)"?/.exec(shortText)?.[1] ?? null;
   }
 
   await saveSocialToken(supabaseAdmin, {
@@ -136,7 +149,7 @@ async function connectInstagram({ code, redirectUri, userId, supabaseAdmin }) {
     accessToken,
     refreshToken: null,
     expiresIn,
-    externalId: String(shortData.user_id ?? '') || null,
+    externalId,
     displayName,
     scope: Array.isArray(shortData.permissions) ? shortData.permissions.join(',') : null,
   });

@@ -140,7 +140,8 @@ corporate.
 
 ## 7. Instagram, live
 
-Blocked on credentials, **not policy** — see
+**Live as of 2026-10-15** — the worker posts Reels unattended (the first was
+`Wondering`). It was only ever blocked on credentials, **not policy** — see
 `docs/social-automation-research.md`. Prerequisites: the account must be a
 **professional** (Business/Creator) account, and the Meta app needs
 `INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, `VITE_INSTAGRAM_CLIENT_ID` and
@@ -196,6 +197,32 @@ of guessed at.
 ---
 
 ## Done so far
+
+### 2026-10-15 — Instagram is live (and the bug that hid it)
+
+**The first Reel posted itself.** `Wondering` went out through the ordinary
+15-minute worker — container → poll → publish, no manual step. The failure that
+preceded it was never the video.
+
+**Root cause: a rounded id.** `social-oauth-callback` read the Instagram account
+id out of the token-exchange JSON, where it arrives as a *number*. The id is 17
+digits (`28950502854580359`), past `Number.MAX_SAFE_INTEGER`, so the last digit
+rounded to `…360` — and every publish then asked Graph for an id that does not
+exist ("object does not exist, cannot be loaded due to missing permissions").
+The fix reads the id from `/me`, which returns it as a *string*, with the exact
+digits off the raw response text as a fallback, so a reconnect can no longer
+store a rounded id.
+
+The encoding red herring is worth recording: a fragmented `MediaRecorder` MP4 is
+**fine** for the Instagram API. A container built from the original fragmented
+teaser reaches `FINISHED` in about 40s — no remux and no transcode is needed, and
+the recorder stays as it is. (`/me` also returns a separate `user_id` — the
+app-scoped id — so the publishing id must come from the `id` field.)
+
+**Legacy Instagram teasers re-cut to 30s.** The tracks queued before the
+per-platform split shared one full-length file with TikTok. The four still
+pending are trimmed to a 30-second progressive MP4 (`ffmpeg -c copy`, no
+re-encode) and now sit on their own Instagram asset; TikTok keeps the full cut.
 
 ### 2026-10-14 — in-app social setup guide (Instagram-ready morning)
 
