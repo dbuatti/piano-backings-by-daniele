@@ -378,7 +378,7 @@ function SlotSettings({
       case 'interval_days':
         return days !== null
           ? Math.min(Math.max(Number(days), 1), 90)
-          : settings?.interval_days ?? 3;
+          : settings?.interval_days ?? 5;
       case 'weekly_dow':
         return dow !== null ? dow : settings?.weekly_dow ?? 2;
       case 'weekly_time':
@@ -500,7 +500,7 @@ function SlotSettings({
                 type="number"
                 min={1}
                 max={90}
-                value={days ?? String(settings.interval_days ?? 3)}
+                value={days ?? String(settings.interval_days ?? 5)}
                 onChange={(e) => setDays(e.target.value)}
               />
             </div>
@@ -1254,7 +1254,7 @@ const PublishingSection = () => {
   // Plain-words cadence, for the runway nudge's one-line "how".
   const cadenceLabel =
     (settings?.schedule_mode ?? 'interval') === 'interval'
-      ? `${settings?.interval_days ?? 3}-day`
+      ? `${settings?.interval_days ?? 5}-day`
       : 'weekly';
   // The automation switch. It decides whether a booked teaser will move on its
   // own or is waiting for a hand-post, so the "needs you" band reads from it.

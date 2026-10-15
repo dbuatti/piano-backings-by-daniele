@@ -29,6 +29,7 @@ import {
 } from '@/utils/releaseTrack';
 import type { TrackGroup } from '@/utils/publishingPipeline';
 import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
+import SheetMusicDrop from '@/components/admin/SheetMusicDrop';
 
 // ---------------------------------------------------------------------------
 // The release wizard.
@@ -458,6 +459,34 @@ export function ReleaseWizard({
     goHome();
   };
 
+  // Check step: keep what was typed on the request, then leave. Nothing is queued,
+  // so this is the only place the title, show and key can survive leaving.
+  const saveDetailsAndExit = async () => {
+    if (!current) return goHome();
+    setBusy(true);
+    setError(null);
+    try {
+      const updates: { song_title?: string; musical_or_artist?: string } = {};
+      if (title.trim() && title.trim() !== current.song) updates.song_title = title.trim();
+      if (show.trim() !== current.show) updates.musical_or_artist = show.trim();
+      if (Object.keys(updates).length) {
+        const { error: upErr } = await supabase.from('backing_requests').update(updates).eq('id', current.requestId);
+        if (upErr) throw upErr;
+      }
+      if (key && key !== (current.key ?? '')) {
+        await saveRequestKey(current, key);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
+      await queryClient.invalidateQueries({ queryKey: ['request_info', current.requestId] });
+      toast({ title: 'Saved', description: `${title || current.song} is back on the list, with these details.` });
+      goHome();
+    } catch (e) {
+      setError(await getFunctionErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Step 4: book the slot, arm the teasers, optionally list it in the shop.
   const push = async () => {
     if (!current) return;
@@ -662,6 +691,11 @@ export function ReleaseWizard({
           </div>
         </div>
 
+        <div className="space-y-1.5">
+          <Label>Sheet music</Label>
+          <SheetMusicDrop requestId={current.requestId} compact />
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={makeIt}
@@ -672,6 +706,9 @@ export function ReleaseWizard({
             Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           {!key && <span className="text-[11px] font-medium text-amber-600">Pick a key first</span>}
+          <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
+            Save &amp; exit
+          </Button>
           <Button
             variant="ghost"
             onClick={() => advancePast(markHandled(current.requestId))}

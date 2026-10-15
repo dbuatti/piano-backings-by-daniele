@@ -85,7 +85,7 @@ function nextDailyTime(settings: SlotSettings, from: Date): Date {
 }
 
 function clampInterval(settings: SlotSettings): number {
-  return Math.min(Math.max(settings.interval_days ?? 3, 1), 90);
+  return Math.min(Math.max(settings.interval_days ?? 5, 1), 90);
 }
 
 // The next slot in the cadence, strictly after `from`:

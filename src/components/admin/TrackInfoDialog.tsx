@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, FileText, Loader2, Music2 } from 'lucide-react';
+import { Loader2, Music2 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,10 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { saveRequestKey } from '@/utils/releaseTrack';
+import SheetMusicDrop from '@/components/admin/SheetMusicDrop';
 
-// Everything the request says about a song, next to the audio and the sheet
-// music. The PDF is the source of truth for the key, so it sits beside the key
-// picker: read the key off the sheet and set it without leaving the screen.
+// Everything the request says about a song. The sheet music sits on the left as
+// a drop box with a small preview, so a PDF is one drag away; the key is set on
+// the right, so the key can be read off the preview and saved without leaving.
 
 type RequestInfo = {
   id: string;
@@ -32,8 +33,6 @@ type RequestInfo = {
   track_purpose: string | null;
   special_requests: string | null;
   internal_notes: string | null;
-  sheet_music_url: string | null;
-  sheet_music_urls: { url?: string; caption?: string | boolean | null }[] | null;
   voice_memo_urls: { url?: string; caption?: string | boolean | null }[] | null;
   created_at: string | null;
 };
@@ -48,16 +47,6 @@ interface TrackInfoDialogProps {
 const captionOr = (caption: string | boolean | null | undefined, fallback: string) =>
   typeof caption === 'string' && caption.trim() ? caption : fallback;
 
-const pdfFiles = (info: RequestInfo | null | undefined) => {
-  const list = (info?.sheet_music_urls ?? [])
-    .filter((f) => f?.url)
-    .map((f, i) => ({ url: f.url!, label: captionOr(f.caption, `Sheet music ${i + 1}`) }));
-  if (list.length === 0 && info?.sheet_music_url) {
-    list.push({ url: info.sheet_music_url, label: 'Sheet music' });
-  }
-  return list;
-};
-
 const voiceMemoFiles = (info: RequestInfo | null | undefined) =>
   (info?.voice_memo_urls ?? [])
     .filter((f) => f?.url)
@@ -68,18 +57,17 @@ export default function TrackInfoDialog({ track, open, onOpenChange, onKeySaved 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [pdfIndex, setPdfIndex] = useState(0);
 
   const requestId = track?.requestId ?? null;
 
   const { data: info, isLoading, error } = useQuery<RequestInfo | null, Error>({
-    queryKey: ['request_info', requestId],
+    queryKey: ['request_detail', requestId],
     enabled: open && !!requestId,
     queryFn: async () => {
       const { data, error: err } = await supabase
         .from('backing_requests')
         .select(
-          'id, song_title, musical_or_artist, name, email, song_key, different_key, key_for_track, backing_type, track_purpose, special_requests, internal_notes, sheet_music_url, sheet_music_urls, voice_memo_urls, created_at'
+          'id, song_title, musical_or_artist, name, email, song_key, different_key, key_for_track, backing_type, track_purpose, special_requests, internal_notes, voice_memo_urls, created_at'
         )
         .eq('id', requestId!)
         .maybeSingle();
@@ -88,13 +76,7 @@ export default function TrackInfoDialog({ track, open, onOpenChange, onKeySaved 
     },
   });
 
-  useEffect(() => {
-    setPdfIndex(0);
-  }, [requestId]);
-
-  const pdfs = useMemo(() => pdfFiles(info), [info]);
   const memos = useMemo(() => voiceMemoFiles(info), [info]);
-  const activePdf = pdfs[Math.min(pdfIndex, Math.max(pdfs.length - 1, 0))];
 
   // The key the track is recorded in comes from whichever column the request
   // reads, so a different-key request shows the transposition it asked for.
@@ -108,7 +90,7 @@ export default function TrackInfoDialog({ track, open, onOpenChange, onKeySaved 
       await saveRequestKey(track, value);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] }),
-        queryClient.invalidateQueries({ queryKey: ['request_info', track.requestId] }),
+        queryClient.invalidateQueries({ queryKey: ['request_detail', track.requestId] }),
       ]);
       toast({ title: 'Key saved', description: `“${track.song}” can be pushed now.` });
       onKeySaved?.();
@@ -129,7 +111,7 @@ export default function TrackInfoDialog({ track, open, onOpenChange, onKeySaved 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0 sm:rounded-2xl">
+      <DialogContent className="flex max-h-[92vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl">
         <DialogHeader className="border-b px-6 py-4 text-left">
           <DialogTitle className="text-[#1C0357]">{track?.song ?? 'Song'}</DialogTitle>
           <DialogDescription>
@@ -144,55 +126,14 @@ export default function TrackInfoDialog({ track, open, onOpenChange, onKeySaved 
         ) : error ? (
           <p className="p-6 text-sm text-red-600">Couldn't load this request: {getErrorMessage(error)}</p>
         ) : (
-          <div className="grid min-h-0 flex-1 gap-0 overflow-hidden lg:grid-cols-[1fr_340px]">
-            {/* The sheet, large: this is what the key is read from. */}
-            <div className="flex min-h-[320px] flex-col bg-gray-100 lg:min-h-0">
-              {pdfs.length > 1 && (
-                <div className="flex flex-wrap gap-1.5 border-b bg-white px-3 py-2">
-                  {pdfs.map((f, i) => (
-                    <button
-                      key={f.url}
-                      type="button"
-                      onClick={() => setPdfIndex(i)}
-                      className={`rounded-full px-3 py-1 text-xs ${
-                        i === pdfIndex ? 'bg-[#1C0357] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {activePdf ? (
-                <>
-                  <iframe
-                    key={activePdf.url}
-                    src={`${activePdf.url}#toolbar=1&navpanes=0&view=FitH`}
-                    title={activePdf.label}
-                    className="min-h-[60vh] w-full flex-1 bg-white"
-                  />
-                  <div className="flex items-center justify-between gap-2 border-t bg-white px-3 py-2 text-xs text-gray-500">
-                    <span className="truncate">{activePdf.label}</span>
-                    <a
-                      href={activePdf.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex shrink-0 items-center gap-1 text-[#1C0357] hover:underline"
-                    >
-                      Open in a new tab <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center text-sm text-gray-500">
-                  <FileText className="h-8 w-8 text-gray-300" />
-                  No sheet music was attached to this request.
-                </div>
-              )}
+          <div className="grid min-h-0 flex-1 overflow-y-auto md:grid-cols-[300px_1fr] md:overflow-hidden">
+            <div className="space-y-2 bg-gray-50 p-5 md:overflow-y-auto">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sheet music</h3>
+              <SheetMusicDrop requestId={track.requestId} />
             </div>
 
             {/* Key, audio and the facts that matter for the card and the copy. */}
-            <div className="space-y-5 overflow-y-auto border-l bg-white p-5">
+            <div className="space-y-5 bg-white p-5 md:overflow-y-auto">
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Key</h3>
                 {keyMissing ? (
