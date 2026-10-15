@@ -204,6 +204,35 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-15 — migrations now apply from CI
+
+**The project's database was unreachable from this machine.** Applying a
+migration needs account privileges on `kyfofikkswxtwgtqutdu`, and every local
+route was shut: the Supabase CLI is logged in as an account that gets **403** on
+this project (it can see two unrelated ones instead), `supabase/.temp/pooler-url`
+carries no password so `psql` cannot connect, and the database exposes no
+SQL-running RPC — only app functions (`crm_stats`, `join_waitlist`, …). There is
+no `supabase_migrations.schema_migrations` table either, which is why migrations
+had always been pasted into the SQL editor by hand.
+
+**So the jump is made from CI.** `.github/workflows/apply-migration.yml` runs one
+migration file through the Supabase Management API using the repo's
+`SUPABASE_ACCESS_TOKEN`, which does have access — the same secret the function
+deploy uses, and it has to stay on the `Production` environment or the job sees
+an empty token and 401s.
+
+It is `workflow_dispatch` only, so a merge can never alter the schema by itself.
+It opens with a preflight that runs `select 1; select 2` and stops if
+multi-statement SQL is not accepted. That guard earns its keep: without it a
+cron-replacing migration could retire the old job and *then* fail before
+installing the new one, leaving no refresh cron at all. An empty `file` input
+runs the verify query alone — which is how the state below was read.
+
+**Used to apply 0046**, and to confirm 0044 and 0045 were already live:
+`publishing_settings.auto_book` and `social_tiktok_poster` both exist,
+`social-token-refresh-6h` is active, and `social-token-refresh-weekly` is gone.
+Every migration in `supabase/migrations/` is now applied.
+
 ### 2026-10-15 — the audio artefact was one file, not the encoder
 
 **Measured the teasers instead of guessing at them.** §0 listed five candidates
@@ -261,8 +290,10 @@ every 6 hours. Each window is wider than the cron period so a token can't slip
 past between runs; the Instagram window stays wide enough to be safe under the
 old weekly schedule too.
 
-**To apply:** run `supabase/migrations/0046_social_token_refresh_cron_frequent.sql`
-in the Supabase SQL editor (no workflow applies migrations).
+**Applied 2026-10-15.** `social-token-refresh-6h` (`0 */6 * * *`, active) is
+live and `social-token-refresh-weekly` is gone, checked against `cron.job`. It
+went in through the new `apply-migration` workflow, because nothing on this
+machine can reach the project's database — see the 2026-10-15 CI entry above.
 
 ### 2026-10-15 — Instagram is live (and the bug that hid it)
 
@@ -538,12 +569,13 @@ Ordered so the cheap, unblocking things come first.
 2. **TikTok** — already works (private auto-post). Confirm **Test** is green, and
    read the guide's *Where "fully automatic" stands* table before expecting public
    posts. Public TikTok = Route C (drafts, 1 tap), a separate build. See §8.
-3. **Apply `supabase/migrations/0044_auto_book.sql`** (no workflow applies
-   migrations), then trial **Book new videos automatically**.
-4. **Apply `supabase/migrations/0046_social_token_refresh_cron_frequent.sql`**
-   (no workflow applies migrations) so the tokens are checked every 6 hours.
-   Not urgent — a stale token never blocks a post — but it keeps the connections
-   badge honest and gives the Instagram token a wide margin before it lapses.
+3. **Apply `supabase/migrations/0044_auto_book.sql`** — **done**, the `auto_book`
+   column is present, so **Book new videos automatically** can be trialled.
+4. **Apply `supabase/migrations/0046_social_token_refresh_cron_frequent.sql`** —
+   **done 2026-10-15.** Tokens are checked every 6 hours now
+   (`social-token-refresh-6h`), which keeps the connections badge honest and
+   gives the Instagram token a wide margin before it lapses. 0045 was already in
+   too, so every migration in `supabase/migrations/` is applied.
 5. **Confirm the audio artefacts are gone** — **done 2026-10-15.** Decoded every
    teaser in storage: all end in digital silence. The only file that doesn't is
    the one already live on TikTok (`66fe309d`, Don't Wanna Be Here), which stops
