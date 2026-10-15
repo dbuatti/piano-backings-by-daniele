@@ -21,8 +21,9 @@ free + public + automatic route. The trade-off is the account risk above.
 **The account must be public.** The API path needs the account *private*; the
 browser path needs it *public*, or "public" posts are seen by nobody. Switching
 this on means flipping `@pianobackingsbydaniele` to a public account in the TikTok
-app. Posts use the composer's default visibility, which is *Everyone* on a public
-account.
+app. The composer defaults to *Everyone* on a public account, and the poster now
+**forces** *Everyone* explicitly before posting, so a remembered *Only you* can't
+silently make a post private.
 
 ## How it works
 ```
@@ -148,6 +149,12 @@ handled in code, documented so they're easy to spot again:
   (which would trigger a duplicate retry). `post.ts` clicks it when present.
 - The composer lives at `/tiktokstudio/upload`; success navigates to
   `/tiktokstudio/content` ("Everyone" = public when the account is public).
+- **Visibility is forced public.** The "Who can see this post" select
+  (`[data-e2e="video_visibility_container"] button[role="combobox"]`) remembers the
+  last choice, so a stale *Only you*/*Friends* would post privately with no error.
+  `ensurePublicVisibility()` in `post.ts` reads that combobox and switches it back to
+  *Everyone* before clicking Post. It is best-effort: if the control is missing it
+  logs a warning and continues, so it can never break posting.
 
 One more trap: macOS encrypts Chromium's cookie DB with a per-machine Keychain
 key, so never copy `.auth/profile` between Macs — move `.auth/state.json` instead.

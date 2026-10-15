@@ -1,3 +1,4 @@
+import type { Page } from 'playwright';
 import { openContext, UPLOAD_URL, screenshotOnFailure, dismissTour } from './browser.js';
 import { config } from './config.js';
 import { log } from './logger.js';
@@ -5,6 +6,46 @@ import { log } from './logger.js';
 export interface PostResult {
   ok: boolean;
   note?: string;
+}
+
+/** The composer's "Who can see this post" select. Its trigger text is the current
+ *  value and the dialog lists Everyone / Friends / Only you. We force "Everyone"
+ *  so a remembered non-public choice can't silently make the post private.
+ *
+ *  Best-effort and never fatal: if the control can't be found we log and carry on
+ *  (TikTok's account default still applies), so this can't break posting. */
+export async function ensurePublicVisibility(page: Page): Promise<void> {
+  const trigger = page
+    .locator('[data-e2e="video_visibility_container"] button[role="combobox"]')
+    .first();
+  try {
+    if ((await trigger.count()) === 0) {
+      log.warn('visibility: "Who can see this post" control not found — using account default');
+      return;
+    }
+    const current = (await trigger.innerText()).trim();
+    if (/^everyone$/i.test(current)) {
+      log.info('visibility: already "Everyone" (public)');
+      return;
+    }
+
+    log.warn(`visibility: currently "${current}" — switching to "Everyone"`);
+    await trigger.click({ timeout: 15_000 });
+    const option = page
+      .locator('[role="dialog"] [role="option"]')
+      .filter({ hasText: /^\s*Everyone\b/i })
+      .first();
+    await option.waitFor({ state: 'visible', timeout: 15_000 });
+    await option.click({ timeout: 15_000 });
+    await page.waitForTimeout(1_000);
+
+    const after = (await trigger.innerText()).trim();
+    if (/^everyone$/i.test(after)) log.info('visibility: set to "Everyone"');
+    else log.warn(`visibility: still reads "${after}" after selecting Everyone`);
+  } catch (err) {
+    log.warn('visibility: could not set "Everyone" (continuing):', (err as Error).message);
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 // TikTok's composer is a Draft.js editor. These are best-effort selectors with
@@ -53,6 +94,10 @@ export async function postTeaser(videoPath: string, caption: string): Promise<Po
     await page.keyboard.type(caption, { delay: 12 });
     log.info('caption set:', JSON.stringify(caption));
     await page.waitForTimeout(2_000);
+
+    // 3b) Force public. The composer remembers the last choice; if that was ever
+    //     "Only you"/"Friends" the post would go out private with no error.
+    await ensurePublicVisibility(page);
 
     if (config.dryRun) {
       await screenshotOnFailure(page, 'dry-run');
