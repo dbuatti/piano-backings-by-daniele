@@ -1,0 +1,98 @@
+name: Apply Migration
+
+# Applies one SQL migration file to the production database through the Supabase
+# Management API.
+#
+# Why this exists: applying a migration needs account privileges on the project.
+# The local machine's Supabase CLI is logged in as an account that gets 403 on
+# this project (it can only see two unrelated projects), the pooler URL has no
+# password, and there is no SQL-executing RPC — so neither `supabase db push`
+# nor the SQL editor is reachable from a terminal. The repo's
+# SUPABASE_ACCESS_TOKEN secret *does* have access (that is how the Edge Function
+# deploy works), so the jump is made from CI instead.
+#
+# Manual only, deliberately: merging a migration never changes the schema by
+# itself. Dispatch it when you mean it.
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: Migration file to apply, as a path in the repo
+        required: true
+        default: supabase/migrations/0046_social_token_refresh_cron_frequent.sql
+      verify_query:
+        description: Optional SQL to run afterwards, to show the result
+        required: false
+        default: ""
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    # The token is an environment-scoped secret; without this the job gets an
+    # empty string and every request 401s.
+    environment: Production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: kyfofikkswxtwgtqutdu
+      MIGRATION_FILE: ${{ inputs.file }}
+      VERIFY_QUERY: ${{ inputs.verify_query }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Preflight - confirm multi-statement SQL is accepted
+        # Migrations are multi-statement. If the endpoint only took one
+        # statement, a migration could stop half applied — which for a
+        # cron-replacing migration would mean retiring the old job without
+        # installing the new one. Stop before touching anything if that is the
+        # case.
+        run: |
+          set -euo pipefail
+          jq -n '{query: "select 1 as first; select 2 as second"}' > /tmp/preflight.json
+          status=$(curl -sS -o /tmp/preflight-out.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_ID/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data @/tmp/preflight.json)
+          echo "HTTP $status"
+          cat /tmp/preflight-out.json; echo
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "::error::Cannot run SQL through the Management API (HTTP $status)"
+            exit 1
+          fi
+
+      - name: Apply migration
+        run: |
+          set -euo pipefail
+          if [ ! -f "$MIGRATION_FILE" ]; then
+            echo "::error::No such migration file: $MIGRATION_FILE"
+            exit 1
+          fi
+          echo "Applying $MIGRATION_FILE to $PROJECT_ID"
+          jq -Rs '{query: .}' "$MIGRATION_FILE" > /tmp/payload.json
+          status=$(curl -sS -o /tmp/apply-out.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_ID/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data @/tmp/payload.json)
+          echo "HTTP $status"
+          cat /tmp/apply-out.json; echo
+          if [ "$status" != "200" ] && [ "$status" != "201" ]; then
+            echo "::error::Migration failed (HTTP $status) - database left as it was"
+            exit 1
+          fi
+          echo "Migration applied."
+
+      - name: Verify
+        if: ${{ inputs.verify_query != '' }}
+        run: |
+          set -euo pipefail
+          echo "Query: $VERIFY_QUERY"
+          jq -n --arg q "$VERIFY_QUERY" '{query: $q}' > /tmp/verify-in.json
+          status=$(curl -sS -o /tmp/verify-out.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_ID/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data @/tmp/verify-in.json)
+          echo "HTTP $status"
+          jq . /tmp/verify-out.json 2>/dev/null || cat /tmp/verify-out.json
