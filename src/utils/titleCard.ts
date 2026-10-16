@@ -264,7 +264,10 @@ export function drawCard(
   const sSize = fit(s.show);
   const dSize = fit(dedicationDisplay);
 
-  const blockH = lineSize * 0.78 + lead * 2 + lineSize * 0.16 * Math.max(0, lines.length - 1);
+  // Sized to the lines actually drawn: with the name omitted (or no show) the
+  // block is shorter, and assuming three lines pushed it above centre.
+  const gaps = Math.max(0, lines.length - 1);
+  const blockH = lineSize * 0.78 + lead * gaps + lineSize * 0.16 * gaps;
   let y = areaCenter - blockH / 2 + lineSize * 0.78;
   ctx.font = `italic 400 ${tSize}px ${FONT_SCRIPT}`;
   ctx.fillText(lines[0], W / 2, y);
