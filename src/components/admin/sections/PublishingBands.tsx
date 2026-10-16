@@ -75,6 +75,7 @@ export function TrackPipelineRow({
   onOpen,
   onReRecord,
   onResetTeaser,
+  onUnschedule,
 }: {
   group: TrackGroup;
   tz: string;
@@ -82,10 +83,14 @@ export function TrackPipelineRow({
   onOpen?: (group: TrackGroup) => void;
   onReRecord?: (requestId: string) => void;
   onResetTeaser?: (group: TrackGroup) => void;
+  onUnschedule?: (group: TrackGroup) => void;
 }) {
   const hasTeaser = !!(group.tt || group.ig);
   const canReset = group.tt?.status === 'published' || group.ig?.status === 'published';
-  const showMenu = hasTeaser && !!(onReRecord || (onResetTeaser && canReset));
+  const canUnschedule =
+    !!onUnschedule &&
+    [group.yt, group.tt, group.ig].some((p) => p?.status === 'scheduled');
+  const showMenu = canUnschedule || (hasTeaser && !!(onReRecord || (onResetTeaser && canReset)));
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 px-3 py-2">
       {onOpen ? (
@@ -111,7 +116,7 @@ export function TrackPipelineRow({
       {showMenu && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 px-2" title="Teaser actions">
+            <Button variant="outline" size="sm" className="h-7 px-2" title="Track actions">
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -124,6 +129,11 @@ export function TrackPipelineRow({
             {onResetTeaser && canReset && (
               <DropdownMenuItem onSelect={() => onResetTeaser(group)}>
                 <RotateCcw className="h-3.5 w-3.5" /> Reset teaser
+              </DropdownMenuItem>
+            )}
+            {onUnschedule && canUnschedule && (
+              <DropdownMenuItem onSelect={() => onUnschedule(group)}>
+                <RotateCcw className="h-3.5 w-3.5" /> Unschedule
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>

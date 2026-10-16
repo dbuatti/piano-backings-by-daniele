@@ -1532,6 +1532,47 @@ const PublishingSection = () => {
     toast({ title: 'Teaser reset', description: `${group.label} can be recorded and posted again.` });
   };
 
+  // Pull a booked song out of the pipeline: any scheduled row goes back to
+  // draft so it no longer holds a slot. Uploaded videos are not deleted.
+  const unscheduleGroup = async (pubs: (PublicationWithAsset | undefined)[]) => {
+    const scheduled = pubs.filter((p): p is PublicationWithAsset => !!p && p.status === 'scheduled');
+    if (scheduled.length === 0) return;
+    if (
+      !window.confirm(
+        `Unschedule ${scheduled.length} row${scheduled.length === 1 ? '' : 's'}? ` +
+          `They leave the Booked list and go back to draft. Anything already uploaded stays online — remove it on the platform if you want it gone.`
+      )
+    ) {
+      return;
+    }
+    const results = await Promise.all(
+      scheduled.map((p) =>
+        supabase
+          .from('publications')
+          .update({
+            status: 'draft',
+            scheduled_for: null,
+            published_at: null,
+            platform_post_id: null,
+            error: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', p.id)
+          .eq('status', 'scheduled')
+      )
+    );
+    const error = results.find((r) => r.error)?.error;
+    if (error) {
+      toast({ title: 'Could not unschedule', description: getErrorMessage(error), variant: 'destructive' });
+      return;
+    }
+    await refetch();
+    toast({
+      title: 'Unscheduled',
+      description: `${scheduled.length} row${scheduled.length === 1 ? '' : 's'} moved back to draft.`,
+    });
+  };
+
   // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
   // slot in one go, then kick the queue so the first upload begins now.
   // Bulk recovery: (re)generate metadata for every active row that still has no
@@ -2246,6 +2287,7 @@ const PublishingSection = () => {
                 onOpen={openTrack}
                 onReRecord={setReRecordFor}
                 onResetTeaser={resetTeaserFor}
+                onUnschedule={(g) => unscheduleGroup([g.yt, g.tt, g.ig].filter(Boolean))}
               />
             ))}
           </CardContent>
