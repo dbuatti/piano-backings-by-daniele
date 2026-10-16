@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -1157,6 +1157,16 @@ export function VettingDialog({
   const [key, setKey] = useState(track?.key ?? 'C Major (0)');
   const [allowSocials, setAllowSocials] = useState(!track?.noSocials);
   const [includeClientName, setIncludeClientName] = useState(true);
+  const defaultBanner = useMemo(() => {
+    const t = track?.trackType;
+    if (!t) return 'Audition Cut';
+    const lower = t.toLowerCase();
+    if (lower.includes('melody')) return 'Melody Bash';
+    if (lower.includes('note')) return 'Note Bash';
+    return t.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }, [track?.trackType]);
+  const [banner, setBanner] = useState(defaultBanner);
+  useEffect(() => setBanner(defaultBanner), [track?.trackType]);
   const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
   const [recording, setRecording] = useState<ClipProgress | null>(null);
 
@@ -1238,6 +1248,7 @@ export function VettingDialog({
           show,
           key,
           includeClientName,
+          banner,
           onPhase: setPhase,
           onProgress: setRecording,
         });
@@ -1265,6 +1276,7 @@ export function VettingDialog({
         show,
         key,
         includeClientName,
+        banner,
         onPhase: setPhase,
         onProgress: setRecording,
       });
@@ -1334,6 +1346,11 @@ export function VettingDialog({
               <div className="flex h-9 items-center gap-2">
                 <Switch checked={includeClientName} onCheckedChange={setIncludeClientName} />
                 <Label className="font-normal">Show client's first name on card/teasers</Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Card banner</Label>
+                <Input value={banner} onChange={(e) => setBanner(e.target.value)} />
+                <p className="text-xs text-gray-400">Appears on the title card (defaults from track type).</p>
               </div>
 
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">

@@ -68,6 +68,7 @@ async function createRecorder({
   show,
   key,
   includeClientName = true,
+  banner,
   onPhase,
   onProgress,
 }: {
@@ -77,24 +78,22 @@ async function createRecorder({
   key: string;
   /** When false the card and caption say only the song and artist — no client. */
   includeClientName?: boolean;
+  /** Optional banner label for the title card (e.g. 'Audition Cut', 'Note Bash') */
+  banner?: string;
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }) {
-  const bannerLabel = ((): string => {
-    const t = track.trackType;
-    if (!t) return 'Audition Cut';
-    const lower = t.toLowerCase();
-    if (lower.includes('melody')) return 'Melody Bash';
-    if (lower.includes('note')) return 'Note Bash';
-    return t.replace(/-/g, ' ');
-  })();
-  const card = defaultCardState({
-    song: title.trim(),
-    artist: show.trim(),
-    client: includeClientName ? track.client : null,
-    key,
-    banner: bannerLabel,
-  });
+  const bannerLabel =
+    banner?.trim() ||
+    ((): string => {
+      const t = track.trackType;
+      if (!t) return 'Audition Cut';
+      const lower = t.toLowerCase();
+      if (lower.includes('melody')) return 'Melody Bash';
+      if (lower.includes('note')) return 'Note Bash';
+      return t.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    })();
+  const bannerOut = bannerLabel;
   const logoImg = await loadCardLogo();
   await loadCardFonts();
 
@@ -118,18 +117,24 @@ async function createRecorder({
   await decoder.close().catch(() => undefined);
   const durationSecs = decoded.duration || 6;
 
-  const banner = ((): string => {
-    const t = track.trackType;
-    if (!t) return 'Audition Cut';
-    const lower = t.toLowerCase();
-    if (lower.includes('melody')) return 'Melody Bash';
-    if (lower.includes('note')) return 'Note Bash';
-    return t.replace(/-/g, ' ');
-  })();
+      ((): string => {
+      const t = track.trackType;
+      if (!t) return 'Audition Cut';
+      const lower = t.toLowerCase();
+      if (lower.includes('melody')) return 'Melody Bash';
+      if (lower.includes('note')) return 'Note Bash';
+      return t.replace(/-/g, ' ');
+    })();
   const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
-  const titleCore = `${title.trim()} — ${banner}${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+  const titleCore = `${title.trim()} — ${bannerOut}${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
   const { data: user } = await supabase.auth.getUser();
-
+  const card = defaultCardState({
+    song: title.trim(),
+    artist: show.trim(),
+    client: includeClientName ? track.client : null,
+    key,
+    banner: bannerOut,
+  });
   const recordAndStore = async (opts: ClipOptions) => {
     const recordSeconds = Math.min(opts.seconds ?? durationSecs, durationSecs);
     const cv = document.createElement('canvas');
@@ -251,6 +256,7 @@ export async function queueTrackForRelease({
   show,
   key,
   includeClientName = true,
+  banner,
   platforms = RELEASE_PLATFORMS,
   onPhase,
   onProgress,
@@ -261,6 +267,8 @@ export async function queueTrackForRelease({
   key: string;
   /** When false the card and caption say only the song and artist — no client. */
   includeClientName?: boolean;
+  /** Optional banner label for the title card (e.g. 'Audition Cut', 'Note Bash') */
+  banner?: string;
   platforms?: readonly ReleasePlatform[];
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
@@ -271,6 +279,7 @@ export async function queueTrackForRelease({
     show,
     key,
     includeClientName,
+    banner,
     onPhase,
     onProgress,
   });
@@ -316,6 +325,7 @@ export async function rerecordTeasers({
   show,
   key,
   includeClientName = true,
+  banner,
   onPhase,
   onProgress,
 }: {
@@ -325,6 +335,8 @@ export async function rerecordTeasers({
   key: string;
   /** When false the card says only the song and artist — no client. */
   includeClientName?: boolean;
+  /** Optional banner label for the title card (e.g. 'Audition Cut', 'Note Bash') */
+  banner?: string;
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }): Promise<{ moved: number; tiktokMime: string }> {
@@ -334,6 +346,7 @@ export async function rerecordTeasers({
     show,
     key,
     includeClientName,
+    banner,
     onPhase,
     onProgress,
   });

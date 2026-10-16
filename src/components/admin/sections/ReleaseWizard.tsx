@@ -219,11 +219,11 @@ export function ReleaseWizard({
   const [show, setShow] = useState('');
   const [key, setKey] = useState('');
 
-  // The Check step writes back as it settles. The owner often only wants to fix
-  // the title and leave, and a title typed but not queued used to be lost.
+  // Banner label (card top strip). Defaults from track type.
+  const [bannerLabel, setBannerLabel] = useState('Audition Cut');
   const [detailSave, setDetailSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const lastSavedRef = useRef('');
-  const detailsSnapshot = useDebounced(`${title}\u0001${show}\u0001${key}`, 700);
+
 
   // Captions, held here so one button can approve all three.
   const [drafts, setDrafts] = useState<Record<PublicationPlatform, CaptionDraft>>({
@@ -251,7 +251,9 @@ export function ReleaseWizard({
   // song is recorded its rows exist, so it drops out of `ready` mid-flow and a
   // derived "current" would vanish between the captions and push steps.
   const [current, setCurrent] = useState<DeliveredTrack | null>(null);
-
+  // Banner label (card top strip). Defaults from track type.
+  
+    
   const queuedRequestIds = useMemo(() => {
     const set = new Set<string>();
     for (const pub of queue) {
@@ -354,6 +356,8 @@ export function ReleaseWizard({
     ]);
   };
 
+  const detailsSnapshot = useDebounced(`${title}\u0001${show}\u0001${key}`, 700);
+
   useEffect(() => {
     if (step !== 'details' || !current) return;
     // Only the settled edit is saved, so typing a title costs one write.
@@ -366,7 +370,6 @@ export function ReleaseWizard({
         if (!cancelled) setDetailSave('saved');
       })
       .catch(() => {
-        // Best effort: Save & exit reports a real failure.
         if (!cancelled) setDetailSave('error');
       });
     return () => {
@@ -450,6 +453,7 @@ export function ReleaseWizard({
         show,
         key,
         includeClientName: showClientName,
+        banner: bannerLabel,
         onPhase: setPhase,
         onProgress: setProgress,
       });
@@ -789,21 +793,34 @@ export function ReleaseWizard({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
-              <Button
-                onClick={makeIt}
-                disabled={!title.trim() || !key}
-                title={!key ? 'Pick the key first — it goes on the card.' : undefined}
-                className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-              >
-                Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
-                Save &amp; exit
-              </Button>
-              <Button variant="ghost" onClick={() => advancePast(markHandled(current.requestId))}>
-                Skip this song
-              </Button>
+            <div className="space-y-2 border-t border-gray-100 pt-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="wiz-banner2">Card banner</Label>
+                <Input
+                  id="wiz-banner2"
+                  className="h-11 text-base"
+                  value={bannerLabel}
+                  onChange={(e) => setBannerLabel(e.target.value)}
+                  placeholder="e.g. Audition Cut, Note Bash, Melody Bash"
+                />
+                <p className="text-[11px] text-gray-400">Appears at the top of the title card. Defaults from track type.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={makeIt}
+                  disabled={!title.trim() || !key}
+                  title={!key ? 'Pick the key first — it goes on the card.' : undefined}
+                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
+                >
+                  Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
+                  Save &amp; exit
+                </Button>
+                <Button variant="ghost" onClick={() => advancePast(markHandled(current.requestId))}>
+                  Skip this song
+                </Button>
+              </div>
               <span className="flex items-center gap-1.5 text-[11px]">
                 {detailSave === 'saving' ? (
                   <>
@@ -834,11 +851,12 @@ export function ReleaseWizard({
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">The card</p>
               <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 p-3">
-                <TitleCardThumb title={title} show={show} client={showClientName ? current.client : ''} musicalKey={key} />
+                <TitleCardThumb title={title} show={show} client={showClientName ? current.client : ''} musicalKey={key} banner={bannerLabel} />
                 <p className="text-center text-[11px] text-gray-400">
-                  {title || 'Song'}
-                  {show ? ` · from ${show}` : ''}
+                  {bannerLabel}
                   {key ? ` · ${keyForDisplay(key)}` : ''}
+                  {title ? ` · ${title}` : ''}
+                  {show ? ` · from ${show}` : ''}
                 </p>
               </div>
             </div>
@@ -1318,22 +1336,24 @@ function TitleCardThumb({
   show,
   client,
   musicalKey,
+  banner,
 }: {
   title: string;
   show: string;
   client: string;
   musicalKey: string;
+  banner?: string;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 
   // Re-render once the typing settles rather than on every keystroke.
-  const settled = useDebounced(`${title}|${show}|${client}|${musicalKey}`, 250);
-  const [song, artist, who, key] = settled.split('|');
+  const settled = useDebounced(`${title}|${show}|${client}|${musicalKey}|${banner ?? ''}`, 250);
+  const [song, artist, who, key, b] = settled.split('|');
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
-    renderCardToBlob({ song, artist, client: who, key }, '1:1')
+    renderCardToBlob({ song, artist, client: who, key, banner: b || undefined }, '1:1')
       .then((blob) => {
         if (cancelled || !blob) return;
         objectUrl = URL.createObjectURL(blob);
@@ -1344,7 +1364,7 @@ function TitleCardThumb({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [song, artist, who, key]);
+  }, [song, artist, who, key, b]);
 
   return (
     <div className="h-20 w-20 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">

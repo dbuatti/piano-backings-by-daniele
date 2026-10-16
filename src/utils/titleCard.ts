@@ -234,7 +234,11 @@ export function drawCard(
 
   const textMaxW = W - M * 2;
   const dedicationDisplay = cardDedication(s.dedication);
-  const lines = [s.title, s.show, dedicationDisplay];
+  const linesArr = [];
+  linesArr.push(s.title);
+  if (s.show) linesArr.push(s.show);
+  if (dedicationDisplay) linesArr.push(dedicationDisplay);
+  const lines = linesArr;
   for (const t of lines) {
     ctx.font = `italic 400 ${lineSize}px ${FONT_SCRIPT}`;
     const w = ctx.measureText(t).width;
@@ -260,17 +264,20 @@ export function drawCard(
   const sSize = fit(s.show);
   const dSize = fit(dedicationDisplay);
 
-  const blockH = lineSize * 0.78 + lead * 2 + lineSize * 0.16;
-  const tY = areaCenter - blockH / 2 + lineSize * 0.78;
-  const sY = tY + lead;
-  const dY = sY + lead;
-
+  const blockH = lineSize * 0.78 + lead * 2 + lineSize * 0.16 * Math.max(0, lines.length - 1);
+  let y = areaCenter - blockH / 2 + lineSize * 0.78;
   ctx.font = `italic 400 ${tSize}px ${FONT_SCRIPT}`;
-  ctx.fillText(s.title, W / 2, tY);
-  ctx.font = `italic 400 ${sSize}px ${FONT_SCRIPT}`;
-  ctx.fillText(s.show, W / 2, sY);
-  ctx.font = `italic 400 ${dSize}px ${FONT_SCRIPT}`;
-  ctx.fillText(dedicationDisplay, W / 2, dY);
+  ctx.fillText(lines[0], W / 2, y);
+  if (lines.length > 1) {
+    y += lead;
+    ctx.font = `italic 400 ${sSize}px ${FONT_SCRIPT}`;
+    ctx.fillText(lines[1], W / 2, y);
+  }
+  if (lines.length > 2) {
+    y += lead;
+    ctx.font = `italic 400 ${dSize}px ${FONT_SCRIPT}`;
+    ctx.fillText(lines[2], W / 2, y);
+  }
 
   setTracking(ctx, 0);
 
