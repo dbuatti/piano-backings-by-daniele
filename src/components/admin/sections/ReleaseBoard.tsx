@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Search, Ban, CheckCircle2, Download, ExternalLink, Eye, FileText, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Search, Ban, CheckCircle2, Clapperboard, Download, ExternalLink, Eye, FileText, Heart, Library, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send, Zap } from 'lucide-react';
 import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
@@ -35,83 +35,41 @@ import { type ClipProgress } from '@/utils/canvasRecorder';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
 import { queueTrackForRelease, rerecordTeasers, saveRequestKey } from '@/utils/releaseTrack';
 import { ShopListingDialog } from '@/components/admin/ShopListingDialog';
-import { teaserListLabel } from '@/utils/publishingPipeline';
+import { songStage, teaserListLabel, type SongStage } from '@/utils/publishingPipeline';
 import { invalidateShopProducts } from '@/lib/shop-queries';
 import { Progress } from '@/components/ui/progress';
 
-// The board's measurable filters: a clickable count of what's done and what's
-// still missing, so gaps (no shop listing, not on YouTube, no key) are obvious.
-type BoardFilter =
-  | 'all'
-  | 'in_shop'
-  | 'shop_draft'
-  | 'no_shop'
-  | 'on_youtube'
-  | 'not_on_youtube'
-  | 'missing_key'
-  | 'hidden';
+// Every song sits in exactly one step — the first one it hasn't finished — so
+// the list always says what to press next. The chips double as filters.
+type BoardFilter = 'all' | SongStage;
 
-const BOARD_STATS: { key: BoardFilter; label: string; short: string; hint: string }[] = [
-  { key: 'all', label: 'All delivered', short: 'All', hint: 'Every delivered track that can be posted. Exclusive and not-for-socials tracks live under Hidden.' },
-  { key: 'not_on_youtube', label: 'Not queued', short: 'Not queued', hint: 'No video queued yet, allowed on socials and not exclusive.' },
-  { key: 'on_youtube', label: 'Live on YouTube', short: 'Live', hint: 'Confirmed public on YouTube.' },
-  { key: 'missing_key', label: 'Missing key', short: 'Missing key', hint: 'The request has no key recorded — the title card needs one.' },
-  { key: 'in_shop', label: 'In shop', short: 'Live', hint: 'Live shop listings — the public shop page is reachable.' },
-  { key: 'shop_draft', label: 'Shop draft', short: 'Draft', hint: 'Saved to the shop but not activated — needs review.' },
-  { key: 'no_shop', label: 'No shop listing', short: 'Not listed', hint: 'Not in the shop yet.' },
-  { key: 'hidden', label: 'Hidden', short: 'Hidden', hint: 'Exclusive ownership or marked not for socials. These are never posted.' },
+const STAGES: { key: SongStage; step?: number; label: string; hint: string }[] = [
+  { key: 'fix', label: 'Needs fixing', hint: 'Something failed to post. Open it to see why and send it again.' },
+  { key: 'shop', step: 1, label: 'Add to the shop', hint: 'Not buyable yet. A song must be in the shop before it can go to socials.' },
+  { key: 'make', step: 2, label: 'Make the videos', hint: 'In the shop. Next: check the details and record the YouTube, TikTok and Instagram videos.' },
+  { key: 'send', step: 3, label: 'Review & send', hint: 'Videos are made. Read the captions, then send now or schedule for the next slot.' },
+  { key: 'scheduled', label: 'Scheduled', hint: 'Booked on a slot — it goes out on its own. You can still send it now.' },
+  { key: 'live', label: 'Live', hint: 'Out on socials.' },
+  { key: 'hidden', label: 'Not for socials', hint: 'Exclusive, or marked never-for-socials. These are never posted.' },
 ];
 
-// Two questions the owner asks at different times — "is it out yet?" and "is it in
-// the shop?" — so the filters are shown as two rows instead of one wall of pills.
-const STAT_GROUPS: { label: string; keys: BoardFilter[] }[] = [
-  { label: 'Posting', keys: ['all', 'not_on_youtube', 'on_youtube', 'missing_key'] },
-  { label: 'Shop & visibility', keys: ['in_shop', 'shop_draft', 'no_shop', 'hidden'] },
-];
-
-// How close a delivered track is to being postable. It decides the section a song
-// lands in, so the board reads top-down: do this, then this, then nothing.
-type Readiness = 'ready' | 'needs_key' | 'queued' | 'live' | 'hidden';
-
-// In order — most actionable first, which is also the tie-break used inside a
-// section when a song has more than one order.
-const READINESS_SECTIONS: { key: Readiness; label: string; hint: string }[] = [
-  { key: 'ready', label: 'Ready to queue', hint: 'Everything a post needs is here — open one and Review & queue.' },
-  { key: 'needs_key', label: 'Needs a key', hint: 'Record the musical key on the request and it can be queued.' },
-  { key: 'queued', label: 'In the queue', hint: 'Booked or waiting on you — the Pipeline tab shows what needs a press.' },
-  { key: 'live', label: 'Live', hint: 'Already published.' },
-  { key: 'hidden', label: 'Hidden', hint: 'Exclusive or not for socials. Shown only because you opened this filter.' },
-];
-
-const PENDING_STATUSES = ['draft', 'pending_approval', 'approved', 'scheduled', 'publishing'];
-
-function readinessOf(t: DeliveredTrack, pubs: PublicationWithAsset[]): Readiness {
-  // Never postable, whatever state the pipeline is in.
-  if (t.isExclusive || t.noSocials) return 'hidden';
-  // Mid-pipeline comes before live: a song whose video is scheduled but whose
-  // teasers already went out is still "in the queue", not finished.
-  if (pubs.some((p) => PENDING_STATUSES.includes(p.status))) return 'queued';
-  if (pubs.some((p) => p.status === 'published')) return 'live';
-  if (!t.key) return 'needs_key';
-  return 'ready';
-}
-
-const sectionRankOf = (rows: { readiness: Readiness }[]) =>
-  Math.min(...rows.map((r) => READINESS_SECTIONS.findIndex((s) => s.key === r.readiness)));
+const stageIndex = (k: SongStage) => STAGES.findIndex((s) => s.key === k);
+const sectionRankOf = (rows: { stage: SongStage }[]) => Math.min(...rows.map((r) => stageIndex(r.stage)));
 
 const songKeyOf = (t: DeliveredTrack) => `${t.song.trim().toLowerCase()}|${t.show.trim().toLowerCase()}`;
 
-// Delivered tracks → one row each showing progress across every platform: is it
-// in the shop, what's up on YouTube, are teaser drafts queued for TikTok/IG,
-// and is it marked "never post". Review & queue opens the vetting dialog that
-// records the title card with the verified title/key before queuing.
+// The Songs list: every delivered track, filed under the step it is on, with the
+// one button that moves it to the next step. The work itself (details, videos,
+// captions, sending) happens in the song flow, opened with onOpenSong.
 export default function ReleaseBoard({
   queue,
   tz,
   onMutation,
   onBacklog,
   onOpenTrack,
-  onQueueTrack,
+  onOpenSong,
+  onSendNow,
+  sendingId,
 }: {
   queue: PublicationWithAsset[];
   tz: string;
@@ -121,10 +79,12 @@ export default function ReleaseBoard({
   onBacklog?: (count: number) => void;
   // Opens the per-song page for a track already in the queue.
   onOpenTrack?: (pub: PublicationWithAsset) => void;
-  // Hands a song to the release wizard instead of opening the dialog inline —
-  // the wizard is the friendlier way to do the same job, so the row is the index
-  // and the wizard is the work.
-  onQueueTrack?: (requestId: string) => void;
+  // Opens the song flow (details → videos → captions → send) for one song.
+  onOpenSong: (requestId: string) => void;
+  // Sends an already-scheduled song out right now.
+  onSendNow: (requestId: string) => void;
+  // The song currently being sent, so its button can spin.
+  sendingId?: string | null;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -145,7 +105,6 @@ export default function ReleaseBoard({
     },
   });
   const autoOn = boardSettings?.social_auto_post === true;
-  const [vetting, setVetting] = useState<string | null>(null);
   const [reRecording, setReRecording] = useState<string | null>(null);
   // The track whose shop listing is being reviewed in the modal, or null.
   const [shopReview, setShopReview] = useState<DeliveredTrack | null>(null);
@@ -247,68 +206,42 @@ export default function ReleaseBoard({
   };
 
   // Everything a row needs, computed once: its publications per platform, its
-  // shop product/url, and whether YouTube already has it. Shared by the audit
-  // strip and the rendered rows.
+  // shop product/url, and the step it is on.
   const boardRows = (tracks ?? []).map((t) => {
     const pubs = pubsForTrack(t.song, t.requestId, t.show);
-    const ytPub = pubs.find((p) => p.platform === 'youtube');
+    const shopProduct = shopProductForTrack(products, { song: t.song, show: t.show });
     return {
       t,
-      yt: ytPub,
+      yt: pubs.find((p) => p.platform === 'youtube'),
       tt: pubs.find((p) => p.platform === 'tiktok'),
       ig: pubs.find((p) => p.platform === 'instagram'),
-      shopProduct: shopProductForTrack(products, { song: t.song, show: t.show }),
+      shopProduct,
       shopUrl: shopSongUrl(products, { song: t.song, show: t.show }),
-      queuedForYoutube: !!ytPub,
-      readiness: readinessOf(t, pubs),
+      stage: songStage({
+        hidden: t.isExclusive || t.noSocials,
+        shop: shopProduct?.is_active ? 'live' : shopProduct ? 'draft' : 'none',
+        pubs,
+      }),
     };
   });
 
   type BoardRow = (typeof boardRows)[number];
-  const rowMatches = (key: BoardFilter, row: BoardRow): boolean => {
-    // Exclusive / not-for-socials tracks are never postable, so they sit outside
-    // every working filter and surface only under Hidden.
-    if (key === 'hidden') return row.readiness === 'hidden';
-    if (row.readiness === 'hidden') return false;
-    switch (key) {
-      case 'in_shop': return row.shopProduct?.is_active === true;
-      case 'shop_draft': return !!row.shopProduct && row.shopProduct.is_active === false;
-      case 'no_shop': return !row.shopProduct;
-      case 'on_youtube': return row.yt?.status === 'published';
-      case 'not_on_youtube': return !row.yt;
-      case 'missing_key': return !row.t.key;
-      default: return true;
-    }
-  };
+  // "All" leaves out the never-for-socials songs; they have their own chip.
+  const rowMatches = (key: BoardFilter, row: BoardRow): boolean =>
+    key === 'all' ? row.stage !== 'hidden' : row.stage === key;
 
-  const audit = BOARD_STATS.reduce((acc, { key }) => {
-    acc[key] = boardRows.filter((row) => rowMatches(key, row)).length;
+  const counts = STAGES.reduce((acc, { key }) => {
+    acc[key] = boardRows.filter((row) => row.stage === key).length;
     return acc;
-  }, {} as Record<BoardFilter, number>);
+  }, {} as Record<SongStage, number>);
 
   const q = search.trim().toLowerCase();
   const rowMatchesSearch = (row: BoardRow) =>
     !q || row.t.song.toLowerCase().includes(q) || row.t.show.toLowerCase().includes(q);
   const visibleRows = boardRows.filter((row) => rowMatches(filter, row) && rowMatchesSearch(row));
 
-  // The un-queued backlog for the "Review & queue all" walkthrough. One video per
-  // song: a track ordered twice ("How it ends") queues once, and the order that
-  // still needs a video is the one offered.
-  const notOnYoutubeIds: string[] = [];
-  {
-    const seen = new Set<string>();
-    for (const row of boardRows) {
-      if (!rowMatches('not_on_youtube', row)) continue;
-      const key = songKeyOf(row.t);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      notOnYoutubeIds.push(row.t.requestId);
-    }
-  }
-  const [bulkVet, setBulkVet] = useState<{ ids: string[]; index: number } | null>(null);
-
   // Fold the orders of one song under a single heading, then file that song into
-  // the most actionable state any of its orders is in. So the board never lists
+  // the most actionable step any of its orders is on. So the list never shows
   // one song twice, and never buries a song that still needs work.
   const songGroups: { key: string; song: string; show: string; rows: BoardRow[] }[] = [];
   for (const row of visibleRows) {
@@ -317,30 +250,20 @@ export default function ReleaseBoard({
     if (found) found.rows.push(row);
     else songGroups.push({ key, song: row.t.song, show: row.t.show, rows: [row] });
   }
-  const sections = READINESS_SECTIONS.map((section, i) => ({
+  const sections = STAGES.map((section, i) => ({
     ...section,
     groups: songGroups
       .filter((g) => sectionRankOf(g.rows) === i)
       .map((g) => ({
         ...g,
-        rows: [...g.rows].sort(
-          (a, b) =>
-            READINESS_SECTIONS.findIndex((s) => s.key === a.readiness) -
-            READINESS_SECTIONS.findIndex((s) => s.key === b.readiness)
-        ),
+        rows: [...g.rows].sort((a, b) => stageIndex(a.stage) - stageIndex(b.stage)),
       })),
   })).filter((section) => section.groups.length > 0);
 
-  // At-a-glance progress: how much of the catalogue is queued and listed.
-  const queuedYt = boardRows.filter((row) => row.yt && row.yt.status !== 'published').length;
-  const nextUpload = queue
-    .filter((p) => p.platform === 'youtube' && p.status === 'scheduled' && p.scheduled_for)
-    .map((p) => p.scheduled_for as string)
-    .sort()[0];
-
+  const notStarted = counts.shop + counts.make;
   useEffect(() => {
-    onBacklog?.(notOnYoutubeIds.length);
-  }, [notOnYoutubeIds.length, onBacklog]);
+    onBacklog?.(notStarted);
+  }, [notStarted, onBacklog]);
 
   const unscheduleGroup = async (pubs: PublicationWithAsset[]) => {
     const scheduled = pubs.filter((p) => p.status === 'scheduled');
@@ -442,38 +365,50 @@ export default function ReleaseBoard({
   return (
     <Card className="bg-white border-none shadow-sm rounded-2xl">
       <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-          <div className="min-w-0 space-y-0.5">
-            <CardTitle className="text-lg font-bold text-[#1C0357]">Release board</CardTitle>
-            <p className="text-xs text-gray-500">
-              Every delivered track, grouped by what it needs next. Start here when you have
-              half an hour to queue songs.
-            </p>
-          </div>
-          {!isLoading && tracks && (
-            <div className="shrink-0 text-right text-xs text-gray-500">
-              <p>
-                <span className="text-xl font-bold tabular-nums text-[#1C0357]">
-                  {audit.not_on_youtube}
-                </span>{' '}
-                still to queue
-              </p>
-              <p className="mt-0.5">
-                {audit.on_youtube} live · {queuedYt} scheduled
-                {nextUpload ? ` · next ${whenLabel(nextUpload, tz)}` : ''}
-              </p>
-              <p className="mt-0.5 text-gray-400">
-                {audit.in_shop} in the shop
-                {audit.shop_draft > 0 ? `, ${audit.shop_draft} draft` : ''}
-                {audit.hidden > 0 ? ` · ${audit.hidden} hidden` : ''}
-              </p>
-            </div>
-          )}
+        <div className="min-w-0 space-y-0.5">
+          <CardTitle className="text-lg font-bold text-[#1C0357]">Songs</CardTitle>
+          <p className="text-xs text-gray-500">
+            Every delivered song, filed under the step it’s on. Press the button on a song to move
+            it to the next step.
+          </p>
         </div>
+        {/* The path, spelled out once. Each step is also a filter. */}
+        {!isLoading && tracks && tracks.length > 0 && (
+          <div className="flex flex-wrap items-stretch gap-1.5">
+            {STAGES.filter((st) => st.key !== 'hidden').map((st) => {
+              const active = filter === st.key;
+              const count = counts[st.key];
+              if (st.key === 'fix' && count === 0) return null;
+              return (
+                <button
+                  key={st.key}
+                  type="button"
+                  onClick={() => setFilter(active ? 'all' : st.key)}
+                  title={st.hint}
+                  aria-pressed={active}
+                  className={cn(
+                    'flex min-w-[118px] flex-1 flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors',
+                    active
+                      ? 'border-[#1C0357] bg-[#1C0357] text-white'
+                      : st.key === 'fix'
+                        ? 'border-red-200 bg-red-50 text-red-700 hover:border-red-300'
+                        : 'border-gray-200 bg-white text-[#1C0357] hover:border-gray-300'
+                  )}
+                >
+                  <span className={cn('text-[10px] font-semibold uppercase tracking-wide', active ? 'text-white/70' : 'text-gray-400')}>
+                    {st.step ? `Step ${st.step}` : st.key === 'fix' ? 'Problem' : 'Done'}
+                  </span>
+                  <span className="text-sm font-semibold leading-tight">{st.label}</span>
+                  <span className="mt-0.5 text-lg font-bold tabular-nums">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading || !tracks ? (
-          <p className="px-4 py-6 text-sm text-gray-400">Loading tracks…</p>
+          <p className="px-4 py-6 text-sm text-gray-400">Loading songs…</p>
         ) : tracks.length === 0 ? (
           <p className="px-4 py-6 text-sm text-gray-400">
             No delivered backing tracks yet — upload a finished recording into the{' '}
@@ -481,80 +416,31 @@ export default function ReleaseBoard({
           </p>
         ) : (
           <>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Find a song or show…"
-                aria-label="Search delivered songs"
-                className="h-10 pl-9"
-              />
-            </div>
-            {/* Two questions the owner asks at different times — is it out yet,
-                and is it in the shop — so the filters read as two rows, not one
-                wall of pills. */}
-            <div className="space-y-2">
-              {STAT_GROUPS.map((g) => (
-                <div key={g.label} className="flex flex-wrap items-center gap-1.5">
-                  <span className="w-28 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    {g.label}
-                  </span>
-                  {g.keys.map((k) => {
-                    const s = BOARD_STATS.find((x) => x.key === k);
-                    if (!s) return null;
-                    const active = filter === k;
-                    const count = audit[k];
-                    // An empty filter is just noise — hide it unless it's the
-                    // one you're already looking at.
-                    if (k !== 'all' && count === 0 && !active) return null;
-                    const isGap = !active && count > 0 && ['no_shop', 'not_on_youtube', 'missing_key'].includes(k);
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => setFilter(active && k !== 'all' ? 'all' : k)}
-                        title={s.hint}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                          active
-                            ? 'border-[#1C0357] bg-[#1C0357] text-white'
-                            : isGap
-                              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300'
-                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                        )}
-                      >
-                        {s.short}
-                        <span
-                          className={cn(
-                            'rounded-full px-1.5 text-[11px] tabular-nums',
-                            active ? 'bg-white/20 text-white' : isGap ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                          )}
-                        >
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
             <div className="flex flex-wrap items-center gap-2">
-              {notOnYoutubeIds.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setBulkVet({ ids: notOnYoutubeIds, index: 0 })}
-                  title="Opens them one at a time so you and the wizard can vet each song. Nothing posts until you approve it."
-                  className="gap-1.5"
-                >
-                  <ListPlus className="h-3.5 w-3.5" /> Review &amp; queue all ({notOnYoutubeIds.length})
+              <div className="relative min-w-[200px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Find a song or show…"
+                  aria-label="Search delivered songs"
+                  className="h-10 pl-9"
+                />
+              </div>
+              {filter !== 'all' && (
+                <Button size="sm" variant="ghost" onClick={() => setFilter('all')}>
+                  Show all steps
                 </Button>
               )}
-              {filter !== 'all' && (
-                <span className="text-[11px] text-gray-500">
-                  Showing {visibleRows.length} · {BOARD_STATS.find((s) => s.key === filter)?.label}
-                </span>
+              {counts.hidden > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setFilter(filter === 'hidden' ? 'all' : 'hidden')}
+                  className="text-gray-500"
+                >
+                  {filter === 'hidden' ? 'Hide' : 'Show'} not-for-socials ({counts.hidden})
+                </Button>
               )}
               <Button
                 size="sm"
@@ -573,7 +459,10 @@ export default function ReleaseBoard({
               sections.map((section) => (
                 <div key={section.key} className="border-t border-gray-100 pt-3 pb-3 first:border-t-0 first:pt-0">
                   <div className="mb-2 flex flex-wrap items-baseline gap-x-2 px-1">
-                    <h3 className="text-sm font-bold text-[#1C0357]">{section.label}</h3>
+                    <h3 className="text-sm font-bold text-[#1C0357]">
+                      {section.step ? `Step ${section.step} · ` : ''}
+                      {section.label}
+                    </h3>
                     <span className="rounded-full bg-gray-100 px-1.5 text-[11px] font-semibold tabular-nums text-gray-600">
                       {section.groups.reduce((n, g) => n + g.rows.length, 0)}
                     </span>
@@ -593,7 +482,7 @@ export default function ReleaseBoard({
                           </span>
                         </p>
                       )}
-                      {group.rows.map(({ t, yt, tt, ig, shopProduct, shopUrl, queuedForYoutube }) => {
+                      {group.rows.map(({ t, yt, tt, ig, shopProduct, shopUrl, stage }) => {
                         const teaserWithFile =
                           (tt?.content_assets?.storage_path ? tt : null) ??
                           (ig?.content_assets?.storage_path ? ig : null);
@@ -678,30 +567,79 @@ export default function ReleaseBoard({
                     )}
                   </div>
 
-                  {/* One visible action for the gap that needs closing, then
-                      everything optional lives behind the ⋯ menu. */}
+                  {/* The one next step for this song, then everything optional
+                      lives behind the ⋯ menu. */}
                   <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                    {!shopProduct && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShopReview(t)}
-                        title="Review and create the shop listing — choose the price, copy and whether it goes live."
-                      >
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        Add to shop
-                      </Button>
-                    )}
-                    {!queuedForYoutube && (
+                    {stage === 'shop' || ((stage === 'scheduled' || stage === 'live' || stage === 'hidden') && !shopProduct?.is_active) ? (
+                      shopProduct ? (
+                        <Button
+                          size="sm"
+                          className={stage === 'shop' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : undefined}
+                          variant={stage === 'shop' ? 'default' : 'outline'}
+                          onClick={() => activateProduct(shopProduct.id, t.song)}
+                          disabled={activating === shopProduct.id}
+                          title="The listing exists as a hidden draft — make it live so shoppers can buy it."
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {activating === shopProduct.id ? 'Making live…' : 'Make shop listing live'}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className={stage === 'shop' ? 'bg-[#1C0357] hover:bg-[#1C0357]/90' : undefined}
+                          variant={stage === 'shop' ? 'default' : 'outline'}
+                          onClick={() => setShopReview(t)}
+                          title="Review and create the shop listing — price, copy and cover."
+                        >
+                          <PlusCircle className="h-3.5 w-3.5" /> Add to shop
+                        </Button>
+                      )
+                    ) : null}
+                    {stage === 'make' && (
                       <Button
                         size="sm"
                         className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                        disabled={t.noSocials || t.isExclusive}
-                        onClick={() => (onQueueTrack ? onQueueTrack(t.requestId) : setVetting(t.requestId))}
-                        title={t.isExclusive ? 'Exclusive ownership — not for public sharing' : undefined}
+                        onClick={() => onOpenSong(t.requestId)}
                       >
-                        <ListPlus className="h-3.5 w-3.5" /> Review &amp; queue
+                        <Clapperboard className="h-3.5 w-3.5" /> Make videos
                       </Button>
+                    )}
+                    {(stage === 'send' || stage === 'fix') && (
+                      <Button
+                        size="sm"
+                        className={stage === 'fix' ? 'bg-red-600 hover:bg-red-600/90' : 'bg-[#F538BC] hover:bg-[#F538BC]/90'}
+                        onClick={() => onOpenSong(t.requestId)}
+                      >
+                        <Send className="h-3.5 w-3.5" /> {stage === 'fix' ? 'Fix & resend' : 'Review & send'}
+                      </Button>
+                    )}
+                    {stage === 'scheduled' && (
+                      <>
+                        <span className="text-[11px] text-gray-500">
+                          {yt?.scheduled_for ? whenLabel(yt.scheduled_for, tz) : 'Booked'}
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => onOpenSong(t.requestId)}>
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-[#F538BC] hover:bg-[#F538BC]/90"
+                          onClick={() => onSendNow(t.requestId)}
+                          disabled={!shopProduct?.is_active || sendingId === t.requestId}
+                          title={
+                            shopProduct?.is_active
+                              ? 'Skip the slot and post everywhere right now.'
+                              : 'Put it in the shop first.'
+                          }
+                        >
+                          {sendingId === t.requestId ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Zap className="h-3.5 w-3.5" />
+                          )}{' '}
+                          Send now
+                        </Button>
+                      </>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -712,7 +650,7 @@ export default function ReleaseBoard({
                       <DropdownMenuContent align="end" className="w-60">
                         {anyPub && onOpenTrack ? (
                           <DropdownMenuItem onSelect={() => onOpenTrack(anyPub)}>
-                            <Library className="h-3.5 w-3.5" /> Open song page
+                            <Library className="h-3.5 w-3.5" /> Status, files &amp; teasers
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuItem onSelect={() => setInspecting(t)}>
@@ -750,11 +688,6 @@ export default function ReleaseBoard({
                           {t.noSocials ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
                           {t.noSocials ? 'Allow on socials' : 'Never post to socials'}
                         </DropdownMenuItem>
-                        {shopProduct && !shopProduct.is_active && (
-                          <DropdownMenuItem onSelect={() => activateProduct(shopProduct.id, t.song)}>
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Activate shop draft
-                          </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem asChild>
                           <Link to={`/admin?section=shop&view=repurpose&request=${encodeURIComponent(t.requestId)}`}>
                             <ExternalLink className="h-3.5 w-3.5" /> Edit shop details
@@ -778,10 +711,12 @@ export default function ReleaseBoard({
                       <ExternalLink className="h-3 w-3" /> Open on YouTube
                     </a>
                   )}
-                  {tt?.status === 'failed' && (
-                    <span className="font-medium text-red-500" title={tt.error || undefined}>
-                      Teaser failed{tt.error ? `: ${tt.error}` : ''}
-                    </span>
+                  {([['YouTube', yt], ['TikTok', tt], ['Instagram', ig]] as const).map(([name, p]) =>
+                    p?.status === 'failed' ? (
+                      <span key={name} className="font-medium text-red-500" title={p.error || undefined}>
+                        {name} failed{p.error ? `: ${p.error}` : ''}
+                      </span>
+                    ) : null
                   )}
                 </div>
                       </div>
@@ -803,33 +738,6 @@ export default function ReleaseBoard({
           onClose={() => setReRecording(null)}
           onQueued={onMutation}
           teaserOnly
-        />
-      )}
-
-      {vetting && (
-        <VettingDialog
-          key={vetting}
-          requestId={vetting}
-          onClose={() => setVetting(null)}
-          onQueued={onMutation}
-        />
-      )}
-
-      {bulkVet && bulkVet.ids[bulkVet.index] && (
-        <VettingDialog
-          key={bulkVet.ids[bulkVet.index]}
-          requestId={bulkVet.ids[bulkVet.index]}
-          onClose={() => setBulkVet(null)}
-          onQueued={onMutation}
-          progress={{ index: bulkVet.index, total: bulkVet.ids.length }}
-          onNext={() => {
-            setBulkVet((v) => {
-              if (!v) return v;
-              const next = v.index + 1;
-              return next >= v.ids.length ? null : { ...v, index: next };
-            });
-            onMutation();
-          }}
         />
       )}
 

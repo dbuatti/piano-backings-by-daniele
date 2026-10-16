@@ -6,8 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
 import { allocatePublishingSlots } from '@/utils/nextWeeklySlot';
 import {
-  PLATFORM_LABELS,
-  STATUS_LABELS,
   WEEKDAYS,
   type PublicationMetadata,
   type PublicationWithAsset,
@@ -15,7 +13,6 @@ import {
 } from '@/types/publishing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -26,42 +23,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { AlertTriangle, CalendarClock, Clapperboard, Eye, Instagram, Library, ListChecks, ListPlus, Loader2, RefreshCw, Rocket, Settings2, SlidersHorizontal, Trash2, Video, Youtube } from 'lucide-react';
-import CardPreview from '@/components/admin/CardPreview';
-import TikTokComposer from '@/components/admin/TikTokComposer';
+import { AlertTriangle, CalendarClock, Clapperboard, Instagram, Library, ListChecks, Rocket, Settings2, Youtube } from 'lucide-react';
 import { useDeliveredTracks, useShopProducts } from '@/hooks/useDeliveredTracks';
 import ReleaseBoard, { VettingDialog } from '@/components/admin/sections/ReleaseBoard';
 import { ReleaseWizard } from '@/components/admin/sections/ReleaseWizard';
-import { Disclosure, TrackPipelineRow } from '@/components/admin/sections/PublishingBands';
+import { Disclosure } from '@/components/admin/sections/PublishingBands';
 import TrackDetail from '@/components/admin/sections/TrackDetail';
 import { assetFilename, signedAssetDownloadUrl } from '@/utils/assetDownload';
+import { shopProductForTrack } from '@/utils/shopLink';
 import {
   groupPublications,
-  instagramWaitingNote,
-  isPostable,
-  needsAttention,
-  teaserProblem,
-  trackActionable,
   trackBookable,
   type PushMode,
   type PushOutcome,
   type TrackGroup,
 } from '@/utils/publishingPipeline';
 
-// The page is four tabs now: what needs you, the full track list, the recorder
-// that feeds it, and the cadence settings you rarely touch.
-type PublishingTab = 'pipeline' | 'tracks' | 'recorder' | 'settings';
+// Three tabs: the songs (where all the work happens), the free-form recorder, and
+// the settings you rarely touch.
+type PublishingTab = 'songs' | 'recorder' | 'settings';
 
 const PUBLISHING_TABS: { id: PublishingTab; label: string; icon: typeof ListChecks }[] = [
-  { id: 'pipeline', label: 'Pipeline', icon: ListChecks },
-  { id: 'tracks', label: 'Tracks', icon: Library },
+  { id: 'songs', label: 'Songs', icon: Library },
   { id: 'recorder', label: 'Recorder', icon: Clapperboard },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ];
@@ -73,126 +56,6 @@ function withoutInstagramContainer(meta: PublicationMetadata | undefined): Publi
   const next = { ...(meta ?? {}) } as Record<string, unknown>;
   delete next.instagram_post;
   return next as PublicationMetadata;
-}
-
-// The teaser side of a "needs you" row: one line per platform that can't move on
-// its own, with the single action that unblocks it.
-function TeaserNeeds({
-  group,
-  autoOn,
-  onCompose,
-  onRecord,
-  onRetry,
-}: {
-  group: TrackGroup;
-  autoOn: boolean;
-  onCompose: (id: string) => void;
-  onRecord: (requestId: string) => void;
-  onRetry: (id: string) => void;
-}) {
-  const lines: Array<{
-    platform: 'tiktok' | 'instagram';
-    pub: PublicationWithAsset;
-    note: string;
-    action: 'record' | 'compose' | 'retry';
-  }> = [];
-  for (const platform of ['tiktok', 'instagram'] as const) {
-    const pub = platform === 'tiktok' ? group.tt : group.ig;
-    if (!pub) continue;
-    const problem = teaserProblem(pub, group, autoOn);
-    if (problem) lines.push({ platform, pub, ...problem });
-  }
-  if (lines.length === 0) return null;
-
-  return (
-    <div className="space-y-1.5 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5">
-      {lines.map(({ platform, pub, note, action }) => {
-        // Only TikTok has a compose flow, and re-recording is the one fix that
-        // helps both platforms. Instagram has no manual compose, but a stuck or
-        // failed Instagram row can still be retried here.
-        const igBlocked = platform === 'instagram' && action !== 'record' && action !== 'retry';
-        return (
-          <div key={platform} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <span className="font-semibold text-[#1C0357]">{PLATFORM_LABELS[platform]}</span>
-            <span className={cn('min-w-0 flex-1', action === 'retry' ? 'text-red-600' : 'text-gray-500')}>
-              {igBlocked ? instagramWaitingNote(autoOn) : note}
-            </span>
-            {action === 'record' ? (
-              group.requestId ? (
-                <Button size="sm" variant="outline" onClick={() => onRecord(group.requestId as string)}>
-                  Record teaser
-                </Button>
-              ) : (
-                <span className="text-gray-400">Re-record it on the release board</span>
-              )
-            ) : igBlocked ? null : action === 'compose' ? (
-              <Button size="sm" variant="outline" onClick={() => onCompose(pub.id)}>
-                Post it
-              </Button>
-            ) : (
-              <Button size="sm" variant="outline" onClick={() => onRetry(pub.id)}>
-                Retry
-              </Button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// The whole pipeline for one song in a single press: approve the video, give it
-// the next free slot on the cadence, and run both workers. This is the action
-// the per-song page is built around, so it lives here first.
-function PublishTrackBar({
-  group,
-  autoOn,
-  busy,
-  onPublish,
-}: {
-  group: TrackGroup;
-  autoOn: boolean;
-  busy: boolean;
-  onPublish: () => void;
-}) {
-  const yt = group.yt;
-  // trackBookable() is the shared rule — a failed row is always retryable even
-  // though it kept its old slot. Deriving this inline is how the bar and the song
-  // page drifted apart before.
-  const bookable = trackBookable(group);
-  const retrying = yt?.status === 'failed';
-  const missingCopy = bookable && !yt?.metadata?.description?.trim();
-  const teasers = [group.tt, group.ig].filter((t): t is PublicationWithAsset => !!t);
-  const teasersReady = teasers.length > 0 && teasers.every((t) => isPostable(t));
-  const nothingToDo = !trackActionable(group);
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#1C0357]/5 bg-[#1C0357]/[0.03] px-4 py-2.5">
-      <Button size="sm" onClick={onPublish} disabled={busy || missingCopy || nothingToDo}>
-        {busy ? (
-          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-        ) : (
-          <ListPlus className="mr-1.5 h-4 w-4" />
-        )}
-        Publish this song
-      </Button>
-      <span className="min-w-0 flex-1 text-xs text-gray-500">
-        {missingCopy
-          ? 'Write the YouTube description first — then this books the slot and posts the teasers on it.'
-          : nothingToDo
-            ? 'Everything here is already booked or live.'
-            : retrying
-              ? 'Re-books the upload that failed and runs the passes now.'
-              : !bookable
-                ? 'Runs the pipeline now — a row here is still waiting on a pass.'
-                : !teasersReady
-                ? 'Books the next free slot. The teasers still need a portrait MP4 before they can go out.'
-                : autoOn
-                  ? 'Books the next free slot; the teasers post on it automatically.'
-                  : 'Books the next free slot. Auto-post is off, so you post the teasers by hand.'}
-      </span>
-    </div>
-  );
 }
 
 // The teaser/title-card recorder used to live under Shop → Marketing, which is
@@ -212,17 +75,6 @@ const TIMEZONES = [
   'Asia/Tokyo',
   'Pacific/Auckland',
 ];
-
-const STATUS_STYLE: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  pending_approval: 'bg-amber-100 text-amber-700',
-  approved: 'bg-sky-100 text-sky-700',
-  scheduled: 'bg-blue-100 text-blue-700',
-  publishing: 'bg-violet-100 text-violet-700',
-  published: 'bg-emerald-100 text-emerald-700',
-  failed: 'bg-red-100 text-red-700',
-  skipped: 'bg-gray-100 text-gray-400',
-};
 
 function formatWhen(iso: string | null, tz: string): string {
   if (!iso) return '—';
@@ -251,13 +103,11 @@ function QueueRunway({
   notQueued,
   tz,
   cadenceLabel,
-  onQueue,
 }: {
   postDates: string[];
   notQueued: number;
   tz: string;
   cadenceLabel: string;
-  onQueue: () => void;
 }) {
   const now = Date.now();
   const future = postDates
@@ -291,8 +141,8 @@ function QueueRunway({
 
   const nudge =
     notQueued > 0
-      ? `${notQueued} delivered song${notQueued === 1 ? '' : 's'} ${notQueued === 1 ? "isn't" : "aren't"} queued yet — adding ${notQueued === 1 ? 'it' : 'them'} keeps the run going.`
-      : 'Every delivered song is already queued. Record a new one to add more.';
+      ? `${notQueued} delivered song${notQueued === 1 ? '' : 's'} ${notQueued === 1 ? "hasn't" : "haven't"} been sent yet — scheduling ${notQueued === 1 ? 'it' : 'them'} keeps the run going.`
+      : 'Every delivered song is already on its way.';
 
   return (
     <div className={cn('flex flex-wrap items-start gap-x-4 gap-y-3 rounded-2xl border px-4 py-3', shell)}>
@@ -301,14 +151,11 @@ function QueueRunway({
         <p className={cn('text-sm font-semibold', ink)}>{headline}</p>
         <p className="mt-0.5 text-xs text-gray-600">{nudge}</p>
         <p className="mt-0.5 text-[11px] text-gray-500">
-          To add one: open the <span className="font-medium">Tracks</span> tab, pick a delivered
-          song, then choose <span className="font-medium">Review &amp; queue</span>. It takes the
-          next free slot on your {cadenceLabel} cadence.
+          To add one: take a song below through its steps and choose{' '}
+          <span className="font-medium">Schedule for the next slot</span> at the end. It lands on
+          your {cadenceLabel} cadence.
         </p>
       </div>
-      <Button size="sm" onClick={onQueue} className="bg-[#1C0357] hover:bg-[#2D0B8C]">
-        <ListPlus className="h-4 w-4" /> Queue a song
-      </Button>
     </div>
   );
 }
@@ -547,8 +394,8 @@ function SlotSettings({
             </div>
             <p className="text-[11px] text-gray-400">
               {final('auto_book')
-                ? 'A video you queue on the release board is booked and uploaded on its own — that queue step is the approval.'
-                : 'Every queued video waits for you to book it (Pipeline → Book slots, or Publish this song).'}
+                ? 'Recorded videos are booked onto the next slot on their own, skipping Review & send — and the shop check. Leave this off to keep the shop-first rule.'
+                : 'Videos wait for you to send them (Songs → Review & send).'}
             </p>
           </div>
         </div>
@@ -641,537 +488,33 @@ function SlotSettings({
 }
 
 // ---------------------------------------------------------------------------
-// Metadata editor dialog
-// ---------------------------------------------------------------------------
-function MetadataDialog({
-  publication,
-  open,
-  onOpenChange,
-  onSaved,
-}: {
-  publication: PublicationWithAsset;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
-}) {
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const meta = publication.metadata || {};
-  const [title, setTitle] = useState(meta.title ?? '');
-  const [description, setDescription] = useState(meta.description ?? '');
-  const [tags, setTags] = useState((meta.tags ?? []).join(', '));
-  const [hashtags, setHashtags] = useState((meta.hashtags ?? []).join(', '));
-
-  const save = async () => {
-    setSaving(true);
-    const next = {
-      ...meta,
-      title: title.trim(),
-      description: description.trim(),
-      tags: tags.split(/[,;\n]/).map((t) => t.trim()).filter(Boolean).slice(0, 10),
-      hashtags: hashtags.split(/[,;\n]/).map((h) => h.trim().replace(/^#/, '')).filter(Boolean).slice(0, 6),
-      // YouTube is never unlisted — the pipeline uploads public (or private until
-      // a scheduled slot). Kept here so the stored metadata agrees with reality.
-      privacy: 'public' as const,
-    };
-    const { error } = await supabase
-      .from('publications')
-      .update({ metadata: next })
-      .eq('id', publication.id);
-    if (error) {
-      setSaving(false);
-      toast({ title: "Couldn't save metadata", description: getErrorMessage(error), variant: 'destructive' });
-      return;
-    }
-    // Already uploaded? Push the edited metadata to the live YouTube video.
-    if (publication.platform === 'youtube' && publication.platform_post_id) {
-      const { error: syncError } = await supabase.functions.invoke('update-youtube-video', {
-        body: { publication_id: publication.id },
-      });
-      setSaving(false);
-      if (syncError) {
-        toast({
-          title: 'Metadata saved locally',
-          description: `The YouTube video wasn't updated: ${getErrorMessage(syncError)}`,
-          variant: 'destructive',
-        });
-        onOpenChange(false);
-        onSaved();
-        return;
-      }
-      toast({ title: 'Metadata saved and synced to YouTube' });
-    } else {
-      setSaving(false);
-      toast({ title: 'Metadata saved' });
-    }
-    onOpenChange(false);
-    onSaved();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit {PLATFORM_LABELS[publication.platform]} metadata</DialogTitle>
-        </DialogHeader>
-        <div className="mb-4 flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 py-3">
-          <Label className="w-full px-4 text-xs text-gray-500">
-            Card preview — check the key before approving
-          </Label>
-          <div className="px-4">
-            <CardPreview
-              previewPath={publication.content_assets?.preview_path ?? null}
-              title={publication.content_assets?.title ?? null}
-              show={publication.content_assets?.show ?? null}
-              musicalKey={publication.content_assets?.key ?? null}
-              aspect={publication.content_assets?.aspect ?? null}
-            />
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Description</Label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={9}
-              className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F538BC]/40"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Tags (comma separated)</Label>
-              <Input value={tags} onChange={(e) => setTags(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Hashtags (comma separated, no #)</Label>
-              <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
-            </div>
-          </div>
-          {publication.platform === 'youtube' && (
-            <div className="space-y-1.5">
-              <Label>Privacy</Label>
-              <p className="text-sm text-gray-500">
-                Always public. A scheduled video stays private until its slot, then YouTube makes it
-                public on its own — never unlisted.
-              </p>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-            {saving ? 'Saving…' : 'Save metadata'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Queue item row
-// ---------------------------------------------------------------------------
-function QueueRow({
-  publication,
-  tz,
-  nextSlot,
-  autoSchedule,
-  onMutation,
-  onOpen,
-}: {
-  publication: PublicationWithAsset;
-  tz: string;
-  nextSlot: () => Date;
-  autoSchedule: boolean;
-  onMutation: () => void;
-  /** Opens the per-song page for this row's track. */
-  onOpen?: () => void;
-}) {
-  const { toast } = useToast();
-  const [busy, setBusy] = useState<'approve' | 'schedule' | 'publish' | 'retry' | 'refresh' | 'draft' | 'delete' | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [manualWhen, setManualWhen] = useState('');
-  const asset = publication.content_assets;
-  const label = [asset?.song_title, asset?.show].filter(Boolean).join(' — ') || asset?.title || 'Untitled video';
-  const key = asset?.key?.replace(/ \([^)]*\)$/, '') || null;
-
-  const run = async (fn: () => Promise<void>, which: NonNullable<typeof busy>, done: string) => {
-    setBusy(which);
-    try {
-      await fn();
-      toast({ title: done });
-      onMutation();
-    } catch (e) {
-      toast({ title: 'Action failed', description: await getFunctionErrorMessage(e), variant: 'destructive' });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  // Approve & schedule = mark approved, assign the next weekly slot (if auto),
-  // then kick the queue so the video is uploaded to YouTube immediately as a
-  // private video that YouTube itself publishes at `scheduled_for`.
-  // Requires drafted metadata: a video going out with an empty description
-  // looks broken on the channel.
-  const needsDraft = !publication.metadata?.description?.trim();
-  const guardDrafted = () => {
-    if (!needsDraft) return true;
-    toast({
-      title: 'Draft the metadata first',
-      description:
-        'This video has no description yet — use Re-draft AI or Edit before approving, so the upload carries proper metadata (and its shop link).',
-      variant: 'destructive',
-    });
-    return false;
-  };
-
-  const approve = () => {
-    if (!guardDrafted()) return;
-    return run(async () => {
-      const { data: user } = await supabase.auth.getUser();
-      const patch: Record<string, unknown> = {
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        approved_by: user.user?.id ?? null,
-        error: null,
-        attempts: 0,
-      };
-      if (autoSchedule) {
-        patch.scheduled_for = nextSlot().toISOString();
-      }
-      const { error } = await supabase.from('publications').update(patch).eq('id', publication.id);
-      if (error) throw error;
-      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
-      if (invokeError) throw invokeError;
-    }, 'approve', 'Approved — uploading to YouTube');
-  };
-
-  // Publish now = upload immediately (no publishAt), via the same queue path.
-  const publishNow = () => {
-    if (!guardDrafted()) return;
-    return run(async () => {
-      const { error } = await supabase
-        .from('publications')
-        .update({
-          status: 'approved',
-          scheduled_for: new Date().toISOString(),
-          error: null,
-          attempts: 0,
-        })
-        .eq('id', publication.id);
-      if (error) throw error;
-      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
-      if (invokeError) throw invokeError;
-    }, 'publish', 'Published');
-  };
-
-  // Re-drafting is best-effort on the AI side: the function falls back to the
-  // house template when every model is busy, so the row always ends up with a
-  // description it can be approved with. When that happens, say so instead of
-  // claiming the AI wrote it.
-  const redraft = async () => {
-    setBusy('draft');
-    try {
-      const { data, error } = await supabase.functions.invoke('draft-publication-metadata', {
-        body: { asset_id: publication.asset_id, platform: publication.platform },
-      });
-      if (error) throw error;
-      // Already uploaded? Push the regenerated metadata to the live video too.
-      if (publication.platform_post_id) {
-        const { error: syncError } = await supabase.functions.invoke('update-youtube-video', {
-          body: { publication_id: publication.id },
-        });
-        if (syncError) {
-          toast({
-            title: 'Metadata regenerated',
-            description: `Saved to the queue, but the YouTube video wasn't updated: ${getErrorMessage(syncError)}`,
-            variant: 'destructive',
-          });
-        }
-      }
-      if (data?.draft_source === 'template') {
-        toast({
-          title: 'Drafted from the template',
-          description: data.draft_note || 'The AI writer was busy — edit the copy if you like.',
-        });
-      } else {
-        toast({ title: 'Metadata regenerated' });
-      }
-      onMutation();
-    } catch (e) {
-      toast({
-        title: "Couldn't draft the copy",
-        description: await getFunctionErrorMessage(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  // Manual slot: lets a publish time be chosen even when auto_schedule is off
-  // (or to override the auto slot for one video). Uploads via the same queue.
-  const scheduleManual = () => {
-    if (!guardDrafted()) return;
-    return run(async () => {
-      const when = new Date(manualWhen);
-      if (Number.isNaN(when.getTime())) throw new Error('Choose a publish time first.');
-      const { error } = await supabase
-        .from('publications')
-        .update({
-          status: 'approved',
-          scheduled_for: when.toISOString(),
-          error: null,
-          attempts: 0,
-        })
-        .eq('id', publication.id);
-      if (error) throw error;
-      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
-      if (invokeError) throw invokeError;
-      setScheduleOpen(false);
-      setManualWhen('');
-    }, 'schedule', 'Scheduled — uploading to YouTube');
-  };
-
-  // Remove a row from the catalogue. Deletes the publication row; when no other
-  // platform row references the asset (e.g. a TikTok/IG draft of the same
-  // video), the asset and its archived files go too. YouTube's history is
-  // untouched — this only cleans our publishing catalogue.
-  const removeRow = () => {
-    if (!window.confirm(
-      'Delete this video from the catalogue?\n\nIt is removed from the publishing catalogue (this admin). The video is NOT deleted from YouTube itself.\n\nThis cannot be undone.'
-    )) return;
-    return run(async () => {
-      const { data: sibling, error: sibErr } = await supabase
-        .from('publications')
-        .select('id')
-        .eq('asset_id', publication.asset_id)
-        .neq('id', publication.id)
-        .limit(1)
-        .maybeSingle();
-      if (sibErr) throw sibErr;
-
-      // Only retire the shared asset + its files when no other publication
-      // (e.g. a TikTok/IG draft) still references them.
-      if (!sibling) {
-        await supabase.storage.from('content').remove(
-          [asset?.storage_path, asset?.preview_path].filter((p): p is string => !!p)
-        );
-        const { error: assetErr } = await supabase
-          .from('content_assets')
-          .delete()
-          .eq('id', publication.asset_id);
-        if (assetErr) throw assetErr;
-      }
-      const { error: pubErr } = await supabase
-        .from('publications')
-        .delete()
-        .eq('id', publication.id);
-      if (pubErr) throw pubErr;
-    }, 'delete', 'Queued video deleted');
-  };
-
-  // Live state from YouTube (promotion to public, processed status, failures)
-  // rather than trusting the DB's assumption that the slot has come and gone.
-  const checkStatus = () =>
-    run(async () => {
-      const { data, error } = await supabase.functions.invoke<{
-        processed: number;
-        error?: string;
-      }>('check-publication-status', { body: { publication_id: publication.id } });
-      if (error) throw error;
-      if (data && typeof data.error === 'string') throw new Error(data.error);
-    }, 'refresh', 'Status refreshed');
-
-  return (
-    <>
-      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <Video className="hidden sm:block h-5 w-5 text-gray-300 shrink-0" />
-        <button
-          type="button"
-          onClick={() => setShowPreview((v) => !v)}
-          title={showPreview ? 'Hide card preview' : 'Show card preview (PDF)'}
-          className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:border-[#F538BC]"
-        >
-          {showPreview ? (
-            <span className="flex h-full w-full items-center justify-center text-[#1C0357]">
-              <Video className="h-4 w-4" />
-            </span>
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-[#1C0357]">
-              <Eye className="h-4 w-4" />
-            </span>
-          )}
-        </button>
-        <div className="min-w-0 flex-1">
-          {onOpen ? (
-            <button
-              type="button"
-              onClick={onOpen}
-              title="Open the song page — everything about this song in one place"
-              className="flex max-w-full items-center gap-1.5 text-left font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
-            >
-              <Library className="h-3.5 w-3.5 shrink-0 text-gray-300" />
-              <span className="truncate">{label}</span>
-            </button>
-          ) : (
-            <p className="truncate font-bold text-[#1C0357]">{label}</p>
-          )}
-          <p className="truncate text-xs text-gray-500">
-            {asset?.title || '—'} {key ? `· ${key}` : ''}
-            {publication.scheduled_for ? ` · ${formatWhen(publication.scheduled_for, tz)}` : ''}
-            {publication.platform_post_id ? ` · youtu.be/${publication.platform_post_id}` : ''}
-          </p>
-          {publication.error && (
-            <p className="mt-1 truncate text-xs text-red-600">{publication.error}</p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:flex-col lg:flex-row">
-          <Badge className={STATUS_STYLE[publication.status]}>{STATUS_LABELS[publication.status]}</Badge>
-          <Badge variant="outline">{PLATFORM_LABELS[publication.platform]}</Badge>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {onOpen && (
-            <Button variant="outline" size="sm" onClick={onOpen}>
-              <Library className="h-3.5 w-3.5" /> Song page
-            </Button>
-          )}
-          {['published', 'scheduled'].includes(publication.status) && publication.url && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={publication.url} target="_blank" rel="noreferrer">View</a>
-            </Button>
-          )}
-          {['draft', 'pending_approval', 'approved', 'scheduled', 'failed'].includes(publication.status) && (
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <SlidersHorizontal className="h-3.5 w-3.5" /> Edit
-            </Button>
-          )}
-          {publication.platform !== 'youtube' &&
-            ['draft', 'pending_approval'].includes(publication.status) && (
-              <span className="text-[11px] text-gray-400" title="The posting integration for this platform isn't available yet, so it can't be approved or published.">
-                Posting pending
-              </span>
-            )}
-          {publication.platform === 'youtube' &&
-            ['draft', 'pending_approval', 'approved', 'failed'].includes(publication.status) && (
-              <Button size="sm" className="bg-[#1C0357] hover:bg-[#1C0357]/90" onClick={approve} disabled={busy !== null}>
-                {busy === 'approve' ? '…' : 'Approve & schedule'}
-              </Button>
-            )}
-          {publication.platform === 'youtube' &&
-            ['draft', 'pending_approval', 'scheduled', 'failed'].includes(publication.status) && (
-              <Button variant="outline" size="sm" onClick={redraft} disabled={busy !== null}>
-                <RefreshCw className="h-3.5 w-3.5" /> Re-draft AI
-              </Button>
-            )}
-          {publication.platform === 'youtube' &&
-            ['approved', 'failed'].includes(publication.status) && (
-              <Button variant="outline" size="sm" onClick={() => setScheduleOpen(true)} disabled={busy !== null}>
-                <CalendarClock className="h-3.5 w-3.5" /> Schedule…
-              </Button>
-            )}
-          {publication.platform === 'youtube' &&
-            ['approved', 'failed'].includes(publication.status) && (
-              <Button size="sm" className="bg-[#F538BC] hover:bg-[#F538BC]/90" onClick={publishNow} disabled={busy !== null}>
-                <Rocket className="h-3.5 w-3.5" /> Publish now
-              </Button>
-            )}
-          {publication.platform === 'youtube' &&
-            (publication.status === 'scheduled' || publication.status === 'publishing') && (
-              <Button variant="outline" size="sm" onClick={checkStatus} disabled={busy !== null}>
-                {busy === 'refresh' ? '…' : 'Check'}
-              </Button>
-            )}
-          <Button variant="outline" size="sm" onClick={removeRow} disabled={busy !== null}>
-            {busy === 'delete' ? '…' : <Trash2 className="h-3.5 w-3.5" />}
-          </Button>
-        </div>
-      </div>
-      {showPreview && (
-        <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-4">
-          <CardPreview
-            previewPath={asset?.preview_path ?? null}
-            title={asset?.title ?? null}
-            show={asset?.show ?? null}
-            musicalKey={asset?.key ?? null}
-            aspect={asset?.aspect ?? null}
-            maxWidth={320}
-            enabled={showPreview}
-          />
-        </div>
-      )}
-      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Schedule publish</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Label htmlFor="publish-when">
-              Publish time (local to your browser; YouTube promotes the private
-              video to public exactly then)
-            </Label>
-            <Input
-              id="publish-when"
-              type="datetime-local"
-              value={manualWhen}
-              onChange={(e) => setManualWhen(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleOpen(false)}>Cancel</Button>
-            <Button
-              className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-              onClick={scheduleManual}
-              disabled={busy !== null}
-            >
-              {busy === 'schedule' ? '…' : 'Schedule'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Keyed so the form re-seeds from the row each time it opens — without it a
-          re-drafted row re-opened with the previous copy, and Cancel then reopen
-          showed discarded edits. */}
-      <MetadataDialog
-        key={`${publication.id}:${publication.updated_at}`}
-        publication={publication}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        onSaved={onMutation}
-      />
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main section
 // ---------------------------------------------------------------------------
 const PublishingSection = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('sub');
+  // Old links (?sub=pipeline / ?sub=tracks) land on Songs, which replaced both.
   const tab: PublishingTab = PUBLISHING_TABS.some((t) => t.id === rawTab)
     ? (rawTab as PublishingTab)
-    : 'pipeline';
+    : 'songs';
+  // The song open in the song flow, kept in the URL (?song=<request id>) so the
+  // browser's Back button returns to the list.
+  const openSongId = tab === 'songs' ? searchParams.get('song') : null;
   const setTab = (next: PublishingTab) => {
     const sp = new URLSearchParams(searchParams);
-    if (next === 'pipeline') sp.delete('sub');
+    if (next === 'songs') sp.delete('sub');
     else sp.set('sub', next);
+    sp.delete('song');
     setSearchParams(sp, { replace: false });
   };
-  const [bulkDrafting, setBulkDrafting] = useState(false);
-  // Tracks tab: the guided push wizard (default) or the full reference board.
-  const [tracksView, setTracksView] = useState<'wizard' | 'board'>('wizard');
-  // A song the board asked the wizard to open on. Consumed (cleared) once the
-  // wizard has taken it, so returning to the wizard doesn't re-open it.
-  const [wizardStart, setWizardStart] = useState<string | null>(null);
+  const openSong = (requestId: string | null) => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete('sub');
+    if (requestId) sp.set('song', requestId);
+    else sp.delete('song');
+    setSearchParams(sp, { replace: false });
+  };
   // Admin test hooks: which platform pass is running, and the raw worker reply
   // so the pipeline can be verified from the page.
   const [testing, setTesting] = useState<'youtube' | 'tiktok' | 'instagram' | null>(null);
@@ -1180,19 +523,16 @@ const PublishingSection = () => {
   // "published" is being inferred from the schedule rather than confirmed.
   const [confirmDegraded, setConfirmDegraded] = useState(false);
   const [running, setRunning] = useState(false);
-  // Track whose teaser is being re-recorded from the "needs you" band — the same
-  // teaser-only recorder the release board uses.
+  // Track whose teaser is being re-recorded from the song's status page — the
+  // same teaser-only recorder the Songs list uses.
   const [reRecordFor, setReRecordFor] = useState<string | null>(null);
   const [respacing, setRespacing] = useState(false);
-  const [composerId, setComposerId] = useState<string | null>(null);
-  // The song currently being booked by "Publish this song".
+  // The song currently being sent.
   const [publishingKey, setPublishingKey] = useState<string | null>(null);
   // The per-song page: the group key whose page is open, and the publication row
   // being re-drafted from it.
   const [detailKey, setDetailKey] = useState<string | null>(null);
   const [draftingId, setDraftingId] = useState<string | null>(null);
-  // Bulk "schedule everything ready" run, so a double-click can't book twice.
-  const [scheduling, setScheduling] = useState(false);
 
   const { data: settings } = useQuery<PublishingSettings, Error>({
     queryKey: ['publishing_settings'],
@@ -1214,7 +554,6 @@ const PublishingSection = () => {
   const DISPLAY_LIMIT = 200;
   const {
     data: queueData,
-    isLoading,
     error: queueError,
     refetch,
   } = useQuery<{ queue: PublicationWithAsset[]; slots: string[]; truncated: boolean }, Error>({
@@ -1299,18 +638,9 @@ const PublishingSection = () => {
   // One row per song, all three platforms together. The page is just three
   // slices of this: needs a human, booked, or already live.
   const groups = useMemo(() => groupPublications(queue), [queue]);
-  const needsYou = groups.filter((g) => needsAttention(g, autoOn));
-  const bookedGroups = groups.filter(
-    (g) =>
-      !needsAttention(g, autoOn) &&
-      g.pubs.some((p) => p.status === 'scheduled' || p.status === 'publishing')
-  );
-  const liveGroups = groups.filter(
-    (g) =>
-      !needsAttention(g, autoOn) &&
-      !g.pubs.some((p) => p.status === 'scheduled' || p.status === 'publishing') &&
-      g.pubs.some((p) => p.status === 'published')
-  );
+  const sendingId = publishingKey
+    ? groups.find((g) => g.key === publishingKey)?.requestId ?? null
+    : null;
 
   // The per-song page reads from the live groups, so it stays fresh after a
   // refetch (re-recording, re-drafting) without closing.
@@ -1323,21 +653,6 @@ const PublishingSection = () => {
   // can re-book — everything not yet live and not manually skipped.
   const respaceableCount = youtubeQueue.filter(
     (p) => p.status === 'approved' || p.status === 'scheduled'
-  ).length;
-
-  // What the two bulk buttons would do right now, so they can show the number
-  // and switch themselves off when there's nothing left to do — instead of
-  // doing nothing and explaining afterwards.
-  const missingMetadata = active.filter(
-    (p) =>
-      ['draft', 'pending_approval', 'approved', 'failed', 'scheduled'].includes(p.status) &&
-      !p.metadata?.description?.trim()
-  ).length;
-  const readyToBook = active.filter(
-    (p) =>
-      ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status) &&
-      !!p.metadata?.description?.trim() &&
-      !p.scheduled_for
   ).length;
 
   // Re-books every pending row onto fresh cadence slots, oldest first, then
@@ -1492,202 +807,38 @@ const PublishingSection = () => {
     await runNow();
   };
 
-  // Clears the TikTok/Instagram rows for a song so its teaser can be recorded
-  // and posted again. Nothing is deleted from TikTok itself — that stays in the
-  // app, by hand.
-  const resetTeaserFor = async (group: TrackGroup) => {
-    if (
-      !window.confirm(
-        `Reset the TikTok/Instagram teaser rows for "${group.label}"? You'll need to record and post them again. Anything already on TikTok is not deleted — remove it in the TikTok app.`
-      )
-    ) {
-      return;
-    }
-    const rows = [group.tt, group.ig].filter((p): p is PublicationWithAsset => !!p);
-    if (rows.length === 0) {
-      toast({ title: 'No teaser rows to reset', variant: 'destructive' });
-      return;
-    }
-    const results = await Promise.all(
-      rows.map((pub) =>
-        supabase
-          .from('publications')
-          .update({
-            status: 'pending_approval',
-            scheduled_for: null,
-            platform_post_id: null,
-            published_at: null,
-            error: null,
-            metadata: withoutInstagramContainer(pub.metadata),
-          })
-          .eq('id', pub.id)
-      )
-    );
-    const error = results.find((r) => r.error)?.error;
-    if (error) {
-      toast({ title: "Couldn't reset the teaser", description: getErrorMessage(error), variant: 'destructive' });
-      return;
-    }
-    await refetch();
-    toast({ title: 'Teaser reset', description: `${group.label} can be recorded and posted again.` });
-  };
-
-  // Pull a booked song out of the pipeline: any scheduled row goes back to
-  // draft so it no longer holds a slot. Uploaded videos are not deleted.
-  const unscheduleGroup = async (pubs: (PublicationWithAsset | undefined)[]) => {
-    const scheduled = pubs.filter((p): p is PublicationWithAsset => !!p && p.status === 'scheduled');
-    if (scheduled.length === 0) return;
-    if (
-      !window.confirm(
-        `Unschedule ${scheduled.length} row${scheduled.length === 1 ? '' : 's'}? ` +
-          `They leave the Booked list and go back to draft. Anything already uploaded stays online — remove it on the platform if you want it gone.`
-      )
-    ) {
-      return;
-    }
-    const results = await Promise.all(
-      scheduled.map((p) =>
-        supabase
-          .from('publications')
-          .update({
-            status: 'draft',
-            scheduled_for: null,
-            published_at: null,
-            platform_post_id: null,
-            error: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', p.id)
-          .eq('status', 'scheduled')
-      )
-    );
-    const error = results.find((r) => r.error)?.error;
-    if (error) {
-      toast({ title: 'Could not unschedule', description: getErrorMessage(error), variant: 'destructive' });
-      return;
-    }
-    await refetch();
-    toast({
-      title: 'Unscheduled',
-      description: `${scheduled.length} row${scheduled.length === 1 ? '' : 's'} moved back to draft.`,
-    });
-  };
-
-  // Bulk action: give every vetted-but-unscheduled YouTube row its own cadence
-  // slot in one go, then kick the queue so the first upload begins now.
-  // Bulk recovery: (re)generate metadata for every active row that still has no
-  // description, so a batch of failed AI drafts is one click to fix.
-  const draftAll = async () => {
-    const missing = active.filter(
-      (p) =>
-        ['draft', 'pending_approval', 'approved', 'failed', 'scheduled'].includes(p.status) &&
-        !p.metadata?.description?.trim()
-    );
-    if (missing.length === 0) {
-      toast({ title: 'Every queue row already has metadata' });
-      return;
-    }
-    if (!window.confirm(`Draft metadata for ${missing.length} video${missing.length === 1 ? '' : 's'}?`)) return;
-    setBulkDrafting(true);
-    let ok = 0;
-    let failed = 0;
-    let templated = 0;
-    let lastError = '';
-    for (const p of missing) {
-      try {
-        const { data, error } = await supabase.functions.invoke('draft-publication-metadata', {
-          body: { asset_id: p.asset_id, platform: p.platform },
-        });
-        if (error) throw error;
-        ok += 1;
-        if (data?.draft_source === 'template') templated += 1;
-      } catch (e) {
-        failed += 1;
-        lastError = await getFunctionErrorMessage(e);
-      }
-    }
-    setBulkDrafting(false);
-    refetch();
-    toast({
-      title: `Drafted ${ok} of ${missing.length}`,
-      description: failed
-        ? `${failed} failed — ${lastError}`
-        : templated
-          ? `${templated} used the house template (the AI writer was busy) — edit those if you like.`
-          : undefined,
-      variant: failed ? 'destructive' : 'default',
-    });
-  };
-
-  const scheduleAll = async () => {
-    if (scheduling) return;
-    const ready = active.filter(
-      (p) =>
-        p.platform === 'youtube' &&
-        ['draft', 'pending_approval', 'approved', 'failed'].includes(p.status) &&
-        !!p.metadata?.description?.trim() &&
-        !p.scheduled_for
-    );
-    if (ready.length === 0) {
-      toast({ title: 'Nothing ready to schedule', description: 'Rows need drafted metadata (Re-draft AI / Edit) and no existing slot.' });
-      return;
-    }
-    if (!window.confirm(`Assign the next ${ready.length} free slot${ready.length === 1 ? '' : 's'} to ${ready.length} approved video${ready.length === 1 ? '' : 's'} and start uploading?`)) return;
-
-    setScheduling(true);
-    try {
-      const slots = allocatePublishingSlots(
-        settings ?? { schedule_mode: 'weekly', interval_days: null, weekly_dow: 2, weekly_time: '09:00', timezone: tz },
-        ready.length,
-        existingDates
+  // The rule the whole page is built on: a song goes to socials only once it can
+  // be bought. Read fresh from the database rather than the cached list, because
+  // the song flow lists a song moments before it sends it.
+  const assertInShop = async (group: TrackGroup) => {
+    const track = group.requestId
+      ? deliveredTracks.find((t) => t.requestId === group.requestId)
+      : undefined;
+    const asset = group.yt?.content_assets ?? group.tt?.content_assets ?? group.ig?.content_assets;
+    const song = track?.song || asset?.song_title || '';
+    const show = track?.show || asset?.show || '';
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, title, artist_name, product_type, is_active');
+    if (error) throw error;
+    const product = shopProductForTrack(data ?? [], { song, show });
+    if (!product?.is_active) {
+      throw new Error(
+        `“${song || group.label}” isn’t live in the shop yet. Add it to the shop first — nothing goes to socials until it can be bought.`
       );
-      for (let i = 0; i < ready.length; i++) {
-        const { error } = await supabase
-          .from('publications')
-          .update({
-            status: 'approved',
-            approved_at: new Date().toISOString(),
-            scheduled_for: slots[i].toISOString(),
-            error: null,
-            attempts: 0,
-          })
-          .eq('id', ready[i].id);
-        if (error) throw error;
-      }
-      // Booking is a YouTube job. The social worker is deliberately NOT run here:
-      // teasers are armed by the queue when Auto-post is on, or posted by hand.
-      // Running it here used to force-post teasers even with the switch off.
-      const { error: uploadError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
-      await refetch();
-      toast({
-        title: `Scheduled ${ready.length} video${ready.length === 1 ? '' : 's'}`,
-        description: uploadError
-          ? `Booked here, but the upload pass failed: ${await getFunctionErrorMessage(uploadError)}`
-          : 'Uploading starts shortly.',
-        variant: uploadError ? 'destructive' : 'default',
-      });
-    } catch (e) {
-      toast({
-        title: "Couldn't schedule these videos",
-        description: getErrorMessage(e),
-        variant: 'destructive',
-      });
-    } finally {
-      setScheduling(false);
     }
   };
 
-  // One song, one press. The wizard chooses *how*: the cadence slot (schedule)
-  // or straight out the door (now). Both run the same workers — this is a
-  // friendlier way to drive them, not a second path. Errors are toasted here so
-  // the board's "Publish this song" needs no try/catch, and handed back in the
-  // outcome so the wizard can hold the song until it actually went out.
+  // One song, one press: straight out the door (now) or the next cadence slot
+  // (schedule). Both run the same workers. Errors are toasted here and handed
+  // back in the outcome so the song flow can hold until it actually went out.
   const publishTrack = async (
     group: TrackGroup,
     mode: PushMode = 'schedule'
   ): Promise<PushOutcome> => {
     setPublishingKey(group.key);
     try {
+      await assertInShop(group);
       return mode === 'now' ? await publishTrackNow(group) : await scheduleTrack(group);
     } catch (e) {
       const message = getErrorMessage(e);
@@ -1828,6 +979,25 @@ const PublishingSection = () => {
       if (error) throw error;
     }
 
+    // A teaser that failed last time goes back in line, so the arm pass books it
+    // on the video's slot instead of leaving the song stuck under "Needs fixing".
+    const failedTeasers = [group.tt, group.ig].filter(
+      (p): p is PublicationWithAsset => p?.status === 'failed'
+    );
+    for (const pub of failedTeasers) {
+      const { error } = await supabase
+        .from('publications')
+        .update({
+          status: 'pending_approval',
+          attempts: 0,
+          error: null,
+          scheduled_for: null,
+          metadata: withoutInstagramContainer(pub.metadata),
+        })
+        .eq('id', pub.id);
+      if (error) throw error;
+    }
+
     const [ytPass, socialPass] = await Promise.allSettled([
       supabase.functions.invoke('run-publish-queue', { body: {} }),
       supabase.functions.invoke('run-social-queue', { body: {} }),
@@ -1860,10 +1030,22 @@ const PublishingSection = () => {
     return { mode: 'schedule', ok: !ytErr, slot, summary };
   };
 
+  // "Send now" on a scheduled song in the list: skip its slot and post everywhere.
+  const sendNowFor = async (requestId: string) => {
+    const group = groups.find((g) => g.requestId === requestId);
+    if (!group) return;
+    if (
+      !window.confirm(
+        `Send “${group.label}” to YouTube, TikTok and Instagram right now, instead of waiting for its slot?`
+      )
+    ) {
+      return;
+    }
+    await publishTrack(group, 'now');
+  };
+
   // Opens the per-song page for a group. Keyed by request so a re-recording (which
   // can change a legacy group's asset id) keeps the page on the same song.
-  const openTrack = (group: TrackGroup) => setDetailKey(group.requestId ?? group.key);
-
   // Opens it from a release-board row: find the group that row belongs to.
   const openByPub = (pub: PublicationWithAsset) => {
     const group = groups.find((g) => g.pubs.some((p) => p.id === pub.id));
@@ -2057,18 +1239,13 @@ const PublishingSection = () => {
           <p className="mt-1 max-w-3xl text-base text-gray-500">
             {queueError ? (
               <span className="font-semibold text-red-600">Couldn't load the queue</span>
-            ) : needsYou.length > 0 ? (
-              <>
-                <span className="font-semibold text-amber-600">{needsYou.length}</span> need you
-              </>
             ) : (
-              <span className="font-semibold text-emerald-600">All caught up</span>
+              <>
+                Every song goes <strong className="text-[#1C0357]">into the shop</strong> →{' '}
+                <strong className="text-[#1C0357]">videos made</strong> →{' '}
+                <strong className="text-[#1C0357]">sent to socials</strong>, now or on the next slot.
+              </>
             )}
-            {' · '}
-            <span className="font-semibold text-[#1C0357]">{bookedGroups.length}</span> booked
-            {' · '}
-            <span className="font-semibold text-[#1C0357]">{liveGroups.length}</span> live
-            {autoOn ? ' · teasers post automatically' : ' · teasers post by hand'}
           </p>
           {queueTruncated ? (
             <p className="mt-1 text-[11px] text-amber-600">
@@ -2077,17 +1254,11 @@ const PublishingSection = () => {
             </p>
           ) : null}
         </div>
-        <Button variant="outline" onClick={runNow} disabled={running}>
-          <Rocket className="h-4 w-4" /> {running ? 'Running…' : 'Run now'}
-        </Button>
       </div>
 
-      {/* Four tabs instead of a page of stacked panels. The tab lives in the
-          URL (?sub=tracks), so a link can point straight at it. */}
       <div className="flex gap-2 overflow-x-auto">
         {PUBLISHING_TABS.map(({ id, label, icon: Icon }) => {
           const activeTab = tab === id;
-          const badge = id === 'pipeline' ? needsYou.length : 0;
           return (
             <button
               key={id}
@@ -2102,16 +1273,6 @@ const PublishingSection = () => {
             >
               <Icon className="h-4 w-4" />
               {label}
-              {badge > 0 && (
-                <span
-                  className={cn(
-                    'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
-                    activeTab ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
-                  )}
-                >
-                  {badge}
-                </span>
-              )}
             </button>
           );
         })}
@@ -2144,298 +1305,46 @@ const PublishingSection = () => {
         </div>
       )}
 
-      {/* The runway, on every tab: it is the one number that decides whether the
-          channel keeps posting without you doing anything. */}
-      <QueueRunway
-        postDates={postDates}
-        notQueued={notQueued}
-        tz={tz}
-        cadenceLabel={cadenceLabel}
-        onQueue={() => setTab('tracks')}
-      />
-
-      {tab === 'pipeline' && (
-        <>
-      {/* Needs you: what to post, and nothing else. */}
-      <Card className="bg-white border-none shadow-sm rounded-2xl">
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-lg font-bold text-[#1C0357]">
-            <span className="flex items-center gap-2">
-              <AlertTriangle className={cn('h-4 w-4', needsYou.length ? 'text-amber-500' : 'text-gray-300')} />
-              Needs you
-              {needsYou.length > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold tabular-nums text-amber-700">
-                  {needsYou.length}
-                </span>
-              )}
-            </span>
-            {/* The bulk actions only appear when there is something for them to
-                do. Two disabled buttons restating "nothing to do" is noise on an
-                empty card. */}
-            {(missingMetadata > 0 || readyToBook > 0) && (
-              <span className="flex flex-wrap items-center gap-2">
-                {missingMetadata > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={draftAll}
-                    disabled={isLoading || bulkDrafting}
-                    title={`Ask the AI to write the YouTube description for ${missingMetadata} video${missingMetadata === 1 ? '' : 's'} that don’t have one yet.`}
-                  >
-                    <RefreshCw className={cn('h-3.5 w-3.5', bulkDrafting && 'animate-spin')} />{' '}
-                    {bulkDrafting ? 'Writing…' : `Write ${missingMetadata} description${missingMetadata === 1 ? '' : 's'}`}
-                  </Button>
-                )}
-                {readyToBook > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={scheduleAll}
-                    disabled={isLoading || scheduling}
-                    title={`Give ${readyToBook} ready video${readyToBook === 1 ? '' : 's'} the next free cadence slot${readyToBook === 1 ? '' : 's'}.`}
-                  >
-                    <CalendarClock className="h-3.5 w-3.5" /> Book {readyToBook} slot{readyToBook === 1 ? '' : 's'}
-                  </Button>
-                )}
-              </span>
-            )}
-          </CardTitle>
-          {(missingMetadata > 0 || readyToBook > 0) && (
-            <p className="text-xs text-gray-400">
-              “Write descriptions” drafts the YouTube copy with AI. “Book slots” drops each ready video
-              into the next free cadence slot. Open a song’s page (the book icon, or “Song page”) to see
-              everything about it — video, teasers, captions — and publish it in one place.
-            </p>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-1">
-          {isLoading ? (
-            <p className="px-4 py-6 text-sm text-gray-400">Loading…</p>
-          ) : needsYou.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-400">
-              Nothing needs you. Every queued song is booked or live.
-            </p>
-          ) : (
-            needsYou.map((group) => (
-              <div key={group.key} className="overflow-hidden rounded-xl border border-gray-100">
-                {group.yt && ['draft', 'pending_approval', 'approved', 'failed'].includes(group.yt.status) ? (
-                  <QueueRow
-                    publication={group.yt}
-                    tz={tz}
-                    nextSlot={nextSlot}
-                    autoSchedule={settings?.auto_schedule ?? true}
-                    onMutation={() => refetch()}
-                    onOpen={() => openTrack(group)}
-                  />
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => openTrack(group)}
-                      title="Open the song page"
-                      className="min-w-0 flex-1 truncate text-left text-sm font-bold text-[#1C0357] hover:text-[#F538BC] hover:underline"
-                    >
-                      {group.label}
-                    </button>
-                    <span className="text-xs text-gray-400">
-                      {group.yt?.status === 'published'
-                        ? 'Video is live'
-                        : group.yt
-                          ? 'Video is booked'
-                          : 'No video queued'}{' '}
-                      — its teaser still needs a hand.
-                    </span>
-                  </div>
-                )}
-                <TeaserNeeds
-                  group={group}
-                  autoOn={autoOn}
-                  onCompose={setComposerId}
-                  onRecord={setReRecordFor}
-                  onRetry={retryTeaser}
-                />
-                <PublishTrackBar
-                  group={group}
-                  autoOn={autoOn}
-                  busy={publishingKey === group.key}
-                  onPublish={() => publishTrack(group)}
-                />
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Booked: one row per song, video and teasers on the same slot. */}
-      {bookedGroups.length > 0 && (
-        <Card className="bg-white border-none shadow-sm rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-[#1C0357]">
-              Booked
-              <span className="mt-1 block text-xs font-normal text-gray-400">
-                Video and teasers ride the same slot.
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {bookedGroups.map((group) => (
-              <TrackPipelineRow
-                key={group.key}
-                group={group}
-                tz={tz}
-                autoOn={autoOn}
-                onOpen={openTrack}
-                onReRecord={setReRecordFor}
-                onResetTeaser={resetTeaserFor}
-                onUnschedule={(g) => unscheduleGroup([g.yt, g.tt, g.ig].filter(Boolean))}
-              />
-            ))}
-          </CardContent>
-        </Card>
+      {tab === 'songs' && !openSongId && (
+        <QueueRunway
+          postDates={postDates}
+          notQueued={notQueued}
+          tz={tz}
+          cadenceLabel={cadenceLabel}
+        />
       )}
 
-      {/* Live: collapsed by default so the page opens quiet. */}
-      <Disclosure title="Live" hint={`${liveGroups.length} published`}>
-        {liveGroups.length === 0 ? (
-          <p className="text-sm text-gray-400">Nothing published yet.</p>
+      {tab === 'songs' &&
+        (openSongId && !queueData ? (
+          // The flow decides where to start from the song's rows, so it waits
+          // for them — otherwise a recorded song would open on "Check details".
+          <p className="text-sm text-gray-400">Opening the song…</p>
+        ) : openSongId ? (
+          <ReleaseWizard
+            key={openSongId}
+            requestId={openSongId}
+            queue={queue}
+            groups={groups}
+            nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
+            autoOn={autoOn}
+            tz={tz}
+            onPush={publishTrack}
+            onRefresh={async () => (await refetch()).data?.queue ?? []}
+            onSaveCaption={saveCaption}
+            onSaveCopy={saveCopy}
+            onClose={() => openSong(null)}
+          />
         ) : (
-          <div className="space-y-1">
-            {liveGroups.map((group) => (
-              <TrackPipelineRow
-                key={group.key}
-                group={group}
-                tz={tz}
-                autoOn={autoOn}
-                onOpen={openTrack}
-                onReRecord={setReRecordFor}
-                onResetTeaser={resetTeaserFor}
-              />
-            ))}
-          </div>
-        )}
-      </Disclosure>
-
-      {/* Fire each platform's pass by hand and see exactly what the worker said. */}
-      <Disclosure title="Test the pipeline" hint="force a pass on each platform">
-        <div className="space-y-3">
-          <p className="text-xs text-gray-500">
-            Runs the same worker the cron uses, right now. TikTok and Instagram only pick up teasers
-            whose slot has arrived — if the list is empty, that's the worker telling you nothing is due.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testPlatform('youtube')}
-              disabled={testing !== null}
-            >
-              <Youtube className="h-3.5 w-3.5" /> {testing === 'youtube' ? 'Running…' : 'Run YouTube'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testPlatform('tiktok')}
-              disabled={testing !== null}
-            >
-              <ListChecks className="h-3.5 w-3.5" /> {testing === 'tiktok' ? 'Running…' : 'Run TikTok'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => testPlatform('instagram')}
-              disabled={testing !== null}
-            >
-              <Instagram className="h-3.5 w-3.5" /> {testing === 'instagram' ? 'Running…' : 'Run Instagram'}
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">Post one now, without waiting for its slot:</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => forcePostNext('tiktok')}
-              disabled={testing !== null}
-            >
-              <ListChecks className="h-3.5 w-3.5" /> Post next TikTok teaser
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => forcePostNext('instagram')}
-              disabled={testing !== null}
-            >
-              <Instagram className="h-3.5 w-3.5" /> Post next Instagram teaser
-            </Button>
-          </div>
-          {testResult && (
-            <pre className="max-h-72 overflow-auto rounded-xl bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">
-              {testResult}
-            </pre>
-          )}
-        </div>
-      </Disclosure>
-        </>
-      )}
-
-      {tab === 'tracks' && (
-        <div className="space-y-4">
-          {/* The wizard is the default: it answers "what do I do next?". The board
-              is the reference view — every delivered song and its state. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              How to work
-            </span>
-            <div role="group" aria-label="Tracks view" className="inline-flex rounded-full bg-gray-100 p-0.5">
-              {([
-                ['wizard', 'Push songs', 'Take them one at a time, with the details, captions and shop decided for you.'],
-                ['board', 'Full list', 'The reference view — every delivered song and exactly what it needs.'],
-              ] as const).map(([view, label, hint]) => (
-                <button
-                  key={view}
-                  type="button"
-                  onClick={() => setTracksView(view)}
-                  aria-pressed={tracksView === view}
-                  title={hint}
-                  className={cn(
-                    'rounded-full px-3.5 py-1 text-xs font-semibold transition-colors',
-                    tracksView === view
-                      ? 'bg-[#1C0357] text-white shadow-sm'
-                      : 'text-gray-500 hover:text-[#1C0357]'
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {tracksView === 'wizard' ? (
-            <ReleaseWizard
-              queue={queue}
-              groups={groups}
-              nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
-              onPush={publishTrack}
-              onRefresh={async () => (await refetch()).data?.queue ?? []}
-              onSaveCaption={saveCaption}
-              onSaveCopy={saveCopy}
-              onOpenBoard={() => setTracksView('board')}
-              onOpenPipeline={() => setTab('pipeline')}
-              startRequestId={wizardStart}
-              onStartConsumed={() => setWizardStart(null)}
-            />
-          ) : (
-            <ReleaseBoard
-              queue={queue}
-              tz={tz}
-              onMutation={() => refetch()}
-              onOpenTrack={openByPub}
-              onQueueTrack={(requestId) => {
-                setWizardStart(requestId);
-                setTracksView('wizard');
-              }}
-            />
-          )}
-        </div>
-      )}
+          <ReleaseBoard
+            queue={queue}
+            tz={tz}
+            onMutation={() => refetch()}
+            onOpenTrack={openByPub}
+            onOpenSong={openSong}
+            onSendNow={sendNowFor}
+            sendingId={sendingId}
+          />
+        ))}
 
       {tab === 'recorder' && (
         <Suspense fallback={<p className="text-sm text-gray-400">Loading…</p>}>
@@ -2444,17 +1353,85 @@ const PublishingSection = () => {
       )}
 
       {tab === 'settings' && (
-        <SlotSettings
-          pendingCount={notQueued + active.length}
-          existingSlots={existingDates}
-          onRespace={respace}
-          respaceCount={respaceableCount}
-          respacing={respacing}
-        />
+        <>
+          <SlotSettings
+            pendingCount={notQueued + active.length}
+            existingSlots={existingDates}
+            onRespace={respace}
+            respaceCount={respaceableCount}
+            respacing={respacing}
+          />
+
+          {/* Troubleshooting: the workers normally run every 15 minutes on their
+              own. These are for checking the wiring, not for day-to-day posting —
+              that is the Songs tab. */}
+          <Disclosure title="Troubleshooting" hint="run the posting workers by hand">
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">
+                The workers post whatever is due every 15 minutes on their own. You don't need these
+                to publish a song — use <strong>Songs</strong> for that. They're here to check the
+                connections and see exactly what each worker says.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={runNow} disabled={running}>
+                  <Rocket className="h-3.5 w-3.5" /> {running ? 'Running…' : 'Run everything due now'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testPlatform('youtube')}
+                  disabled={testing !== null}
+                >
+                  <Youtube className="h-3.5 w-3.5" /> {testing === 'youtube' ? 'Running…' : 'Run YouTube'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testPlatform('tiktok')}
+                  disabled={testing !== null}
+                >
+                  <ListChecks className="h-3.5 w-3.5" /> {testing === 'tiktok' ? 'Running…' : 'Run TikTok'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testPlatform('instagram')}
+                  disabled={testing !== null}
+                >
+                  <Instagram className="h-3.5 w-3.5" /> {testing === 'instagram' ? 'Running…' : 'Run Instagram'}
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                <span className="text-xs text-gray-500">Post one teaser now, without waiting for its slot:</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => forcePostNext('tiktok')}
+                  disabled={testing !== null}
+                >
+                  <ListChecks className="h-3.5 w-3.5" /> Next TikTok teaser
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => forcePostNext('instagram')}
+                  disabled={testing !== null}
+                >
+                  <Instagram className="h-3.5 w-3.5" /> Next Instagram teaser
+                </Button>
+              </div>
+              {testResult && (
+                <pre className="max-h-72 overflow-auto rounded-xl bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">
+                  {testResult}
+                </pre>
+              )}
+            </div>
+          </Disclosure>
+        </>
       )}
 
-      {/* The per-song page. Rendered before the recorder and the composer so
-          those open on top of it, and the song page is still there underneath. */}
+      {/* The song's status page: files, teasers, downloads, retries. Sending
+          always happens in the song flow, so its last button hands over there. */}
       {detailGroup && (
         <TrackDetail
           key={detailGroup.key}
@@ -2463,13 +1440,17 @@ const PublishingSection = () => {
           products={shopProducts}
           tz={tz}
           autoOn={autoOn}
-          publishing={publishingKey === detailGroup.key}
           draftingId={draftingId}
-          nextSlotLabel={formatWhen(nextSlot().toISOString(), tz)}
           onClose={() => setDetailKey(null)}
-          onPublish={() => publishTrack(detailGroup)}
+          onSend={
+            detailGroup.requestId
+              ? () => {
+                  setDetailKey(null);
+                  openSong(detailGroup.requestId);
+                }
+              : undefined
+          }
           onDraft={draftOne}
-          onCompose={setComposerId}
           onRecord={setReRecordFor}
           onRetry={retryTeaser}
           onDownload={downloadPub}
@@ -2489,12 +1470,6 @@ const PublishingSection = () => {
           }}
         />
       )}
-
-      <TikTokComposer
-        publicationId={composerId}
-        onClose={() => setComposerId(null)}
-        onPosted={() => refetch()}
-      />
     </div>
   );
 };

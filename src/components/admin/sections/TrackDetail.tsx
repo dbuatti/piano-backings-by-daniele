@@ -11,7 +11,7 @@ import {
   Loader2,
   Music2,
   RefreshCw,
-  Rocket,
+  Send,
   Sparkles,
   Youtube,
 } from 'lucide-react';
@@ -20,7 +20,6 @@ import {
   PLATFORM_LABELS,
   STATUS_LABELS,
   type PublicationPlatform,
-  type PublicationStatus,
   type PublicationWithAsset,
 } from '@/types/publishing';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,6 @@ import {
   captionOf,
   formatSeconds,
   instagramWaitingNote,
-  isPostable,
   teaserProblem,
   trackActionable,
   trackBookable,
@@ -42,11 +40,11 @@ import {
   type TrackGroup,
 } from '@/utils/publishingPipeline';
 
-// The per-song page: one track, everything about it, and the one action that
-// takes it from delivered to published. It is read-only except for the fixes and
-// the final publish — the release board stays the place you edit.
+// The song's status page: one track, everything about it — files, captions,
+// teasers, downloads, retries. Sending happens in the song flow; the Review &
+// send button hands over there, so there is only one way to send a song.
 
-const STEPS = ['Overview', 'Video', 'Teasers', 'Publish'] as const;
+const STEPS = ['Overview', 'Video', 'Teasers'] as const;
 
 const CHIP: Record<string, string> = {
   draft: 'border-gray-200 bg-gray-50 text-gray-500',
@@ -306,7 +304,6 @@ function TeaserPanel({
   group,
   tz,
   autoOn,
-  onCompose,
   onRecord,
   onRetry,
   onDownload,
@@ -317,7 +314,6 @@ function TeaserPanel({
   group: TrackGroup;
   tz: string;
   autoOn: boolean;
-  onCompose: (id: string) => void;
   onRecord: (requestId: string) => void;
   onRetry: (id: string) => void;
   onDownload: (pub: PublicationWithAsset) => void;
@@ -439,11 +435,6 @@ function TeaserPanel({
             <RefreshCw className="h-3.5 w-3.5" /> Retry
           </Button>
         ) : null}
-        {pub.platform === 'tiktok' && !igBlocked ? (
-          <Button size="sm" variant="outline" onClick={() => onCompose(pub.id)}>
-            {caption ? 'Edit caption & post' : 'Write caption & post'}
-          </Button>
-        ) : null}
         <Button size="sm" variant="ghost" onClick={() => onDownload(pub)}>
           <Download className="h-3.5 w-3.5" /> Download
         </Button>
@@ -465,16 +456,12 @@ export interface TrackDetailProps {
   products: ShopProductRow[];
   tz: string;
   autoOn: boolean;
-  /** True while "Publish this song" is running for this group. */
-  publishing: boolean;
   /** Publication id currently being re-drafted, if any. */
   draftingId: string | null;
-  /** The next free cadence slot, already formatted. */
-  nextSlotLabel: string | null;
   onClose: () => void;
-  onPublish: () => void;
+  /** Hands over to the song flow's Send step — the one place songs are sent. */
+  onSend?: () => void;
   onDraft: (pub: PublicationWithAsset) => void;
-  onCompose: (id: string) => void;
   onRecord: (requestId: string) => void;
   onRetry: (id: string) => void;
   onDownload: (pub: PublicationWithAsset) => void;
@@ -493,13 +480,10 @@ export default function TrackDetail({
   products,
   tz,
   autoOn,
-  publishing,
   draftingId,
-  nextSlotLabel,
   onClose,
-  onPublish,
+  onSend,
   onDraft,
-  onCompose,
   onRecord,
   onRetry,
   onDownload,
@@ -516,7 +500,6 @@ export default function TrackDetail({
   const shop: 'live' | 'draft' | 'none' = !shopMatch ? 'none' : shopMatch.is_active ? 'live' : 'draft';
   const shopUrl = shopSongUrl(products, { song, show });
 
-  const ytAssetAspect = yt?.content_assets?.aspect;
   const bookable = trackBookable(group);
 
   const readiness = trackReadiness(group, {
@@ -527,8 +510,6 @@ export default function TrackDetail({
   const blockers = readiness.filter((i) => !i.ok && !i.advisory);
   const ready = blockers.length === 0;
 
-  // Same predicate the pipeline bar uses, so the button and its helper text agree.
-  const canPublish = ready && trackActionable(group);
 
   const description = String(yt?.metadata?.description ?? '').trim();
   const ytTitle = String(yt?.metadata?.title ?? '').trim();
@@ -704,7 +685,6 @@ export default function TrackDetail({
                 group={group}
                 tz={tz}
                 autoOn={autoOn}
-                onCompose={onCompose}
                 onRecord={onRecord}
                 onRetry={onRetry}
                 onDownload={onDownload}
@@ -733,7 +713,6 @@ export default function TrackDetail({
                 group={group}
                 tz={tz}
                 autoOn={autoOn}
-                onCompose={onCompose}
                 onRecord={onRecord}
                 onRetry={onRetry}
                 onDownload={onDownload}
@@ -763,64 +742,6 @@ export default function TrackDetail({
           </div>
         )}
 
-        {step === 3 && (
-          <div className="space-y-4">
-            <Panel>
-              <p className="text-sm font-semibold text-[#1C0357]">
-                {ready
-                  ? 'Everything checks out.'
-                  : `${blockers.length} thing${blockers.length === 1 ? '' : 's'} still missing.`}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {bookable
-                  ? `Publishing books the video into ${nextSlotLabel ?? 'the next free slot'}, then the teasers ride that slot.`
-                  : yt?.scheduled_for
-                    ? `The video is already booked for ${when(yt.scheduled_for, tz)}. Publishing runs the passes now.`
-                    : 'Publishing runs the YouTube and social passes now.'}
-              </p>
-            </Panel>
-            {!ready ? (
-              <Panel title="What's missing">
-                <ul className="space-y-1.5">
-                  {blockers.map((item) => (
-                    <CheckItem key={item.label} item={item} />
-                  ))}
-                </ul>
-                <p className="mt-2 text-[11px] text-gray-400">
-                  Fix these on the earlier steps, then come back here.
-                </p>
-              </Panel>
-            ) : null}
-            <Panel title="What goes out">
-              <Fact label="YouTube">
-                {bookable
-                  ? `16:9, full song → ${nextSlotLabel ?? 'next free slot'}`
-                  : yt
-                    ? `${ytAssetAspect ?? 'unknown size'}, ${STATUS_LABELS[yt.status]}`
-                    : '—'}
-              </Fact>
-              <Fact label="TikTok">
-                {group.tt
-                  ? `9:16, full song — ${
-                      isPostable(group.tt)
-                        ? autoOn
-                          ? 'posts on the slot'
-                          : 'posts by hand'
-                        : 'needs a portrait MP4'
-                    }`
-                  : '—'}
-              </Fact>
-              <Fact label="Instagram">
-                {group.ig
-                  ? `9:16, ${formatSeconds(
-                      group.ig.content_assets?.duration_seconds
-                    )} — ${isPostable(group.ig) ? 'recorded' : 'needs a portrait MP4'}`
-                  : '—'}
-              </Fact>
-            </Panel>
-          </div>
-        )}
-
         <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
           <Button
             variant="ghost"
@@ -837,16 +758,12 @@ export default function TrackDetail({
               >
                 Next <ArrowRight className="h-3.5 w-3.5" />
               </Button>
-            ) : (
-              <Button onClick={onPublish} disabled={publishing || !canPublish}>
-                {publishing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Rocket className="h-3.5 w-3.5" />
-                )}
-                Publish this song
+            ) : null}
+            {onSend && trackActionable(group) ? (
+              <Button onClick={onSend} className="bg-[#F538BC] hover:bg-[#F538BC]/90">
+                <Send className="h-3.5 w-3.5" /> Review &amp; send
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </DialogContent>

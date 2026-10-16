@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle, ArrowRight, CalendarClock, Check, CheckCircle2, FileText, KeyRound, Lightbulb, Loader2, Music2, Play,
-  Sparkles, Store, X, Zap,
+  AlertCircle, ArrowLeft, ArrowRight, CalendarClock, Check, CheckCircle2, Loader2, Store, X, Zap,
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { cn, getErrorMessage, getFunctionErrorMessage } from '@/lib/utils';
+import { cn, getFunctionErrorMessage } from '@/lib/utils';
 import { PLATFORM_LABELS, type PublicationPlatform, type PublicationWithAsset } from '@/types/publishing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,29 +26,32 @@ import type { ClipProgress } from '@/utils/canvasRecorder';
 import {
   listTrackInShop, queueTrackForRelease, saveRequestKey, type ReleasePhase,
 } from '@/utils/releaseTrack';
-import type { PushMode, PushOutcome, TrackGroup } from '@/utils/publishingPipeline';
-import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
+import {
+  groupPublications, when, type PushMode, type PushOutcome, type TrackGroup,
+} from '@/utils/publishingPipeline';
 import SheetMusicDrop from '@/components/admin/SheetMusicDrop';
+import { ShopListingDialog } from '@/components/admin/ShopListingDialog';
 import { invalidateShopProducts } from '@/lib/shop-queries';
 
 // ---------------------------------------------------------------------------
-// The release wizard.
+// The song flow.
 //
-// The board answers "what's the state of everything?" — this answers "what do I
-// do next?", one song at a time, in plain language. Four stops per song:
+// Opened from a song on the Songs list, it picks up wherever that song has got
+// to and walks it the rest of the way. Four stops:
 //
-//   1. Check    — the details that go on the card. One button.
-//   2. Make     — three videos recorded and uploaded, hands off.
-//   3. Captions — the copy, read once and approved in one place.
-//   4. Push     — publish now, or book the next slot; list it in the shop.
+//   1. Check details — what goes on the card. Skipped once the videos exist.
+//   2. Make videos   — three videos recorded and uploaded, hands off.
+//   3. Captions      — the copy, read and edited in one place.
+//   4. Send          — into the shop first, then socials: now, or the next slot.
 //
-// Everything it does is the same machinery the board and the pipeline use, via
-// utils/releaseTrack — it is a friendlier way to drive them, not a second path.
+// Nothing is posted before the last step, and the last step refuses to post a
+// song that isn't in the shop. Everything it does is the same machinery the rest
+// of the page uses, via utils/releaseTrack — not a second path.
 // ---------------------------------------------------------------------------
 
-const STEPS = ['Check', 'Make', 'Captions', 'Push'] as const;
+const STEPS = ['Check details', 'Make videos', 'Captions', 'Send'] as const;
 
-type WizardStep = 'intro' | 'details' | 'making' | 'captions' | 'push' | 'done';
+type WizardStep = 'loading' | 'details' | 'making' | 'captions' | 'send' | 'done';
 
 // The limits YouTube and the platforms apply. The drafting function already
 // slices to these, so a counter here stops the owner trimming into a rejection.
@@ -174,44 +176,49 @@ function StepShell({
 type CaptionDraft = { title: string; description: string; caption: string };
 const emptyDraft = (): CaptionDraft => ({ title: '', description: '', caption: '' });
 
+// Statuses that mean the video already holds a slot (or is going out now).
+const BOOKED = ['scheduled', 'publishing'];
+
 export function ReleaseWizard({
+  requestId,
   queue,
   groups,
   nextSlotLabel,
+  autoOn,
+  tz,
   onPush,
   onRefresh,
   onSaveCaption,
   onSaveCopy,
-  onOpenBoard,
-  onOpenPipeline,
-  startRequestId,
-  onStartConsumed,
+  onClose,
 }: {
+  /** The song to work on. The wizard picks up wherever that song has got to. */
+  requestId: string;
   queue: PublicationWithAsset[];
   groups: TrackGroup[];
   nextSlotLabel: string;
+  /** Settings → Auto-post. Off means a booked teaser won't post on its own. */
+  autoOn: boolean;
+  tz: string;
   onPush: (group: TrackGroup, mode: PushMode) => Promise<PushOutcome>;
   /** Refreshes the publications query and hands back the fresh rows. */
   onRefresh: () => Promise<PublicationWithAsset[]>;
   onSaveCaption: (pub: PublicationWithAsset, caption: string) => Promise<void>;
   onSaveCopy: (pub: PublicationWithAsset, next: { title: string; description: string }) => Promise<void>;
-  onOpenBoard: () => void;
-  onOpenPipeline: () => void;
-  /** A song to begin on, when the wizard is opened from a board row. */
-  startRequestId?: string | null;
-  onStartConsumed?: () => void;
+  /** Back to the Songs list. */
+  onClose: () => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: tracks } = useDeliveredTracks();
+  const { data: tracks, isLoading: tracksLoading } = useDeliveredTracks();
   const { data: products } = useShopProducts();
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  const [step, setStep] = useState<WizardStep>('intro');
-  const [doneIds, setDoneIds] = useState<string[]>([]);
+  const [step, setStep] = useState<WizardStep>('loading');
   const [phase, setPhase] = useState<ReleasePhase>('recording');
   const [progress, setProgress] = useState<ClipProgress | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Which button is running, so the other one can say it's waiting.
+  const [busy, setBusy] = useState<false | 'work' | PushMode>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Details, seeded from the chosen song.
@@ -224,7 +231,6 @@ export function ReleaseWizard({
   const [detailSave, setDetailSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const lastSavedRef = useRef('');
 
-
   // Captions, held here so one button can approve all three.
   const [drafts, setDrafts] = useState<Record<PublicationPlatform, CaptionDraft>>({
     youtube: emptyDraft(),
@@ -232,103 +238,61 @@ export function ReleaseWizard({
     instagram: emptyDraft(),
   });
 
-  // Push choices.
-  const [toShop, setToShop] = useState(true);
-  const [shopLive, setShopLive] = useState(true);
   // Whether the card/teasers should include the client's name.
   const [showClientName, setShowClientName] = useState(true);
-  // How the last press releases the song: straight out (now) or onto the cadence.
-  const [pushMode, setPushMode] = useState<PushMode>('schedule');
+  const [reviewingShop, setReviewingShop] = useState(false);
 
-  const [pushed, setPushed] = useState<{
-    song: string;
-    slot: string;
-    shop: boolean;
-    mode: PushMode;
-  } | null>(null);
+  const [sent, setSent] = useState<{ song: string; slot: string; mode: PushMode; summary: string } | null>(
+    null
+  );
 
-  // The song being worked on is held in state, not derived from the queue: once a
-  // song is recorded its rows exist, so it drops out of `ready` mid-flow and a
-  // derived "current" would vanish between the captions and push steps.
+  // The song is held in state, not re-derived on every render: once it is
+  // recorded its rows exist and the delivered-tracks query refetches, and the
+  // flow must not lose its place in between.
   const [current, setCurrent] = useState<DeliveredTrack | null>(null);
-  // Banner label (card top strip). Defaults from track type.
-  
-    
-  const queuedRequestIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const pub of queue) {
-      if (pub.content_assets?.request_id) set.add(pub.content_assets.request_id);
-    }
-    return set;
-  }, [queue]);
 
-  // Songs this wizard can finish: not exclusive, allowed on socials, and with no
-  // video yet. A song with no key can't be recorded, so it is counted separately
-  // and offered a fix rather than being a dead end.
-  const { ready, needsKey } = useMemo(() => {
-    const open = (tracks ?? []).filter(
-      (t) => !t.isExclusive && !t.noSocials && !queuedRequestIds.has(t.requestId)
-    );
-    const withKey: DeliveredTrack[] = [];
-    const without: DeliveredTrack[] = [];
-    for (const t of open) (t.key ? withKey : without).push(t);
-    return { ready: withKey, needsKey: without };
-  }, [tracks, queuedRequestIds]);
+  const rowsFor = (id: string) => queue.filter((p) => p.content_assets?.request_id === id);
+  const group = groups.find((g) => g.requestId === requestId) ?? null;
 
-  // Recorded but not on their way yet: the pipeline is holding these, and they
-  // would otherwise be invisible from here (they are not "ready", and not live).
-  const waiting = useMemo(() => {
-    const byRequest = new Map<string, PublicationWithAsset[]>();
-    for (const pub of queue) {
-      const id = pub.content_assets?.request_id;
-      if (!id) continue;
-      const bucket = byRequest.get(id);
-      if (bucket) bucket.push(pub);
-      else byRequest.set(id, [pub]);
-    }
-    let count = 0;
-    for (const rows of byRequest.values()) {
-      const onTheWay = rows.some((r) => ['scheduled', 'publishing', 'published'].includes(r.status));
-      if (!onTheWay) count += 1;
-    }
-    return count;
-  }, [queue]);
-
-  // `ready` minus everything already handled in this sitting. Recomputed from the
-  // freshest handled list so "next" is right immediately, before React re-renders.
-  const upNext = ready.filter((t) => !doneIds.includes(t.requestId));
-  const nextUp = upNext[0] ?? null;
-
-  // Everything the wizard will accept: a keyless song is still workable (the key
-  // is picked on the first screen and saved back to the request), so it is
-  // openable too — it just isn't in the "ready" count yet.
-  const openable = useMemo(() => [...ready, ...needsKey], [ready, needsKey]);
-
-  // A song can be delivered twice; it must not be listed in the shop twice.
-  const listed = current ? shopProductForTrack(products ?? [], current) : null;
-
-  const rowsFor = (requestId: string) =>
-    queue.filter((p) => p.content_assets?.request_id === requestId);
+  // The shop listing for the song as it is titled on screen, so a rename in the
+  // first step doesn't create a second listing.
+  const shopTrack = current
+    ? { ...current, song: title.trim() || current.song, show: show.trim() }
+    : null;
+  const listed = shopTrack ? shopProductForTrack(products ?? [], shopTrack) : null;
 
   useEffect(() => {
-    if (step !== 'intro') headingRef.current?.focus();
+    if (step !== 'loading') headingRef.current?.focus();
   }, [step]);
 
-  const begin = (track: DeliveredTrack) => {
+  // Open on the song once it is in hand. The first render can land before the
+  // tracks query resolves, so this waits for it rather than giving up.
+  const startedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (startedRef.current === requestId) return;
+    const track = (tracks ?? []).find((t) => t.requestId === requestId);
+    if (!track) return;
+    startedRef.current = requestId;
     setCurrent(track);
     setTitle(track.song);
     setShow(track.show);
     setKey(track.key ?? '');
     lastSavedRef.current = `${track.song}\u0001${track.show}\u0001${track.key ?? ''}`;
     setDetailSave('idle');
-    setDrafts({ youtube: emptyDraft(), tiktok: emptyDraft(), instagram: emptyDraft() });
     setError(null);
-    setToShop(true);
-    setShopLive(true);
     setShowClientName(true);
-    setPushMode('schedule');
-    setStep('details');
-  };
+    // Already recorded? Then there is nothing to make — go straight to the
+    // captions, which is where a recorded song is vetted.
+    const rows = rowsFor(track.requestId);
+    if (rows.length) {
+      seedDrafts(rows, track.requestId);
+      setStep('captions');
+    } else {
+      setDrafts({ youtube: emptyDraft(), tiktok: emptyDraft(), instagram: emptyDraft() });
+      setStep('details');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId, tracks]);
 
   // Writes the Check step's three fields back to the request. Shared by the
   // autosave and Save & exit, so leaving always stores what is on screen.
@@ -378,59 +342,15 @@ export function ReleaseWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailsSnapshot, step, current]);
 
-  // Opened from a board row: begin on that song. Only consumed once the song is
-  // actually in hand — the first render happens before the tracks query resolves,
-  // and consuming an empty list would drop the request.
-  const consumedStartRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!startRequestId || consumedStartRef.current === startRequestId) return;
-    const track = openable.find((t) => t.requestId === startRequestId);
-    if (!track) return;
-    consumedStartRef.current = startRequestId;
-    onStartConsumed?.();
-    begin(track);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startRequestId, openable]);
-
-  // Move to the next song, treating `id` as handled (pushed or skipped).
-  const advancePast = (handledIds: string[]) => {
-    setPushed(null);
-    setError(null);
-    const next = ready.filter((t) => !handledIds.includes(t.requestId))[0] ?? null;
-    if (next) begin(next);
-    else {
-      setCurrent(null);
-      setStep('intro');
-    }
-  };
-
-  const goHome = () => {
-    setCurrent(null);
-    setPushed(null);
-    setError(null);
-    setStep('intro');
-  };
-
-  const markHandled = (id: string) => {
-    const handled = doneIds.includes(id) ? doneIds : [...doneIds, id];
-    setDoneIds(handled);
-    return handled;
-  };
-
-  const startFromIntro = () => {
-    if (nextUp) begin(nextUp);
-  };
-
   // Step 1 → step 2: record everything.
   const makeIt = async () => {
     if (!current) return;
     setStep('making');
-    setBusy(true);
+    setBusy('work');
     setError(null);
     setPhase('recording');
     try {
-      // Belt and braces: the candidate list already excludes songs with rows, but
-      // a second tab could have queued this one in the meantime.
+      // Belt and braces: a second tab could have recorded this one meanwhile.
       const { data: existing } = await supabase
         .from('publications')
         .select('id, content_assets!inner(request_id)')
@@ -439,10 +359,8 @@ export function ReleaseWizard({
         .limit(1)
         .maybeSingle();
       if (existing) {
-        throw new Error('This song already has a video in the pipeline — check the full list.');
+        throw new Error('This song already has videos — go back to the list and open it again.');
       }
-      // A key chosen for a song that had none is a fix, not a preference — record
-      // it on the request so the board, the card and the next queue all agree.
       if (!current.key && key) {
         await saveRequestKey(current, key);
         await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
@@ -467,8 +385,8 @@ export function ReleaseWizard({
     }
   };
 
-  const seedDrafts = (rows: PublicationWithAsset[], requestId: string) => {
-    const mine = rows.filter((p) => p.content_assets?.request_id === requestId);
+  const seedDrafts = (rows: PublicationWithAsset[], id: string) => {
+    const mine = rows.filter((p) => p.content_assets?.request_id === id);
     const next: Record<PublicationPlatform, CaptionDraft> = {
       youtube: emptyDraft(),
       tiktok: emptyDraft(),
@@ -506,12 +424,16 @@ export function ReleaseWizard({
   // Step 3 → step 4: keep any edits, then move on.
   const approveCaptions = async () => {
     if (!current) return;
-    setBusy(true);
+    if (rowsFor(current.requestId).some((r) => r.platform === 'youtube') && !drafts.youtube.description.trim()) {
+      setError('The YouTube description is empty — write a line or two (it carries the shop link).');
+      return;
+    }
+    setBusy('work');
     setError(null);
     try {
       await flushDrafts(rowsFor(current.requestId));
       await onRefresh();
-      setStep('push');
+      setStep('send');
     } catch (e) {
       setError(await getFunctionErrorMessage(e));
     } finally {
@@ -521,29 +443,27 @@ export function ReleaseWizard({
 
   // Leaving mid-flow shouldn't lose captions that were typed and not approved.
   const saveAndExit = async () => {
-    if (current && step !== 'details') {
+    if (current && step === 'captions') {
       try {
         await flushDrafts(rowsFor(current.requestId));
         await onRefresh();
-        toast({ title: 'Saved', description: `${title || current.song} is waiting on the full list.` });
+        toast({ title: 'Saved', description: `${title || current.song} is waiting under “Review & send”.` });
       } catch {
         // Best effort — the rows are already recorded either way.
       }
     }
-    goHome();
+    onClose();
   };
 
-  // Check step: keep what was typed on the request, then leave. Nothing is queued,
-  // so this is the only place the title, show and key can survive leaving.
+  // Check step: keep what was typed on the request, then leave.
   const saveDetailsAndExit = async () => {
-    if (!current) return goHome();
-    setBusy(true);
+    if (!current) return onClose();
+    setBusy('work');
     setError(null);
     try {
-      // Flushes the pending edit immediately rather than waiting for the debounce.
       await persistDetails(title, show, key);
-      toast({ title: 'Saved', description: `${title || current.song} is back on the list, with these details.` });
-      goHome();
+      toast({ title: 'Saved', description: `${title || current.song} keeps these details.` });
+      onClose();
     } catch (e) {
       setError(await getFunctionErrorMessage(e));
     } finally {
@@ -551,42 +471,49 @@ export function ReleaseWizard({
     }
   };
 
-  // Step 4: publish now (straight out) or book the slot, then optionally list it
-  // in the shop. The push itself is one press either way; only the mode differs.
-  const push = async () => {
+  // The shop comes first. A draft listing is switched on; a missing one is
+  // created live. Socials are only touched once this has succeeded.
+  const ensureInShop = async (): Promise<boolean> => {
+    if (!shopTrack) return false;
+    if (listed?.is_active) return false;
+    if (listed) {
+      const { error: actErr } = await supabase.from('products').update({ is_active: true }).eq('id', listed.id);
+      if (actErr) throw actErr;
+    } else {
+      await listTrackInShop(shopTrack, { active: true, includeClientName: showClientName });
+    }
+    await invalidateShopProducts(queryClient);
+    return true;
+  };
+
+  // Step 4: shop first, then socials — now, or the next slot.
+  const send = async (mode: PushMode) => {
     if (!current) return;
-    setBusy(true);
+    setBusy(mode);
     setError(null);
     try {
-      const group = groups.find((g) => g.requestId === current.requestId);
-      if (!group) throw new Error('That song has no queued rows yet — go back and make it again.');
-      const outcome = await onPush(group, pushMode);
-      // A failed push must not read as "out the door", and must not quietly list
-      // a song that never went out. Hold here with the reason.
+      const fresh = await onRefresh();
+      const g =
+        groupPublications(fresh).find((x) => x.requestId === current.requestId) ?? group;
+      if (!g) throw new Error('This song has no videos yet — go back and make them.');
+      const addedToShop = await ensureInShop();
+      const outcome = await onPush(g, mode);
+      // A failed send must not read as "out the door". Hold here with the reason.
       if (!outcome.ok) {
-        setError(outcome.summary);
+        setError(
+          addedToShop
+            ? `It’s in the shop now, but sending failed: ${outcome.summary}`
+            : outcome.summary
+        );
         return;
       }
-
-      let shopped = false;
-      if (toShop && !listed) {
-        const res = await listTrackInShop(current, { active: shopLive, includeClientName: showClientName });
-        await invalidateShopProducts(queryClient);
-        shopped = res.created;
-      }
-
-      setPushed({
+      setSent({
         song: title || current.song,
         slot: outcome.slot ?? '',
-        shop: shopped,
         mode: outcome.mode,
+        summary: outcome.summary,
       });
-      setDoneIds((ids) => [...ids, current.requestId]);
       setStep('done');
-      toast({
-        title: outcome.mode === 'now' ? 'Published now' : 'Pushed',
-        description: `${title || current.song}${shopped ? ' — and in the shop' : ''}.`,
-      });
     } catch (e) {
       setError(await getFunctionErrorMessage(e));
     } finally {
@@ -594,133 +521,17 @@ export function ReleaseWizard({
     }
   };
 
-  // ---------------------------------------------------------------- intro
-  if (step === 'intro') {
-    const total = upNext.length;
-    const nothingToDo = total === 0;
-    return (
-      <div className="space-y-4">
-        <Card className="rounded-2xl border-none bg-white shadow-sm">
-          <CardHeader className="space-y-4">
-            <CardTitle className="flex items-center gap-2.5 text-2xl font-bold text-[#1C0357] sm:text-3xl">
-              <Sparkles className="h-6 w-6 text-[#F538BC]" /> Get your songs out
-            </CardTitle>
-            <p className="max-w-3xl text-base leading-relaxed text-gray-500">
-              {nothingToDo
-                ? waiting > 0
-                  ? 'Nothing new to record. The songs below are already made and just need approving.'
-                  : 'Nothing is waiting to be pushed. Everything delivered is either on the way or already out.'
-                : 'One song at a time. We check the details, make the videos, show you the captions, then push the song to YouTube, TikTok and Instagram — and into the shop. About a minute a song.'}
-            </p>
-            {!nothingToDo && (
-              <p className="flex items-center gap-2 text-sm text-gray-400">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
-                Nothing leaves your account until you press Push on the last screen.
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-xl bg-[#1C0357] p-5 text-white">
-                <p className="text-4xl font-bold tabular-nums">{total}</p>
-                <p className="mt-1 text-sm text-white/70">songs ready to queue</p>
-              </div>
-              <div className="rounded-xl bg-gray-50 p-5">
-                <p className="text-xl font-bold leading-tight text-[#1C0357]">{nextSlotLabel || '—'}</p>
-                <p className="mt-1 text-sm text-gray-500">the next one goes out</p>
-              </div>
-              <div className={cn('rounded-xl p-5', needsKey.length ? 'bg-amber-50' : 'bg-gray-50')}>
-                <p className={cn('text-4xl font-bold tabular-nums', needsKey.length ? 'text-amber-700' : 'text-[#1C0357]')}>
-                  {needsKey.length}
-                </p>
-                <p className={cn('mt-1 text-sm', needsKey.length ? 'text-amber-700' : 'text-gray-500')}>
-                  need a key first
-                </p>
-              </div>
-            </div>
-
-            {doneIds.length > 0 && (
-              <p className="flex items-center gap-2 text-sm text-green-700">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                {doneIds.length} done in this sitting.
-              </p>
-            )}
-
-            {needsKey.length > 0 && <KeyFixer tracks={needsKey} />}
-
-            {waiting > 0 && (
-              <button
-                type="button"
-                onClick={onOpenPipeline}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-100 p-4 text-left transition-colors hover:bg-gray-50"
-              >
-                <span className="text-sm text-gray-600">
-                  <strong className="font-semibold text-[#1C0357]">
-                    {waiting === 1 ? 'One song is' : `${waiting} songs are`} recorded and waiting
-                  </strong>{' '}
-                  — approve {waiting === 1 ? 'it' : 'them'} in the pipeline to give {waiting === 1 ? 'it' : 'them'} a slot.
-                </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-gray-400" />
-              </button>
-            )}
-
-            {total > 0 && (
-              <div className="space-y-2.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Coming up</p>
-                <ul className="space-y-2">
-                  {upNext.slice(0, 3).map((t) => (
-                    <li key={t.requestId} className="flex items-center justify-between gap-3 text-base">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Music2 className="h-4 w-4 shrink-0 text-[#F538BC]" />
-                        <span className="truncate font-medium text-[#1C0357]">{t.song}</span>
-                        {t.show && <span className="truncate text-sm text-gray-400">{t.show}</span>}
-                      </span>
-                      <span className="shrink-0 text-sm text-gray-400">{keyForDisplay(t.key ?? '')}</span>
-                    </li>
-                  ))}
-                </ul>
-                {total > 3 && (
-                  <p className="flex items-center gap-1.5 text-sm text-gray-400">
-                    <Lightbulb className="h-4 w-4 shrink-0" /> and {total - 3} more after
-                    {total - 3 === 1 ? '' : ' these'}.
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-3">
-              {nothingToDo ? (
-                <Button size="lg" onClick={onOpenBoard} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-                  See the full list
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  disabled={!nextUp}
-                  onClick={startFromIntro}
-                  className="bg-[#1C0357] hover:bg-[#1C0357]/90"
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Start with “{nextUp?.song}”
-                </Button>
-              )}
-              <Button variant="ghost" size="lg" onClick={onOpenPipeline}>
-                What's in the pipeline
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!current && step !== 'done') {
+  // --------------------------------------------------------------- loading
+  if (step === 'loading' || !current) {
+    const missing = !tracksLoading && !(tracks ?? []).some((t) => t.requestId === requestId);
     return (
       <Card className="rounded-2xl border-none bg-white shadow-sm">
         <CardContent className="space-y-4 p-6">
-          <p className="text-sm text-gray-500">No songs left to push in this sitting.</p>
-          <Button onClick={goHome} variant="outline">
-            Back to the start
+          <p className="text-sm text-gray-500">
+            {missing ? 'That song isn’t in the delivered list any more.' : 'Opening the song…'}
+          </p>
+          <Button onClick={onClose} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> All songs
           </Button>
         </CardContent>
       </Card>
@@ -728,15 +539,15 @@ export function ReleaseWizard({
   }
 
   // -------------------------------------------------------------- details
-  if (step === 'details' && current) {
+  if (step === 'details') {
     return (
       <StepShell
         index={0}
-        title="Check this one"
-        blurb="This is what goes on the video and the caption. Your edits save as you go, so you can stop here and come back. Make the videos when it reads right."
+        title="Check the details"
+        blurb="This is what goes on the title card and in the captions. Edits save as you go. Nothing is posted from here."
         headingRef={headingRef}
-        onExit={goHome}
-        exitLabel="Exit"
+        onExit={onClose}
+        exitLabel="All songs"
       >
         <div className="grid gap-5 md:grid-cols-[1fr_320px]">
           <div className="space-y-5">
@@ -814,11 +625,8 @@ export function ReleaseWizard({
                 >
                   Looks right — make the videos <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy}>
+                <Button variant="outline" onClick={saveDetailsAndExit} disabled={busy !== false}>
                   Save &amp; exit
-                </Button>
-                <Button variant="ghost" onClick={() => advancePast(markHandled(current.requestId))}>
-                  Skip this song
                 </Button>
               </div>
               <span className="flex items-center gap-1.5 text-[11px]">
@@ -830,7 +638,7 @@ export function ReleaseWizard({
                 ) : detailSave === 'saved' ? (
                   <>
                     <Check className="h-3 w-3 text-green-600" />
-                    <span className="text-gray-500">Title saved — you can leave any time</span>
+                    <span className="text-gray-500">Saved — you can leave any time</span>
                   </>
                 ) : detailSave === 'error' ? (
                   <span className="text-amber-700">Not saved — use Save &amp; exit</span>
@@ -874,7 +682,7 @@ export function ReleaseWizard({
       <StepShell
         index={1}
         title={`Making the videos for “${title}”`}
-        blurb="Three files: a wide one for YouTube, and two vertical ones for TikTok and Instagram. It runs in real time — leave this tab open and it finishes on its own."
+        blurb="Three files: a wide one for YouTube, and two vertical ones for TikTok and Instagram. It runs in real time — leave this tab open and it finishes on its own. Nothing is posted yet."
         headingRef={headingRef}
       >
         <ul className="space-y-2.5" aria-live="polite">
@@ -919,8 +727,8 @@ export function ReleaseWizard({
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
             </p>
             <div className="flex gap-2">
-              <Button size="sm" onClick={makeIt} disabled={busy}>Try again</Button>
-              <Button size="sm" variant="ghost" onClick={() => setStep('details')} disabled={busy}>
+              <Button size="sm" onClick={makeIt} disabled={busy !== false}>Try again</Button>
+              <Button size="sm" variant="ghost" onClick={() => setStep('details')} disabled={busy !== false}>
                 Back
               </Button>
             </div>
@@ -931,13 +739,11 @@ export function ReleaseWizard({
   }
 
   // ------------------------------------------------------------- captions
-  if (step === 'captions' && current) {
+  if (step === 'captions') {
     const rows = rowsFor(current.requestId);
-    const editor = (
-      platform: PublicationPlatform,
-      props: { hint: string }
-    ) => {
+    const editor = (platform: PublicationPlatform, props: { hint: string }) => {
       const row = rows.find((r) => r.platform === platform);
+      if (!row) return null;
       const draft = drafts[platform];
       const set = (patch: Partial<CaptionDraft>) =>
         setDrafts((all) => ({ ...all, [platform]: { ...all[platform], ...patch } }));
@@ -945,7 +751,7 @@ export function ReleaseWizard({
         <CopyEditor
           key={platform}
           platform={platform}
-          published={row ? ['published', 'publishing'].includes(row.status) : false}
+          published={['published', 'publishing'].includes(row.status)}
           draft={draft}
           hint={props.hint}
           onChange={set}
@@ -957,7 +763,7 @@ export function ReleaseWizard({
       <StepShell
         index={2}
         title={`Read the captions for “${title}”`}
-        blurb="These were written from the details. Nothing goes out until you approve them — edit anything, then carry on."
+        blurb="The videos are made. Read and edit the words that go out with them. Nothing is posted until the next step."
         headingRef={headingRef}
         onExit={saveAndExit}
         exitLabel="Save & exit"
@@ -978,9 +784,9 @@ export function ReleaseWizard({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={approveCaptions} disabled={busy} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+          <Button onClick={approveCaptions} disabled={busy !== false} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            These are good <ArrowRight className="ml-2 h-4 w-4" />
+            Captions look good <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <span className="text-[11px] text-gray-400">Your edits are saved when you carry on.</span>
         </div>
@@ -988,190 +794,138 @@ export function ReleaseWizard({
     );
   }
 
-  // ----------------------------------------------------------------- push
-  if (step === 'push' && current) {
-    const shopListingUrl = shopSongUrl(products ?? [], current);
-    const capDraft = drafts.tiktok.caption.trim() || drafts.instagram.caption.trim();
-    const nowMode = pushMode === 'now';
+  // ----------------------------------------------------------------- send
+  if (step === 'send') {
+    const shopListingUrl = shopTrack ? shopSongUrl(products ?? [], shopTrack) : null;
+    const yt = group?.yt;
+    const bookedFor =
+      yt && (BOOKED.includes(yt.status) || (yt.status === 'approved' && yt.scheduled_for))
+        ? yt.scheduled_for
+        : null;
+    const ytLive = yt?.status === 'published';
+    const shopState: 'live' | 'draft' | 'none' = listed?.is_active ? 'live' : listed ? 'draft' : 'none';
     return (
       <StepShell
         index={3}
-        title={`Push “${title}”`}
-        blurb="Last stop. Choose how it goes out — then one press."
+        title={`Send “${title}”`}
+        blurb="It goes into the shop first, then out to YouTube, TikTok and Instagram. Choose now or the next slot."
         headingRef={headingRef}
-        onExit={goHome}
-        exitLabel="Exit"
-        exitDisabled={busy}
+        onExit={onClose}
+        exitLabel="All songs"
+        exitDisabled={busy !== false}
       >
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setPushMode('schedule')}
-            disabled={busy}
-            aria-pressed={!nowMode}
+        {/* 1 — the shop. Required: nothing goes to socials until it can be bought. */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">1 · The shop</p>
+          <div
             className={cn(
-              'rounded-xl border p-3 text-left transition-colors disabled:opacity-60',
-              !nowMode
-                ? 'border-[#1C0357] bg-gray-50 ring-1 ring-[#1C0357]/20'
-                : 'border-gray-200 hover:bg-gray-50'
+              'flex flex-wrap items-center justify-between gap-3 rounded-xl p-3',
+              shopState === 'live' ? 'bg-green-50' : 'bg-gray-50'
             )}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold text-[#1C0357]">
-              <CalendarClock className="h-4 w-4 text-[#1C0357]" /> Book the next slot
-            </span>
-            <span className="mt-1 block text-xs text-gray-500">
-              Onto your cadence{nextSlotLabel ? <> — <strong>{nextSlotLabel}</strong></> : null}, and
-              the teasers ride the same slot.
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPushMode('now')}
-            disabled={busy}
-            aria-pressed={nowMode}
-            className={cn(
-              'rounded-xl border p-3 text-left transition-colors disabled:opacity-60',
-              nowMode
-                ? 'border-[#1C0357] bg-gray-50 ring-1 ring-[#1C0357]/20'
-                : 'border-gray-200 hover:bg-gray-50'
-            )}
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold text-[#1C0357]">
-              <Zap className="h-4 w-4 text-[#F538BC]" /> Publish now
-            </span>
-            <span className="mt-1 block text-xs text-gray-500">
-              Straight out — YouTube, TikTok and Instagram go up right away. No slot, no waiting.
-            </span>
-          </button>
-        </div>
-
-        <ul className="space-y-2 text-sm text-gray-600">
-          {nowMode ? (
-            <>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>
-                  The video goes <strong>public on YouTube now</strong>.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>
-                  <strong>Instagram</strong> posts now, and <strong>TikTok</strong> goes the moment it
-                  can
-                  {capDraft ? '.' : ' — with no caption, so give one a line on the previous screen.'}
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                <span className="text-gray-500">
-                  With the browser poster, TikTok can go public — it will post on the Mac mini's next pass.
-                </span>
-              </li>
-            </>
-          ) : (
-            <>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>
-                  The video goes on <strong>YouTube</strong>, booked into your next free slot
-                  {nextSlotLabel ? <> — <strong>{nextSlotLabel}</strong></> : null}.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                <span>
-                  <strong>TikTok</strong> and <strong>Instagram</strong> teasers ride the same slot
-                  {capDraft ? '' : ' — with no caption, so give one a line on the previous screen'}.
-                </span>
-              </li>
-            </>
-          )}
-        </ul>
-
-        {listed ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3">
-            <div>
-              <p className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                <Store className="h-3.5 w-3.5 text-[#F538BC]" /> Already in the shop
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-[#1C0357]">
+                {shopState === 'live' ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Store className="h-4 w-4 text-[#F538BC]" />
+                )}
+                {shopState === 'live'
+                  ? 'In the shop'
+                  : shopState === 'draft'
+                    ? 'Shop listing is a hidden draft'
+                    : 'Not in the shop yet'}
               </p>
-              <p className="text-[11px] text-gray-400">
-                {listed.is_active === false
-                  ? 'It’s saved as a draft — activate it in the Shop when you’re happy.'
-                  : 'This song already has a live listing, so it will be left alone.'}
+              <p className="mt-0.5 text-xs text-gray-500">
+                {shopState === 'live'
+                  ? 'Done. The YouTube description links to it.'
+                  : shopState === 'draft'
+                    ? 'It will be switched live before anything is posted.'
+                    : 'It will be listed live at $6.99, with the title card as the cover, before anything is posted.'}
               </p>
             </div>
-            {shopListingUrl && (
+            {shopState === 'live' && shopListingUrl ? (
               <a
                 href={shopListingUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="shrink-0 text-xs font-medium text-[#1C0357] underline"
               >
-                View
+                View listing
               </a>
-            )}
+            ) : shopState === 'none' ? (
+              <Button size="sm" variant="outline" onClick={() => setReviewingShop(true)} disabled={busy !== false}>
+                Change price or copy first
+              </Button>
+            ) : null}
           </div>
-        ) : (
-          <div className="space-y-4 rounded-xl bg-gray-50 p-4">
-            <div>
-              <p className="text-sm font-semibold text-[#1C0357]">Add this track to the shop?</p>
-              <p className="text-sm text-gray-500">
-                Pick one. You can always change it in Admin → Shop later.
+        </div>
+
+        {/* 2 — socials. Two plain buttons, each saying exactly what it does. */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">2 · Socials</p>
+          {ytLive || bookedFor ? (
+            <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-800">
+              {ytLive
+                ? 'The YouTube video is already live. Sending posts whatever hasn’t gone out yet.'
+                : `Already scheduled for ${when(bookedFor, tz)}. Your caption edits are saved — or send it now instead.`}
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-2 rounded-xl border border-gray-200 p-3">
+              <Button
+                size="lg"
+                onClick={() => send('now')}
+                disabled={busy !== false}
+                className="w-full bg-[#F538BC] hover:bg-[#F538BC]/90"
+              >
+                {busy === 'now' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                {busy === 'now' ? 'Sending…' : 'Send now'}
+              </Button>
+              <p className="text-xs text-gray-500">
+                YouTube goes public straight away. Instagram posts now; TikTok posts now (or on the
+                browser poster’s next pass, within a few minutes).
               </p>
             </div>
-            <div className="grid gap-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
-                <input
-                  type="radio"
-                  name="shop-choice"
-                  className="mt-0.5 h-4 w-4"
-                  checked={!toShop}
-                  onChange={() => {
-                    setToShop(false);
-                    setShopLive(false);
-                  }}
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium text-[#1C0357]">Don’t list it</span>
-                  <span className="block text-xs text-gray-500">Publish to YouTube, TikTok and Instagram only.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
-                <input
-                  type="radio"
-                  name="shop-choice"
-                  className="mt-0.5 h-4 w-4"
-                  checked={toShop && !shopLive}
-                  onChange={() => {
-                    setToShop(true);
-                    setShopLive(false);
-                  }}
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium text-[#1C0357]">Save as a draft to review</span>
-                  <span className="block text-xs text-gray-500">Creates the listing hidden, so you can check it in Admin → Shop first.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-3 rounded-xl border p-3 hover:bg-gray-50 has-[:checked]:border-[#1C0357] has-[:checked]:ring-1 has-[:checked]:ring-[#1C0357]/20">
-                <input
-                  type="radio"
-                  name="shop-choice"
-                  className="mt-0.5 h-4 w-4"
-                  checked={toShop && shopLive}
-                  onChange={() => {
-                    setToShop(true);
-                    setShopLive(true);
-                  }}
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium text-[#1C0357]">List it live — $6.99</span>
-                  <span className="block text-xs text-gray-500">Shoppers can buy it immediately; the title card is the cover.</span>
-                </span>
-              </label>
+            <div className="flex flex-col gap-2 rounded-xl border border-gray-200 p-3">
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => (bookedFor ? onClose() : send('schedule'))}
+                disabled={busy !== false || ytLive}
+                className="w-full border-[#1C0357] text-[#1C0357]"
+              >
+                {busy === 'schedule' ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                )}
+                {busy === 'schedule'
+                  ? 'Scheduling…'
+                  : bookedFor
+                    ? 'Keep the booked slot'
+                    : 'Schedule for the next slot'}
+              </Button>
+              <p className="text-xs text-gray-500">
+                {bookedFor ? (
+                  <>Leaves it on <strong>{when(bookedFor, tz)}</strong>.</>
+                ) : (
+                  <>
+                    Goes out on <strong>{nextSlotLabel || 'your next free slot'}</strong>, video and
+                    teasers together.
+                  </>
+                )}
+              </p>
+              {!autoOn && !ytLive && (
+                <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-800">
+                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                  Auto-post is off, so on the slot only YouTube goes out — TikTok and Instagram
+                  wait. Turn on Auto-post in Publishing → Settings, or use Send now.
+                </p>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         {error && (
           <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -1180,20 +934,16 @@ export function ReleaseWizard({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="lg" onClick={push} disabled={busy} className="bg-[#F538BC] hover:bg-[#F538BC]/90">
-            {busy ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : pushMode === 'now' ? (
-              <Zap className="mr-2 h-4 w-4" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            {busy ? (pushMode === 'now' ? 'Publishing…' : 'Pushing…') : pushMode === 'now' ? 'Publish it now' : 'Push it'}
-          </Button>
-          <Button variant="ghost" onClick={goHome} disabled={busy}>
-            Finish later
+          <Button variant="ghost" onClick={() => setStep('captions')} disabled={busy !== false}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to captions
           </Button>
         </div>
+
+        <ShopListingDialog
+          track={reviewingShop ? shopTrack : null}
+          open={reviewingShop}
+          onOpenChange={(o) => !o && setReviewingShop(false)}
+        />
       </StepShell>
     );
   }
@@ -1207,37 +957,23 @@ export function ReleaseWizard({
             <Check className="h-5 w-5 text-green-700" />
           </span>
           <div>
-            <p className="text-lg font-bold text-[#1C0357]">{pushed?.song ?? 'Song'} is out the door</p>
+            <p className="text-lg font-bold text-[#1C0357]">
+              {sent?.song ?? 'Song'} is in the shop and{' '}
+              {sent?.mode === 'now' ? 'going out now' : 'scheduled'}
+            </p>
             <p className="text-xs text-gray-500">
-              {pushed?.mode === 'now'
-                ? 'Published now'
-                : `Queued for ${pushed?.slot || nextSlotLabel || 'the next free slot'}`}
-              {pushed?.shop ? ' · added to the shop' : ''}
+              {sent?.mode === 'now'
+                ? 'Give it a few minutes to appear on each platform.'
+                : `Goes out ${sent?.slot || nextSlotLabel || 'on the next free slot'}.`}
             </p>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {nextUp ? (
-            <Button size="lg" onClick={() => advancePast(doneIds)} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-              Next song — “{nextUp.song}” <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button size="lg" onClick={goHome} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
-              That’s everything
-            </Button>
-          )}
-          <Button variant="ghost" onClick={onOpenBoard}>
-            <Store className="mr-2 h-4 w-4" /> See it on the board
-          </Button>
-        </div>
-
-        {upNext.length > 0 && (
-          <p className="flex items-start gap-2 text-xs text-gray-400">
-            <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {upNext.length} more ready to push in this sitting.
-          </p>
-        )}
+        {sent?.summary ? (
+          <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600">{sent.summary}</p>
+        ) : null}
+        <Button size="lg" onClick={onClose} className="bg-[#1C0357] hover:bg-[#1C0357]/90">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to all songs
+        </Button>
       </CardContent>
     </Card>
   );
@@ -1264,68 +1000,6 @@ function KeySelect({ value, onChange }: { value: string; onChange: (v: string) =
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-// The songs that can't be made yet, each with the one thing they need. Saving a
-// key moves the song straight into the ready count.
-function KeyFixer({ tracks }: { tracks: DeliveredTrack[] }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [saving, setSaving] = useState<string | null>(null);
-  const [inspecting, setInspecting] = useState<DeliveredTrack | null>(null);
-
-  const save = async (track: DeliveredTrack, value: string) => {
-    if (!value || saving) return;
-    setSaving(track.requestId);
-    try {
-      await saveRequestKey(track, value);
-      await queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] });
-      toast({ title: 'Key saved', description: `“${track.song}” can be pushed now.` });
-    } catch (e) {
-      toast({ title: "Couldn't save the key", description: getErrorMessage(e), variant: 'destructive' });
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  return (
-    <div className="space-y-3 rounded-xl bg-amber-50 p-3">
-      <p className="flex items-start gap-2 text-xs text-amber-800">
-        <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          These are recorded but have no musical key, so their title cards can’t be made. Pick one
-          and {tracks.length === 1 ? 'it' : 'they'} will be ready to push.
-        </span>
-      </p>
-      <ul className="space-y-2">
-        {tracks.map((t) => (
-          <li key={t.requestId} className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="min-w-0 flex-1 truncate font-medium text-[#1C0357]">
-              {t.song}
-              {t.show && <span className="ml-2 text-xs font-normal text-gray-400">{t.show}</span>}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 shrink-0 gap-1.5 text-amber-900 hover:bg-amber-100"
-              onClick={() => setInspecting(t)}
-            >
-              <FileText className="h-3.5 w-3.5" /> Sheet & details
-            </Button>
-            <div className="w-44 shrink-0">
-              <KeySelect value="" onChange={(v) => save(t, v)} />
-            </div>
-            {saving === t.requestId && <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-700" />}
-          </li>
-        ))}
-      </ul>
-      <TrackInfoDialog
-        track={inspecting}
-        open={inspecting !== null}
-        onOpenChange={(o) => !o && setInspecting(null)}
-      />
-    </div>
   );
 }
 

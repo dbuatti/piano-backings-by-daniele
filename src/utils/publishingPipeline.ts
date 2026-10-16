@@ -355,6 +355,47 @@ export function trackReadiness(group: TrackGroup, ctx: ReadinessContext): Readin
 }
 
 // ---------------------------------------------------------------------------
+// The one path every song walks.
+//
+// A delivered song goes: into the shop → videos made → sent to socials (now, or
+// booked on the next slot) → live. The Songs list files each song under the
+// first step it hasn't finished, so there is always exactly one next thing to
+// press. The shop comes first on purpose: nothing goes to socials until the song
+// can be bought.
+// ---------------------------------------------------------------------------
+
+export type SongStage = 'fix' | 'shop' | 'make' | 'send' | 'scheduled' | 'live' | 'hidden';
+
+export function songStage({
+  hidden,
+  shop,
+  pubs,
+}: {
+  /** Exclusive, or marked never-for-socials. */
+  hidden: boolean;
+  shop: 'live' | 'draft' | 'none';
+  pubs: PublicationWithAsset[];
+}): SongStage {
+  if (hidden) return 'hidden';
+  const rows = pubs.filter((p) => p.status !== 'skipped');
+  if (rows.some((p) => p.status === 'failed' || isStuckPublishing(p))) return 'fix';
+  // An approved row that already holds a slot is waiting on the upload pass, so
+  // it reads as booked, same as `scheduled`.
+  const booked = rows.some(
+    (p) =>
+      p.status === 'scheduled' ||
+      p.status === 'publishing' ||
+      (p.status === 'approved' && !!p.scheduled_for)
+  );
+  if (booked) return 'scheduled';
+  const pending = rows.some((p) => ['draft', 'pending_approval', 'approved'].includes(p.status));
+  if (rows.some((p) => p.status === 'published') && !pending) return 'live';
+  if (shop !== 'live') return 'shop';
+  if (rows.length === 0) return 'make';
+  return 'send';
+}
+
+// ---------------------------------------------------------------------------
 // How a song is released from the wizard's last step.
 //
 // 'schedule' is the cadence the rest of the pipeline is built around: the video
