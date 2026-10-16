@@ -164,7 +164,9 @@ export async function uploadVideoToYouTube(
           categoryId: meta.categoryId ?? '10',
         },
         status: {
-          privacyStatus: scheduled ? 'private' : meta.privacy ?? 'unlisted',
+          // Never unlisted. A scheduled upload must start private so YouTube can
+          // promote it at publishAt; an immediate upload goes straight out public.
+          privacyStatus: scheduled ? 'private' : 'public',
           ...(scheduled ? { publishAt: new Date(meta.publishAt!).toISOString() } : {}),
           selfDeclaredMadeForKids: false,
         },

@@ -247,7 +247,9 @@ Deno.serve(async (req) => {
           title: meta.title || fallbackTitle,
           description,
           tags: Array.isArray(meta.tags) ? meta.tags : [],
-          privacy: publishAt ? 'private' : meta.privacy || 'unlisted',
+          // Never unlisted: scheduled uploads go private until their publishAt,
+          // everything else publishes public the moment it lands.
+          privacy: publishAt ? 'private' : 'public',
           publishAt,
           mimeType: asset.mime_type || 'video/webm',
         });

@@ -50,6 +50,8 @@ import {
   teaserProblem,
   trackActionable,
   trackBookable,
+  type PushMode,
+  type PushOutcome,
   type TrackGroup,
 } from '@/utils/publishingPipeline';
 
@@ -659,9 +661,6 @@ function MetadataDialog({
   const [description, setDescription] = useState(meta.description ?? '');
   const [tags, setTags] = useState((meta.tags ?? []).join(', '));
   const [hashtags, setHashtags] = useState((meta.hashtags ?? []).join(', '));
-  const [privacy, setPrivacy] = useState<'private' | 'unlisted' | 'public'>(
-    meta.privacy ?? 'unlisted'
-  );
 
   const save = async () => {
     setSaving(true);
@@ -671,7 +670,9 @@ function MetadataDialog({
       description: description.trim(),
       tags: tags.split(/[,;\n]/).map((t) => t.trim()).filter(Boolean).slice(0, 10),
       hashtags: hashtags.split(/[,;\n]/).map((h) => h.trim().replace(/^#/, '')).filter(Boolean).slice(0, 6),
-      privacy,
+      // YouTube is never unlisted — the pipeline uploads public (or private until
+      // a scheduled slot). Kept here so the stored metadata agrees with reality.
+      privacy: 'public' as const,
     };
     const { error } = await supabase
       .from('publications')
@@ -751,17 +752,15 @@ function MetadataDialog({
               <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Privacy</Label>
-            <Select value={privacy} onValueChange={(v) => setPrivacy(v as 'private' | 'unlisted' | 'public')}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unlisted">Unlisted (link only)</SelectItem>
-                <SelectItem value="public">Public</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {publication.platform === 'youtube' && (
+            <div className="space-y-1.5">
+              <Label>Privacy</Label>
+              <p className="text-sm text-gray-500">
+                Always public. A scheduled video stays private until its slot, then YouTube makes it
+                public on its own — never unlisted.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -1637,68 +1636,187 @@ const PublishingSection = () => {
     }
   };
 
-  // One song, one press: approve its video, give it the next free slot on the
-  // cadence, then run both workers. The teasers ride the video's slot, and the
-  // social worker still obeys the Auto-post switch, so this can never post a
-  // teaser behind the owner's back — it only does what the cron would have done.
-  const publishTrack = async (group: TrackGroup) => {
-    const yt = group.yt;
+  // One song, one press. The wizard chooses *how*: the cadence slot (schedule)
+  // or straight out the door (now). Both run the same workers — this is a
+  // friendlier way to drive them, not a second path. Errors are toasted here so
+  // the board's "Publish this song" needs no try/catch, and handed back in the
+  // outcome so the wizard can hold the song until it actually went out.
+  const publishTrack = async (
+    group: TrackGroup,
+    mode: PushMode = 'schedule'
+  ): Promise<PushOutcome> => {
     setPublishingKey(group.key);
     try {
-      // Shared predicate: a row that failed its upload is bookable again (its old,
-      // stale slot must not stop the retry), matching the bar and the song page.
-      const bookable = trackBookable(group);
-      if (yt && bookable && !yt.metadata?.description?.trim()) {
-        throw new Error('Write the YouTube description first (Re-draft AI or Edit), then publish.');
-      }
-      if (yt && bookable) {
-        const { error } = await supabase
-          .from('publications')
-          .update({
-            status: 'approved',
-            approved_at: new Date().toISOString(),
-            scheduled_for: nextSlot().toISOString(),
-            error: null,
-            attempts: 0,
-          })
-          .eq('id', yt.id);
-        if (error) throw error;
-      }
-
-      const [ytPass, socialPass] = await Promise.allSettled([
-        supabase.functions.invoke('run-publish-queue', { body: {} }),
-        supabase.functions.invoke('run-social-queue', { body: {} }),
-      ]);
-      const ytErr = ytPass.status === 'rejected' ? ytPass.reason : ytPass.value.error;
-      const socialOk = socialPass.status === 'fulfilled' && !socialPass.value.error;
-      const socialData = socialOk ? socialPass.value.data : null;
-
-      const summary = [
-        bookable ? 'Video takes the next free slot.' : null,
-        ytErr ? `Upload pass: ${await getFunctionErrorMessage(ytErr)}` : null,
-        socialPass.status === 'rejected' || socialPass.value.error
-          ? 'Teaser pass failed — check Settings → Integrations.'
-          : socialData?.autoPost === false
-            ? 'Teasers are set to post by hand (Auto-post is off).'
-            : `${socialData?.armed ?? 0} teaser(s) armed, ${socialData?.posted?.length ?? 0} posted.`,
-      ]
-        .filter(Boolean)
-        .join(' ');
-
-      // Refresh before announcing: the badge, the row's chip and the open song page
-      // all read the same query, and leaving it stale made a just-booked song look
-      // untouched (and handed a second publish the same slot).
-      await refetch();
-      toast({
-        title: bookable ? 'Song booked' : 'Passes finished',
-        description: summary,
-        variant: ytErr ? 'destructive' : 'default',
-      });
+      return mode === 'now' ? await publishTrackNow(group) : await scheduleTrack(group);
     } catch (e) {
-      toast({ title: "Couldn't publish this song", description: getErrorMessage(e), variant: 'destructive' });
+      const message = getErrorMessage(e);
+      toast({ title: "Couldn't publish this song", description: message, variant: 'destructive' });
+      return { mode, ok: false, summary: message };
     } finally {
       setPublishingKey(null);
     }
+  };
+
+  // Publish now: skip the cadence. The video uploads immediately as public, and
+  // each teaser goes out on the spot. Instagram and the API TikTok are forced
+  // single posts (`publication_id` ignores the slot); a browser-owned TikTok is
+  // left due right now so the poster claims it on its next poll. Auto-post being
+  // off does not block any of this — it is an explicit press, like "Test the
+  // pipeline", not the timer.
+  //
+  // Only a genuine failure (a precondition, a DB write, or the YouTube upload
+  // pass) is fatal — the wizard holds on that. A teaser that the platform itself
+  // declined (TikTok's drafts inbox, an over-length Reel) is reported in the
+  // summary and left to the queue, because it must not block the shop listing for
+  // a song that otherwise went out.
+  const publishTrackNow = async (group: TrackGroup): Promise<PushOutcome> => {
+    const yt = group.yt;
+    if (yt && !yt.metadata?.description?.trim()) {
+      throw new Error('Write the YouTube description first (Re-draft AI or Edit), then publish.');
+    }
+    const notes: string[] = [];
+    let fatal = false;
+    const now = new Date().toISOString();
+
+    // Turn a forced social-post response into one honest line. The worker answers
+    // 200 even when the platform refused, so the status inside `posted` is the
+    // only thing that tells the truth.
+    const describeSocial = async (
+      label: string,
+      data: unknown,
+      error: unknown
+    ): Promise<string> => {
+      if (error) return `${label}: ${await getFunctionErrorMessage(error)}`;
+      const first = (((data ?? {}) as Record<string, unknown>).posted as
+        | Array<Record<string, unknown>>
+        | undefined)?.[0];
+      const status = first?.status ? String(first.status) : null;
+      if (status === 'published') return `${label}: posted.`;
+      if (status === 'failed') return `${label}: ${String(first?.error || 'it failed to post.')}`;
+      if (status) return `${label}: ${status} — it will finish on the next pass.`;
+      const note = ((data ?? {}) as Record<string, unknown>).note;
+      return `${label}: ${note ? String(note) : 'nothing to post.'}`;
+    };
+
+    // 1) YouTube — upload now, public. `scheduled_for` in the past means
+    //    run-publish-queue sends no publishAt and honours metadata.privacy.
+    if (yt && yt.status !== 'published') {
+      const { error } = await supabase
+        .from('publications')
+        .update({
+          status: 'approved',
+          approved_at: now,
+          scheduled_for: now,
+          error: null,
+          attempts: 0,
+          metadata: { ...(yt.metadata ?? {}), privacy: 'public' },
+        })
+        .eq('id', yt.id);
+      if (error) throw error;
+      const { error: invokeError } = await supabase.functions.invoke('run-publish-queue', { body: {} });
+      if (invokeError) {
+        fatal = true;
+        notes.push(`YouTube: ${await getFunctionErrorMessage(invokeError)}`);
+      } else {
+        notes.push('YouTube: uploading now.');
+      }
+    }
+
+    // 2) Instagram and 3) TikTok — one forced single post each.
+    for (const [label, pub] of [
+      ['Instagram', group.ig],
+      ['TikTok', group.tt],
+    ] as const) {
+      if (!pub || pub.status === 'published') continue;
+      // The browser poster owns TikTok, so the API must not race it: make the row
+      // due now and let the poster claim it on its next pass.
+      if (label === 'TikTok' && (settings?.social_tiktok_poster ?? 'api') === 'browser') {
+        const { error } = await supabase
+          .from('publications')
+          .update({ status: 'scheduled', scheduled_for: now, error: null })
+          .eq('id', pub.id);
+        notes.push(
+          error
+            ? `TikTok: ${getErrorMessage(error)}`
+            : 'TikTok: queued now for the browser poster (it posts on its next pass).'
+        );
+        continue;
+      }
+      const { data, error } = await supabase.functions.invoke('run-social-queue', {
+        body: { publication_id: pub.id },
+      });
+      notes.push(await describeSocial(label, data, error));
+    }
+
+    const summary =
+      notes.join(' ') || 'Nothing to publish — every platform for this song is already live.';
+    await refetch();
+    toast({
+      title: fatal ? 'Publishing now — YouTube failed' : 'Publishing now',
+      description: summary,
+      variant: fatal ? 'destructive' : 'default',
+    });
+    return { mode: 'now', ok: !fatal, summary };
+  };
+
+  // Schedule: approve the video, give it the next free slot on the cadence, then
+  // run both workers. The teasers ride the video's slot, and the social worker
+  // still obeys the Auto-post switch.
+  const scheduleTrack = async (group: TrackGroup): Promise<PushOutcome> => {
+    const yt = group.yt;
+    // Shared predicate: a row that failed its upload is bookable again (its old,
+    // stale slot must not stop the retry), matching the bar and the song page.
+    const bookable = trackBookable(group);
+    if (yt && bookable && !yt.metadata?.description?.trim()) {
+      throw new Error('Write the YouTube description first (Re-draft AI or Edit), then publish.');
+    }
+    let slot: string | undefined;
+    if (yt && bookable) {
+      const at = nextSlot();
+      slot = formatWhen(at.toISOString(), tz);
+      const { error } = await supabase
+        .from('publications')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          scheduled_for: at.toISOString(),
+          error: null,
+          attempts: 0,
+        })
+        .eq('id', yt.id);
+      if (error) throw error;
+    }
+
+    const [ytPass, socialPass] = await Promise.allSettled([
+      supabase.functions.invoke('run-publish-queue', { body: {} }),
+      supabase.functions.invoke('run-social-queue', { body: {} }),
+    ]);
+    const ytErr = ytPass.status === 'rejected' ? ytPass.reason : ytPass.value.error;
+    const socialOk = socialPass.status === 'fulfilled' && !socialPass.value.error;
+    const socialData = socialOk ? socialPass.value.data : null;
+
+    const summary = [
+      bookable ? `Video takes the next free slot${slot ? ` (${slot})` : ''}.` : null,
+      ytErr ? `Upload pass: ${await getFunctionErrorMessage(ytErr)}` : null,
+      socialPass.status === 'rejected' || socialPass.value.error
+        ? 'Teaser pass failed — check Settings → Integrations.'
+        : socialData?.autoPost === false
+          ? 'Teasers are set to post by hand (Auto-post is off).'
+          : `${socialData?.armed ?? 0} teaser(s) armed, ${socialData?.posted?.length ?? 0} posted.`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    // Refresh before announcing: the badge, the row's chip and the open song page
+    // all read the same query, and leaving it stale made a just-booked song look
+    // untouched (and handed a second publish the same slot).
+    await refetch();
+    toast({
+      title: bookable ? 'Song booked' : 'Passes finished',
+      description: summary,
+      variant: ytErr ? 'destructive' : 'default',
+    });
+    return { mode: 'schedule', ok: !ytErr, slot, summary };
   };
 
   // Opens the per-song page for a group. Keyed by request so a re-recording (which

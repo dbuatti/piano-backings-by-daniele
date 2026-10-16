@@ -1156,6 +1156,7 @@ export function VettingDialog({
   const [show, setShow] = useState(track?.show ?? '');
   const [key, setKey] = useState(track?.key ?? 'C Major (0)');
   const [allowSocials, setAllowSocials] = useState(!track?.noSocials);
+  const [includeClientName, setIncludeClientName] = useState(true);
   const [phase, setPhase] = useState<'review' | 'recording' | 'uploading' | 'drafting'>('review');
   const [recording, setRecording] = useState<ClipProgress | null>(null);
 
@@ -1236,6 +1237,7 @@ export function VettingDialog({
           title,
           show,
           key,
+          includeClientName,
           onPhase: setPhase,
           onProgress: setRecording,
         });
@@ -1262,6 +1264,7 @@ export function VettingDialog({
         title,
         show,
         key,
+        includeClientName,
         onPhase: setPhase,
         onProgress: setRecording,
       });
@@ -1328,6 +1331,10 @@ export function VettingDialog({
                 <Switch checked={allowSocials} onCheckedChange={setAllowSocials} />
                 <Label className="font-normal">Allow on socials</Label>
               </div>
+              <div className="flex h-9 items-center gap-2">
+                <Switch checked={includeClientName} onCheckedChange={setIncludeClientName} />
+                <Label className="font-normal">Show client's first name on card/teasers</Label>
+              </div>
 
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="mb-2 text-xs font-semibold text-gray-500">Before you queue</p>
@@ -1356,7 +1363,7 @@ export function VettingDialog({
                   song={title}
                   show={show}
                   musicalKey={key}
-                  client={track.client}
+                  client={includeClientName ? track.client : ''}
                   className="w-full rounded-none border-0"
                 />
               </div>

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle, ArrowRight, Check, CheckCircle2, FileText, KeyRound, Lightbulb, Loader2, Music2, Play,
-  Sparkles, Store, X,
+  AlertCircle, ArrowRight, CalendarClock, Check, CheckCircle2, FileText, KeyRound, Lightbulb, Loader2, Music2, Play,
+  Sparkles, Store, X, Zap,
 } from 'lucide-react';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useDeliveredTracks, useShopProducts, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { KEY_OPTIONS, keyForDisplay } from '@/utils/musicalKeys';
 import { renderCardToBlob } from '@/utils/titleCard';
@@ -26,7 +27,7 @@ import type { ClipProgress } from '@/utils/canvasRecorder';
 import {
   listTrackInShop, queueTrackForRelease, saveRequestKey, type ReleasePhase,
 } from '@/utils/releaseTrack';
-import type { TrackGroup } from '@/utils/publishingPipeline';
+import type { PushMode, PushOutcome, TrackGroup } from '@/utils/publishingPipeline';
 import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 import SheetMusicDrop from '@/components/admin/SheetMusicDrop';
 import { invalidateShopProducts } from '@/lib/shop-queries';
@@ -40,7 +41,7 @@ import { invalidateShopProducts } from '@/lib/shop-queries';
 //   1. Check    — the details that go on the card. One button.
 //   2. Make     — three videos recorded and uploaded, hands off.
 //   3. Captions — the copy, read once and approved in one place.
-//   4. Push     — book the slot, arm the teasers, list it in the shop.
+//   4. Push     — publish now, or book the next slot; list it in the shop.
 //
 // Everything it does is the same machinery the board and the pipeline use, via
 // utils/releaseTrack — it is a friendlier way to drive them, not a second path.
@@ -189,7 +190,7 @@ export function ReleaseWizard({
   queue: PublicationWithAsset[];
   groups: TrackGroup[];
   nextSlotLabel: string;
-  onPush: (group: TrackGroup) => Promise<void>;
+  onPush: (group: TrackGroup, mode: PushMode) => Promise<PushOutcome>;
   /** Refreshes the publications query and hands back the fresh rows. */
   onRefresh: () => Promise<PublicationWithAsset[]>;
   onSaveCaption: (pub: PublicationWithAsset, caption: string) => Promise<void>;
@@ -234,8 +235,17 @@ export function ReleaseWizard({
   // Push choices.
   const [toShop, setToShop] = useState(true);
   const [shopLive, setShopLive] = useState(true);
+  // Whether the card/teasers should include the client's name.
+  const [showClientName, setShowClientName] = useState(true);
+  // How the last press releases the song: straight out (now) or onto the cadence.
+  const [pushMode, setPushMode] = useState<PushMode>('schedule');
 
-  const [pushed, setPushed] = useState<{ song: string; slot: string; shop: boolean } | null>(null);
+  const [pushed, setPushed] = useState<{
+    song: string;
+    slot: string;
+    shop: boolean;
+    mode: PushMode;
+  } | null>(null);
 
   // The song being worked on is held in state, not derived from the queue: once a
   // song is recorded its rows exist, so it drops out of `ready` mid-flow and a
@@ -313,6 +323,8 @@ export function ReleaseWizard({
     setError(null);
     setToShop(true);
     setShopLive(true);
+    setShowClientName(true);
+    setPushMode('schedule');
     setStep('details');
   };
 
@@ -437,6 +449,7 @@ export function ReleaseWizard({
         title,
         show,
         key,
+        includeClientName: showClientName,
         onPhase: setPhase,
         onProgress: setProgress,
       });
@@ -534,7 +547,8 @@ export function ReleaseWizard({
     }
   };
 
-  // Step 4: book the slot, arm the teasers, optionally list it in the shop.
+  // Step 4: publish now (straight out) or book the slot, then optionally list it
+  // in the shop. The push itself is one press either way; only the mode differs.
   const push = async () => {
     if (!current) return;
     setBusy(true);
@@ -542,21 +556,32 @@ export function ReleaseWizard({
     try {
       const group = groups.find((g) => g.requestId === current.requestId);
       if (!group) throw new Error('That song has no queued rows yet — go back and make it again.');
-      await onPush(group);
+      const outcome = await onPush(group, pushMode);
+      // A failed push must not read as "out the door", and must not quietly list
+      // a song that never went out. Hold here with the reason.
+      if (!outcome.ok) {
+        setError(outcome.summary);
+        return;
+      }
 
       let shopped = false;
       if (toShop && !listed) {
-        const res = await listTrackInShop(current, { active: shopLive });
+        const res = await listTrackInShop(current, { active: shopLive, includeClientName: showClientName });
         await invalidateShopProducts(queryClient);
         shopped = res.created;
       }
 
-      setPushed({ song: title || current.song, slot: nextSlotLabel, shop: shopped });
+      setPushed({
+        song: title || current.song,
+        slot: outcome.slot ?? '',
+        shop: shopped,
+        mode: outcome.mode,
+      });
       setDoneIds((ids) => [...ids, current.requestId]);
       setStep('done');
       toast({
-        title: 'Pushed',
-        description: `${title || current.song} is queued${shopped ? ' and in the shop' : ''}.`,
+        title: outcome.mode === 'now' ? 'Published now' : 'Pushed',
+        description: `${title || current.song}${shopped ? ' — and in the shop' : ''}.`,
       });
     } catch (e) {
       setError(await getFunctionErrorMessage(e));
@@ -711,13 +736,19 @@ export function ReleaseWizard({
       >
         <div className="grid gap-5 md:grid-cols-[1fr_320px]">
           <div className="space-y-5">
-            <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-4">
-              <Music2 className="h-4 w-4 shrink-0 text-[#F538BC]" />
+            <div className="flex items-center gap-2 rounded-xl border border-gray-100 p-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-500">
-                  {current.client ? `Ordered by ${current.client}` : 'Delivered request'}
+                  {showClientName && current.client ? `Ordered by ${current.client}` : 'Delivered request'}
                 </p>
-                <audio controls preload="none" src={current.url} className="mt-1 h-8 w-full" />
+                <p className="mt-0.5 text-[11px] text-gray-400">
+                  The name goes on the card, teasers and captions — leave it on unless you want it
+                  omitted.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={showClientName} onCheckedChange={(v) => setShowClientName(v)} />
+                <span className="text-xs text-gray-500">Show name</span>
               </div>
             </div>
 
@@ -803,7 +834,7 @@ export function ReleaseWizard({
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">The card</p>
               <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 p-3">
-                <TitleCardThumb title={title} show={show} client={current.client} musicalKey={key} />
+                <TitleCardThumb title={title} show={show} client={showClientName ? current.client : ''} musicalKey={key} />
                 <p className="text-center text-[11px] text-gray-400">
                   {title || 'Song'}
                   {show ? ` · from ${show}` : ''}
@@ -943,31 +974,101 @@ export function ReleaseWizard({
   if (step === 'push' && current) {
     const shopListingUrl = shopSongUrl(products ?? [], current);
     const capDraft = drafts.tiktok.caption.trim() || drafts.instagram.caption.trim();
+    const nowMode = pushMode === 'now';
     return (
       <StepShell
         index={3}
         title={`Push “${title}”`}
-        blurb="Last stop. This is everything that will happen:"
+        blurb="Last stop. Choose how it goes out — then one press."
         headingRef={headingRef}
         onExit={goHome}
         exitLabel="Exit"
         exitDisabled={busy}
       >
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setPushMode('schedule')}
+            disabled={busy}
+            aria-pressed={!nowMode}
+            className={cn(
+              'rounded-xl border p-3 text-left transition-colors disabled:opacity-60',
+              !nowMode
+                ? 'border-[#1C0357] bg-gray-50 ring-1 ring-[#1C0357]/20'
+                : 'border-gray-200 hover:bg-gray-50'
+            )}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-[#1C0357]">
+              <CalendarClock className="h-4 w-4 text-[#1C0357]" /> Book the next slot
+            </span>
+            <span className="mt-1 block text-xs text-gray-500">
+              Onto your cadence{nextSlotLabel ? <> — <strong>{nextSlotLabel}</strong></> : null}, and
+              the teasers ride the same slot.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPushMode('now')}
+            disabled={busy}
+            aria-pressed={nowMode}
+            className={cn(
+              'rounded-xl border p-3 text-left transition-colors disabled:opacity-60',
+              nowMode
+                ? 'border-[#1C0357] bg-gray-50 ring-1 ring-[#1C0357]/20'
+                : 'border-gray-200 hover:bg-gray-50'
+            )}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-[#1C0357]">
+              <Zap className="h-4 w-4 text-[#F538BC]" /> Publish now
+            </span>
+            <span className="mt-1 block text-xs text-gray-500">
+              Straight out — YouTube, TikTok and Instagram go up right away. No slot, no waiting.
+            </span>
+          </button>
+        </div>
+
         <ul className="space-y-2 text-sm text-gray-600">
-          <li className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-            <span>
-              The video goes on <strong>YouTube</strong>, booked into your next free slot
-              {nextSlotLabel ? <> — <strong>{nextSlotLabel}</strong></> : null}.
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-            <span>
-              <strong>TikTok</strong> and <strong>Instagram</strong> teasers ride the same slot
-              {capDraft ? '' : ' — with no caption, so give one a line on the previous screen'}.
-            </span>
-          </li>
+          {nowMode ? (
+            <>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>
+                  The video goes <strong>public on YouTube now</strong>.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>
+                  <strong>Instagram</strong> posts now, and <strong>TikTok</strong> goes the moment it
+                  can
+                  {capDraft ? '.' : ' — with no caption, so give one a line on the previous screen.'}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <span className="text-gray-500">
+                  With the browser poster, TikTok can go public — it will post on the Mac mini's next pass.
+                </span>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>
+                  The video goes on <strong>YouTube</strong>, booked into your next free slot
+                  {nextSlotLabel ? <> — <strong>{nextSlotLabel}</strong></> : null}.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>
+                  <strong>TikTok</strong> and <strong>Instagram</strong> teasers ride the same slot
+                  {capDraft ? '' : ' — with no caption, so give one a line on the previous screen'}.
+                </span>
+              </li>
+            </>
+          )}
         </ul>
 
         {listed ? (
@@ -1062,8 +1163,14 @@ export function ReleaseWizard({
 
         <div className="flex flex-wrap items-center gap-2">
           <Button size="lg" onClick={push} disabled={busy} className="bg-[#F538BC] hover:bg-[#F538BC]/90">
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {busy ? 'Pushing…' : 'Push it'}
+            {busy ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : pushMode === 'now' ? (
+              <Zap className="mr-2 h-4 w-4" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            {busy ? (pushMode === 'now' ? 'Publishing…' : 'Pushing…') : pushMode === 'now' ? 'Publish it now' : 'Push it'}
           </Button>
           <Button variant="ghost" onClick={goHome} disabled={busy}>
             Finish later
@@ -1084,7 +1191,9 @@ export function ReleaseWizard({
           <div>
             <p className="text-lg font-bold text-[#1C0357]">{pushed?.song ?? 'Song'} is out the door</p>
             <p className="text-xs text-gray-500">
-              Queued for {pushed?.slot ?? nextSlotLabel}
+              {pushed?.mode === 'now'
+                ? 'Published now'
+                : `Queued for ${pushed?.slot || nextSlotLabel || 'the next free slot'}`}
               {pushed?.shop ? ' · added to the shop' : ''}
             </p>
           </div>

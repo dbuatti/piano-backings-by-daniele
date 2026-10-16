@@ -353,3 +353,25 @@ export function trackReadiness(group: TrackGroup, ctx: ReadinessContext): Readin
     },
   ];
 }
+
+// ---------------------------------------------------------------------------
+// How a song is released from the wizard's last step.
+//
+// 'schedule' is the cadence the rest of the pipeline is built around: the video
+// is booked into the next free slot and the teasers ride it. 'now' skips the
+// cadence entirely — the video goes public straight away and each teaser posts on
+// the spot. The wizard offers both; the choice only changes this one press.
+// ---------------------------------------------------------------------------
+
+export type PushMode = 'now' | 'schedule';
+
+/** What a push actually did, so the wizard's last screen can say so honestly. */
+export interface PushOutcome {
+  mode: PushMode;
+  /** False when a precondition or a worker failed; `summary` says what. */
+  ok: boolean;
+  /** A human slot label, when the push booked one (schedule mode). */
+  slot?: string;
+  /** Plain-words, per-platform account of what happened. */
+  summary: string;
+}

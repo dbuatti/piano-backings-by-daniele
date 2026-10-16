@@ -204,6 +204,50 @@ of guessed at.
 
 ## Done so far
 
+### 2026-10-16 — publish a song now, not on the cadence (§5, the instant half)
+
+**The wizard's last step now offers two ways out.** It used to have one: book the
+next free slot. That is right for songs and the 3-day rhythm, but a note-bash cut
+for an audition wants to go out while the singer is still on the phone. The Push
+step now has a **Publish now** / **Book the next slot** choice, and **Publish now
+is the default** — one press after the captions, exactly as asked.
+
+What "now" does, per platform:
+
+- **YouTube** — the row is approved with `scheduled_for` set to *now* and
+  `metadata.privacy = 'public'`. `run-publish-queue` reads a past slot as "no
+  `publishAt`", so the video uploads straight away and is public, not unlisted.
+  The same run then confirms it and labels the row `published` (the usual email
+  still goes out).
+- **Instagram** — a forced single post (`run-social-queue { publication_id }`)
+  ignores the slot and publishes immediately.
+- **TikTok** — the same forced single post on the API path. With the **browser
+  poster** owning TikTok the API must not race it, so the row is simply made *due
+  now* (`scheduled`, `scheduled_for = now`) and the poster claims it on its next
+  poll. Either way TikTok's own limits still apply: an unaudited app posts
+  privately, and the poster waits for its next pass.
+
+**The choice does not weaken the safety rails.** This is one explicit press, like
+"Test the pipeline" — not the timer — so it does not require Auto-post to be on.
+It is also honest when it can't fully deliver: `publishTrackNow` reads the
+worker's per-post `status`, so a TikTok that landed in the drafts inbox or a Reel
+still processing is reported in plain words instead of a false "posted". Only a
+genuine failure (missing description, a DB write, the YouTube upload pass) holds
+the wizard back; a platform's own refusal is surfaced but does not stop the song
+being listed in the shop.
+
+`publishTrack` now takes a `PushMode` and returns a `PushOutcome` (`ok`, `slot`,
+`summary`) so the wizard's last screen can say "Published now" or "Queued for …"
+truthfully, and can refuse to list a song that never actually went out. The
+board's **Publish this song** and the song page still call it with the default
+`'schedule'`, so their behaviour is unchanged. Types live in
+`utils/publishingPipeline.ts`; the two paths share the same workers — no second
+publishing route was added.
+
+**Not done:** the song page's own **Publish now** button (this is the wizard's
+step 4 only), and per-track-type defaults — the wizard cannot yet tell a
+note-bash from a full song, because `DeliveredTrack` does not carry the tier.
+
 ### 2026-10-15 — first end-to-end scheduled release, all three platforms
 
 **Confirmed on a live run, not in theory.** Love Revolution was moved from its

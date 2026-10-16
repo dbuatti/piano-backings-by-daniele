@@ -67,6 +67,7 @@ async function createRecorder({
   title,
   show,
   key,
+  includeClientName = true,
   onPhase,
   onProgress,
 }: {
@@ -74,10 +75,17 @@ async function createRecorder({
   title: string;
   show: string;
   key: string;
+  /** When false the card and caption say only the song and artist — no client. */
+  includeClientName?: boolean;
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }) {
-  const card = defaultCardState({ song: title.trim(), artist: show.trim(), client: track.client, key });
+  const card = defaultCardState({
+    song: title.trim(),
+    artist: show.trim(),
+    client: includeClientName ? track.client : null,
+    key,
+  });
   const logoImg = await loadCardLogo();
   await loadCardFonts();
 
@@ -185,7 +193,10 @@ async function createRecorder({
         song_title: title.trim(),
         show: cleanedShow || null,
         key: key || null,
-        dedication: clientName ? `prepared for ${clientName.trim().split(/\s+/)[0]}` : null,
+        dedication:
+          includeClientName && clientName
+            ? `prepared for ${clientName.trim().split(/\s+/)[0]}`
+            : null,
         request_id: reqId,
         duration_seconds: recordSeconds,
         aspect: opts.aspect,
@@ -222,6 +233,7 @@ export async function queueTrackForRelease({
   title,
   show,
   key,
+  includeClientName = true,
   platforms = RELEASE_PLATFORMS,
   onPhase,
   onProgress,
@@ -230,11 +242,21 @@ export async function queueTrackForRelease({
   title: string;
   show: string;
   key: string;
+  /** When false the card and caption say only the song and artist — no client. */
+  includeClientName?: boolean;
   platforms?: readonly ReleasePlatform[];
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }): Promise<ReleaseResult> {
-  const { recordAndStore, titleCore } = await createRecorder({ track, title, show, key, onPhase, onProgress });
+  const { recordAndStore, titleCore } = await createRecorder({
+    track,
+    title,
+    show,
+    key,
+    includeClientName,
+    onPhase,
+    onProgress,
+  });
 
   const assetIds: Partial<Record<ReleasePlatform, string>> = {};
   // A fixed order keeps the recordings (and therefore the slots) predictable.
@@ -257,7 +279,7 @@ export async function queueTrackForRelease({
   // teaser caption shouldn't block the video being queued.
   for (const platform of wanted) {
     const { error: draftErr } = await supabase.functions.invoke('draft-publication-metadata', {
-      body: { asset_id: assetIds[platform], platform },
+      body: { asset_id: assetIds[platform], platform, omit_client_name: !includeClientName },
     });
     if (draftErr && platform === 'youtube') throw draftErr;
   }
@@ -276,6 +298,7 @@ export async function rerecordTeasers({
   title,
   show,
   key,
+  includeClientName = true,
   onPhase,
   onProgress,
 }: {
@@ -283,10 +306,20 @@ export async function rerecordTeasers({
   title: string;
   show: string;
   key: string;
+  /** When false the card says only the song and artist — no client. */
+  includeClientName?: boolean;
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }): Promise<{ moved: number; tiktokMime: string }> {
-  const { recordAndStore, titleCore } = await createRecorder({ track, title, show, key, onPhase, onProgress });
+  const { recordAndStore, titleCore } = await createRecorder({
+    track,
+    title,
+    show,
+    key,
+    includeClientName,
+    onPhase,
+    onProgress,
+  });
 
   // Two cuts, because the platforms want different lengths: TikTok gets the whole
   // track (so duets inherit the full audio), Instagram a 30-second Reel.
@@ -383,7 +416,16 @@ export async function listTrackInShop(
     artist,
     price,
     description,
-  }: { active?: boolean; title?: string; artist?: string; price?: number; description?: string } = {}
+    includeClientName = true,
+  }: {
+    active?: boolean;
+    title?: string;
+    artist?: string;
+    price?: number;
+    description?: string;
+    /** When false the product card omits the client's name. */
+    includeClientName?: boolean;
+  } = {}
 ): Promise<{ created: boolean }> {
   const { data: existing, error: lookupErr } = await supabase
     .from('products')
@@ -405,7 +447,7 @@ export async function listTrackInShop(
   let imageUrl = '';
   try {
     const cardBlob = await renderCardToBlob(
-      { song: finalTitle, artist: finalArtist, client: track.client, key: track.key },
+      { song: finalTitle, artist: finalArtist, client: includeClientName ? track.client : null, key: track.key },
       '1:1'
     );
     if (cardBlob) {

@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
       platform,
       song: String(reqRow.song_title || '').trim(),
       show: String(reqRow.musical_or_artist || '').trim(),
-      dedication: String(reqRow.name || '').trim(),
+      dedication: body.omit_client_name ? '' : String(reqRow.name || '').trim(),
       key: key || null,
       title: fallbackTitle,
       productUrl: await shopSongUrlForTrack(supabaseAdmin, {
