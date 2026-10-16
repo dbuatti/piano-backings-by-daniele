@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Ban, CheckCircle2, Download, ExternalLink, Eye, FileText, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, Search, Ban, CheckCircle2, Download, ExternalLink, Eye, FileText, Heart, Library, ListPlus, Loader2, Mail, MessageCircle, MoreHorizontal, Music2, PlusCircle, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import TrackInfoDialog from '@/components/admin/TrackInfoDialog';
 import { useShopProducts, useDeliveredTracks, type DeliveredTrack } from '@/hooks/useDeliveredTracks';
 import { SITE, shopProductForTrack, shopSongUrl } from '@/utils/shopLink';
@@ -150,6 +150,9 @@ export default function ReleaseBoard({
   // The track whose shop listing is being reviewed in the modal, or null.
   const [shopReview, setShopReview] = useState<DeliveredTrack | null>(null);
   const [filter, setFilter] = useState<BoardFilter>('all');
+  // With a few dozen delivered songs the board needs find-as-you-type: the
+  // chips answer "what state is it in", search answers "where is mine".
+  const [search, setSearch] = useState('');
   const [previewing, setPreviewing] = useState<DeliveredTrack | null>(null);
   const [inspecting, setInspecting] = useState<DeliveredTrack | null>(null);
   const [emailing, setEmailing] = useState(false);
@@ -283,7 +286,10 @@ export default function ReleaseBoard({
     return acc;
   }, {} as Record<BoardFilter, number>);
 
-  const visibleRows = boardRows.filter((row) => rowMatches(filter, row));
+  const q = search.trim().toLowerCase();
+  const rowMatchesSearch = (row: BoardRow) =>
+    !q || row.t.song.toLowerCase().includes(q) || row.t.show.toLowerCase().includes(q);
+  const visibleRows = boardRows.filter((row) => rowMatches(filter, row) && rowMatchesSearch(row));
 
   // The un-queued backlog for the "Review & queue all" walkthrough. One video per
   // song: a track ordered twice ("How it ends") queues once, and the order that
@@ -449,6 +455,16 @@ export default function ReleaseBoard({
           </p>
         ) : (
           <>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Find a song or show…"
+                aria-label="Search delivered songs"
+                className="h-10 pl-9"
+              />
+            </div>
             {/* Two questions the owner asks at different times — is it out yet,
                 and is it in the shop — so the filters read as two rows, not one
                 wall of pills. */}
