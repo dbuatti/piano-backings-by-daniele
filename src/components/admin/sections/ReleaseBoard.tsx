@@ -736,10 +736,10 @@ export default function ReleaseBoard({
                             <RotateCcw className="h-3.5 w-3.5" /> Reset teaser
                           </DropdownMenuItem>
                         )}
-                        {pubs.some((p) => p.status === 'scheduled') && (
+                        {[yt, tt, ig].some((p) => p?.status === 'scheduled') && (
                           <DropdownMenuItem
                             onSelect={() => {
-                              unscheduleGroup(pubs);
+                              unscheduleGroup([yt, tt, ig].filter(Boolean) as PublicationWithAsset[]);
                             }}
                           >
                             <RotateCcw className="h-3.5 w-3.5" /> Unschedule
