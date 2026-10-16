@@ -80,11 +80,20 @@ async function createRecorder({
   onPhase: (phase: ReleasePhase) => void;
   onProgress: (progress: ClipProgress) => void;
 }) {
+  const bannerLabel = ((): string => {
+    const t = track.trackType;
+    if (!t) return 'Audition Cut';
+    const lower = t.toLowerCase();
+    if (lower.includes('melody')) return 'Melody Bash';
+    if (lower.includes('note')) return 'Note Bash';
+    return t.replace(/-/g, ' ');
+  })();
   const card = defaultCardState({
     song: title.trim(),
     artist: show.trim(),
     client: includeClientName ? track.client : null,
     key,
+    banner: bannerLabel,
   });
   const logoImg = await loadCardLogo();
   await loadCardFonts();
@@ -109,8 +118,16 @@ async function createRecorder({
   await decoder.close().catch(() => undefined);
   const durationSecs = decoded.duration || 6;
 
+  const banner = ((): string => {
+    const t = track.trackType;
+    if (!t) return 'Audition Cut';
+    const lower = t.toLowerCase();
+    if (lower.includes('melody')) return 'Melody Bash';
+    if (lower.includes('note')) return 'Note Bash';
+    return t.replace(/-/g, ' ');
+  })();
   const cleanedShow = show.replace(/^\s*from\s+/i, '').trim();
-  const titleCore = `${title.trim()} — Audition Cut${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
+  const titleCore = `${title.trim()} — ${banner}${cleanedShow ? ` (from ${cleanedShow})` : ''}`;
   const { data: user } = await supabase.auth.getUser();
 
   const recordAndStore = async (opts: ClipOptions) => {
@@ -446,8 +463,16 @@ export async function listTrackInShop(
   // a render/upload failure just leaves it empty for a manual add.
   let imageUrl = '';
   try {
+    const bannerLabel = ((): string => {
+      const t = track.trackType;
+      if (!t) return 'Audition Cut';
+      const lower = t.toLowerCase();
+      if (lower.includes('melody')) return 'Melody Bash';
+      if (lower.includes('note')) return 'Note Bash';
+      return t.replace(/-/g, ' ');
+    })();
     const cardBlob = await renderCardToBlob(
-      { song: finalTitle, artist: finalArtist, client: includeClientName ? track.client : null, key: track.key },
+      { song: finalTitle, artist: finalArtist, client: includeClientName ? track.client : null, key: track.key, banner: bannerLabel },
       '1:1'
     );
     if (cardBlob) {

@@ -98,10 +98,13 @@ export function defaultCardState(meta: {
   artist?: string | null;
   client?: string | null;
   key?: string | null;
+  /** Optional banner label (e.g. 'Audition Cut', 'Note Bash', 'Melody Bash') */
+  banner?: string | null;
 }): CardState {
   const artist = (meta.artist || "").replace(/^\s*from\s+/i, "").trim();
+  const bannerLabel = meta.banner?.trim() || "Audition Cut";
   return {
-    banner: "Audition Cut",
+    banner: bannerLabel,
     title: (meta.song || "").trim() || "Backing track",
     show: artist ? `from ${artist}` : "",
     dedication: meta.client ? `prepared for ${firstNameOf(meta.client)}` : "",
@@ -323,7 +326,7 @@ export function captureCardSnapshot(
 // Render a fresh card straight to a PNG blob — used to give a shop draft a real
 // product image without any recording or canvas-ref juggling.
 export async function renderCardToBlob(
-  meta: { song?: string | null; artist?: string | null; client?: string | null; key?: string | null },
+  meta: { song?: string | null; artist?: string | null; client?: string | null; key?: string | null; banner?: string | null },
   aspect: Aspect = "1:1"
 ): Promise<Blob | null> {
   // Paint only once the faces are loaded, or the PNG bakes in the fallbacks.
