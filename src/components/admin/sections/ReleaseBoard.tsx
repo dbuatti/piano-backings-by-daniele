@@ -342,6 +342,32 @@ export default function ReleaseBoard({
     onBacklog?.(notOnYoutubeIds.length);
   }, [notOnYoutubeIds.length, onBacklog]);
 
+  const unscheduleGroup = async (pubs: PublicationWithAsset[]) => {
+    const scheduled = pubs.filter((p) => p.status === 'scheduled');
+    if (scheduled.length === 0) return;
+    try {
+      await supabase
+        .from('publications')
+        .update({
+          status: 'draft',
+          scheduled_for: null,
+          published_at: null,
+          platform_post_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', scheduled.map((p) => p.id))
+        .eq('status', 'scheduled');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['publications_queue'] }),
+        queryClient.invalidateQueries({ queryKey: ['publishing_stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['delivered_tracks'] }),
+      ]);
+      toast({ title: 'Unschedule', description: `Moved ${scheduled.length} scheduled row${scheduled.length === 1 ? '' : 's'} back to draft.` });
+    } catch (e) {
+      toast({ title: 'Could not unschedule', description: getErrorMessage(e), variant: 'destructive' });
+    }
+  };
+
   const toggleNoSocials = async (requestId: string, current: boolean) => {
     const next = !current;
     const { error: e } = await supabase.from('backing_requests').update({ no_socials: next }).eq('id', requestId);
@@ -708,6 +734,15 @@ export default function ReleaseBoard({
                         {tt && tt.status === 'published' && (
                           <DropdownMenuItem onSelect={() => resetTeaser(t)}>
                             <RotateCcw className="h-3.5 w-3.5" /> Reset teaser
+                          </DropdownMenuItem>
+                        )}
+                        {pubs.some((p) => p.status === 'scheduled') && (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              unscheduleGroup(pubs);
+                            }}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Unschedule
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
