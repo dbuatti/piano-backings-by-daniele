@@ -294,6 +294,27 @@ const Index = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* Live playthrough cross-sell (danielebuatti.com) */}
+          <motion.div {...fadeInUp} className="mt-10 max-w-5xl mx-auto">
+            <a
+              href="https://www.danielebuatti.com/audition-cut-playthrough"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-[40px] border-2 border-[#1C0357]/10 bg-white p-8 md:p-10 hover:border-[#F538BC]/50 transition-colors"
+            >
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#F538BC]">Live, online · 15 min · $30</p>
+                <h3 className="mt-2 text-3xl font-black text-[#1C0357] tracking-tight">Audition Cut Playthrough</h3>
+                <p className="mt-3 text-lg text-[#1C0357]/70 font-medium max-w-2xl">
+                  Run your cut with me playing live, the way it'll go in the room. Quick notes, then we run it again.
+                </p>
+              </div>
+              <span className="shrink-0 inline-flex items-center rounded-2xl bg-[#1C0357] px-8 py-4 text-lg font-black text-white group-hover:bg-[#F538BC] transition-colors">
+                Book a playthrough
+              </span>
+            </a>
+          </motion.div>
         </motion.section>
 
         {/* Named client quotes */}
