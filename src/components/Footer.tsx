@@ -41,7 +41,7 @@ const Footer = () => {
         { label: "The Audition Guidebook", href: "https://www.theauditionguidebook.com", icon: Music },
         { label: "Audition Cut Playthrough", href: "https://www.danielebuatti.com/audition-cut-playthrough", icon: Music },
         { label: "Vocal Coaching", href: "https://www.danielebuatti.com/coaching", icon: Music },
-        { label: "Resonance Kinesiology", href: "https://resonance-kinesiology.vercel.app", icon: Heart },
+        { label: "Resonance Kinesiology", href: "https://kinesiology.danielebuatti.com/", icon: Heart },
         { label: "Digital Architecture", href: "https://db-it.vercel.app", icon: Cpu },
         { label: "Live Piano & Vocals", href: "https://www.danielebuatti.com", icon: Music },
       ]
