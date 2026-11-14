@@ -38,6 +38,7 @@ const Footer = () => {
     {
       title: "Professional Services",
       links: [
+        { label: "The Audition Guidebook", href: "https://theauditionguidebook.vercel.app", icon: Music },
         { label: "Vocal Coaching", href: "https://www.danielebuatti.com/coaching", icon: Music },
         { label: "Resonance Kinesiology", href: "https://resonance-kinesiology.vercel.app", icon: Heart },
         { label: "Digital Architecture", href: "https://db-it.vercel.app", icon: Cpu },
