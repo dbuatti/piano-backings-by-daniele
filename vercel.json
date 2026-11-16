@@ -3,6 +3,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/shop/through-the-mountain-flloyd-collins",
+      "destination": "/shop/through-the-mountain-floyd-collins",
+      "statusCode": 301
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "pianobackingsbydaniele.vercel.app" }],
       "destination": "https://pianobackings.danielebuatti.com/:path*",

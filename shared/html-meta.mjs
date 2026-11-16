@@ -50,14 +50,14 @@ export const applyPageMeta = (html, page) => {
       ? `\n    <script type="application/json" id="__PBD_STATE__">${safeJson(page.state)}</script>`
       : '';
     out = out.replace(/<div id="root"><\/div>/, () => `<div id="root">${page.bodyHtml}</div>${state}`);
-    return out.replace(/<noscript>[\s\S]*?<\/noscript>/, '<noscript>Ordering and previews need JavaScript enabled.</noscript>');
+    return out.replace(/<noscript>[\s\S]*?<\/noscript>/, '<noscript>Piano backing tracks, previews and downloads. Enable JavaScript to listen and order.</noscript>');
   }
 
   // Readable summary + links for crawlers that don't run JavaScript.
   const links = (page.links || [])
     .map((l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`)
     .join(' · ');
-  const noscript = `<noscript><h1>${escapeHtml(page.heading || page.title)}</h1><p>${escapeHtml(page.description)}</p>${links ? `<p>${links}</p>` : ''}<p>This site needs JavaScript enabled to run.</p></noscript>`;
+  const noscript = `<noscript><h1>${escapeHtml(page.heading || page.title)}</h1><p>${escapeHtml(page.description)}</p>${links ? `<p>${links}</p>` : ''}</noscript>`;
   out = out.replace(/<noscript>[\s\S]*?<\/noscript>/, noscript);
   return out;
 };
