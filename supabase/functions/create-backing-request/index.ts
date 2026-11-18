@@ -374,9 +374,23 @@ Deno.serve(async (req) => {
 
         const datePrefix = new Date().toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
         const firstName = formData.name ? formData.name.split(' ')[0] : 'Client';
-        
+
+        // Dropbox folder/file names cannot contain `/ \ : * ? " < > |` or control
+        // characters — a client typing "Song A / Song B" would otherwise break the
+        // path (Dropbox reads `/` as a separator) and the folder silently fails to
+        // be created. Collapse any run of those characters (and whitespace) to " - "
+        // so the human-readable title survives but the path stays valid.
+        const safeSegment = (value: string): string =>
+          String(value ?? '')
+            .replace(/[/\\:*?"<>|]/g, ' ') // forbidden characters
+            // eslint-disable-next-line no-control-regex
+            .replace(/[\u0000-\u001f\u007f]/g, '') // control characters
+            .replace(/\s+/g, ' ') // collapse whitespace
+            .replace(/\s*\/\s*/g, ' - ') // tidy any leftover slash spacing
+            .trim();
+
         // New Folder Naming Convention
-        const folderName = `${datePrefix} ${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}`;
+        const folderName = `${datePrefix} ${safeSegment(formData.songTitle)} from ${safeSegment(formData.musicalOrArtist)} prepared for ${safeSegment(firstName)}`;
         const fullPath = `${dropboxParentFolder}/${subFolder}/${folderName}`;
 
         console.log("[create-backing-request] Creating Dropbox folder:", fullPath);
@@ -398,7 +412,7 @@ Deno.serve(async (req) => {
 
           // Copy Logic Template
           try {
-            const logicFileName = `${formData.songTitle} from ${formData.musicalOrArtist} prepared for ${firstName}.logicx`;
+            const logicFileName = `${safeSegment(formData.songTitle)} from ${safeSegment(formData.musicalOrArtist)} prepared for ${safeSegment(firstName)}.logicx`;
             console.log("[create-backing-request] Copying Logic Pro template from:", logicTemplatePath);
             const logicCopyResponse = await fetch('https://api.dropboxapi.com/2/files/copy_v2', {
               method: 'POST',
