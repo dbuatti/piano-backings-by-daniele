@@ -72,7 +72,13 @@ UPDATE products SET artist_name = 'Sweet Smell of Success'
 WHERE id = 'a5125920-1524-45c9-b4d1-ea596d4477d4'; -- At The Fountain
 
 UPDATE products SET artist_name = 'Floyd Collins'
-WHERE id = '99b4df49-dd76-4773-8991-89044019171c'; -- Through The Mountain (was "Flloyd Collins")
+WHERE id IN (
+  '99b4df49-dd76-4773-8991-89044019171c', -- Through The Mountain, full song (fixed 17 Nov)
+  '92c0e959-b35d-492e-8563-4e486b826f82'  -- Through The Mountain, audition cut (still "Flloyd Collins")
+);
+-- Both rows are the same song. Correcting the show name merges them into one page
+-- (/shop/through-the-mountain-floyd-collins) and drops the "flloyd" URL from the sitemap.
+-- The rows themselves are kept; nothing is deleted.
 
 UPDATE products SET artist_name = 'A Man of No Importance'
 WHERE id = '93afc4fe-4013-4281-8448-0458679870de'; -- Streets of Dublin (was "Man of no importance")

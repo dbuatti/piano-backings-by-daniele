@@ -20,6 +20,7 @@ const setMeta = (html, attr, name, content) => {
  * @param {string} html built index.html
  * @param {{ title: string, description: string, url: string, heading?: string,
  *           jsonLd?: object[], links?: { href: string, label: string }[], noindex?: boolean,
+ *           alternateLanguages?: { hrefLang: string, href: string }[],
  *           bodyHtml?: string, state?: object, pageId?: string }} page
  *   bodyHtml: the page prerendered by src/entry-server.tsx, placed inside #root.
  *   state: react-query data it was rendered from, for the browser's first render.
@@ -35,8 +36,17 @@ export const applyPageMeta = (html, page) => {
   out = setMeta(out, 'name', 'twitter:url', page.url);
   if (page.noindex) out = setMeta(out, 'name', 'robots', 'noindex');
 
+  // hreflang for international targeting
+  let hreflangHtml = '';
+  if (page.alternateLanguages && page.alternateLanguages.length) {
+    for (const alt of page.alternateLanguages) {
+      hreflangHtml += `<link rel="alternate" hreflang="${escapeHtml(alt.hrefLang)}" href="${escapeHtml(alt.href)}">\n    `;
+    }
+    hreflangHtml += `<link rel="alternate" hreflang="x-default" href="${escapeHtml(page.url)}">\n    `;
+  }
+
   out = out.replace(/\s*<link rel="canonical"[^>]*>/g, '');
-  const extras = [`<link rel="canonical" href="${escapeHtml(page.url)}" />`];
+  const extras = [`<link rel="canonical" href="${escapeHtml(page.url)}" />`, hreflangHtml];
   for (const data of page.jsonLd || []) {
     extras.push(`<script type="application/ld+json">${safeJson(data)}</script>`);
   }
@@ -45,12 +55,13 @@ export const applyPageMeta = (html, page) => {
   if (page.pageId) out = out.replace(/<html([^>]*)>/, `<html$1 data-page="${escapeHtml(page.pageId)}">`);
 
   if (page.bodyHtml) {
-    // The real page is in the HTML, so no summary is needed for crawlers.
+    // The real page is in the HTML, so no summary is needed for crawlers. A generic
+    // "Enable JavaScript" note here would become the search snippet, so none is added.
     const state = page.state
       ? `\n    <script type="application/json" id="__PBD_STATE__">${safeJson(page.state)}</script>`
       : '';
     out = out.replace(/<div id="root"><\/div>/, () => `<div id="root">${page.bodyHtml}</div>${state}`);
-    return out.replace(/<noscript>[\s\S]*?<\/noscript>/, '<noscript>Piano backing tracks, previews and downloads. Enable JavaScript to listen and order.</noscript>');
+    return out.replace(/<noscript>[\s\S]*?<\/noscript>/, '');
   }
 
   // Readable summary + links for crawlers that don't run JavaScript.
