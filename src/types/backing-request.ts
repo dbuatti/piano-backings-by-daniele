@@ -38,8 +38,6 @@ export interface BackingRequest {
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null;
   final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
   internal_notes?: string | null;
   user_id?: string | null;
   guest_access_token?: string | null;

@@ -593,7 +593,7 @@ const RequestDetails = () => {
                 ))}
                 <Separator className="bg-white/20 my-4" />
                 <div className="flex justify-between items-center text-2xl font-black">
-                  <span>Total Estimated</span>
+                  <span>Total</span>
                   <span className="text-[#F538BC]">${costBreakdown.totalCost.toFixed(2)}</span>
                 </div>
               </div>

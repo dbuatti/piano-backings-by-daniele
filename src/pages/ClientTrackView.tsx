@@ -72,8 +72,6 @@ interface BackingRequest {
   uploaded_platforms?: string | { youtube: boolean; tiktok: boolean; facebook: boolean; instagram: boolean; gumroad: boolean; } | null;
   cost?: number | null;
   final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
   user_id?: string | null;
   guest_access_token?: string | null;
 }
@@ -345,11 +343,6 @@ const ClientTrackView = () => {
   const normalizedAdditionalServices = getSafeBackingTypes(request.additional_services);
 
   const calculatedTotalCost = costBreakdown.totalCost;
-  const calculatedLow = (Math.ceil((calculatedTotalCost * 0.5) / 5) * 5).toFixed(2);
-  const calculatedHigh = (Math.floor((calculatedTotalCost * 1.5) / 5) * 5).toFixed(2);
-
-  const displayedEstimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
-  const displayedEstimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
 
   const displayedSuggestedCost = request.final_price !== null ? request.final_price.toFixed(2) : calculatedTotalCost.toFixed(2);
 
@@ -621,17 +614,9 @@ const ClientTrackView = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <div className="text-2xl font-bold mb-2 text-white">
-                        Estimated Cost: ${displayedEstimatedLow} - ${displayedEstimatedHigh}
+                      <div className="text-3xl font-bold mb-2 text-white">
+                        Suggested Cost: ${displayedSuggestedCost}
                       </div>
-                      {request.final_price !== null && (
-                        <div className="text-3xl font-bold mb-2 text-white">
-                          Suggested Cost: ${displayedSuggestedCost}
-                        </div>
-                      )}
-                      <p className="text-sm opacity-90">
-                        The final price may vary slightly based on complexity and additional services.
-                      </p>
                     </div>
                     
                     <div>
@@ -676,7 +661,7 @@ const ClientTrackView = () => {
                         </li>
                       ))}
                       <li className="flex justify-between items-center font-bold pt-2 border-t border-white/30 mt-2">
-                        <span>Total Estimated Cost (Rounded)</span>
+                        <span>Total</span>
                         <span>${costBreakdown.totalCost.toFixed(2)}</span>
                       </li>
                     </ul>

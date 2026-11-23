@@ -29,8 +29,6 @@ export interface BackingRequest {
   user_id?: string | null;
   guest_access_token?: string | null;
   final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
 }
 
 export interface Product {
@@ -172,15 +170,10 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
   const trackListHtml = generateTrackListHtml(request.track_urls);
 
   const calculatedCost = calculateRequestCost(request).totalCost;
-  const calculatedLow = (Math.ceil((calculatedCost * 0.5) / 5) * 5).toFixed(2);
-  const calculatedHigh = (Math.floor((calculatedCost * 1.5) / 5) * 5).toFixed(2);
 
   const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)
     ? request.final_price
     : calculatedCost;
-
-  const estimatedLow = request.estimated_cost_low !== null ? request.estimated_cost_low.toFixed(2) : calculatedLow;
-  const estimatedHigh = request.estimated_cost_high !== null ? request.estimated_cost_high.toFixed(2) : calculatedHigh;
 
   return {
     subject: `Your "${request.song_title}" backing track is ready & Payment Information`,
@@ -205,8 +198,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
         <p>I've put a lot of care into crafting this track for you. If, after listening, you feel any adjustments are needed—whether it's a slight tempo change, dynamics, or anything else—please don't hesitate to reply to this email. I'm happy to make revisions to ensure it's perfect for your needs.</p>
         
         <div style="margin-top: 20px; padding: 15px; background-color: #f0ebfb; border-radius: 8px;">
-          <p style="margin: 0;"><strong>Estimated Range:</strong> $${estimatedLow} - $${estimatedHigh}</p>
-          <p style="margin: 5px 0 0 0;"><strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}</p>
+          <p style="margin: 0;"><strong>Suggested Cost:</strong> $${suggestedCostValue.toFixed(2)}</p>
         </div>
 
         <p style="margin-top: 20px;">You can make your payment using one of the following methods:</p>

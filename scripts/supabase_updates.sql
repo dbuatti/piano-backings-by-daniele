@@ -1,8 +1,6 @@
 -- 1. Update backing_requests table with pricing overrides and multiple file support
 ALTER TABLE backing_requests 
 ADD COLUMN IF NOT EXISTS final_price NUMERIC,
-ADD COLUMN IF NOT EXISTS estimated_cost_low NUMERIC,
-ADD COLUMN IF NOT EXISTS estimated_cost_high NUMERIC,
 ADD COLUMN IF NOT EXISTS sheet_music_urls JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS voice_memo_urls JSONB DEFAULT '[]'::jsonb;
 

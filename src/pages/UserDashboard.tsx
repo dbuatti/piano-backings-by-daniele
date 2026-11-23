@@ -48,8 +48,7 @@ interface BackingRequest {
   track_urls?: TrackInfo[];
   cost?: number;
   final_price?: number | null;
-  estimated_cost_low?: number | null;
-  estimated_cost_high?: number | null;
+
   delivery_date?: string;
   backing_type?: string[] | string;
   track_type?: string;

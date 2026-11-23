@@ -96,8 +96,6 @@ const EditRequest: React.FC = () => {
         additional_services: normalizedAdditionalServices,
         delivery_date: data.delivery_date ? format(new Date(data.delivery_date), 'yyyy-MM-dd') : null,
         final_price: data.final_price !== null ? parseFloat(data.final_price) : null,
-        estimated_cost_low: data.estimated_cost_low !== null ? parseFloat(data.estimated_cost_low) : null,
-        estimated_cost_high: data.estimated_cost_high !== null ? parseFloat(data.estimated_cost_high) : null,
       });
       setSheetMusicFile(null);
       setVoiceMemoFile(null);
@@ -115,7 +113,7 @@ const EditRequest: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === 'cost' || name === 'final_price' || name === 'estimated_cost_low' || name === 'estimated_cost_high') {
+    if (name === 'cost' || name === 'final_price') {
       setRequest(prev => prev ? { ...prev, [name]: value === '' ? null : parseFloat(value) } : null);
     } else {
       setRequest(prev => prev ? { ...prev, [name]: value } : null);
@@ -188,8 +186,6 @@ const EditRequest: React.FC = () => {
         additional_services: Array.isArray(updates.additional_services) ? updates.additional_services : (updates.additional_services ? [updates.additional_services] : []),
         cost: updates.cost === null ? null : parseFloat(updates.cost.toString()),
         final_price: updates.final_price === null ? null : parseFloat(updates.final_price.toString()),
-        estimated_cost_low: updates.estimated_cost_low === null ? null : parseFloat(updates.estimated_cost_low.toString()),
-        estimated_cost_high: updates.estimated_cost_high === null ? null : parseFloat(updates.estimated_cost_high.toString()),
         sheet_music_url: updatedSheetMusicUrl,
         voice_memo: updatedVoiceMemoUrl,
         sheet_music_urls: updatedSheetMusicUrls,
