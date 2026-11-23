@@ -58,6 +58,16 @@ const breadcrumb = (route, name) => ({
 
 const { render, listShopProducts } = await import(pathToFileURL(join(root, 'dist-ssr', 'entry-server.js')).href);
 
+const ALTERNATE_LANGUAGES = {
+  '/': [{ hrefLang: 'en-AU', href: `${siteUrl}/` }, { hrefLang: 'en-US', href: `${siteUrl}/` }, { hrefLang: 'en-GB', href: `${siteUrl}/` }],
+  '/shop': [{ hrefLang: 'en-AU', href: `${siteUrl}/shop` }, { hrefLang: 'en-US', href: `${siteUrl}/shop` }, { hrefLang: 'en-GB', href: `${siteUrl}/shop` }],
+  '/form-page': [{ hrefLang: 'en-AU', href: `${siteUrl}/form-page` }, { hrefLang: 'en-US', href: `${siteUrl}/form-page` }, { hrefLang: 'en-GB', href: `${siteUrl}/form-page` }],
+  '/pricing': [{ hrefLang: 'en-AU', href: `${siteUrl}/pricing` }, { hrefLang: 'en-US', href: `${siteUrl}/pricing` }, { hrefLang: 'en-GB', href: `${siteUrl}/pricing` }],
+  '/about': [{ hrefLang: 'en-AU', href: `${siteUrl}/about` }, { hrefLang: 'en-US', href: `${siteUrl}/about` }, { hrefLang: 'en-GB', href: `${siteUrl}/about` }],
+  '/terms': [{ hrefLang: 'en-AU', href: `${siteUrl}/terms` }, { hrefLang: 'en-US', href: `${siteUrl}/terms` }, { hrefLang: 'en-GB', href: `${siteUrl}/terms` }],
+  '/privacy': [{ hrefLang: 'en-AU', href: `${siteUrl}/privacy` }, { hrefLang: 'en-US', href: `${siteUrl}/privacy` }, { hrefLang: 'en-GB', href: `${siteUrl}/privacy` }],
+};
+
 // framer-motion renders each element's entrance start state (opacity:0, offset) into
 // the HTML. Drop it so the content is visible before JavaScript runs; the app skips
 // the entrance animation for content that was already on screen.
@@ -91,6 +101,7 @@ for (const [route, meta] of Object.entries(pages)) {
     ...meta,
     ...(await renderPage(route)),
     url: route === '/' ? `${siteUrl}/` : `${siteUrl}${route}`,
+    alternateLanguages: ALTERNATE_LANGUAGES[route],
     jsonLd: [
       ...(extraJsonLd[route] || []),
       ...(route === '/' ? [] : [breadcrumb(route, HEADINGS[route] || meta.title.split(' | ')[0])]),
@@ -110,10 +121,16 @@ try {
 }
 for (const song of buildSongCatalog(products)) {
   const seo = songSeo(song, siteUrl, introFor(song, intros));
+  const songUrl = `${siteUrl}/shop/${song.slug}`;
   const html = applyPageMeta(shell, {
     title: seo.title,
     description: seo.description,
-    url: seo.url,
+    url: songUrl,
+    alternateLanguages: [
+      { hrefLang: 'en-AU', href: songUrl },
+      { hrefLang: 'en-US', href: songUrl },
+      { hrefLang: 'en-GB', href: songUrl },
+    ],
     jsonLd: seo.jsonLd,
     ...(await renderPage(`/shop/${song.slug}`)),
   });
@@ -123,7 +140,7 @@ for (const song of buildSongCatalog(products)) {
 // index.html is also the fallback for every other route (dashboard, admin...), so it
 // gets the home page's crawler summary but no canonical URL of its own, and no
 // prerendered content (those pages are private).
-const home = applyPageMeta(shell, { ...pages['/'], url: `${siteUrl}/`, heading: HEADINGS['/'], links: NAV })
+const home = applyPageMeta(shell, { ...pages['/'], url: `${siteUrl}/`, heading: HEADINGS['/'], links: NAV, alternateLanguages: ALTERNATE_LANGUAGES['/'] })
   .replace(/\s*<link rel="canonical"[^>]*>/, '');
 writeFileSync(join(dist, 'index.html'), home);
 

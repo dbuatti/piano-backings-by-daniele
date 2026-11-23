@@ -26,6 +26,7 @@ interface SeoProps {
   ogType?: string;
   twitterCard?: string;
   noindex?: boolean;
+  alternateLanguages?: { hrefLang: string; href: string }[];
 }
 
 const Seo: React.FC<SeoProps> = ({
@@ -36,6 +37,7 @@ const Seo: React.FC<SeoProps> = ({
   ogType = 'website',
   twitterCard = 'summary_large_image',
   noindex = false,
+  alternateLanguages = [],
 }) => {
   const { pathname } = useLocation();
   const canonical = canonicalUrl || canonicalFor(pathname);
@@ -46,6 +48,16 @@ const Seo: React.FC<SeoProps> = ({
       <meta name="description" content={description} />
       <link rel="canonical" href={canonical} />
       {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+      {/* hreflang for international targeting */}
+      {alternateLanguages.length > 0 && (
+        <>
+          {alternateLanguages.map((alt) => (
+            <link key={alt.hrefLang} rel="alternate" hrefLang={alt.hrefLang} href={alt.href} />
+          ))}
+          <link rel="alternate" hrefLang="x-default" href={canonical} />
+        </>
+      )}
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={ogType} />

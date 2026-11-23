@@ -25,6 +25,8 @@ import {
   songSeo,
 } from '../../shared/song-catalog.mjs';
 import NotFound from './NotFound';
+import Breadcrumb from '@/components/Breadcrumb';
+import { ShareButton } from '@/components/ShareButton';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIER_ICONS: Record<string, React.ElementType> = { 'note-bash': Mic, 'audition-ready': Headphones, 'full-song': Sparkles };
@@ -83,19 +85,25 @@ const SongView: React.FC<{ song: ShopSong; catalog: ShopSong[] }> = ({ song, cat
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
-      <Seo title={seo.title} description={seo.description} canonicalUrl={seo.url} />
+      <Seo 
+        title={seo.title} 
+        description={seo.description} 
+        canonicalUrl={seo.url}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: seo.url },
+          { hrefLang: 'en-US', href: seo.url },
+          { hrefLang: 'en-GB', href: seo.url },
+          { hrefLang: 'x-default', href: seo.url },
+        ]}
+      />
       <Header />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24">
-        <nav aria-label="Breadcrumb" className="mb-6 text-xs font-black uppercase tracking-widest text-gray-400">
-          <ol className="flex flex-wrap items-center gap-1.5">
-            <li><Link to="/" className="hover:text-[#1C0357]">Home</Link></li>
-            <li aria-hidden="true"><ChevronRight size={12} /></li>
-            <li><Link to="/shop" className="hover:text-[#1C0357]">Backing track library</Link></li>
-            <li aria-hidden="true"><ChevronRight size={12} /></li>
-            <li className="text-[#F538BC] truncate max-w-[16rem]" aria-current="page">{song.title}</li>
-          </ol>
-        </nav>
+        <Breadcrumb items={[
+          { label: 'Home', href: '/' },
+          { label: 'Backing track library', href: '/shop' },
+          { label: songLabel(song), href: `/shop/${song.slug}` },
+        ]} />
 
         <h1 className="text-4xl md:text-6xl font-black text-[#1C0357] tracking-tighter leading-[0.95]">
           {songLabel(song)} <span className="text-[#F538BC]">piano backing track</span>
@@ -109,6 +117,14 @@ const SongView: React.FC<{ song: ShopSong; catalog: ShopSong[] }> = ({ song, cat
           <Fact icon={Clock} label="Duration" value={song.durations.join(' / ')} />
           <Fact icon={Music} label="Track" value={song.categories.map((c) => CATEGORY_LABELS[c] || c).join(' / ')} />
         </dl>
+
+        <div className="mt-8">
+          <ShareButton 
+            url={`${SITE_URL}/shop/${song.slug}`} 
+            title={songLabel(song)} 
+            description={`Piano backing track of "${song.title}"${song.show ? ` from ${song.show}` : ''}. Instant download from $${song.minPrice.toFixed(2)} ${song.currency}.`}
+          />
+        </div>
 
         <section className="mt-8 rounded-3xl bg-white border border-[#1C0357]/10 p-6">
           <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#1C0357]">Preview</h2>

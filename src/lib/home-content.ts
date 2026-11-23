@@ -17,13 +17,16 @@ export interface Testimonial {
   placeholder?: boolean;
 }
 
-// TODO(Daniele): add 3–4 real, named quotes (with each person's permission) and
-// delete `placeholder: true`. Don't publish invented quotes.
-export const TESTIMONIALS: Testimonial[] = [
-  { quote: 'Client quote goes here.', name: 'Client name', context: 'What they used the track for', placeholder: true },
-  { quote: 'Client quote goes here.', name: 'Client name', context: 'What they used the track for', placeholder: true },
-  { quote: 'Client quote goes here.', name: 'Client name', context: 'What they used the track for', placeholder: true },
-];
+/*
+ * TODO(Daniele): Add 3–4 real, named testimonials (with each person's permission).
+ * Each entry: { quote, name, context }. Do NOT publish invented quotes.
+ * Example:
+ *   { quote: "The track arrived in my key and saved my audition.", name: "Sarah M.", context: "Audition, Wicked (2025)" },
+ *
+ * Leave this array empty until you have real quotes — the Testimonials section
+ * renders nothing when there are no entries, which is better than showing placeholders.
+ */
+export const TESTIMONIALS: Testimonial[] = [];
 
 // One short clip per tier. Drop the MP3s into src/assets/samples/ with these exact
 // names (15–30 seconds each is plenty); until a file exists, its tier shows a

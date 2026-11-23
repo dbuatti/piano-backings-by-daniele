@@ -54,8 +54,10 @@ import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
 import { buildSongCatalog, songSlugForProduct } from "../../shared/song-catalog.mjs";
 import ProductCardSkeleton from '@/components/ProductCardSkeleton';
+import Breadcrumb from '@/components/Breadcrumb';
 import { cn } from '@/lib/utils';
 import { trackConversion } from '@/lib/analytics';
+import { SITE_URL } from '@/lib/site';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { isWithinInterval, subDays } from 'date-fns';
@@ -504,10 +506,20 @@ const Shop = () => {
       <Seo 
         title={seoPages['/shop'].title}
         description={seoPages['/shop'].description}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: `${SITE_URL}/shop` },
+          { hrefLang: 'en-US', href: `${SITE_URL}/shop` },
+          { hrefLang: 'en-GB', href: `${SITE_URL}/shop` },
+          { hrefLang: 'x-default', href: `${SITE_URL}/shop` },
+        ]}
       />
       <Header />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <Breadcrumb items={[
+          { label: 'Home', href: '/' },
+          { label: 'Backing track library', href: '/shop' },
+        ]} />
         <header className="mb-10">
           <h1 className="text-3xl md:text-5xl font-black text-[#1C0357] tracking-tighter">Musical Theatre Backing Tracks</h1>
           <p className="mt-3 text-gray-600 font-medium max-w-2xl">

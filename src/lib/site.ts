@@ -15,3 +15,12 @@ export const CONTACT_EMAIL = 'pianobackingsbydaniele@gmail.com';
 
 /** Google Business Profile review form (Business Profile → Ask for reviews). */
 export const GOOGLE_REVIEW_URL = 'https://g.page/r/CdYOLqci-9TKEBM/review';
+
+/** Social profile URLs. Keep handles consistent across platforms. */
+export const SOCIAL = {
+  instagram: 'https://www.instagram.com/pianobackingsbydaniele/',
+  youtube: 'https://www.youtube.com/@pianobackingsbydaniele',
+  facebook: 'https://www.facebook.com/PianoBackingsbyDaniele/',
+  tiktok: 'https://www.tiktok.com/@pianobackingsbydaniele',
+  soundcloud: 'https://soundcloud.com/pianobackingsbydaniele',
+} as const;

@@ -43,7 +43,7 @@ import TierSelection from '@/components/form/TierSelection';
 import AdditionalServices from '@/components/form/AdditionalServices';
 import { calculateRequestCost, TIER_PRICES } from '@/utils/pricing';
 import { trackConversion } from '@/lib/analytics';
-import { CONTACT_EMAIL } from '@/lib/site';
+import { CONTACT_EMAIL, SITE_URL } from '@/lib/site';
 import type { User } from '@supabase/supabase-js';
 import WaitlistSignup from '@/components/WaitlistSignup';
 
@@ -453,7 +453,16 @@ const FormPage = () => {
   if (isServiceClosed) {
     return (
       <div className="min-h-screen bg-[#FDFCF7]">
-        <Seo title={seoPages['/form-page'].title} description={seoPages['/form-page'].description} />
+        <Seo 
+          title={seoPages['/form-page'].title} 
+          description={seoPages['/form-page'].description}
+          alternateLanguages={[
+            { hrefLang: 'en-AU', href: `${SITE_URL}/form-page` },
+            { hrefLang: 'en-US', href: `${SITE_URL}/form-page` },
+            { hrefLang: 'en-GB', href: `${SITE_URL}/form-page` },
+            { hrefLang: 'x-default', href: `${SITE_URL}/form-page` },
+          ]}
+        />
         <Header />
         <div className="max-w-3xl mx-auto py-32 px-4 text-center">
           <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
@@ -483,7 +492,16 @@ const FormPage = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFCF7]">
-      <Seo title={seoPages['/form-page'].title} description={seoPages['/form-page'].description} />
+      <Seo 
+        title={seoPages['/form-page'].title} 
+        description={seoPages['/form-page'].description}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: `${SITE_URL}/form-page` },
+          { hrefLang: 'en-US', href: `${SITE_URL}/form-page` },
+          { hrefLang: 'en-GB', href: `${SITE_URL}/form-page` },
+          { hrefLang: 'x-default', href: `${SITE_URL}/form-page` },
+        ]}
+      />
       <Header />
       
       <AuthOverlay isOpen={showAuthOverlay} onClose={() => setShowAuthOverlay(false)} redirectPath={location.pathname} />

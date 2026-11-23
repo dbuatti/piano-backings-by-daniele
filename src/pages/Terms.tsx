@@ -7,6 +7,7 @@ const Terms = () => (
     title="Terms of Service"
     seoTitle={seoPages['/terms'].title}
     description={seoPages['/terms'].description}
+    path="/terms"
     intro={
       <>
         These terms cover custom backing tracks ordered through this site and tracks bought from the shop.

@@ -6,6 +6,7 @@ const Privacy = () => (
     title="Privacy Policy"
     seoTitle={seoPages['/privacy'].title}
     description={seoPages['/privacy'].description}
+    path="/privacy"
     intro={
       <>
         In short: I only collect what I need to make and deliver your tracks. There are no advertising trackers, and I

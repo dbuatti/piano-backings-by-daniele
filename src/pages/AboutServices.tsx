@@ -22,6 +22,7 @@ import {
   Download,
   Zap
 } from 'lucide-react';
+import { SITE_URL } from '@/lib/site';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,12 @@ const AboutServices = () => {
       <Seo 
         title={seoPages['/about'].title}
         description={seoPages['/about'].description}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: `${SITE_URL}/about` },
+          { hrefLang: 'en-US', href: `${SITE_URL}/about` },
+          { hrefLang: 'en-GB', href: `${SITE_URL}/about` },
+          { hrefLang: 'x-default', href: `${SITE_URL}/about` },
+        ]}
       />
       <Header />
 
@@ -111,6 +118,26 @@ const AboutServices = () => {
               <p className="text-gray-400 text-xs font-bold mt-4 uppercase tracking-widest">— Colleague</p>
             </div>
           </motion.div>
+        </section>
+
+        {/* Local map for local SEO */}
+        <section className="mb-32">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-black text-[#1C0357] mb-4 tracking-tight">Visit Us in Melbourne</h2>
+            <p className="text-gray-600 font-medium">Daniele Buatti is based in Melbourne, Victoria, Australia. All backing tracks are recorded locally and delivered worldwide online.</p>
+          </div>
+          <div className="max-w-3xl mx-auto">
+            <iframe
+              title="Daniele Buatti location in Melbourne, VIC"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2987.972225874993!2d144.9630752152664!3d-37.81362767981697!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad64647f13f6c9b%3A0x9e33a6e1e4b2a8d2!2sMelbourne%20VIC%2C%20Australia!5e0!3m2!1sen!2sau!4v1"
+              width="100%"
+              height="300"
+              style={{ border: 0, borderRadius: '24px' }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
         </section>
 
         {/* Detailed Tier Breakdown */}

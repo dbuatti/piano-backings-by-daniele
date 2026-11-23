@@ -6,7 +6,7 @@ import Seo from "@/components/Seo";
 import seoPages from "@/lib/seo-pages.json";
 import PricingMatrix from "@/components/PricingMatrix";
 import { motion } from 'framer-motion';
-import { CONTACT_EMAIL } from "@/lib/site";
+import { CONTACT_EMAIL, SITE_URL } from "@/lib/site";
 
 const PricingPage = () => {
   return (
@@ -14,6 +14,12 @@ const PricingPage = () => {
       <Seo 
         title={seoPages['/pricing'].title}
         description={seoPages['/pricing'].description}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: `${SITE_URL}/pricing` },
+          { hrefLang: 'en-US', href: `${SITE_URL}/pricing` },
+          { hrefLang: 'en-GB', href: `${SITE_URL}/pricing` },
+          { hrefLang: 'x-default', href: `${SITE_URL}/pricing` },
+        ]}
       />
       <Header />
 

@@ -16,9 +16,10 @@ import {
   ChevronRight,
   HelpCircle
 } from 'lucide-react';
+import { Tiktok } from '@/components/icons/Tiktok';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { CONTACT_EMAIL, GOOGLE_REVIEW_URL } from '@/lib/site';
+import { CONTACT_EMAIL, GOOGLE_REVIEW_URL, SOCIAL } from '@/lib/site';
 import ReportIssueButton from './ReportIssueButton';
 
 const Footer = () => {
@@ -49,9 +50,11 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: Instagram, href: "https://www.instagram.com/pianobackingsbydaniele/", label: "Instagram" },
-    { icon: Youtube, href: "https://www.youtube.com/@pianobackingsbydaniele", label: "YouTube" },
-    { icon: Facebook, href: "https://www.facebook.com/PianoBackingsbyDaniele/", label: "Facebook" },
+    { icon: Instagram, href: SOCIAL.instagram, label: "Instagram" },
+    { icon: Youtube, href: SOCIAL.youtube, label: "YouTube" },
+    { icon: Facebook, href: SOCIAL.facebook, label: "Facebook" },
+    { icon: Tiktok, href: SOCIAL.tiktok, label: "TikTok" },
+    { icon: Music, href: SOCIAL.soundcloud, label: "SoundCloud" },
   ];
 
   return (

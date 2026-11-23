@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Header from "@/components/Header";
 import Seo from "@/components/Seo";
+import { SITE_URL } from '@/lib/site';
 
 export const LEGAL_LAST_UPDATED = '26 September 2026';
 export { CONTACT_EMAIL } from '@/lib/site';
@@ -11,6 +12,7 @@ interface LegalPageProps {
   title: string;
   seoTitle: string;
   description: string;
+  path: string;
   intro: React.ReactNode;
   children: React.ReactNode;
 }
@@ -24,9 +26,18 @@ export const LegalSection = ({ title, children }: { title: string; children: Rea
   </section>
 );
 
-const LegalPage = ({ title, seoTitle, description, intro, children }: LegalPageProps) => (
+const LegalPage = ({ title, seoTitle, description, path, intro, children }: LegalPageProps) => (
   <div className="min-h-screen bg-[#FDFCF7]">
-    <Seo title={seoTitle} description={description} />
+    <Seo 
+      title={seoTitle} 
+      description={description}
+      alternateLanguages={[
+        { hrefLang: 'en-AU', href: `${SITE_URL}${path}` },
+        { hrefLang: 'en-US', href: `${SITE_URL}${path}` },
+        { hrefLang: 'en-GB', href: `${SITE_URL}${path}` },
+        { hrefLang: 'x-default', href: `${SITE_URL}${path}` },
+      ]}
+    />
     <Header />
     <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24">
       <p className="text-xs font-black uppercase tracking-widest text-[#F538BC] mb-3">

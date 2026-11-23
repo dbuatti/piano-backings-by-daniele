@@ -16,7 +16,7 @@ import OrdersClosedBanner from "@/components/home/OrdersClosedBanner";
 import { trackConversion } from "@/lib/analytics";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CONTACT_EMAIL } from "@/lib/site";
+import { CONTACT_EMAIL, SOCIAL, SITE_URL } from "@/lib/site";
 import { 
   Youtube, 
   Instagram, 
@@ -38,6 +38,7 @@ import {
   ClipboardList,
   Download
 } from 'lucide-react';
+import { Tiktok } from '@/components/icons/Tiktok';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -49,7 +50,16 @@ const fadeInUp = {
 const Index = () => {
   return (
     <div className="min-h-screen bg-[#FDFCF7] selection:bg-[#D1AAF2] selection:text-[#1C0357]">
-      <Seo title={seoPages['/'].title} description={seoPages['/'].description} />
+      <Seo 
+        title={seoPages['/'].title} 
+        description={seoPages['/'].description}
+        alternateLanguages={[
+          { hrefLang: 'en-AU', href: `${SITE_URL}/` },
+          { hrefLang: 'en-US', href: `${SITE_URL}/` },
+          { hrefLang: 'en-GB', href: `${SITE_URL}/` },
+          { hrefLang: 'x-default', href: `${SITE_URL}/` },
+        ]}
+      />
       <Header />
       
       {/* Hero Section */}
@@ -389,9 +399,10 @@ const Index = () => {
             <h2 className="text-5xl md:text-8xl font-black mb-20 relative z-10 tracking-tighter">Connect & Share</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 relative z-10">
               {[
-                { icon: Youtube, label: "YouTube", color: "text-red-500", href: "https://www.youtube.com/@pianobackingsbydaniele" },
-                { icon: Instagram, label: "Instagram", color: "text-pink-400", href: "https://www.instagram.com/pianobackingsbydaniele/" },
-                { icon: Facebook, label: "Facebook", color: "text-blue-400", href: "https://www.facebook.com/PianoBackingsbyDaniele/" },
+                { icon: Youtube, label: "YouTube", color: "text-red-500", href: SOCIAL.youtube },
+                { icon: Instagram, label: "Instagram", color: "text-pink-400", href: SOCIAL.instagram },
+                { icon: Facebook, label: "Facebook", color: "text-blue-400", href: SOCIAL.facebook },
+                { icon: Tiktok, label: "TikTok", color: "text-black", href: SOCIAL.tiktok },
                 { icon: Mail, label: "Email", color: "text-gray-300", href: `mailto:${CONTACT_EMAIL}` }
               ].map((social, i) => (
                 <a 
