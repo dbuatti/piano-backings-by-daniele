@@ -28,3 +28,6 @@ supabase/.temp/
 .aider*
 .env
 .env
+
+# direnv (tracked - no secrets, just variable names)
+!.envrc
