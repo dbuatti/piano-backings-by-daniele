@@ -4,6 +4,8 @@ import Stripe from 'npm:stripe@16.2.0';
 import { TIER_PRICES, SERVICE_COSTS, serviceLabel } from '../_shared/pricing.ts';
 import { fulfilShopPurchase, type ShopLine } from '../_shared/shop-fulfilment.ts';
 import { escapeHtml } from '../_shared/email.ts';
+import { buildOrderSummary } from '../_shared/order-summary.ts';
+import { writeOrderSummary } from '../_shared/dropbox.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -113,6 +115,38 @@ Deno.serve(async (req) => {
           .in('id', ids);
 
         await supabaseAdmin.from('backing_requests').update({ is_paid: true, stripe_session_id: session.id }).in('id', ids);
+
+        // Rewrite each request's Order Summary.txt in Dropbox so the folder copy
+        // carries the real payment details (amount, method, receipt, promo).
+        // Best-effort: a Dropbox hiccup must never fail the webhook.
+        try {
+          const perRequest = ids.length > 1 ? Number(paidAmount) / ids.length : Number(paidAmount);
+          for (const id of ids) {
+            const { data: fresh } = await supabaseAdmin
+              .from('backing_requests')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
+            if (!fresh) continue;
+            const summary = buildOrderSummary(fresh, {
+              payment: {
+                amountPaid: perRequest,
+                method: 'Credit Card (Stripe)',
+                receiptId: session.id,
+                paidAt: new Date().toISOString(),
+                promoCode,
+                discountAmount: discountAmount ? parseFloat(discountAmount) : null,
+                originalAmount: originalAmount ? parseFloat(originalAmount) : null,
+              },
+            });
+            const result = await writeOrderSummary(supabaseAdmin, id, summary);
+            if (!result.ok) {
+              console.error(`[stripe-webhook] Order Summary refresh failed for ${id}:`, result.error);
+            }
+          }
+        } catch (summaryErr) {
+          console.error("[stripe-webhook] Order Summary refresh error:", summaryErr.message);
+        }
 
         // Always include the guest token so the link opens without a login.
         const orderLink = paidRequests?.[0]?.guest_access_token

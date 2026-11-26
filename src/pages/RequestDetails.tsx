@@ -73,6 +73,7 @@ const RequestDetails = () => {
   const [request, setRequest] = useState<BackingRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTriggeringDropbox, setIsTriggeringDropbox] = useState(false);
+  const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const [editableFinalPrice, setEditableFinalPrice] = useState<string>('');
@@ -202,6 +203,32 @@ const RequestDetails = () => {
       toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setIsTriggeringDropbox(false);
+    }
+  };
+
+  const regenerateOrderSummary = async () => {
+    if (!request) return;
+    setIsRegeneratingSummary(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/regenerate-order-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to regenerate summary');
+      toast({
+        title: result.ok ? "Summary regenerated" : "Summary not updated",
+        description: result.ok
+          ? `Order Summary.txt refreshed in Dropbox${result.path ? ` (${result.path})` : ''}.`
+          : result.error || 'Dropbox folder not found for this request.',
+        variant: result.ok ? "default" : "destructive",
+      });
+    } catch (error: unknown) {
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
+    } finally {
+      setIsRegeneratingSummary(false);
     }
   };
 
@@ -386,6 +413,10 @@ const RequestDetails = () => {
                 <Link to={`/track/${id}`}><Button variant="outline"><Eye className="w-4 h-4 mr-2" /> Client View</Button></Link>
                 <Button onClick={() => navigate(`/admin/request/${id}?mode=email`)} variant="outline"><Mail className="mr-2 h-4 w-4" /> Email Client</Button>
                 <Button onClick={handleCopyRequestDetails} variant="outline"><Copy className="mr-2 h-4 w-4" /> Copy Details</Button>
+                <Button onClick={regenerateOrderSummary} disabled={isRegeneratingSummary} variant="outline">
+                  {isRegeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                  Regenerate Summary
+                </Button>
               </div>
               <div className="flex gap-3">
                 <Button onClick={triggerDropboxAutomation} disabled={isTriggeringDropbox} variant="secondary" className="bg-blue-500 hover:bg-blue-600 text-white">

@@ -2,6 +2,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { TIER_PRICES, SERVICE_COSTS } from '../_shared/pricing.ts';
 import { escapeHtml, safeLink, isValidEmail, sendEmail } from '../_shared/email.ts';
+import { buildOrderSummary } from '../_shared/order-summary.ts';
+import {
+  dropboxConfigFromEnv,
+  hasDropboxCredentials,
+  getDropboxAccessToken,
+  uploadDropboxText,
+} from '../_shared/dropbox.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,11 +62,9 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Dropbox Config
-    const dropboxAppKey = Deno.env.get('DROPBOX_APP_KEY');
-    const dropboxAppSecret = Deno.env.get('DROPBOX_APP_SECRET');
-    const dropboxRefreshToken = Deno.env.get('DROPBOX_REFRESH_TOKEN');
-    const dropboxParentFolder = Deno.env.get('DROPBOX_PARENT_FOLDER') || '/Move over to NAS/PIANO BACKING TRACKS';
-    const logicTemplatePath = Deno.env.get('LOGIC_TEMPLATE_PATH') || '/Move over to NAS/PIANO BACKING TRACKS/00. TEMPLATE/X from Y prepared for Z.logicx';
+    const dropboxConfig = dropboxConfigFromEnv();
+    const dropboxParentFolder = dropboxConfig.parentFolder as string;
+    const logicTemplatePath = dropboxConfig.logicTemplatePath as string;
 
     // Handle optional authentication
     let userId = null;
@@ -341,29 +346,16 @@ Deno.serve(async (req) => {
     let dropboxFolderId = null;
     let templateCopySuccess = false;
 
-    console.log("[create-backing-request] Dropbox check:", { hasKey: !!dropboxAppKey, hasSecret: !!dropboxAppSecret, hasToken: !!dropboxRefreshToken });
+    console.log("[create-backing-request] Dropbox check:", {
+      hasKey: !!dropboxConfig.appKey,
+      hasSecret: !!dropboxConfig.appSecret,
+      hasToken: !!dropboxConfig.refreshToken,
+    });
 
-    if (dropboxAppKey && dropboxAppSecret && dropboxRefreshToken) {
+    if (hasDropboxCredentials(dropboxConfig)) {
       try {
         console.log("[create-backing-request] Refreshing Dropbox token...");
-        // Refresh Token
-        const tokenResponse = await fetch('https://api.dropbox.com/oauth2/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'refresh_token',
-            refresh_token: dropboxRefreshToken,
-            client_id: dropboxAppKey,
-            client_secret: dropboxAppSecret
-          })
-        });
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token;
-
-        if (!accessToken) {
-          console.error("[create-backing-request] Dropbox token refresh failed:", tokenData);
-          throw new Error("Failed to get Dropbox access token");
-        }
+        const accessToken = await getDropboxAccessToken(dropboxConfig);
         console.log("[create-backing-request] Dropbox token refreshed OK");
 
         // Determine Subfolder
@@ -461,53 +453,23 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Create Order Summary TXT file
-          const summaryContent = `
-ORDER SUMMARY
--------------
-Request ID: ${requestId}
-Date: ${new Date().toLocaleString()}
-
-CLIENT INFORMATION
-Name: ${formData.name || 'N/A'}
-Email: ${formData.email}
-
-SONG DETAILS
-Title: ${formData.songTitle}
-Musical/Artist: ${formData.musicalOrArtist}
-Tier: ${formData.trackType?.replace('-', ' ').toUpperCase()}
-Key: ${formData.songKey || 'N/A'}
-Transposition: ${formData.differentKey} ${formData.keyForTrack ? `(To: ${formData.keyForTrack})` : ''}
-Due Date: ${formData.deliveryDate || 'Standard'}
-
-REQUIREMENTS & ADD-ONS
-Services: ${formData.additionalServices?.join(', ') || 'None'}
-YouTube: ${formData.youtubeLink || 'None'}
-Additional Links: ${formData.additionalLinks || 'None'}
-
-SPECIAL REQUESTS / NOTES:
-${formData.specialRequests || 'No special requests.'}
-          `.trim();
-
+          // Create Order Summary TXT file. Everything the DB knows about the
+          // request (including server-side pricing) goes in, so the file is the
+          // single source of truth in the folder — payment is filled in later by
+          // stripe-webhook once the customer actually pays.
           try {
-            const summaryResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/octet-stream',
-                'Dropbox-API-Arg': JSON.stringify({
-                  path: `${actualPath}/Order Summary.txt`,
-                  mode: 'add',
-                  autorename: true,
-                  mute: false
-                })
-              },
-              body: new TextEncoder().encode(summaryContent)
+            const { data: summaryRow } = await supabaseAdmin
+              .from('backing_requests')
+              .select('*')
+              .eq('id', requestId)
+              .maybeSingle();
+
+            const summaryContent = buildOrderSummary(summaryRow || {}, {
+              creditNote: summaryRow?.internal_notes || null,
             });
-            if (!summaryResponse.ok) {
-              const summaryErr = await summaryResponse.text();
-              console.error(`[create-backing-request] Order Summary upload failed (${summaryResponse.status}):`, summaryErr);
-            }
+
+            await uploadDropboxText(accessToken, `${actualPath}/Order Summary.txt`, summaryContent, 'add');
+            console.log("[create-backing-request] Order Summary written");
           } catch (summaryErr) {
             console.error("[create-backing-request] Order Summary upload error:", summaryErr.message);
           }

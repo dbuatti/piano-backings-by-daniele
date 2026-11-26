@@ -39,6 +39,7 @@ To deploy all Edge Functions from your local terminal:
 
 If "Deploy All" fails to find functions, deploy them individually:
 *   `supabase functions deploy create-backing-request`
+*   `supabase functions deploy regenerate-order-summary`
 *   `supabase functions deploy create-stripe-checkout`
 *   `supabase functions deploy get-guest-request-by-token`
 *   `supabase functions deploy get-order-by-session-id`
@@ -71,6 +72,32 @@ Required Secrets include:
 
 ---
 
+## Order Summary.txt (Dropbox)
+
+Every request gets an `Order Summary.txt` in its Dropbox folder — the single
+source of truth for what was ordered and what was paid.
+
+- **Builder:** `supabase/functions/_shared/order-summary.ts` (`buildOrderSummary`).
+  Pure function: a `backing_requests` row in, text out. Prices come from
+  `_shared/pricing.ts`, never from the browser.
+- **Written twice, same path (`mode: overwrite`, so no duplicate files):**
+  1. `create-backing-request` writes it when the folder is created (payment
+     section reads "UNPAID - awaiting payment" plus the amount due).
+  2. `stripe-webhook` rewrites it after `checkout.session.completed`, adding
+     amount paid, method, paid-on timestamp, Stripe receipt/session id and any
+     promo code + discount. Best-effort: a Dropbox failure never fails the
+     webhook.
+- **Contents:** request id, order date, status, client (name/email/account/guest
+  link), song (title, show, tier + tier price, key, transposition, due date,
+  category, delivered-at), add-ons itemised with prices, YouTube/additional
+  links, sheet music + voice memos, special requests, the full payment block,
+  and delivered track links.
+- **Backfill / regenerate:** Admin → Request → **Regenerate Summary** calls
+  `regenerate-order-summary` (admin-only, JWT required), which rebuilds the file
+  for any existing request — use it on older orders that predate this format.
+
+---
+
 ## Notion Sync
 
 The `sync-to-notion` Edge Function upserts rows from Supabase into Notion for cost/tracking visibility.
@@ -80,7 +107,7 @@ The `sync-to-notion` Edge Function upserts rows from Supabase into Notion for co
 2. Open your Notion request database → `…` → `Connections` → add the integration. (Repeat for the products DB if used.)
 3. Set the secrets above via `supabase secrets set NOTION_TOKEN=...` (or Dashboard → Settings → API → Secrets).
 4. Add the tracking columns by applying the migration `0026_add_notion_sync_tracking_columns.sql` (Supabase SQL editor).
-5. Deploy: `supabase functions deploy sync-to-notion` and `supabase functions deploy create-backing-request`.
+5. Deploy: `supabase functions deploy sync-to-notion`, `create-backing-request`, `stripe-webhook` and `regenerate-order-summary`.
 
 **How it stays in sync:**
 - On every new request, `create-backing-request` fires-and-forgets a call to `sync-to-notion` with the new row id.
