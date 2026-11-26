@@ -104,6 +104,56 @@ const FormPage = () => {
   });
 
   const [consentChecked, setConsentChecked] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [songErrors, setSongErrors] = useState<Record<string, Record<string, string>>>({});
+  const [showErrors, setShowErrors] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [focusSongId, setFocusSongId] = useState<string | null>(null);
+  const DRAFT_KEY = 'pb-form-draft-v1';
+
+  // Focus newly added song card
+  useEffect(() => {
+    if (!focusSongId) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-song-id="${focusSongId}"] input`) as HTMLInputElement | null;
+      if (el) el.focus();
+      setFocusSongId(null);
+    }, 50);
+    return () => clearTimeout(t);
+  }, [focusSongId, songs]);
+
+  // Autosave draft
+  useEffect(() => {
+    if (pendingDraft) return;
+    const t = setTimeout(() => {
+      const hasContent = globalData.name || globalData.email || songs.some(s => s.songTitle || s.musicalOrArtist || s.youtubeLink);
+      if (!hasContent) return;
+      const draft = {
+        savedAt: Date.now(),
+        globalData: { ...globalData },
+        songs: songs.map(s => ({ ...s, sheetMusicFiles: [], voiceMemoFiles: [] })),
+        consentChecked,
+        useCredit,
+        promoCode,
+      };
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { void 0; }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [globalData, songs, consentChecked, useCredit, promoCode, pendingDraft]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.savedAt && Date.now() - parsed.savedAt < 7 * 24 * 60 * 60 * 1000) {
+          setPendingDraft(parsed);
+        } else {
+          localStorage.removeItem(DRAFT_KEY);
+        }
+      }
+    } catch { void 0; }
+  }, []);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -199,7 +249,9 @@ const FormPage = () => {
   }, []);
 
   const handleAddSong = useCallback(() => {
-    setSongs(prev => [...prev, createNewSong()]);
+    const newSong = createNewSong();
+    setSongs(prev => [...prev, newSong]);
+    setFocusSongId(newSong.id);
   }, []);
 
   const handleDebugPrefill = useCallback((type: 'single' | 'multiple') => {
@@ -253,6 +305,22 @@ const FormPage = () => {
     toast({ title: "Form Prefilled", description: `Loaded ${type} song test data.` });
   }, [user, toast, minDeliveryDate]);
 
+  const handleResumeDraft = useCallback(() => {
+    if (!pendingDraft) return;
+    setGlobalData(pendingDraft.globalData);
+    setSongs(pendingDraft.songs.map((s: any) => ({ ...s, sheetMusicFiles: [], voiceMemoFiles: [], id: s.id || Math.random().toString(36).substring(7) }))); // eslint-disable-line @typescript-eslint/no-explicit-any
+    setConsentChecked(!!pendingDraft.consentChecked);
+    setUseCredit(!!pendingDraft.useCredit);
+    setPromoCode(pendingDraft.promoCode || '');
+    setPendingDraft(null);
+    toast({ title: "Draft restored", description: "Your previous form data has been restored. Uploaded files are not saved in drafts." });
+  }, [pendingDraft, toast]);
+
+  const handleDiscardDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { void 0; }
+    setPendingDraft(null);
+  }, []);
+
   const handleClearForm = useCallback(() => {
     setGlobalData({
       email: user?.email || '',
@@ -269,6 +337,7 @@ const FormPage = () => {
     setUseCredit(false);
     setPromoCode('');
     setPromoDiscount(0);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { void 0; }
     toast({ title: "Form Cleared" });
   }, [user, toast]);
 
@@ -304,9 +373,65 @@ const FormPage = () => {
     }
   };
 
+  const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
+  const validateForm = useCallback(() => {
+    const errors: Record<string, string> = {};
+    if (!globalData.name.trim()) errors.name = 'Full name is required.';
+    if (!globalData.email.trim()) errors.email = 'Email is required.';
+    else if (!isValidEmail(globalData.email)) errors.email = 'Enter a valid email address.';
+    if (!user) {
+      if (!globalData.confirmEmail.trim()) errors.confirmEmail = 'Please confirm your email.';
+      else if (globalData.email !== globalData.confirmEmail) errors.confirmEmail = 'Emails do not match.';
+    }
+    if (globalData.deliveryDate && globalData.deliveryDate < minDeliveryDate) {
+      errors.deliveryDate = `Earliest due date is ${format(parseISO(minDeliveryDate), 'EEEE d MMMM')}.`;
+    }
+
+    const sErrors: Record<string, Record<string, string>> = {};
+    songs.forEach((song) => {
+      const se: Record<string, string> = {};
+      if (!song.songTitle.trim()) se.songTitle = 'Song title is required.';
+      if (!song.musicalOrArtist.trim()) se.musicalOrArtist = 'Musical or artist is required.';
+      if (!song.songKey) se.songKey = 'Select a key.';
+      if (song.differentKey === 'Yes' && !song.keyForTrack) se.keyForTrack = 'Select the requested key.';
+      if (song.youtubeLink.trim()) {
+        try { new URL(song.youtubeLink.trim()); } catch { se.youtubeLink = 'Enter a valid URL.'; }
+      }
+      if (Object.keys(se).length > 0) sErrors[song.id] = se;
+    });
+
+    return { errors, songErrors: sErrors, ok: Object.keys(errors).length === 0 && Object.keys(sErrors).length === 0 };
+  }, [globalData, songs, user, minDeliveryDate]);
+
+  useEffect(() => {
+    if (!showErrors) return;
+    const { errors, songErrors } = validateForm();
+    setFormErrors(errors);
+    setSongErrors(songErrors);
+  }, [showErrors, globalData, songs, user, minDeliveryDate, validateForm]);
+
+  // Reset promo discount if cart total changes after a code was applied
+  useEffect(() => {
+    if (promoDiscount > 0) {
+      setPromoDiscount(0);
+      toast({ title: "Cart changed", description: "Please re-apply your promo code." });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceBreakdown.total]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isServiceClosed) return;
+
+    const { errors, songErrors, ok } = validateForm();
+    setFormErrors(errors);
+    setSongErrors(songErrors);
+    setShowErrors(true);
+    if (!ok) {
+      toast({ title: "Please fix the highlighted fields", description: "Some required information is missing or invalid.", variant: "destructive" });
+      return;
+    }
 
     if (globalData.deliveryDate && globalData.deliveryDate < minDeliveryDate) {
       toast({
@@ -435,6 +560,7 @@ const FormPage = () => {
         if (!stripeResponse.ok) throw new Error(stripeResult.error || "Failed to generate payment link");
         if (stripeResult.url) window.location.href = stripeResult.url;
       } else {
+        try { localStorage.removeItem(DRAFT_KEY); } catch { void 0; }
         setIsSubmittedSuccessfully(true);
       }
     } catch (error: unknown) {
@@ -545,13 +671,26 @@ const FormPage = () => {
                 </Button>
               </div>
               <div className="mt-4 flex items-center gap-3">
-                <Switch checked={testMode} onCheckedChange={setTestMode} />
+                <Switch checked={testMode} onCheckedChange={setTestMode} aria-label="Toggle test mode" />
                 <span className="text-sm font-bold text-orange-700">
                   {testMode ? 'Test Mode — will charge $0.50' : 'Test Mode OFF — real charges apply'}
                 </span>
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {pendingDraft && (
+          <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border-2 border-[#F538BC]/30 bg-[#F538BC]/5 p-6">
+            <div>
+              <p className="font-black text-lg text-[#1C0357]">You have an unfinished request</p>
+              <p className="text-sm text-gray-600 font-medium">Saved {new Date(pendingDraft.savedAt).toLocaleString()}. Restore it or start fresh.</p>
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" onClick={handleResumeDraft} className="bg-[#1C0357] hover:bg-[#2D0B8C] rounded-xl font-black">Resume Draft</Button>
+              <Button type="button" variant="outline" onClick={handleDiscardDraft} className="rounded-xl font-black">Discard</Button>
+            </div>
+          </div>
         )}
 
         {isSubmittedSuccessfully ? (
@@ -570,7 +709,7 @@ const FormPage = () => {
             </Button>
           </Card>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-12">
+          <form id="backing-request-form" onSubmit={handleSubmit} className="space-y-12">
             {isHolidayModeActive && (
               <div className="flex items-start gap-4 rounded-3xl border-2 border-[#F538BC]/30 bg-[#F538BC]/5 p-6">
                 <Plane className="h-6 w-6 flex-shrink-0 text-[#F538BC] mt-0.5" aria-hidden="true" />
@@ -592,6 +731,7 @@ const FormPage = () => {
               confirmEmail={globalData.confirmEmail}
               onChange={handleGlobalInputChange}
               isUserLoggedIn={!!user}
+              errors={showErrors ? formErrors : undefined}
             />
 
             <div className="space-y-6">
@@ -613,6 +753,7 @@ const FormPage = () => {
                     onChange={handleSongChange} 
                     onRemove={handleRemoveSong} 
                     isOnlySong={songs.length === 1} 
+                    errors={showErrors ? songErrors[song.id] : undefined}
                   />
                 ))}
                 <Button 
@@ -642,7 +783,7 @@ const FormPage = () => {
                       <p className="text-sm text-gray-600 font-medium">Apply a credit to this request?</p>
                     </div>
                   </div>
-                  <Switch checked={useCredit} onCheckedChange={setUseCredit} />
+                  <Switch checked={useCredit} onCheckedChange={setUseCredit} aria-label="Apply season pack credit" />
                 </div>
               )}
 
@@ -782,7 +923,7 @@ const FormPage = () => {
                 </Button>
                 
                 {isSubmitting && (
-                  <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2" role="status" aria-live="polite">
                     <p className="text-[#1C0357] font-black text-lg flex items-center gap-2">
                       <UploadCloud className="animate-bounce" /> {submissionStep}
                     </p>
@@ -796,16 +937,36 @@ const FormPage = () => {
           </form>
         )}
       </div>
+
+      {!isSubmittedSuccessfully && (
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Due</span>
+            <span className="text-2xl font-black text-[#1C0357] leading-none">${Math.max(0, priceBreakdown.total - promoDiscount).toFixed(2)}</span>
+          </div>
+          <button
+            type="submit"
+            form="backing-request-form"
+            disabled={isSubmitting || !consentChecked}
+            className="h-12 px-6 rounded-2xl bg-[#1C0357] hover:bg-[#2D0B8C] text-white font-black shadow-xl disabled:opacity-50"
+          >
+            {isSubmitting ? 'Submitting…' : (useCredit ? 'Submit' : 'Pay & Submit')}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-const Switch = ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (v: boolean) => void }) => (
+const Switch = ({ checked, onCheckedChange, 'aria-label': ariaLabel }: { checked: boolean, onCheckedChange: (v: boolean) => void, 'aria-label'?: string }) => (
   <button 
     type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={ariaLabel}
     onClick={() => onCheckedChange(!checked)}
     className={cn(
-      "w-16 h-8 rounded-full transition-all duration-300 relative shadow-inner", 
+      "w-16 h-8 rounded-full transition-all duration-300 relative shadow-inner focus-visible:ring-2 focus-visible:ring-[#F538BC] focus-visible:ring-offset-2 outline-none", 
       checked ? "bg-[#F538BC]" : "bg-gray-200"
     )}
   >

@@ -10,9 +10,9 @@ interface TierSelectionProps {
 }
 
 const tiers = [
-  { id: 'note-bash', icon: Mic, label: 'Note Bash', price: '$15' },
-  { id: 'audition-ready', icon: Headphones, label: 'Audition Ready', price: '$30' },
-  { id: 'full-song', icon: Sparkles, label: 'Full Song', price: '$50' }
+  { id: 'note-bash', icon: Mic, label: 'Note Bash', price: '$15', description: 'Simple one-pass, melody-focused cut.' },
+  { id: 'audition-ready', icon: Headphones, label: 'Audition Ready', price: '$30', description: 'Detailed comprehensive cut, performance quality.' },
+  { id: 'full-song', icon: Sparkles, label: 'Full Song', price: '$50', description: 'Concert-level comprehensive performance, complete piece.' }
 ];
 
 const TierSelection: React.FC<TierSelectionProps> = ({ value, onValueChange }) => {
@@ -21,11 +21,13 @@ const TierSelection: React.FC<TierSelectionProps> = ({ value, onValueChange }) =
       <h2 className="text-xl font-bold text-[#1C0357] flex items-center gap-2">
         <Sparkles size={20} /> Choose Your Tier
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4" role="radiogroup" aria-label="Choose your tier">
         {tiers.map((item) => (
           <button
             key={item.id}
             type="button"
+            role="radio"
+            aria-checked={value === item.id}
             onClick={() => onValueChange(item.id)}
             className={cn(
               "flex flex-col items-center justify-center cursor-pointer p-6 rounded-3xl border-2 text-center transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#F538BC] focus-visible:ring-offset-2",
@@ -40,6 +42,7 @@ const TierSelection: React.FC<TierSelectionProps> = ({ value, onValueChange }) =
             )} />
             <span className="font-black block text-[#1C0357]">{item.label}</span>
             <span className="text-xs font-bold text-[#F538BC]">{item.price}</span>
+            <span className="text-xs text-gray-500 font-medium mt-2">{item.description}</span>
           </button>
         ))}
       </div>

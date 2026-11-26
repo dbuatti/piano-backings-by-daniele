@@ -20,6 +20,7 @@ interface FileInputProps {
   name?: string;
   autocomplete?: string;
   multiple?: boolean;
+  maxSizeMB?: number;
 }
 
 const FileInput: React.FC<FileInputProps> = ({
@@ -37,10 +38,12 @@ const FileInput: React.FC<FileInputProps> = ({
   name,
   autocomplete = "off",
   multiple = false,
+  maxSizeMB = 25,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [internalFiles, setInternalFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   // Use prop value if provided, otherwise use internal state
   const files = value !== undefined ? value : internalFiles;
@@ -55,12 +58,26 @@ const FileInput: React.FC<FileInputProps> = ({
       selectedFiles = Array.from(event.target.files);
     }
 
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    const oversized = selectedFiles.filter(f => f.size > maxBytes);
+    const validFiles = selectedFiles.filter(f => f.size <= maxBytes);
+    if (oversized.length > 0) {
+      setSizeError(`File too large (max ${maxSizeMB}MB): ${oversized.map(f => f.name).join(', ')}`);
+    } else {
+      setSizeError(null);
+    }
+    if (validFiles.length === 0 && selectedFiles.length > 0) {
+      // nothing to add
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (multiple) {
-      const newFiles = [...files, ...selectedFiles];
+      const newFiles = [...files, ...validFiles];
       if (value === undefined) setInternalFiles(newFiles);
       onChange(newFiles);
     } else {
-      const newFile = selectedFiles[0] ? [selectedFiles[0]] : [];
+      const newFile = validFiles[0] ? [validFiles[0]] : [];
       if (value === undefined) setInternalFiles(newFile);
       onChange(newFile.length > 0 ? newFile : null);
     }
@@ -199,6 +216,7 @@ const FileInput: React.FC<FileInputProps> = ({
       </div>
       {note && <p className="text-[10px] text-gray-400 mt-1 font-medium">{note}</p>}
       {error && <p className="text-red-500 text-[10px] font-bold uppercase mt-1">{error}</p>}
+      {sizeError && <p className="text-red-500 text-[10px] font-bold uppercase mt-1">{sizeError}</p>}
     </div>
   );
 };

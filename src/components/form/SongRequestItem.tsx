@@ -67,6 +67,7 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
 
   return (
     <div
+      data-song-id={data.id}
       className={cn(
         "p-6 rounded-3xl border-2 mb-6 relative group animate-in fade-in zoom-in-95 duration-300",
         isOnlySong ? "bg-white border-gray-100" : "bg-gray-50/50 border-[#D1AAF2]/30 shadow-sm"
@@ -100,36 +101,45 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Song Title</Label>
+          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Song Title *</Label>
           <Input
             value={data.songTitle}
             onChange={(e) => onChange(data.id, 'songTitle', e.target.value)}
             placeholder="e.g. Defying Gravity"
+            required
+            aria-required="true"
+            aria-invalid={!!errors?.songTitle}
             className={cn("h-11 rounded-xl border-gray-200", errors?.songTitle && "border-red-300 bg-red-50")}
           />
+          {errors?.songTitle && <p className="text-red-500 text-[10px] font-bold">{errors.songTitle}</p>}
         </div>
         <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Musical or Artist</Label>
+          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Musical or Artist *</Label>
           <Input
             value={data.musicalOrArtist}
             onChange={(e) => onChange(data.id, 'musicalOrArtist', e.target.value)}
             placeholder="e.g. Wicked"
+            required
+            aria-required="true"
+            aria-invalid={!!errors?.musicalOrArtist}
             className={cn("h-11 rounded-xl border-gray-200", errors?.musicalOrArtist && "border-red-300 bg-red-50")}
           />
+          {errors?.musicalOrArtist && <p className="text-red-500 text-[10px] font-bold">{errors.musicalOrArtist}</p>}
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key</Label>
+          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sheet Music Key *</Label>
           <Select value={data.songKey || undefined} onValueChange={handleSongKeyChange}>
-            <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")}>
+            <SelectTrigger className={cn("h-11 rounded-xl border-gray-200", errors?.songKey && "border-red-300 bg-red-50")} aria-invalid={!!errors?.songKey}>
               <SelectValue placeholder="Select key" />
             </SelectTrigger>
             <SelectContent>
               {keyOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
             </SelectContent>
           </Select>
+          {errors?.songKey && <p className="text-red-500 text-[10px] font-bold">{errors.songKey}</p>}
         </div>
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Transposition</Label>
@@ -151,13 +161,14 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
           <div className="p-4 bg-[#D1AAF2]/10 rounded-2xl border border-[#D1AAF2]/20">
             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1C0357] mb-2 block">Requested Key</Label>
             <Select value={data.keyForTrack || undefined} onValueChange={handleKeyForTrackChange}>
-              <SelectTrigger className="h-11 rounded-xl border-gray-200 bg-white">
+              <SelectTrigger className={cn("h-11 rounded-xl border-gray-200 bg-white", errors?.keyForTrack && "border-red-300 bg-red-50")} aria-invalid={!!errors?.keyForTrack}>
                 <SelectValue placeholder="Select target key" />
               </SelectTrigger>
               <SelectContent>
                 {keyOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors?.keyForTrack && <p className="text-red-500 text-[10px] font-bold mt-1">{errors.keyForTrack}</p>}
           </div>
         </div>
       )}
@@ -183,8 +194,10 @@ const SongRequestItem: React.FC<SongRequestItemProps> = ({
                 value={data.youtubeLink}
                 onChange={(e) => onChange(data.id, 'youtubeLink', e.target.value)}
                 placeholder="https://youtube.com/..."
-                className="pl-10 h-11 rounded-xl border-gray-200"
+                aria-invalid={!!errors?.youtubeLink}
+                className={cn("pl-10 h-11 rounded-xl border-gray-200", errors?.youtubeLink && "border-red-300 bg-red-50")}
               />
+              {errors?.youtubeLink && <p className="text-red-500 text-[10px] font-bold">{errors.youtubeLink}</p>}
               <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             </div>
             <p className="text-[10px] text-[#F538BC] font-bold uppercase tracking-wider">
