@@ -109,10 +109,15 @@ Deno.serve(async (req) => {
         // Fetch request details for the invoice
         const { data: paidRequests } = await supabaseAdmin
           .from('backing_requests')
-          .select('song_title, musical_or_artist, track_type, additional_services, final_price, cost')
+          .select('song_title, musical_or_artist, track_type, additional_services, final_price, cost, guest_access_token')
           .in('id', ids);
 
         await supabaseAdmin.from('backing_requests').update({ is_paid: true, stripe_session_id: session.id }).in('id', ids);
+
+        // Always include the guest token so the link opens without a login.
+        const orderLink = paidRequests?.[0]?.guest_access_token
+          ? `${SITE_URL}/track/${ids[0]}?token=${paidRequests[0].guest_access_token}`
+          : `${SITE_URL}/track/${ids[0]}`;
 
         let invoiceItemsHtml = '';
         let invoiceTotal = 0;
@@ -235,7 +240,8 @@ Deno.serve(async (req) => {
 
                     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
                       <p style="margin: 0 0 4px 0;">Your tracks are now being prepared. You'll receive a notification when they are ready for download.</p>
-                      <p style="margin: 0;">View your order anytime: <a href="${SITE_URL}/track/${ids[0]}" style="color: #1C0357;">${SITE_URL}/track/${ids[0]}</a></p>
+                      <p style="margin: 0;">View your order anytime: <a href="${orderLink}" style="color: #1C0357; font-weight: bold;">Open your track page</a></p>
+                      <p style="margin: 4px 0 0 0;">No login needed — this link is unique to your order.</p>
                     </div>
 
                     <div style="margin-top: 24px; padding: 16px; background-color: #f3e8ff; border-radius: 6px; font-size: 12px; color: #1C0357;">

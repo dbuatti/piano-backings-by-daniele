@@ -46,6 +46,10 @@ function buildInvoiceHtml(request) {
   const finalAmount = request.final_price ?? total;
   const invoiceNum = `PB-${request.id.substring(0, 8).toUpperCase()}`;
   const dateStr = new Date(request.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+  // Always include the guest token so the link opens without a login.
+  const orderLink = request.guest_access_token
+    ? `${SITE_URL}/track/${request.id}?token=${request.guest_access_token}`
+    : `${SITE_URL}/track/${request.id}`;
 
   return `
     <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; color: #333;">
@@ -104,7 +108,8 @@ function buildInvoiceHtml(request) {
         </table>
 
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
-          <p style="margin: 0 0 4px 0;">View your order: <a href="${SITE_URL}/track/${request.id}" style="color: #1C0357;">${SITE_URL}/track/${request.id}</a></p>
+          <p style="margin: 0 0 4px 0;">View your order and downloads: <a href="${orderLink}" style="color: #1C0357; font-weight: bold;">Open your track page</a></p>
+          <p style="margin: 0;">No login needed — this link is unique to your order.</p>
         </div>
 
         <div style="margin-top: 24px; padding: 16px; background-color: #f3e8ff; border-radius: 6px; font-size: 12px; color: #1C0357;">

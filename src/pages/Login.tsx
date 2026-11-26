@@ -12,13 +12,24 @@ const Login = () => {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Where to go after signing in. `returnTo` comes from the track page (so the
+  // customer lands back on their download with the token intact) and is only
+  // honoured when it's a local path — never an absolute URL.
+  const params = new URLSearchParams(location.search);
+  const requestedReturnTo =
+    params.get('returnTo') ||
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
+    '/user-dashboard';
+  const returnTo = requestedReturnTo.startsWith('/') && !requestedReturnTo.startsWith('//')
+    ? requestedReturnTo
+    : '/user-dashboard';
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         setIsAuthenticated(true);
-        // Redirect to user-dashboard or the page they were trying to access
-        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/user-dashboard';
-        navigate(from, { replace: true });
+        // Redirect to the page they were trying to access, or the dashboard
+        navigate(returnTo, { replace: true });
       } else {
         setIsAuthenticated(false);
       }
@@ -29,8 +40,7 @@ const Login = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/user-dashboard';
-        navigate(from, { replace: true });
+        navigate(returnTo, { replace: true });
       }
     };
     checkInitialSession();
@@ -38,7 +48,7 @@ const Login = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, location]);
+  }, [navigate, returnTo]);
 
   if (isAuthenticated) {
     return null; // Will redirect immediately
@@ -86,7 +96,7 @@ const Login = () => {
                 }
               }}
               theme="light"
-              redirectTo={`${window.location.origin}/user-dashboard`}
+              redirectTo={`${window.location.origin}/login?returnTo=${encodeURIComponent(returnTo)}`}
               localization={{
                 variables: {
                   sign_in: {

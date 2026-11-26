@@ -90,6 +90,19 @@ export const EMAIL_SIGNATURE_HTML = `
 </div>
 `;
 
+/**
+ * Build the client-portal link for an email.
+ *
+ * Every request has a guest_access_token, so always include it: the link then
+ * works on any device, in any browser, signed in or not, and with whichever
+ * account happens to be active. Requiring a login (and a matching email) is the
+ * single biggest cause of "the link doesn't work" support messages.
+ */
+const buildClientPortalLink = (request: BackingRequest, siteUrl: string) =>
+  request.id && request.guest_access_token
+    ? `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`
+    : `${siteUrl}/track/${request.id}`;
+
 const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
   if (!trackUrls || trackUrls.length === 0) return '';
   
@@ -117,10 +130,7 @@ const generateTrackListHtml = (trackUrls?: TrackInfo[]) => {
 export const generateCompletionEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;
-  let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.guest_access_token && !request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  }
+  const clientPortalLink = buildClientPortalLink(request, siteUrl);
 
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
@@ -161,10 +171,7 @@ export const generateCompletionEmail = async (request: BackingRequest) => {
 export const generateCompletionAndPaymentEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;
-  let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.guest_access_token && !request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  }
+  const clientPortalLink = buildClientPortalLink(request, siteUrl);
 
   const feedbackLink = `${siteUrl}/?openFeedback=true`;
   const trackListHtml = generateTrackListHtml(request.track_urls);
@@ -229,10 +236,7 @@ export const generateCompletionAndPaymentEmail = async (request: BackingRequest)
 export const generatePaymentReminderEmail = async (request: BackingRequest) => {
   const firstName = request.name.split(' ')[0];
   const siteUrl = window.location.origin;
-  let clientPortalLink = `${siteUrl}/track/${request.id}`;
-  if (request.guest_access_token && !request.user_id) {
-    clientPortalLink = `${siteUrl}/track/${request.id}?token=${request.guest_access_token}`;
-  }
+  const clientPortalLink = buildClientPortalLink(request, siteUrl);
 
   const calculatedCost = calculateRequestCost(request).totalCost;
   const suggestedCostValue = (request.final_price !== null && request.final_price !== undefined)

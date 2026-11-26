@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,9 @@ import {
   Chrome,
   Loader2,
   MessageSquare,
-  Zap
+  Zap,
+  LogIn,
+  ArrowRight
 } from 'lucide-react';
 import { calculateRequestCost } from '@/utils/pricing';
 import { getSafeBackingTypes, downloadTrack, TrackInfo } from '@/utils/helpers';
@@ -40,6 +42,7 @@ import Seo from "@/components/Seo";
 import { getErrorMessage } from "@/lib/utils";
 import type { Session } from '@supabase/supabase-js';
 import ReviewCta from '@/components/ReviewCta';
+import { Input } from '@/components/ui/input';
 
 interface BackingRequest {
   id: string;
@@ -90,6 +93,44 @@ const ClientTrackView = () => {
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [isSendingOrderEmail, setIsSendingOrderEmail] = useState(false);
   const [isSendingInvoiceEmail, setIsSendingInvoiceEmail] = useState(false);
+  const [deniedReason, setDeniedReason] = useState<'invalid-link' | 'signed-out' | 'wrong-account' | 'unknown'>('unknown');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [isSendingLink, setIsSendingLink] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
+
+  // Where to come back to after signing in — keeps the ?token= so the track
+  // opens straight away instead of dumping the customer on an empty dashboard.
+  const returnTo = `${window.location.pathname}${window.location.search}`;
+  const loginHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+
+  const handleEmailMeLink = async (e: FormEvent) => {
+    e.preventDefault();
+    const email = recoveryEmail.trim();
+    if (!email) return;
+    setIsSendingLink(true);
+    try {
+      const response = await fetch(
+        'https://kyfofikkswxtwgtqutdu.supabase.co/functions/v1/send-track-link',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }
+      );
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      setLinkSent(true);
+    } catch (err: unknown) {
+      toast({ title: "Couldn't send the link", description: getErrorMessage(err), variant: "destructive" });
+    } finally {
+      setIsSendingLink(false);
+    }
+  };
+
+  const handleSwitchAccount = async () => {
+    await supabase.auth.signOut();
+    navigate(loginHref);
+  };
+
 
   const resendEmail = async (type: 'order_confirmation' | 'invoice') => {
     if (!request?.id) return;
@@ -160,6 +201,7 @@ const ClientTrackView = () => {
       setAccessDenied(false);
       
       if (!id) {
+        setDeniedReason('invalid-link');
         setAccessDenied(true);
         setLoading(false);
         return;
@@ -204,6 +246,9 @@ const ClientTrackView = () => {
         
         if (fetchError || !requestData) {
           console.error('Error fetching request:', fetchError);
+          setDeniedReason(
+            guestAccessToken ? 'invalid-link' : session ? 'wrong-account' : 'signed-out'
+          );
           setAccessDenied(true);
           toast({
             title: "Error",
@@ -240,6 +285,7 @@ const ClientTrackView = () => {
             setShowLoginPrompt(false);
           }
         } else {
+          setDeniedReason(session ? 'wrong-account' : 'signed-out');
           setAccessDenied(true);
           toast({
             title: "Access Denied",
@@ -283,7 +329,9 @@ const ClientTrackView = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/user-dashboard`,
+          // Land back on this track (token included) rather than the dashboard,
+          // which shows nothing if the signed-in email doesn't match the order.
+          redirectTo: `${window.location.origin}${loginHref}`,
         },
       });
 
@@ -317,22 +365,109 @@ const ClientTrackView = () => {
   }
 
   if (accessDenied || !request) {
+    const copy = {
+      'invalid-link': {
+        title: 'This link is incomplete or out of date',
+        body: "Long links sometimes get cut in half by email apps. Enter the email you ordered with and I'll send a fresh link.",
+      },
+      'signed-out': {
+        title: 'This order is linked to an account',
+        body: 'Sign in with the email you ordered with, or have a fresh, login-free link emailed to you.',
+      },
+      'wrong-account': {
+        title: "This order isn't on this account",
+        body: 'The order was placed with a different email address. Switch accounts, or have the link emailed to you — no login needed.',
+      },
+      unknown: {
+        title: "We couldn't open this track",
+        body: 'The link may be incomplete, or the order may belong to a different account. A fresh link will sort it out.',
+      },
+    }[deniedReason];
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#D1AAF2] to-[#F1E14F]/30">
         <Header />
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <FileAudio className="mx-auto h-16 w-16 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied or Track Not Found</h3>
-            <p className="mt-1 text-gray-500">
-              You do not have permission to view this track, or the track does not exist.
-            </p>
-            <div className="mt-6">
-              <Button onClick={() => navigate('/user-dashboard')}>
-                Back to Dashboard
-              </Button>
-            </div>
-          </div>
+        <div className="max-w-xl mx-auto px-4 py-24">
+          <Card className="shadow-xl border-2 border-[#1C0357]/10">
+            <CardContent className="p-8 text-center">
+              <FileAudio className="mx-auto h-14 w-14 text-[#1C0357]/40" />
+              <h3 className="mt-4 text-2xl font-bold text-[#1C0357]">{copy.title}</h3>
+              <p className="mt-2 text-gray-600">{copy.body}</p>
+
+              {userSession?.user?.email && (
+                <p className="mt-4 text-sm text-gray-500">
+                  You're currently signed in as <span className="font-medium text-gray-700">{userSession.user.email}</span>.
+                </p>
+              )}
+
+              {linkSent ? (
+                <div className="mt-6 rounded-xl bg-green-50 border border-green-200 p-4 text-left">
+                  <p className="text-sm text-green-800">
+                    <CheckCircle className="inline h-4 w-4 mr-1 -mt-0.5" />
+                    If that email matches an order, the link is on its way. Check spam/promotions too — it
+                    comes from pianobackingsbydaniele@gmail.com.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleEmailMeLink} className="mt-6 text-left">
+                  <label htmlFor="recovery-email" className="text-sm font-medium text-[#1C0357]">
+                    Email me my link
+                  </label>
+                  <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                    <Input
+                      id="recovery-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="Email you ordered with"
+                      value={recoveryEmail}
+                      onChange={(e) => setRecoveryEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={isSendingLink}
+                      className="bg-[#1C0357] hover:bg-[#1C0357]/90 text-white"
+                    >
+                      {isSendingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                      Send link
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    The link works without logging in, on any device.
+                  </p>
+                </form>
+              )}
+
+              <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+                {userSession ? (
+                  <Button onClick={handleSwitchAccount} className="bg-white border border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/5">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Switch account
+                  </Button>
+                ) : (
+                  <Button onClick={() => navigate(loginHref)} className="bg-white border border-[#1C0357] text-[#1C0357] hover:bg-[#1C0357]/5">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign in
+                  </Button>
+                )}
+                <Button variant="ghost" onClick={() => navigate('/')}>
+                  Back to home
+                </Button>
+              </div>
+
+              <p className="mt-6 text-sm text-gray-500">
+                Still stuck?{' '}
+                <a
+                  href={`mailto:pianobackingsbydaniele@gmail.com?subject=${encodeURIComponent('Help with my track link')}&body=${encodeURIComponent(`Hi Daniele, I can't open my track page. The link I have is: ${window.location.href}`)}`}
+                  className="font-medium text-[#F538BC] hover:underline"
+                >
+                  Email Daniele
+                </a>{' '}
+                and I'll sort it out.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -358,11 +493,11 @@ const ClientTrackView = () => {
       <div className="max-w-4xl mx-auto pt-28 pb-8 px-4 sm:px-6">
         <div className="mb-6">
           <Button 
-            onClick={() => navigate('/user-dashboard')} 
+            onClick={() => navigate(userSession ? '/user-dashboard' : '/')} 
             variant="outline"
             className="mb-4"
           >
-            ← Back to Dashboard
+            ← {userSession ? 'Back to Dashboard' : 'Back to home'}
           </Button>
           <h1 className="text-3xl font-bold text-[#1C0357]">Your Track Order</h1>
           <p className="text-lg text-[#1C0357]/90">Order details and download</p>
@@ -838,7 +973,7 @@ const ClientTrackView = () => {
                   )}
                 </Button>
                 <Button 
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate(loginHref)}
                   className="bg-white text-[#1C0357] hover:bg-gray-200 text-base px-6 py-3"
                 >
                   Sign In with Email
@@ -857,10 +992,10 @@ const ClientTrackView = () => {
         
         <div className="flex justify-end gap-4">
           <Button 
-            onClick={() => navigate('/user-dashboard')} 
+            onClick={() => navigate(userSession ? '/user-dashboard' : '/')} 
             variant="outline"
           >
-            Back to Dashboard
+            {userSession ? 'Back to Dashboard' : 'Back to home'}
           </Button>
           {/* Admin actions */}
           {isAdmin && (

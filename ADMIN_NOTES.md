@@ -46,6 +46,7 @@ If "Deploy All" fails to find functions, deploy them individually:
 *   `supabase functions deploy gmail-oauth-callback`
 *   `supabase functions deploy list-all-users`
 *   `supabase functions deploy send-email`
+*   `supabase functions deploy send-track-link`
 *   `supabase functions deploy stripe-webhook`
 *   `supabase functions deploy test-dropbox`
 

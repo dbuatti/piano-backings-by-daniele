@@ -15,6 +15,11 @@ verify_jwt = false
 [functions.get-guest-request-by-token]
 verify_jwt = false
 
+# Self-serve "email me my link" from the access-denied screen. Must work for
+# signed-out visitors; it only ever mails the address already on the order.
+[functions.send-track-link]
+verify_jwt = false
+
 [functions.public-stats]
 verify_jwt = false
 
