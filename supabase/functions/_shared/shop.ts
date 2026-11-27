@@ -33,17 +33,58 @@ export async function shopSongUrlForTrack(
   if (!titleSlug) return null;
   const showSlug = slugify(track.show);
 
+  // Delivered request titles sometimes differ from the shop listing by a lead
+  // article, a "- Reprise" suffix or show capitalisation. Only match these safe
+  // equivalences so a real listing doesn't lose its shop link in video copy.
+  const normTitle = (value: unknown) =>
+    slugify(value).replace(/^(the|a|an)-/, '').replace(/-(reprise|reprise-2)$/, '');
+  const bundleTitles = (value: unknown) =>
+    clean(value)
+      .toLowerCase()
+      .split(/[,/]|\band\b|\s+-\s+|\s*:\s*|\s{2,}/i)
+      .flatMap((s) => {
+        const part = s.trim();
+        return [normTitle(part), normTitle(part.replace(/^(come|go|get|be)\s+/, '')), normTitle(part.replace(/^(come|go|get|be)$/, ''))];
+      })
+      .filter(Boolean);
+  const normShow = (value: unknown) => slugify(value).replace(/^(the|a|an)-/, '');
+  const showMatches = (productShow: unknown, show: unknown) => {
+    const p = normShow(productShow);
+    const s = normShow(show);
+    if (!s || !p) return true;
+    if (p === s) return true;
+    const strip = (v: string) => v.replace(/-\d+$/, '').replace(/-(jr|sr|jnr|snr)$/, '');
+    return strip(p) === strip(s);
+  };
+  const titleKey = normTitle(track.song_title);
+  const showKey = normShow(track.show);
+
   const { data: products } = await supabaseAdmin
     .from('products')
     .select('title, artist_name, is_active, product_type')
     .eq('is_active', true);
 
-  const match = (products ?? []).find(
-    (p) =>
-      (p.product_type || 'track') === 'track' &&
-      slugify(p.title) === titleSlug &&
-      (!showSlug || !slugify(p.artist_name) || slugify(p.artist_name) === showSlug)
-  );
+  const candidates = (products ?? []).filter((p) => (p.product_type || 'track') === 'track');
+  const match =
+    candidates.find(
+      (p) =>
+        slugify(p.title) === titleSlug &&
+        (!showSlug || !slugify(p.artist_name) || slugify(p.artist_name) === showSlug)
+    ) ??
+    candidates.find((p) => {
+      const looseTitle = (v: unknown) =>
+        normTitle(v)
+          .replace(/-loves?-/, '-')
+          .replace(/-(the|me)$/, '');
+      return (
+        (normTitle(p.title) === titleKey ||
+          bundleTitles(p.title).includes(titleKey) ||
+          (looseTitle(p.title) === looseTitle(track.song_title) && !!p.title && !!track.song_title)) &&
+        (showMatches(p.artist_name, track.show) ||
+          normShow(track.show) === normTitle(track.song_title) ||
+          bundleTitles(p.title).includes(titleKey))
+      );
+    });
   if (!match) return null;
 
   const productShowSlug = slugify(match.artist_name);
