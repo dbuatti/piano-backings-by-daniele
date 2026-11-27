@@ -24,7 +24,8 @@ import {
   XCircle,
   MessageSquare,
   Tag,
-  Plane
+  Plane,
+  MessageCircle
 } from 'lucide-react';
 import { addBusinessDays, format, parseISO } from 'date-fns';
 import Header from "@/components/Header";
@@ -43,7 +44,7 @@ import TierSelection from '@/components/form/TierSelection';
 import AdditionalServices from '@/components/form/AdditionalServices';
 import { calculateRequestCost, TIER_PRICES } from '@/utils/pricing';
 import { trackConversion } from '@/lib/analytics';
-import { CONTACT_EMAIL, SITE_URL } from '@/lib/site';
+import { CONTACT_EMAIL, SITE_URL, WHATSAPP_URL } from '@/lib/site';
 import type { User } from '@supabase/supabase-js';
 import WaitlistSignup from '@/components/WaitlistSignup';
 
@@ -699,10 +700,23 @@ const FormPage = () => {
               <CheckCircle size={48} />
             </div>
             <h2 className="text-4xl font-black text-[#1C0357] mb-4 tracking-tighter">Submission Successful!</h2>
-            <p className="text-xl text-gray-600 mb-12 font-medium">
+            <p className="text-xl text-gray-600 mb-6 font-medium">
               {holidayReturn
                 ? `I'm away until ${format(holidayReturn, 'EEEE d MMMM')}, and I'll start recording your track from then.`
                 : 'Daniele will review your materials and start recording soon.'}
+            </p>
+            <p className="text-sm text-gray-500 font-medium mb-8">
+              Need it sooner than planned?{' '}
+              <a
+                href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi Daniele, I just submitted a request and need it urgently.")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackConversion('whatsapp_urgent_click', { location: 'form-success' })}
+                className="font-black text-green-600 underline underline-offset-4 hover:text-green-700"
+              >
+                Message Daniele on WhatsApp
+              </a>
+              .
             </p>
             <Button onClick={() => navigate('/user-dashboard')} className="rounded-2xl bg-[#1C0357] px-12 py-7 text-lg font-black shadow-xl">
               View My Requests <ChevronRight className="ml-2" />
@@ -710,6 +724,27 @@ const FormPage = () => {
           </Card>
         ) : (
           <form id="backing-request-form" onSubmit={handleSubmit} className="space-y-12">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-3xl border-2 border-green-200 bg-green-50 p-6">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-green-600 flex items-center justify-center text-white">
+                <MessageCircle size={24} aria-hidden="true" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-lg text-[#1C0357]">Need your track within the next 24 hours?</p>
+                <p className="text-gray-600 font-medium">
+                  The form's rush option covers ~24 hours (+$15). If you need it sooner than that — or it's a same-day emergency — message Daniele directly on WhatsApp and we'll work out what's possible.
+                </p>
+              </div>
+              <a
+                href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi Daniele, I need a backing track within the next 24 hours. Could we work out a rush?")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackConversion('whatsapp_urgent_click', { location: 'form-banner' })}
+                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-black shadow-lg transition-all shrink-0"
+              >
+                <MessageCircle size={18} aria-hidden="true" /> Message on WhatsApp
+              </a>
+            </div>
+
             {isHolidayModeActive && (
               <div className="flex items-start gap-4 rounded-3xl border-2 border-[#F538BC]/30 bg-[#F538BC]/5 p-6">
                 <Plane className="h-6 w-6 flex-shrink-0 text-[#F538BC] mt-0.5" aria-hidden="true" />

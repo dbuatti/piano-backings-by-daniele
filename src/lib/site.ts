@@ -13,6 +13,10 @@ export const canonicalFor = (pathname: string): string => {
 /** The one public contact address. Order emails are sent from (and replied to) this inbox. */
 export const CONTACT_EMAIL = 'pianobackingsbydaniele@gmail.com';
 
+/** Australian mobile, digits only (no + or spaces) for wa.me deep links. */
+export const CONTACT_PHONE_DIGITS = '61424174067';
+export const WHATSAPP_URL = `https://wa.me/${CONTACT_PHONE_DIGITS}`;
+
 /** Google Business Profile review form (Business Profile → Ask for reviews). */
 export const GOOGLE_REVIEW_URL = 'https://g.page/r/CdYOLqci-9TKEBM/review';
 

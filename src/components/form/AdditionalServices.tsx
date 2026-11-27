@@ -12,7 +12,7 @@ interface AdditionalServicesProps {
 }
 
 const paidServices = [
-  { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15' },
+  { id: 'rush-order', label: 'Rush Order (24h)', price: '+$15', note: 'Delivered within ~24 hours. For same-day emergencies, message Daniele on WhatsApp.' },
   { id: 'complex-songs', label: 'Complex Score (Sondheim, JRB, Guettel)', price: '+$10' },
   { id: 'additional-edits', label: 'Additional Edits', price: '+$5', note: SERVICE_NOTES['additional-edits'] },
   { id: 'exclusive-ownership', label: 'Exclusive Ownership', price: '+$40' },

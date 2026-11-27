@@ -6,6 +6,7 @@ import {
   Music, 
   Mail, 
   Phone, 
+  MessageCircle, 
   ExternalLink, 
   Instagram, 
   Youtube, 
@@ -18,8 +19,9 @@ import {
 } from 'lucide-react';
 import { Tiktok } from '@/components/icons/Tiktok';
 import { cn } from '@/lib/utils';
+import { trackConversion } from '@/lib/analytics';
 import { Separator } from '@/components/ui/separator';
-import { CONTACT_EMAIL, GOOGLE_REVIEW_URL, SOCIAL } from '@/lib/site';
+import { CONTACT_EMAIL, GOOGLE_REVIEW_URL, SOCIAL, WHATSAPP_URL } from '@/lib/site';
 import ReportIssueButton from './ReportIssueButton';
 
 const Footer = () => {
@@ -160,6 +162,21 @@ const Footer = () => {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Phone</p>
                   <p className="text-sm font-bold">+61 424 174 067</p>
+                </div>
+              </a>
+              <a 
+                href={`${WHATSAPP_URL}?text=${encodeURIComponent("Hi Daniele, I need a backing track urgently.")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackConversion('whatsapp_urgent_click', { location: 'footer' })}
+                className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+              >
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-green-600/20 flex items-center justify-center text-green-400">
+                  <MessageCircle size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">WhatsApp (urgent)</p>
+                  <p className="text-sm font-bold break-all">Message Daniele directly</p>
                 </div>
               </a>
               <a 

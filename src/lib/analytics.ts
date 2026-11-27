@@ -8,8 +8,9 @@ type Props = Record<string, string | number | boolean | null>;
  *   buy_click       a Buy / Add to cart / Order button was pressed (where, what)
  *   checkout_start  the cart went to Stripe checkout
  *   order_submitted the custom order form was submitted successfully
+ *   whatsapp_urgent_click  user tapped the urgent WhatsApp contact link
  */
-export const trackConversion = (event: 'buy_click' | 'checkout_start' | 'order_submitted', props: Props = {}) => {
+export const trackConversion = (event: 'buy_click' | 'checkout_start' | 'order_submitted' | 'whatsapp_urgent_click', props: Props = {}) => {
   try {
     track(event, props);
   } catch {
